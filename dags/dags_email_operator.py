@@ -12,7 +12,7 @@ with DAG (
     send_email_task = EmailOperator (
         task_id='send_email_task',
         conn_id = 'conn_smtp_gmail',
-        to='seongin@joycity.com',
+        to='65e43b85.joycity.com@kr.teams.ms',
         subject='Airflow 성공메일',
         html_content = 'Airflow 작업이 완료되었습니다.'
     )
