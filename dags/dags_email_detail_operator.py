@@ -3,32 +3,32 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.email import EmailOperator
 from datetime import datetime
-import pendulum
+from airflow.utils import timezone
 
-def send_dag_summary(**context):
-    """DAG 전체 실행 결과 요약"""
+def send_simple_summary(**context):
+    """간단한 DAG 실행 결과"""
     dag_run = context['dag_run']
     dag_id = context['dag'].dag_id
+    ti = context['ti']
     
-    # DAG 실행 시간
+    # 현재 Task의 시작/종료 시간
     start_date = dag_run.start_date
-    end_date = pendulum.now('UTC')
+    end_date = timezone.utcnow()
     duration = end_date - start_date
     
-    # 모든 Task 정보 수집
-    task_instances = dag_run.get_task_instances()
+    # DAG 객체에서 Task 목록 가져오기
+    dag = context['dag']
+    all_tasks = dag.tasks
     
     task_rows = ''
-    for ti in task_instances:
-        if ti.end_date and ti.start_date:
-            task_duration = ti.end_date - ti.start_date
-            task_rows += f'''
-                <tr>
-                    <td>{ti.task_id}</td>
-                    <td>{ti.state}</td>
-                    <td>{task_duration}</td>
-                </tr>
-            '''
+    for task in all_tasks:
+        task_rows += f'''
+            <tr>
+                <td>{task.task_id}</td>
+                <td>완료 대기</td>
+                <td>-</td>
+            </tr>
+        '''
     
     html_content = f'''
         <div style="font-family: Arial;">
@@ -41,41 +41,37 @@ def send_dag_summary(**context):
                     <td>{dag_id}</td>
                 </tr>
                 <tr>
-                    <td><b>시작 시간</b></td>
+                    <td><b>실행 시작</b></td>
                     <td>{start_date}</td>
                 </tr>
                 <tr>
-                    <td><b>종료 시간</b></td>
+                    <td><b>리포트 생성</b></td>
                     <td>{end_date}</td>
                 </tr>
                 <tr style="background-color: #e8f5e9;">
-                    <td><b>총 소요 시간</b></td>
+                    <td><b>경과 시간</b></td>
                     <td>{duration}</td>
+                </tr>
+                <tr>
+                    <td><b>총 Task 수</b></td>
+                    <td>{len(all_tasks)}개</td>
                 </tr>
             </table>
             
-            <h3>Task별 실행 시간</h3>
-            <table border="1" cellpadding="8" style="border-collapse: collapse;">
-                <tr style="background-color: #f0f0f0;">
-                    <th>Task</th>
-                    <th>상태</th>
-                    <th>소요 시간</th>
-                </tr>
-                {task_rows}
-            </table>
+            <h3>✅ 모든 작업이 성공적으로 완료되었습니다!</h3>
         </div>
     '''
     
     EmailOperator(
-        task_id='summary_email',
+        task_id='dags_email_detail_operator',
         to='65e43b85.joycity.com@kr.teams.ms',
-        subject=f'✅ DAG 완료: {dag_id} (소요시간: {duration})',
+        subject=f'✅ DAG 완료: {dag_id}',
         html_content=html_content,
         conn_id='conn_smtp_gmail'
     ).execute(context=context)
 
 with DAG(
-    dag_id='dags_email_detail_operator',
+    dag_id='dag_simple_notification',
     start_date=datetime(2024, 1, 1),
     schedule=None,
     catchup=False
@@ -98,7 +94,7 @@ with DAG(
     
     send_summary = PythonOperator(
         task_id='send_summary',
-        python_callable=send_dag_summary
+        python_callable=send_simple_summary
     )
     
     task1 >> task2 >> task3 >> send_summary
