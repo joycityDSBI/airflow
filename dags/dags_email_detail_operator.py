@@ -67,10 +67,10 @@ def send_dag_summary(**context):
     
     EmailOperator(
         task_id='summary_email',
-        to='channel_name.team_name@xxxxxxx.teams.ms',
+        to='65e43b85.joycity.com@kr.teams.ms',
         subject=f'✅ DAG 완료: {dag_id} (소요시간: {duration})',
         html_content=html_content,
-        conn_id='smtp_default'
+        conn_id='conn_smtp_gmail'
     ).execute(context=context)
 
 with DAG(
