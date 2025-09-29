@@ -3,6 +3,7 @@ from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.operators.email import EmailOperator
 from datetime import datetime
+import pendulum
 
 def send_dag_summary(**context):
     """DAG 전체 실행 결과 요약"""
@@ -11,7 +12,7 @@ def send_dag_summary(**context):
     
     # DAG 실행 시간
     start_date = dag_run.start_date
-    end_date = datetime.now()
+    end_date = pendulum.now('UTC')
     duration = end_date - start_date
     
     # 모든 Task 정보 수집
@@ -74,7 +75,7 @@ def send_dag_summary(**context):
     ).execute(context=context)
 
 with DAG(
-    dag_id='dag_summary_notification',
+    dag_id='dags_email_detail_operator',
     start_date=datetime(2024, 1, 1),
     schedule=None,
     catchup=False
