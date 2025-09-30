@@ -3,6 +3,7 @@ from airflow.decorators import task
 from airflow import DAG
 import pendulum
 from airflow.utils.task_group import TaskGroup
+from airflow.operators.python import PythonOperator
 
 with DAG(
     dag_id = "dags_task_group_decorator",
@@ -10,6 +11,10 @@ with DAG(
     start_date = pendulum.datetime(2025, 9, 30, tz="Asia/Seoul"),
     catchup = False
 ) as dag:
+    
+    def inner_func(**kwargs):
+        msg = kwargs.get('msg') or ''
+        print(msg)
     
     @task_group(group_id="first_group")
     def group_1():
@@ -29,7 +34,7 @@ with DAG(
     with TaskGroup(group_id="outer_group", tooltip="두 번째 그룹입니다") as group_2:
         ''' TaskGroup 클래스를 이용한 두번째 그룹입니다'''
         @task(task_id = 'inner_function3')
-        def inner_func3(**kwargs):
+        def inner_funci(**kwargs):
             print("두 번째 taskgroup 내 첫 번째 task 입니다")
 
         inner_function4 = PythonOperator(
@@ -37,6 +42,6 @@ with DAG(
             python_callable = inner_func,
             op_kwargs = {'msg':'두 번째 taskgroup 내 두 번째 task 입니다'}
         )
-        inner_func3() >> inner_function4
+        inner_funci() >> inner_function4
 
     group_1() >> group_2()
