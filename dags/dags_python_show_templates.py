@@ -13,8 +13,8 @@ with DAG(
     @task(task_id="python_task")
     def show_templates(**kwargs):
         from pprint import pprint
+        print("🚀")
         pprint(kwargs)
 
     show_templates()
 
-    
