@@ -19,6 +19,7 @@ with DAG(
     @task_group(group_id="first_group")
     def group_1():
         ''' task_group 데코레이터를 이용한 첫번째 그룹입니다'''
+
         @task(task_id = 'inner_function1')
         def inner_funci(**kwargs):
             print("첫 번째 taskgroup 내 첫 번째 task 입니다")
@@ -33,6 +34,7 @@ with DAG(
 
     with TaskGroup(group_id="outer_group", tooltip="두 번째 그룹입니다") as group_2:
         ''' TaskGroup 클래스를 이용한 두번째 그룹입니다'''
+
         @task(task_id = 'inner_function3')
         def inner_funci(**kwargs):
             print("두 번째 taskgroup 내 첫 번째 task 입니다")
@@ -44,4 +46,4 @@ with DAG(
         )
         inner_funci() >> inner_function4
 
-    group_1() >> group_2()
+    group_1() >> group_2
