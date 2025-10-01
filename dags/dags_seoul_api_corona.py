@@ -23,4 +23,4 @@ with DAG(
         file_name = 'TbCorona19VaccineStatNew.csv'
     )
 
-   
+    tb_corona19_count_status >> tb_corona19_vaccine_stat_new

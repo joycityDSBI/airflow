@@ -5,7 +5,7 @@ import pandas as pd
 
 
 class SeoulApiToCsvOperator(BaseOperator):
-    template_fields = ('endpoint', 'path', 'filename', 'base_dt')
+    template_fields = ('endpoint', 'path', 'file_name', 'base_dt')
 
     def __init__(self, dataset_nm, path, file_name, base_dt=None, **kwargs):
         super().__init__(**kwargs)
