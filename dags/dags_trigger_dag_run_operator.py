@@ -19,7 +19,7 @@ with DAG(
         task_id='trigger_dag_task',
         trigger_dag_id='dags_python_operator',
         trigger_run_id=None,
-        execution_date='{{ data_interval_start }}',
+        conf={'execution_date': '{{ data_interval_start }}'},
         wait_for_completion=False,  # Wait for the triggered DAG to complete
         poke_interval=30,  # Check every 30 seconds
     )
