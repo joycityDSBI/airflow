@@ -4,7 +4,6 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.email import EmailOperator
 from datetime import datetime
 from airflow.utils import timezone
-from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQuery
 
 
 
