@@ -9,4 +9,7 @@ with DAG(
     catchup = False
     ) as dag:
 
-    task = PythonOperator(...)
+    task = PythonOperator(
+        task_id='task_python',
+        python_callable=lambda: print("Hello from DAG B")
+    )
