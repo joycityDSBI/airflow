@@ -31,6 +31,7 @@ with DAG(
         import json
         from pprint import pprint
 
-        pprint("🚀", json.loads(response))
+        print("🚀")
+        pprint(json.loads(response))
 
     tb_cycle_station_info >> python_2()
