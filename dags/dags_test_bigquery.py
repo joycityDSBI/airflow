@@ -97,7 +97,7 @@ with DAG(
         configuration = {
             "query": {
                 "query": f"""
-                        DECLARE start_date DATE DEFAULT {start_datekey};
+                        DECLARE start_date DATE DEFAULT '{start_datekey}';
 
                         insert into `third-technique-389105.0506_01.testvision`
                         (date, users, sales, salecount)
@@ -109,8 +109,8 @@ with DAG(
                         FROM `third-technique-389105.0506_01.instant_dau`
                         WHERE length(stat_time_kst) >= 19
                             AND safe.parse_datetime('%Y-%m-%d %H:%M:%S', substr(stat_time_kst, 1, 19)) IS NOT NULL
-                            AND safe.parse_datetime('%Y-%m-%d %H:%M:%S', substr(stat_time_kst, 1, 19)) >= DATETIME({start_datekey})
-                            AND safe.parse_datetime('%Y-%m-%d %H:%M:%S', substr(stat_time_kst, 1, 19)) < DATETIME_ADD(DATETIME({start_datekey}), interval 1 day)
+                            AND safe.parse_datetime('%Y-%m-%d %H:%M:%S', substr(stat_time_kst, 1, 19)) >= DATETIME('{start_datekey}')
+                            AND safe.parse_datetime('%Y-%m-%d %H:%M:%S', substr(stat_time_kst, 1, 19)) < DATETIME_ADD(DATETIME('{start_datekey}'), interval 1 day)
                         )
                         SELECT 
                         datekey,
