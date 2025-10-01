@@ -4,6 +4,9 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.email import EmailOperator
 from datetime import datetime
 from airflow.utils import timezone
+from airflow.providers.google.cloud.operators.bigquery import BigQueryExecuteQuery
+
+
 
 def send_simple_summary(**context):
     """간단한 DAG 실행 결과"""
