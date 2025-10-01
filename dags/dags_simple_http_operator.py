@@ -1,4 +1,4 @@
-from airflow.providers.http.operators.http import SimpleHttpOperator
+from airflow.providers.http.operators.http import HttpOperator
 from airflow.decorators import task
 from airflow import DAG
 import pendulum
@@ -12,7 +12,7 @@ with DAG(
     catchup = False
 ) as dag:
     
-    tb_cycle_station_info = SimpleHttpOperator(
+    tb_cycle_station_info = HttpOperator(
         task_id = 'tb_cycle_station_info',
         http_conn_id = 'openapi.seoul.go.kr',
         endpoint = '{{var.value.apikey_openapi_seoul_go_kr}}/json/CardSubwayStatsNew/1/5/20250925/9호선/김포공항',
