@@ -3,7 +3,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 
 with DAG(
-    dag_id = 'dags_python_with_postgres',
+    dag_id = 'dags_python_postgres_with_hook',
     description = 'A simple DAG to test PythonOperator with Postgres',
     schedule = None,
     start_date = datetime(2025, 9, 15),
