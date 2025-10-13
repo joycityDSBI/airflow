@@ -9,8 +9,8 @@ def send_email_func():
     smtp_server = "smtp.office365.com"
     port = 587
     sender_email = "seongin@joycity.com"
-    password = "woeyenikino6911"
-    receiver_email = "seongin@joycity.com"
+    password = "woeyenikino6911"  # 실제 비밀번호로 변경
+    receiver_email = "recipient@example.com"  # 수신자 이메일로 변경
     
     message = MIMEMultipart("alternative")
     message["Subject"] = "Airflow 테스트 이메일"
@@ -35,7 +35,7 @@ def send_email_func():
 with DAG(
     dag_id='dags_email_test_si',
     start_date=datetime(2025, 10, 1),
-    schedule_interval=None,
+    schedule=None,  # schedule_interval → schedule로 변경
     catchup=False
 ) as dag:
     
