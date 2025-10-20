@@ -14,7 +14,6 @@ from airflow import DAG
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 from airflow.sensors.base import BaseSensorOperator
-from airflow.utils.decorators import apply_defaults
 from google.cloud import bigquery
 
 # notion_utils 모듈 임포트 (같은 디렉토리에 위치해야 함)
@@ -51,7 +50,6 @@ class BigQueryMetadataChangeSensor(BaseSensorOperator):
     이전 해시값과 비교하여 변경 여부를 감지하는 Sensor
     """
     
-    @apply_defaults
     def __init__(self, project_id: str, query: str, hash_variable: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.project_id = project_id
