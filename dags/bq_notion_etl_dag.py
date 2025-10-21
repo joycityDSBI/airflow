@@ -283,7 +283,7 @@ def create_email_body(sync_result: Dict[str, Any]) -> str:
     default_args={
         'owner': 'data-team',
         'retries': 2,
-        'retry_delay': timedelta(minutes=5),
+        'retry_delay': timedelta(seconds==30),
     },
     doc_md=__doc__,
 )
@@ -305,7 +305,7 @@ def bq_notion_metadata_sync():
         query=COLUMN_QUERY,
         hash_variable=METADATA_HASH_VAR,
         poke_interval=300,  # 5분마다 체크
-        timeout=600,  # 10분 타임아웃
+        timeout=160,  # 2분 타임아웃
         mode='poke',  # 'poke' 모드 (리소스 효율적)
     )
     
