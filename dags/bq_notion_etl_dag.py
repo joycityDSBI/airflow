@@ -26,12 +26,26 @@ from google.cloud import bigquery
 from notion_utils import update_notion_databases
 
 # ===== 이메일 설정 =====
-SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER")  # 발신자 이메일
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")  # 앱 비밀번호
-EMAIL_TO = os.environ.get("EMAIL_TO")  # 수신자 이메일 (쉼표로 구분 가능)
-EMAIL_FROM = os.environ.get("EMAIL_FROM", SMTP_USER)  # 발신자 이름
+# 환경 변수 우선, 없으면 Airflow Variable에서 가져오기
+def get_config(key: str, default: str = None) -> str:
+    """환경 변수 또는 Airflow Variable에서 설정값 가져오기"""
+    # 1순위: 환경 변수
+    env_value = os.environ.get(key)
+    if env_value:
+        return env_value
+    
+    # 2순위: Airflow Variable
+    try:
+        return Variable.get(key, default_var=default)
+    except KeyError:
+        return default
+
+SMTP_HOST = get_config("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(get_config("SMTP_PORT", "587"))
+SMTP_USER = get_config("SMTP_USER")
+SMTP_PASSWORD = get_config("SMTP_PASSWORD")
+EMAIL_TO = get_config("EMAIL_TO")
+EMAIL_FROM = get_config("EMAIL_FROM", SMTP_USER)
 
 # ===== 설정 =====
 TARGET_PROJECT = "aibi-service"
