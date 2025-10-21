@@ -15,7 +15,6 @@ from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Dict
-
 import pandas as pd
 from airflow import DAG
 from airflow.operators.python import PythonOperator
@@ -140,7 +139,7 @@ class BigQueryMetadataChangeSensor(BaseSensorOperator):
 def extract_bq_metadata(**context):
     """BigQuery 메타데이터 추출"""
     start_ts = time.time()
-    logging.info("🚀 BigQuery 메타데이터 추출 시작")
+    logging.info("🚀 BigQuery 메타데이터 추출 시작 중")
     
     try:
         bq_client = bigquery.Client(project=TARGET_PROJECT)
