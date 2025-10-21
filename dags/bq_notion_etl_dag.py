@@ -276,7 +276,7 @@ with DAG(
     dag_id='bq_notion_metadata_sync',
     default_args=default_args,
     description='BigQuery 메타데이터를 Notion에 동기화 (5분마다 체크)',
-    schedule_interval='*/5 * * * *',  # 5분마다 실행
+    schedule='*/5 * * * *',  # 5분마다 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['bigquery', 'notion', 'metadata', 'etl'],
