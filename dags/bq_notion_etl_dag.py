@@ -17,9 +17,10 @@ from email.mime.text import MIMEText
 from typing import Any, Dict
 
 import pandas as pd
-from airflow.decorators import dag, task
-from airflow.models import Variable
-from airflow.sensors.base import BaseSensorOperator
+from airflow.sdk.dag import dag
+from airflow.sdk.task import task
+from airflow.sdk import Variable
+from airflow.sdk.bases.sensor import BaseSensorOperator
 from google.cloud import bigquery
 
 # notion_utils 모듈 임포트 (같은 디렉토리에 위치해야 함)
@@ -34,9 +35,9 @@ def get_config(key: str, default: str = None) -> str:
     if env_value:
         return env_value
     
-    # 2순위: Airflow Variable
+    # 2순위: Airflow Variable (Airflow 3.0+ SDK)
     try:
-        return Variable.get(key, default_var=default)
+        return Variable.get(key, default)
     except KeyError:
         return default
 
@@ -51,6 +52,13 @@ EMAIL_FROM = get_config("EMAIL_FROM", SMTP_USER)
 TARGET_PROJECT = "aibi-service"
 TARGET_DATASET = "Service_Set"
 METADATA_HASH_VAR = "bq_metadata_hash"  # Airflow Variable 키
+
+# BigQuery 인증 (선택: 서비스 계정 키 사용 시)
+GOOGLE_CREDENTIALS_PATH = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+if GOOGLE_CREDENTIALS_PATH:
+    logging.info(f"📝 BigQuery 인증 파일: {GOOGLE_CREDENTIALS_PATH}")
+else:
+    logging.info("📝 BigQuery 인증: VM의 기본 Service Account 사용")
 
 # ===== BigQuery 메타데이터 쿼리 =====
 COLUMN_QUERY = f"""
@@ -103,8 +111,19 @@ class BigQueryMetadataChangeSensor(BaseSensorOperator):
         """
         logging.info("🔍 BigQuery 메타데이터 변경 감지 시작")
         
+
         # BigQuery 클라이언트 생성
-        bq_client = bigquery.Client(project=self.project_id)
+        if GOOGLE_CREDENTIALS_PATH:
+            from google.oauth2 import service_account
+            credentials = service_account.Credentials.from_service_account_file(
+                GOOGLE_CREDENTIALS_PATH
+            )
+            bq_client = bigquery.Client(
+                project=self.project_id,
+                credentials=credentials
+            )
+        else:
+            bq_client = bigquery.Client(project=self.project_id)
         
         # 메타데이터 조회
         query_job = bq_client.query(self.query)
@@ -283,7 +302,7 @@ def create_email_body(sync_result: Dict[str, Any]) -> str:
     default_args={
         'owner': 'data-team',
         'retries': 2,
-        'retry_delay': timedelta(seconds=30),
+        'retry_delay': timedelta(minutes=5),
     },
     doc_md=__doc__,
 )
@@ -305,7 +324,7 @@ def bq_notion_metadata_sync():
         query=COLUMN_QUERY,
         hash_variable=METADATA_HASH_VAR,
         poke_interval=300,  # 5분마다 체크
-        timeout=160,  # 2분 타임아웃
+        timeout=600,  # 10분 타임아웃
         mode='poke',  # 'poke' 모드 (리소스 효율적)
     )
     
