@@ -283,7 +283,7 @@ def create_email_body(sync_result: Dict[str, Any]) -> str:
     default_args={
         'owner': 'data-team',
         'retries': 2,
-        'retry_delay': timedelta(minutes==1),
+        'retry_delay': timedelta(seconds=30),
     },
     doc_md=__doc__,
 )
