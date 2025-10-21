@@ -2,22 +2,36 @@
 Airflow DAG: BigQuery Metadata → Notion ETL with Change Detection
 - Custom Sensor로 5분마다 BigQuery INFORMATION_SCHEMA 변경 감지
 - 변경 시에만 Notion 동기화 실행
+- 동기화 완료 후 이메일 알림 발송
+- Airflow 3.0+ 버전 최적화 (TaskFlow API)
 """
 
 import hashlib
 import logging
+import os
+import smtplib
 import time
 from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import Any, Dict
 
 import pandas as pd
-from airflow import DAG
+from airflow.decorators import dag, task
 from airflow.models import Variable
-from airflow.operators.python import PythonOperator
 from airflow.sensors.base import BaseSensorOperator
 from google.cloud import bigquery
 
 # notion_utils 모듈 임포트 (같은 디렉토리에 위치해야 함)
 from notion_utils import update_notion_databases
+
+# ===== 이메일 설정 =====
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER")  # 발신자 이메일
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")  # 앱 비밀번호
+EMAIL_TO = os.environ.get("EMAIL_TO")  # 수신자 이메일 (쉼표로 구분 가능)
+EMAIL_FROM = os.environ.get("EMAIL_FROM", SMTP_USER)  # 발신자 이름
 
 # ===== 설정 =====
 TARGET_PROJECT = "aibi-service"
@@ -43,166 +57,232 @@ WHERE table_name IN (
 ORDER BY full_table_id, column_name
 """
 
+
 # ===== Custom Sensor: BigQuery 메타데이터 변경 감지 =====
 class BigQueryMetadataChangeSensor(BaseSensorOperator):
     """
     BigQuery INFORMATION_SCHEMA를 조회하여 해시값을 계산하고,
     이전 해시값과 비교하여 변경 여부를 감지하는 Sensor
+    
+    Airflow 3.0+ compatible
     """
     
-    def __init__(self, project_id: str, query: str, hash_variable: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    template_fields = ('project_id', 'query', 'hash_variable')
+    
+    def __init__(
+        self,
+        *,
+        project_id: str,
+        query: str,
+        hash_variable: str,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
         self.project_id = project_id
         self.query = query
         self.hash_variable = hash_variable
     
-    def poke(self, context):
+    def poke(self, context: Dict[str, Any]) -> bool:
         """
         메타데이터 조회 → 해시 계산 → 이전 해시와 비교
         변경되었으면 True 반환 (다음 Task 실행)
         """
         logging.info("🔍 BigQuery 메타데이터 변경 감지 시작")
         
+        # BigQuery 클라이언트 생성
+        bq_client = bigquery.Client(project=self.project_id)
+        
+        # 메타데이터 조회
+        query_job = bq_client.query(self.query)
+        results = query_job.result()
+        
+        # 데이터를 정렬된 문자열로 변환 (해시 계산용)
+        rows = []
+        for row in results:
+            row_dict = dict(row)
+            rows.append(str(sorted(row_dict.items())))
+        
+        # 전체 데이터의 해시값 계산
+        data_str = "".join(sorted(rows))
+        current_hash = hashlib.sha256(data_str.encode()).hexdigest()
+        
+        logging.info(f"📊 현재 메타데이터 해시: {current_hash[:16]}...")
+        
+        # 이전 해시값 가져오기 (없으면 None)
         try:
-            # BigQuery 클라이언트 생성
-            bq_client = bigquery.Client(project=self.project_id)
-            
-            # 메타데이터 조회
-            query_job = bq_client.query(self.query)
-            results = query_job.result()
-            
-            # 데이터를 정렬된 문자열로 변환 (해시 계산용)
-            rows = []
-            for row in results:
-                row_dict = dict(row)
-                rows.append(str(sorted(row_dict.items())))
-            
-            # 전체 데이터의 해시값 계산
-            data_str = "".join(sorted(rows))
-            current_hash = hashlib.sha256(data_str.encode()).hexdigest()
-            
-            logging.info(f"📊 현재 메타데이터 해시: {current_hash[:16]}...")
-            
-            # 이전 해시값 가져오기 (없으면 None)
-            try:
-                previous_hash = Variable.get(self.hash_variable)
-                logging.info(f"📋 이전 메타데이터 해시: {previous_hash[:16]}...")
-            except KeyError:
-                previous_hash = None
-                logging.info("📋 이전 해시 없음 (초기 실행)")
-            
-            # 해시 비교
-            if current_hash != previous_hash:
-                logging.info("✅ 변경 감지됨 → ETL 실행")
-                # 현재 해시를 XCom에 저장 (ETL Task에서 Variable 업데이트용)
-                context['task_instance'].xcom_push(key='current_hash', value=current_hash)
-                return True
-            else:
-                logging.info("⏸️ 변경 없음 → 대기")
-                return False
-                
-        except Exception as e:
-            logging.error(f"🔥 Sensor 에러: {e}")
-            # 에러 시 False 반환 (재시도)
+            previous_hash = Variable.get(self.hash_variable)
+            logging.info(f"📋 이전 메타데이터 해시: {previous_hash[:16]}...")
+        except KeyError:
+            previous_hash = None
+            logging.info("📋 이전 해시 없음 (초기 실행)")
+        
+        # 해시 비교
+        if current_hash != previous_hash:
+            logging.info("✅ 변경 감지됨 → ETL 실행")
+            # 현재 해시를 XCom에 저장 (Airflow 3.0 방식)
+            ti = context['ti']
+            ti.xcom_push(key='current_hash', value=current_hash)
+            return True
+        else:
+            logging.info("⏸️ 변경 없음 → 대기")
             return False
 
 
-# ===== Task 함수들 =====
-def extract_bq_metadata(**context):
+def send_email_notification(
+    subject: str,
+    body: str,
+    recipients: str | list[str],
+    html: bool = True
+) -> bool:
     """
-    BigQuery 메타데이터 조회 및 DataFrame 반환
+    SMTP를 통한 이메일 발송
+    
+    Args:
+        subject: 이메일 제목
+        body: 이메일 본문
+        recipients: 수신자 이메일 (문자열 또는 리스트)
+        html: HTML 형식 여부
+        
+    Returns:
+        성공 여부
     """
-    start_ts = time.time()
-    logging.info("🚀 BigQuery 메타데이터 추출 시작")
+    if not all([SMTP_USER, SMTP_PASSWORD, EMAIL_TO]):
+        logging.warning("⚠️ 이메일 환경 변수가 설정되지 않았습니다. 이메일을 건너뜁니다.")
+        return False
     
     try:
-        bq_client = bigquery.Client(project=TARGET_PROJECT)
+        # 수신자 리스트 처리
+        if isinstance(recipients, str):
+            recipients = [r.strip() for r in recipients.split(',')]
         
-        logging.info(f"🔍 BigQuery 조회: {TARGET_PROJECT}.{TARGET_DATASET}")
-        df = bq_client.query(COLUMN_QUERY).result().to_dataframe(create_bqstorage_client=False)
+        # 이메일 메시지 생성
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = EMAIL_FROM or SMTP_USER
+        msg['To'] = ', '.join(recipients)
         
-        logging.info(
-            f"✅ 조회 완료: rows={len(df)}, "
-            f"tables={df['table_name'].nunique()}, "
-            f"columns={df['column_name'].nunique()}"
-        )
+        # 본문 추가
+        if html:
+            msg.attach(MIMEText(body, 'html'))
+        else:
+            msg.attach(MIMEText(body, 'plain'))
         
-        # DataFrame을 다음 Task로 전달 (XCom)
-        # 주의: XCom은 크기 제한이 있으므로, 큰 데이터는 GCS 사용 권장
-        context['task_instance'].xcom_push(key='metadata_df', value=df.to_dict('records'))
+        # SMTP 연결 및 발송
+        logging.info(f"📧 이메일 발송 시도: {SMTP_HOST}:{SMTP_PORT}")
         
-        took = time.time() - start_ts
-        logging.info(f"⏱️ 추출 소요: {took:.1f}s")
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()  # TLS 보안 연결
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.send_message(msg)
         
+        logging.info(f"✅ 이메일 발송 완료: {', '.join(recipients)}")
         return True
         
     except Exception as e:
-        logging.exception(f"🔥 메타데이터 추출 실패: {e}")
-        raise
+        logging.error(f"🔥 이메일 발송 실패: {e}")
+        return False
 
 
-def sync_to_notion(**context):
+def create_email_body(sync_result: Dict[str, Any]) -> str:
     """
-    Notion 데이터베이스 동기화
-    """
-    start_ts = time.time()
-    logging.info("🧠 Notion 동기화 시작")
+    동기화 결과 이메일 본문 생성 (HTML)
     
-    try:
-        # 이전 Task에서 DataFrame 가져오기
-        metadata_records = context['task_instance'].xcom_pull(
-            task_ids='extract_metadata',
-            key='metadata_df'
-        )
+    Args:
+        sync_result: 동기화 결과 딕셔너리
         
-        if not metadata_records:
-            raise ValueError("메타데이터가 비어있습니다")
-        
-        # dict → DataFrame 변환
-        df = pd.DataFrame(metadata_records)
-        logging.info(f"📦 DataFrame 로드: {len(df)} rows")
-        
-        # Notion 동기화 실행
-        update_notion_databases(df)
-        
-        # 성공 시 해시 업데이트
-        current_hash = context['task_instance'].xcom_pull(
-            task_ids='detect_metadata_change',
-            key='current_hash'
-        )
-        if current_hash:
-            Variable.set(METADATA_HASH_VAR, current_hash)
-            logging.info(f"💾 해시 업데이트: {current_hash[:16]}...")
-        
-        took = time.time() - start_ts
-        logging.info(f"🎉 Notion 동기화 완료 (⏱️ {took:.1f}s)")
-        
-        return True
-        
-    except Exception as e:
-        logging.exception(f"🔥 Notion 동기화 실패: {e}")
-        raise
+    Returns:
+        HTML 형식의 이메일 본문
+    """
+    success = sync_result.get('success', False)
+    rows_processed = sync_result.get('rows_processed', 0)
+    hash_updated = sync_result.get('hash_updated', 'N/A')
+    duration = sync_result.get('duration_seconds', 0)
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    status_emoji = "✅" if success else "❌"
+    status_text = "성공" if success else "실패"
+    status_color = "#4CAF50" if success else "#F44336"
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+            .header {{ background-color: {status_color}; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }}
+            .content {{ background-color: #f9f9f9; padding: 20px; border: 1px solid #ddd; border-top: none; border-radius: 0 0 5px 5px; }}
+            .info-row {{ margin: 10px 0; padding: 10px; background-color: white; border-left: 4px solid {status_color}; }}
+            .label {{ font-weight: bold; color: #555; }}
+            .value {{ color: #333; }}
+            .footer {{ text-align: center; margin-top: 20px; color: #888; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h2>{status_emoji} BigQuery → Notion 동기화 {status_text}</h2>
+            </div>
+            <div class="content">
+                <div class="info-row">
+                    <span class="label">실행 시간:</span>
+                    <span class="value">{timestamp}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">처리된 행 수:</span>
+                    <span class="value">{rows_processed:,} rows</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">소요 시간:</span>
+                    <span class="value">{duration} 초</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">메타데이터 해시:</span>
+                    <span class="value">{hash_updated}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">대상 프로젝트:</span>
+                    <span class="value">{TARGET_PROJECT}.{TARGET_DATASET}</span>
+                </div>
+            </div>
+            <div class="footer">
+                <p>이 메시지는 Airflow DAG에서 자동으로 발송되었습니다.</p>
+                <p>DAG ID: bq_notion_metadata_sync</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return html
 
 
-# ===== DAG 정의 =====
-default_args = {
-    'owner': 'data-team',
-    'depends_on_past': False,
-    'email_on_failure': False,
-    'email_on_retry': False,
-    'retries': 2,
-    'retry_delay': timedelta(minutes=5),
-}
-
-with DAG(
+# ===== DAG 정의 (TaskFlow API 사용) =====
+@dag(
     dag_id='bq_notion_metadata_sync',
-    default_args=default_args,
     description='BigQuery 메타데이터를 Notion에 동기화 (변경 감지 기반)',
-    schedule='*/5 * * * *',  # 5분마다 실행 (Airflow 3.0+)
+    schedule='*/5 * * * *',  # 5분마다 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['bigquery', 'notion', 'metadata', 'etl'],
-) as dag:
+    default_args={
+        'owner': 'data-team',
+        'retries': 2,
+        'retry_delay': timedelta(minutes=5),
+    },
+    doc_md=__doc__,
+)
+def bq_notion_metadata_sync():
+    """
+    BigQuery 메타데이터를 Notion에 동기화하는 DAG
+    
+    TaskFlow:
+    1. Sensor: 메타데이터 변경 감지
+    2. Extract: BigQuery에서 메타데이터 추출
+    3. Load: Notion에 동기화 및 해시 업데이트
+    4. Notify: 이메일 알림 발송
+    """
     
     # Task 1: 메타데이터 변경 감지 Sensor
     detect_change = BigQueryMetadataChangeSensor(
@@ -215,19 +295,163 @@ with DAG(
         mode='poke',  # 'poke' 모드 (리소스 효율적)
     )
     
-    # Task 2: BigQuery 메타데이터 추출
-    extract_metadata = PythonOperator(
-        task_id='extract_metadata',
-        python_callable=extract_bq_metadata,
-        provide_context=True,
-    )
+    # Task 2: BigQuery 메타데이터 추출 (TaskFlow API)
+    @task(task_id='extract_metadata')
+    def extract_bq_metadata() -> Dict[str, Any]:
+        """
+        BigQuery 메타데이터 조회 및 반환
+        Airflow 3.0 TaskFlow API - 자동 XCom 처리
+        """
+        start_ts = time.time()
+        logging.info("🚀 BigQuery 메타데이터 추출 시작")
+        
+        try:
+            bq_client = bigquery.Client(project=TARGET_PROJECT)
+            
+            logging.info(f"🔍 BigQuery 조회: {TARGET_PROJECT}.{TARGET_DATASET}")
+            df = bq_client.query(COLUMN_QUERY).result().to_dataframe(
+                create_bqstorage_client=False
+            )
+            
+            logging.info(
+                f"✅ 조회 완료: rows={len(df)}, "
+                f"tables={df['table_name'].nunique()}, "
+                f"columns={df['column_name'].nunique()}"
+            )
+            
+            took = time.time() - start_ts
+            logging.info(f"⏱️ 추출 소요: {took:.1f}s")
+            
+            # TaskFlow API는 return 값을 자동으로 XCom에 저장
+            return {
+                'records': df.to_dict('records'),
+                'row_count': len(df),
+                'table_count': df['table_name'].nunique(),
+                'column_count': df['column_name'].nunique(),
+            }
+            
+        except Exception as e:
+            logging.exception(f"🔥 메타데이터 추출 실패: {e}")
+            raise
     
-    # Task 3: Notion 동기화
-    sync_notion = PythonOperator(
-        task_id='sync_to_notion',
-        python_callable=sync_to_notion,
-        provide_context=True,
-    )
+    # Task 3: Notion 동기화 (TaskFlow API)
+    @task(task_id='sync_to_notion')
+    def sync_to_notion(metadata: Dict[str, Any], ti=None) -> Dict[str, Any]:
+        """
+        Notion 데이터베이스 동기화
+        Airflow 3.0 TaskFlow API - 자동 의존성 처리
+        
+        Args:
+            metadata: 이전 task에서 반환된 메타데이터
+            ti: TaskInstance (자동 주입)
+        """
+        start_ts = time.time()
+        logging.info("🧠 Notion 동기화 시작")
+        
+        try:
+            # TaskFlow API로 자동 전달된 데이터 사용
+            metadata_records = metadata.get('records')
+            
+            if not metadata_records:
+                raise ValueError("메타데이터가 비어있습니다")
+            
+            # dict → DataFrame 변환
+            df = pd.DataFrame(metadata_records)
+            logging.info(
+                f"📦 DataFrame 로드: {len(df)} rows "
+                f"(tables: {metadata.get('table_count')}, "
+                f"columns: {metadata.get('column_count')})"
+            )
+            
+            # Notion 동기화 실행
+            update_notion_databases(df)
+            
+            # 성공 시 해시 업데이트
+            current_hash = ti.xcom_pull(
+                task_ids='detect_metadata_change',
+                key='current_hash'
+            )
+            
+            if current_hash:
+                Variable.set(METADATA_HASH_VAR, current_hash)
+                logging.info(f"💾 해시 업데이트: {current_hash[:16]}...")
+            
+            took = time.time() - start_ts
+            logging.info(f"🎉 Notion 동기화 완료 (⏱️ {took:.1f}s)")
+            
+            return {
+                'success': True,
+                'rows_processed': len(df),
+                'table_count': metadata.get('table_count'),
+                'column_count': metadata.get('column_count'),
+                'hash_updated': current_hash[:16] if current_hash else None,
+                'duration_seconds': round(took, 2),
+            }
+            
+        except Exception as e:
+            logging.exception(f"🔥 Notion 동기화 실패: {e}")
+            # 실패 정보도 반환 (이메일에서 사용)
+            return {
+                'success': False,
+                'rows_processed': 0,
+                'error': str(e),
+                'duration_seconds': round(time.time() - start_ts, 2),
+            }
     
-    # Task 의존성 정의
-    detect_change >> extract_metadata >> sync_notion
+    # Task 4: 이메일 알림 발송 (TaskFlow API)
+    @task(task_id='send_email_notification')
+    def send_notification(sync_result: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        동기화 완료 후 이메일 알림 발송
+        
+        Args:
+            sync_result: 동기화 결과 딕셔너리
+            
+        Returns:
+            이메일 발송 결과
+        """
+        logging.info("📧 이메일 알림 발송 시작")
+        
+        try:
+            # 이메일 제목 생성
+            success = sync_result.get('success', False)
+            status = "성공" if success else "실패"
+            rows = sync_result.get('rows_processed', 0)
+            
+            subject = f"[Airflow] BigQuery → Notion 동기화 {status} ({rows:,} rows)"
+            
+            # HTML 본문 생성
+            body = create_email_body(sync_result)
+            
+            # 이메일 발송
+            email_sent = send_email_notification(
+                subject=subject,
+                body=body,
+                recipients=EMAIL_TO or SMTP_USER,
+                html=True
+            )
+            
+            if email_sent:
+                logging.info("✅ 이메일 알림 발송 완료")
+                return {'email_sent': True, 'status': 'success'}
+            else:
+                logging.warning("⚠️ 이메일 발송을 건너뜀")
+                return {'email_sent': False, 'status': 'skipped'}
+                
+        except Exception as e:
+            logging.error(f"🔥 이메일 발송 중 오류: {e}")
+            # 이메일 실패해도 DAG는 성공으로 처리
+            return {'email_sent': False, 'status': 'failed', 'error': str(e)}
+    
+    # Task 의존성 정의 (TaskFlow API 방식)
+    # Sensor → Extract → Sync → Email
+    metadata = extract_bq_metadata()
+    sync_result = sync_to_notion(metadata)
+    email_result = send_notification(sync_result)
+    
+    # Sensor를 시작점으로 설정
+    detect_change >> metadata
+
+
+# DAG 인스턴스 생성
+dag_instance = bq_notion_metadata_sync()
