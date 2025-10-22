@@ -125,8 +125,9 @@ def transform_data(**context):
     # 'nan' 문자열 방지: 원래 NaN은 빈 문자열로
     s1 = s1.replace('nan', '', regex=False)
     s2 = s2.replace('nan', '', regex=False)
-    
+
     df['PackageKind'] = np.where((s1 != '') & (s2 != ''), s1 + '_' + s2, s1 + s2)
+    print(df['PackageKind'].head())
     
     # 컬럼 정리
     df = df.drop(columns=['ShopBaseKind', '상품카인드'], errors='ignore')
