@@ -240,7 +240,7 @@ with DAG(
     dag_id='notion_to_bigquery',
     default_args=default_args,
     description='Notion 데이터베이스를 BigQuery로 동기화',
-    schedule_interval='0 6 * * *',  # 매일 새벽 6시 실행
+    schedule='0 6 * * *',  # 매일 새벽 6시 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['notion', 'bigquery', 'etl'],
@@ -270,7 +270,6 @@ with DAG(
     send_email_task = PythonOperator(
         task_id='send_email',
         python_callable=send_email_via_smtp,
-        provide_context=True,
     )
     
     # Task 의존성: ETL 파이프라인 후 이메일 발송
