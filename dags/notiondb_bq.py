@@ -101,6 +101,8 @@ def extract_notion_data(**context):
     context['ti'].xcom_push(key='raw_data', value=results)
     return len(results)
 
+df = pd.DataFrame(parsed)
+
 def transform_data(**context):
     """데이터 변환"""
     rows = context['ti'].xcom_pull(task_ids='extract_notion_data', key='raw_data')
@@ -115,7 +117,6 @@ def transform_data(**context):
             parsed.append(data)
     
     # DataFrame 변환
-    df = pd.DataFrame(parsed)
     df = df[df['상태'] == '컨펌 완료']
     
     # NaN 안전 결합(양쪽 값이 있을 때만 '_' 삽입)
@@ -148,15 +149,12 @@ def transform_data(**context):
     df['Start_Date'] = pd.to_datetime(df['Start_Date'], errors='coerce').dt.date
     df['End_Date'] = pd.to_datetime(df['End_Date'], errors='coerce').dt.date
     
-    context['ti'].xcom_push(key='transformed_data', value=df.to_json(orient='records', date_format='iso'))
     return len(df)
 
 def load_to_bigquery(**context):
     """BigQuery 적재"""
-    df_json = context['ti'].xcom_pull(task_ids='transform_data', key='transformed_data')
-    # Checkpoint: print loaded JSON
-    print(df_json)
-    df = pd.read_json(df_json, orient='records')
+    df = df
+
     df['Start_Date'] = pd.to_datetime(df['Start_Date'], errors='coerce').dt.date
     df['End_Date'] = pd.to_datetime(df['End_Date'], errors='coerce').dt.date
     
