@@ -101,10 +101,13 @@ def extract_notion_data(**context):
     context['ti'].xcom_push(key='raw_data', value=results)
     return len(results)
 
-df = pd.DataFrame(parsed)
+df = pd.DataFrame()
 
 def transform_data(**context):
     """데이터 변환"""
+    
+    global df
+
     rows = context['ti'].xcom_pull(task_ids='extract_notion_data', key='raw_data')
     
     # 파싱
@@ -116,6 +119,8 @@ def transform_data(**context):
         if data.get("상품카인드"):
             parsed.append(data)
     
+    df = pd.DataFrame(parsed)
+
     # DataFrame 변환
     df = df[df['상태'] == '컨펌 완료']
     
@@ -153,7 +158,6 @@ def transform_data(**context):
 
 def load_to_bigquery(**context):
     """BigQuery 적재"""
-    df = df
 
     print(df['Package_Kind'].head())
 
