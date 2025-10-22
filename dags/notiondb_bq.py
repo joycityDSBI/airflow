@@ -159,7 +159,7 @@ def transform_data(**context):
 def load_to_bigquery(**context):
     """BigQuery 적재"""
 
-    print(df['Package_Kind'].head())
+    print(df.head())
 
     df['Start_Date'] = pd.to_datetime(df['Start_Date'], errors='coerce').dt.date
     df['End_Date'] = pd.to_datetime(df['End_Date'], errors='coerce').dt.date
