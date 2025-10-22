@@ -266,19 +266,16 @@ with DAG(
     query_task = PythonOperator(
         task_id='query_notion_database',
         python_callable=query_notion_database,
-        provide_context=True,
     )
     
     transform_task = PythonOperator(
         task_id='parse_and_transform_data',
         python_callable=parse_and_transform_data,
-        provide_context=True,
     )
     
     load_task = PythonOperator(
         task_id='upload_to_bigquery',
         python_callable=upload_to_bigquery,
-        provide_context=True,
     )
     
     # Email Tasks
@@ -291,7 +288,6 @@ with DAG(
     send_email_task = PythonOperator(
         task_id='send_email',
         python_callable=send_email_via_smtp,
-        provide_context=True,
     )
     
     # Task 의존성

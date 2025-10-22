@@ -16,7 +16,7 @@ import logging
 # ===== 설정 =====
 def get_var(key: str, default: str = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
-    return os.environ.get(key) or Variable.get(key, default_var=default, default=default)
+    return os.environ.get(key) or Variable.get(key, default=default)
 
 # 전역 설정값
 NOTION_TOKEN = get_var("NOTION_TOKEN")
