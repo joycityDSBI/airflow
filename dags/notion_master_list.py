@@ -179,25 +179,18 @@ def prepare_email(**context):
     ti = context['task_instance']
     dag_run = context['dag_run']
     
-    # 실패 여부 확인
-    failed_tasks = [t.task_id for t in dag_run.get_task_instances() if t.state == 'failed']
-    
-    if failed_tasks:
-        data = {
-            '실행 시간': context['execution_date'].strftime('%Y-%m-%d %H:%M:%S'),
-            'DAG ID': dag_run.dag_id,
-            '상태': '❌ 실패',
-            '실패 Task': ', '.join(failed_tasks)
-        }
-        html = create_email_html('Notion Master List 동기화 실패', '#f44336', data)
-        subject = '❌ [Airflow] Notion Master List 동기화 실패'
-    else:
+    try:
         query_cnt = ti.xcom_pull(task_ids='query_notion_database')
         transform_cnt = ti.xcom_pull(task_ids='parse_and_transform_data')
         result = ti.xcom_pull(task_ids='upload_to_bigquery', key='result')
         
+        # 모든 값이 정상적으로 조회되었는지 확인
+        if query_cnt is None or transform_cnt is None or result is None:
+            raise ValueError("이전 Task에서 데이터를 가져올 수 없습니다.")
+        
         data = {
-            '실행 시간': context['execution_date'].strftime('%Y-%m-%d %H:%M:%S'),
+            '실행 시간': context['logical_date'].strftime('%Y-%m-%d %H:%M:%S'),
+            'DAG ID': dag_run.dag_id,
             'Notion 조회 행 수': f"{query_cnt}개",
             '변환 후 행 수': f"{transform_cnt}개",
             'BigQuery 적재 행 수': f"{result['rows']}개",
@@ -206,6 +199,18 @@ def prepare_email(**context):
         }
         html = create_email_html('Notion Master List 동기화 성공', '#4CAF50', data)
         subject = '✅ [Airflow] Notion Master List 동기화 성공'
+        
+    except Exception as e:
+        # 에러 발생 시 실패 이메일 생성
+        logging.error(f"이메일 준비 중 에러 발생: {str(e)}")
+        data = {
+            '실행 시간': context['logical_date'].strftime('%Y-%m-%d %H:%M:%S'),
+            'DAG ID': dag_run.dag_id,
+            '상태': '❌ 실패',
+            '에러 내용': str(e)
+        }
+        html = create_email_html('Notion Master List 동기화 실패', '#f44336', data)
+        subject = '❌ [Airflow] Notion Master List 동기화 실패'
     
     ti.xcom_push(key='email_html', value=html)
     ti.xcom_push(key='email_subject', value=subject)
