@@ -118,13 +118,19 @@ def transform_data(**context):
     df = pd.DataFrame(parsed)
     df = df[df['상태'] == '컨펌 완료']
     
-    # PackageKind 생성
-    s1 = df['ShopBaseKind'].fillna('').astype(str).str.strip()
-    s2 = df['상품카인드'].fillna('').astype(str).str.strip()
+    # NaN 안전 결합(양쪽 값이 있을 때만 '_' 삽입)
+    s1 = df['ShopBaseKind'].astype(str).str.strip()
+    s2 = df['상품카인드'].astype(str).str.strip()
+
+    # 'nan' 문자열 방지: 원래 NaN은 빈 문자열로
+    s1 = s1.replace('nan', '', regex=False)
+    s2 = s2.replace('nan', '', regex=False)
+    
     df['PackageKind'] = np.where((s1 != '') & (s2 != ''), s1 + '_' + s2, s1 + s2)
     
     # 컬럼 정리
     df = df.drop(columns=['ShopBaseKind', '상품카인드'], errors='ignore')
+
     cols = ['상품명', '상품명_영문', 'PackageKind', '재화구분', 'IAP_CODE_GOOGLE', 
             'IAP_CODE_APPLE', 'IAP_CODE_ONESTORE', '상점 카테고리', '상품 카테고리', 
             '가격 (￦)', '판매 시작일', '판매 종료일', '상태']
