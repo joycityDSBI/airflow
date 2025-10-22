@@ -9,4 +9,6 @@ google-cloud-bigquery==3.14.1
 pandas==2.2.2
 requests==2.31.0
 db-dtypes==1.1.1
-
+pandas_gbq==0.29.0
+pyarrow==21.0.0
+numpy==2.3.0
