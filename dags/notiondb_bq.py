@@ -101,12 +101,10 @@ def extract_notion_data(**context):
     context['ti'].xcom_push(key='raw_data', value=results)
     return len(results)
 
-df = pd.DataFrame()
+
 
 def transform_data(**context):
     """데이터 변환"""
-    
-    global df
 
     rows = context['ti'].xcom_pull(task_ids='extract_notion_data', key='raw_data')
     
@@ -151,16 +149,6 @@ def transform_data(**context):
                   'Cat_Shop', 'Cat_Package', 'Price', 'Start_Date', 'End_Date', 'Task_State']
     
     # 날짜 변환
-    df['Start_Date'] = pd.to_datetime(df['Start_Date'], errors='coerce').dt.date
-    df['End_Date'] = pd.to_datetime(df['End_Date'], errors='coerce').dt.date
-    
-    return len(df)
-
-def load_to_bigquery(**context):
-    """BigQuery 적재"""
-
-    print(df.head())
-
     df['Start_Date'] = pd.to_datetime(df['Start_Date'], errors='coerce').dt.date
     df['End_Date'] = pd.to_datetime(df['End_Date'], errors='coerce').dt.date
     
@@ -274,11 +262,6 @@ with DAG(
         python_callable=transform_data
     )
     
-    load = PythonOperator(
-        task_id='load_to_bigquery', 
-        python_callable=load_to_bigquery
-    )
-    
     prepare_email_task = PythonOperator(
         task_id='prepare_email',
         python_callable=prepare_email,
@@ -291,5 +274,5 @@ with DAG(
     )
     
     # Task 의존성: ETL 파이프라인 후 이메일 발송
-    extract >> transform >> load
-    [extract, transform, load] >> prepare_email_task >> send_email_task
+    extract >> transform
+    [extract, transform] >> prepare_email_task >> send_email_task
