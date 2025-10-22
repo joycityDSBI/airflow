@@ -127,6 +127,8 @@ def transform_data(**context):
     s2 = s2.replace('nan', '', regex=False)
 
     df['PackageKind'] = np.where((s1 != '') & (s2 != ''), s1 + '_' + s2, s1 + s2)
+    
+    # Checkpoint: print loaded JSON
     print(df['PackageKind'].head())
     
     # 컬럼 정리
@@ -152,6 +154,8 @@ def transform_data(**context):
 def load_to_bigquery(**context):
     """BigQuery 적재"""
     df_json = context['ti'].xcom_pull(task_ids='transform_data', key='transformed_data')
+    # Checkpoint: print loaded JSON
+    print(df_json)
     df = pd.read_json(df_json, orient='records')
     df['Start_Date'] = pd.to_datetime(df['Start_Date'], errors='coerce').dt.date
     df['End_Date'] = pd.to_datetime(df['End_Date'], errors='coerce').dt.date
