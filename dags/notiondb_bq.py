@@ -168,19 +168,17 @@ def prepare_email(**context):
     
     try:
         extract_cnt = ti.xcom_pull(task_ids='extract_notion_data')
-        transform_cnt = ti.xcom_pull(task_ids='transform_data')
-        result = ti.xcom_pull(task_ids='load_to_bigquery', key='result')
+        transform_result = ti.xcom_pull(task_ids='transform_data', key='result')
         
         # 모든 값이 정상적으로 조회되었는지 확인
-        if extract_cnt is None or transform_cnt is None or result is None:
+        if extract_cnt is None or transform_result is None:
             raise ValueError("이전 Task에서 데이터를 가져올 수 없습니다.")
         
         data = {
             '실행 시간': context['logical_date'].strftime('%Y-%m-%d %H:%M:%S'),
             '추출 행 수': f"{extract_cnt}개",
-            '변환 행 수': f"{transform_cnt}개",
-            '적재 행 수': f"{result['rows']}개",
-            'BigQuery 테이블': result['table'],
+            '변환 및 적재 행 수': f"{transform_result['rows']}개",
+            'BigQuery 테이블': transform_result['table'],
             '상태': '✅ 성공'
         }
         html = create_email_html('Notion to BigQuery 동기화 성공', '#4CAF50', data)
