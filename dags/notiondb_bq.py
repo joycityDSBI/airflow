@@ -246,7 +246,7 @@ with DAG(
     dag_id='notiondb_bq',
     default_args=default_args,
     description='Notion 데이터베이스를 BigQuery로 동기화',
-    schedule='0 6 * * *',  # 매일 새벽 6시 실행
+    schedule='0 21 * * *',  # 매일 새벽 6시 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['notion', 'bigquery', 'etl'],

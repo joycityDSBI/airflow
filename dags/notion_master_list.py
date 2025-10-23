@@ -261,7 +261,7 @@ with DAG(
     dag_id='notion_master_list',
     default_args=default_args,
     description='Notion 데이터베이스에서 데이터를 추출하여 BigQuery로 적재하는 ETL 파이프라인',
-    schedule='0 1 * * *',  # 매일 새벽 1시 실행
+    schedule='0 17 * * *',  # 매일 새벽 2시 실행
     start_date=datetime(2025, 10, 21),
     catchup=False,
     tags=['bigquery', 'notion', 'metadata', 'etl'],
