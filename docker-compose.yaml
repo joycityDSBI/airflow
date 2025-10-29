@@ -190,6 +190,7 @@ services:
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
+    user: "1001:1002"  # Use non-root user for scheduler to allow proper signal handling
 
   airflow-dag-processor:
     <<: *airflow-common
