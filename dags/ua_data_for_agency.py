@@ -319,7 +319,7 @@ def generate_agency_reports(**context):
                     agency_col = row_values.index(agency_name) + 1
                     worksheet.update_cell(cell.row, agency_col + 2, signed_url)
                     current_time = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
-                    worksheet.update_cell(cell.row, agency_col + 3, current_time)
+                    worksheet.update_cell(cell.row, agency_col + 4, current_time)
                     print(f"✓ [{pr_name}, {agency_name}] 업로드 완료 및 URL 업데이트")
                     found = True
                     break
