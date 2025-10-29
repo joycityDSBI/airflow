@@ -37,3 +37,5 @@ redis==5.0.1
 
 # Database
 psycopg2-binary==2.9.9
+apache-airflow-providers-databricks
+databricks-sql-connector
