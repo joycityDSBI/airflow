@@ -17,6 +17,9 @@ from airflow.decorators import task
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import re
+import json
+from googleapiclient.discovery import build
 
 # ============= 환경 변수 또는 Airflow Variable 조회 함수 =============
 def get_var(key: str, default: str = None) -> str:
@@ -126,9 +129,9 @@ def generate_all_projects_reports(**context):
     project_list = [cell for row in data for cell in row][1:]
     
     bucket = storage_client.bucket(GCS_BUCKET_NAME)
-    today = datetime.today().strftime('%Y-%m-%d')
-    two_days_ago = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
-    
+    today = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d')    
+    two_days_ago = (datetime.now(timezone(timedelta(hours=9))) - timedelta(days=2)).strftime('%Y-%m-%d')
+
     failed_projects = []
     total_rows = 0
     uploaded_files = []
@@ -358,8 +361,119 @@ def generate_agency_reports(**context):
     print("=" * 80)
     print("Task 2: 대행사 보고서 생성 완료")
 
+# ============= Task 3: 권한 부여 진행하기 =============
+def authorize_gcs_access(**context):
+    creds = Credentials.from_service_account_info(credentials_info, scopes=scopes)
+    client = gspread.authorize(creds)
 
-# ============= Task 3: 이메일 발송 =============
+    spreadsheet_url = "https://docs.google.com/spreadsheets/d/1gMEd4_sTX-Y1jr4JcZyonDiMzazKfJOjHdahvhBKNGE/edit?gid=1879882444#gid=1879882444"
+    spreadsheet = client.open_by_url(spreadsheet_url)
+    worksheet = spreadsheet.worksheet('sheet2')
+
+    mail_list = worksheet.col_values(3)[1:]
+    targeturl_list = worksheet.col_values(5)[1:]
+    link_list = worksheet.col_values(4)[1:]
+
+    # Google Drive 클라이언트
+    drive_service = build('drive', 'v3', credentials=creds)
+    sheets_service = build('sheets', 'v4', credentials=creds)
+
+# 각 행마다 처리
+    for idx, (mails_str, target_url_str, link) in enumerate(zip(mail_list, targeturl_list, link_list)):
+        if not mails_str or not target_url_str or not link:  # 빈 셀 건너뛰기
+            continue
+        
+        print(f"\n--- {idx + 1}번째 행 처리 ---")
+        
+        # 콤마로 구분된 이메일 파싱 (공백 제거)
+        emails = [email.strip() for email in mails_str.split(',') if email.strip()]
+        
+        print(f"이메일: {emails}")
+        print(f"타겟 URL: {target_url_str}")
+        print(f"링크: {link}")
+        
+        # 타겟 URL에서 Spreadsheet ID 추출
+        match = re.search(r'/d/([a-zA-Z0-9-_]+)', target_url_str)
+        if not match:
+            print(f"✗ URL에서 Spreadsheet ID를 추출할 수 없습니다: {target_url_str}")
+            continue
+        
+        target_file_id = match.group(1)
+        print(f"타겟 파일 ID: {target_file_id}")
+        
+        # 각 이메일에 대해 권한 부여
+        for email in emails:
+            try:
+                permission = {
+                    'type': 'user',
+                    'role': 'reader',
+                    'emailAddress': email
+                }
+                drive_service.permissions().create(
+                    fileId=target_file_id,
+                    body=permission,
+                    fields='id'
+                ).execute()
+                print(f"  ✓ {email}에게 권한 부여 완료")
+            except Exception as e:
+                print(f"  ✗ {email} 권한 부여 실패: {str(e)}")
+        
+        # target_url_str (문자열)을 사용
+        try:
+            target_sheet = client.open_by_url(target_url_str)
+        except Exception as e:
+            print(f"✗ 타겟 시트 열기 실패: {str(e)}")
+            continue
+        
+        # target_sheet가 이미 Spreadsheet 객체이므로 .id 직접 사용
+        spreadsheet_id = target_sheet.id
+        
+        # worksheets()를 사용해 첫 번째 시트 가져오기
+        try:
+            worksheets = target_sheet.worksheets()
+            if not worksheets:
+                print(f"✗ 시트가 없습니다.")
+                continue
+            target_sheet_title = worksheets[0].title  # 첫 번째 시트 이름 가져오기
+        except Exception as e:
+            print(f"✗ 시트 정보 조회 실패: {str(e)}")
+            continue
+        
+        # 현재 행에 해당하는 링크만 업데이트
+        update_data = [[link]]  # 단일 셀만 업데이트
+        
+        # C 열의 행 번호 계산 (idx는 0부터 시작, 헤더는 제외되었으므로 idx+2부터 시작)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        request_body = {
+            'data': [
+                {
+                    'range': f"{target_sheet_title}!C2",  # 현재 행의 C 열만 업데이트
+                    'majorDimension': 'ROWS',
+                    'values': update_data
+                },
+                {
+                    'range': f"{target_sheet_title}!D2",  # D 열 업데이트
+                    'majorDimension': 'ROWS',
+                    'values': [[current_time]]
+                }
+            ],
+            'valueInputOption': 'RAW'
+        }
+        
+        try:
+            response = sheets_service.spreadsheets().values().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body=request_body
+            ).execute()
+            
+            print(f"✓ '{target_sheet_title}' 시트의 C{row_number} 셀에 데이터 업데이트 완료!")
+            print(f"  업데이트 내용: {link}")
+        except Exception as e:
+            print(f"✗ 데이터 업데이트 실패: {str(e)}")
+
+
+# ============= Task 4: 이메일 발송 =============
 def send_status_email(**context):
     """작업 완료 후 간단한 알림 이메일 발송"""
     print("=" * 80)
@@ -418,7 +532,13 @@ task_agency_reports = PythonOperator(
     python_callable=generate_agency_reports,
     dag=dag,
 )
-# Task 정의
+
+task_authorize_gcs = PythonOperator(
+    task_id='authorize_gcs_access',
+    python_callable=authorize_gcs_access,
+    dag=dag,
+)
+
 task_send_email = PythonOperator(
     task_id='send_status_email',
     python_callable=send_status_email,
@@ -427,4 +547,4 @@ task_send_email = PythonOperator(
 )
 
 # Task 의존성
-task_all_projects >> task_agency_reports >> task_send_email
+task_all_projects >> task_agency_reports >> task_authorize_gcs >> task_send_email
