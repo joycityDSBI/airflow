@@ -155,7 +155,7 @@ def generate_all_projects_reports(**context):
             df = bq_client.query(query, job_config=job_config).to_dataframe()
             
             csv_buffer = io.StringIO()
-            df.to_csv(csv_buffer, index=False, encoding='utf-8')
+            df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
             blob_name = f"all_reports/{project_name}_{today}.csv"
             blob = bucket.blob(blob_name)
             blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv")
@@ -292,7 +292,7 @@ def generate_agency_reports(**context):
             
             # CSV로 변환
             csv_buffer = io.StringIO()
-            df.to_csv(csv_buffer, index=False, encoding='utf-8')
+            df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
             
             # GCS에 업로드
             blob_name = f"agency_reports/{pr_name}_{agency_name}_{today}.csv"
