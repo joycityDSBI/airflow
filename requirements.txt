@@ -25,7 +25,7 @@ google-auth-httplib2==0.2.0
 pandas==2.2.2
 pandas-gbq==0.29.0
 pyarrow==21.0.0
-numpy==2.3.0
+numpy>=1.26.0,<2.0.0
 db-dtypes==1.1.1
 
 # Web frameworks
