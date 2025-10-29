@@ -27,6 +27,7 @@ pandas-gbq==0.29.0
 pyarrow==21.0.0
 numpy>=1.26.0,<2.0.0
 db-dtypes==1.1.1
+pyspark==4.0.0
 
 # Web frameworks
 flask==2.2.5
