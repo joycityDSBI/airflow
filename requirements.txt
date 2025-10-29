@@ -35,6 +35,10 @@ functions-framework==3.7.0
 celery==5.5.0
 redis==5.0.1
 
+# SQLAlchemy 버전 고정 (중요!)
+SQLAlchemy>=1.4.0,<2.0.0
+flask-sqlalchemy>=2.5.0,<3.0.0
+
 # Database
 psycopg2-binary==2.9.9
 apache-airflow-providers-databricks
