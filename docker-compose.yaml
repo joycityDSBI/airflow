@@ -161,7 +161,7 @@ services:
       - /home/seongin/logs:/opt/airflow/logs
       - /home/seongin/config:/opt/airflow/config
       - /home/seongin/plugins:/opt/airflow/plugins
-      - ./requirements.txt:/requirements.txt
+      - /home/seongin/requirements.txt:/requirements.txt
     command: bash -c "pip install -r /requirements.txt && airflow db migrate && airflow api-server"
     environment:
       <<: *airflow-common-env
@@ -185,7 +185,7 @@ services:
       - /home/seongin/logs:/opt/airflow/logs
       - /home/seongin/config:/opt/airflow/config
       - /home/seongin/plugins:/opt/airflow/plugins
-      - ./requirements.txt:/requirements.txt
+      - /home/seongin/requirements.txt:/requirements.txt
     command: bash -c "pip install -r /requirements.txt && airflow scheduler"
     environment:
       <<: *airflow-common-env
@@ -209,7 +209,7 @@ services:
       - /home/seongin/logs:/opt/airflow/logs
       - /home/seongin/config:/opt/airflow/config
       - /home/seongin/plugins:/opt/airflow/plugins
-      - ./requirements.txt:/requirements.txt
+      - /home/seongin/requirements.txt:/requirements.txt
     command: bash -c "pip install -r /requirements.txt && airflow dag-processor"
     environment:
       <<: *airflow-common-env
