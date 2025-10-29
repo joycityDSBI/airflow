@@ -1,0 +1,39 @@
+# Core dependencies
+requests==2.32.4
+protobuf==4.25.3
+
+# Apache Airflow
+apache-airflow==3.1.0
+apache-airflow-providers-http==5.3.4
+apache-airflow-providers-smtp==2.3.1
+apache-airflow-providers-postgres==6.4.0
+
+# Google Cloud
+google-cloud-bigquery==3.24.0
+google-cloud-storage==2.14.0
+google-cloud-tasks==2.15.1
+google-api-python-client==2.149.0
+
+# Google Auth & Sheets
+gspread==6.2.1
+google-auth==2.40.3
+google-auth-oauthlib==1.2.2
+google-auth-httplib2==0.2.0
+
+# Data processing
+pandas==2.2.2
+pandas-gbq==0.29.0
+pyarrow==21.0.0
+numpy==2.3.0
+db-dtypes==1.1.1
+
+# Web frameworks
+flask==2.2.5
+functions-framework==3.7.0
+
+# Task queue & caching
+celery==5.5.0
+redis==5.0.1
+
+# Database
+psycopg2-binary==2.9.9

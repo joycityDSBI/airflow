@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+venv
+.envcredentials.json
+UA_data_to_Agency.py
+.env
+.env
