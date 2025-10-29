@@ -93,7 +93,6 @@ def extract_audit_logs(**context):
     )
 
     query = f"""
-    CREATE OR REPLACE TABLE your_catalog.your_schema.audit_log_processed AS
     WITH raw_log AS (
         SELECT 
             'audit_log' as log_type,
