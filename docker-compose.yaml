@@ -217,7 +217,7 @@ services:
 
   airflow-worker:
     <<: *airflow-common
-    command: bash -c "pip install -r /requirements.txt && celery worker"
+    command: bash -c "pip install -r /requirements.txt && airflow celery worker"
     healthcheck:
       # yamllint disable rule:line-length
       test:
