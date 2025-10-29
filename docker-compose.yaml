@@ -161,12 +161,11 @@ services:
       - /home/seongin/logs:/opt/airflow/logs
       - /home/seongin/config:/opt/airflow/config
       - /home/seongin/plugins:/opt/airflow/plugins
-      - /home/seongin/requirements.txt:/requirements.txt
+      - ./requirements.txt:/requirements.txt
     command: bash -c "pip install -r /requirements.txt && airflow db migrate && airflow api-server"
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
-    user: "1001:0"  # Use non-root user for scheduler to allow proper signal handling
 
   airflow-scheduler:
     <<: *airflow-common
@@ -186,12 +185,11 @@ services:
       - /home/seongin/logs:/opt/airflow/logs
       - /home/seongin/config:/opt/airflow/config
       - /home/seongin/plugins:/opt/airflow/plugins
-      - /home/seongin/requirements.txt:/requirements.txt
+      - ./requirements.txt:/requirements.txt
     command: bash -c "pip install -r /requirements.txt && airflow scheduler"
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
-    user: "1001:0"  # Use non-root user for scheduler to allow proper signal handling
 
   airflow-dag-processor:
     <<: *airflow-common
@@ -211,7 +209,7 @@ services:
       - /home/seongin/logs:/opt/airflow/logs
       - /home/seongin/config:/opt/airflow/config
       - /home/seongin/plugins:/opt/airflow/plugins
-      - /home/seongin/requirements.txt:/requirements.txt
+      - ./requirements.txt:/requirements.txt
     command: bash -c "pip install -r /requirements.txt && airflow dag-processor"
     environment:
       <<: *airflow-common-env
@@ -242,16 +240,10 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD}
       EMAIL_TO: ${EMAIL_TO}
       EMAIL_FROM: ${EMAIL_FROM}
-      _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
-    volumes:
-      - /home/seongin/dags:/opt/airflow/dags
-      - /home/seongin/logs:/opt/airflow/logs
-      - /home/seongin/config:/opt/airflow/config
-      - /home/seongin/plugins:/opt/airflow/plugins
-      - /home/seongin/requirements.txt:/requirements.txt
 
       # Required to handle warm shutdown of the celery workers properly
-      # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation 
+      # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
+
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -259,7 +251,6 @@ services:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
-    user: "1001:0"  # Use non-root user for scheduler to allow proper signal handling
 
   airflow-triggerer:
     <<: *airflow-common
