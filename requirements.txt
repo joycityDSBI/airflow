@@ -7,6 +7,7 @@ apache-airflow==3.1.0
 apache-airflow-providers-http==5.3.4
 apache-airflow-providers-smtp==2.3.1
 apache-airflow-providers-postgres==6.4.0
+apache-airflow-providers-databricks==6.13.1  # 버전 명시
 
 # Google Cloud
 google-cloud-bigquery==3.24.0
@@ -41,5 +42,6 @@ flask-sqlalchemy>=2.5.0,<3.0.0
 
 # Database
 psycopg2-binary==2.9.9
-apache-airflow-providers-databricks
-databricks-sql-connector
+
+# Databricks
+databricks-sql-connector==3.6.0
