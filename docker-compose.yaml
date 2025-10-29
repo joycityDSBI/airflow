@@ -219,7 +219,7 @@ services:
 
   airflow-worker:
     <<: *airflow-common
-    command: bash -c "pip install -r /requirements.txt && celery worker"  
+    command: celery worker
     healthcheck:
       # yamllint disable rule:line-length
       test:
@@ -251,7 +251,7 @@ services:
       - /home/seongin/requirements.txt:/requirements.txt
 
       # Required to handle warm shutdown of the celery workers properly
-      # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
+      # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation 
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
