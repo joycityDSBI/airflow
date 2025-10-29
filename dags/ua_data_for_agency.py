@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta
-import json
+from datetime import datetime, timedelta, timezone
 try:
     import gspread
 except ImportError:
@@ -164,6 +163,8 @@ def generate_all_projects_reports(**context):
             cell = worksheet.find(project_name)
             if cell:
                 worksheet.update_cell(cell.row, cell.col + 1, signed_url)
+                current_time = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
+                worksheet.update_cell(cell.row, cell.col + 2, current_time)
             uploaded_files.append({'project': project_name, 'file': blob.name, 'url': signed_url, 'rows': len(df)})
             total_rows += len(df)
             
@@ -314,6 +315,8 @@ def generate_agency_reports(**context):
                 if pr_name in row_values and agency_name in row_values:
                     agency_col = row_values.index(agency_name) + 1
                     worksheet.update_cell(cell.row, agency_col + 2, signed_url)
+                    current_time = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
+                    worksheet.update_cell(cell.row, agency_col + 3, current_time)
                     print(f"✓ [{pr_name}, {agency_name}] 업로드 완료 및 URL 업데이트")
                     found = True
                     break
