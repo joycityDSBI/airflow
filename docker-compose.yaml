@@ -166,6 +166,7 @@ services:
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
+    user: "1001:0"  # Use non-root user for scheduler to allow proper signal handling
 
   airflow-scheduler:
     <<: *airflow-common
@@ -190,7 +191,7 @@ services:
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
-    user: "1001:1002"  # Use non-root user for scheduler to allow proper signal handling
+    user: "1001:0"  # Use non-root user for scheduler to allow proper signal handling
 
   airflow-dag-processor:
     <<: *airflow-common
@@ -252,7 +253,8 @@ services:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
-
+    user: "1001:0"  # Use non-root user for scheduler to allow proper signal handling
+    
   airflow-triggerer:
     <<: *airflow-common
     command: triggerer
