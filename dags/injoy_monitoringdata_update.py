@@ -371,6 +371,7 @@ def merge_query_history(**context):
     from databricks import sql
     import pandas as pd
     from io import StringIO
+    from datetime import datetime
     
     ti = context['ti']
     config = get_databricks_config()
@@ -437,9 +438,9 @@ def merge_query_history(**context):
     
     print(f"✅ Query history 병합 완료: {len(df_audit_enriched)} rows")
     
-    # ===== Delta 테이블에 저장 (PySpark 없이) =====
+    # ===== Delta 테이블에 저장 =====
     
-    # 1. 테이블이 없으면 생성
+    # 1. 테이블 생성
     create_table_sql = """
     CREATE TABLE IF NOT EXISTS datahub.injoy_ops_schema.injoy_monitoring_data (
         statement_id STRING,
@@ -449,7 +450,6 @@ def merge_query_history(**context):
         query_duration_seconds DOUBLE,
         query_result_fetch_duration_seconds DOUBLE,
         message_response_duration_seconds DOUBLE,
-        -- 필요한 다른 컬럼들도 추가하세요
         execution_status STRING
     ) USING DELTA
     """
@@ -458,20 +458,43 @@ def merge_query_history(**context):
         cursor.execute(create_table_sql)
         print("✅ 테이블 생성/확인 완료")
     except Exception as e:
-        print(f"⚠️ 테이블 생성 중 에러 (이미 존재할 수 있음): {e}")
+        print(f"⚠️ 테이블 생성 중 에러: {e}")
     
-    # 2. 기존 데이터 삭제 (TRUNCATE 대신)
+    # 2. 기존 데이터 삭제
     try:
         cursor.execute("DELETE FROM datahub.injoy_ops_schema.injoy_monitoring_data")
         print("✅ 기존 데이터 삭제 완료")
     except Exception as e:
         print(f"⚠️ 데이터 삭제 중 에러: {e}")
     
-    # 3. 새 데이터 INSERT
-    # NULL 값을 None으로 변환
-    df_audit_enriched = df_audit_enriched.where(pd.notnull(df_audit_enriched), None)
+    # 3. 데이터 타입 변환 함수
+    def convert_value(val):
+        """Pandas 타입을 Python 네이티브 타입으로 변환"""
+        if pd.isna(val):
+            return None
+        elif isinstance(val, pd.Timestamp):
+            # Pandas Timestamp -> Python datetime
+            return val.to_pydatetime()
+        elif isinstance(val, (pd.Int64Dtype, pd.Float64Dtype)):
+            return float(val) if pd.notna(val) else None
+        else:
+            return val
     
-    # INSERT 쿼리 준비
+    # 4. DataFrame을 튜플 리스트로 변환 (타입 변환 포함)
+    data_tuples = []
+    for _, row in df_audit_enriched.iterrows():
+        data_tuples.append((
+            convert_value(row['statement_id']),
+            convert_value(row['user_email']),
+            convert_value(row['event_time_kst']),  # Timestamp -> datetime
+            convert_value(row['query_end_time_kst']),  # Timestamp -> datetime
+            convert_value(row['query_duration_seconds']),
+            convert_value(row['query_result_fetch_duration_seconds']),
+            convert_value(row['message_response_duration_seconds']),
+            convert_value(row.get('execution_status', None))
+        ))
+    
+    # 5. INSERT 쿼리
     insert_sql = """
     INSERT INTO datahub.injoy_ops_schema.injoy_monitoring_data 
     (statement_id, user_email, event_time_kst, query_end_time_kst, 
@@ -480,21 +503,7 @@ def merge_query_history(**context):
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """
     
-    # DataFrame을 튜플 리스트로 변환
-    data_tuples = []
-    for _, row in df_audit_enriched.iterrows():
-        data_tuples.append((
-            row['statement_id'],
-            row['user_email'],
-            row['event_time_kst'],
-            row['query_end_time_kst'],
-            row['query_duration_seconds'],
-            row['query_result_fetch_duration_seconds'],
-            row['message_response_duration_seconds'],
-            row.get('execution_status', None)  # 컬럼이 있으면 사용, 없으면 None
-        ))
-    
-    # Batch insert (한 번에 모두 INSERT)
+    # 6. Batch insert
     print(f"📝 {len(data_tuples)} rows 삽입 중...")
     cursor.executemany(insert_sql, data_tuples)
     
