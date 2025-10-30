@@ -162,8 +162,8 @@ def extract_data(**context):
     
     # Databricks 연결 정보 가져오기
     DATABRICKS_SERVER_HOSTNAME = get_var('DATABRICKS_SERVER_HOSTNAME', required=True)
-    DATABRICKS_HTTP_PATH = get_var('DATABRICKS_HTTP_PATH', required=True)
-    DATABRICKS_TOKEN = get_var('DATABRICKS_TOKEN', required=True)
+    DATABRICKS_HTTP_PATH = get_var('databricks_http_path', required=True)
+    DATABRICKS_TOKEN = get_var('databricks_token', required=True)
     
     try:
         # Databricks SQL 연결
