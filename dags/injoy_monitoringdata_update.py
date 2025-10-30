@@ -429,8 +429,6 @@ def merge_query_history(**context):
     )
     
     print(f"📊 Query history 병합 완료: {len(df_audit_enriched)} rows")
-    
-    # 실제 DataFrame 컬럼 확인
     print(f"📋 DataFrame 컬럼: {df_audit_enriched.columns.tolist()}")
     
     # ===== 임시 테이블 생성 및 데이터 INSERT =====
@@ -452,19 +450,43 @@ def merge_query_history(**context):
     columns = df_audit_enriched.columns.tolist()
     column_str = ", ".join([f"`{col}`" for col in columns])
     
-    # NULL 값을 SQL NULL로 변환하는 함수
+    # NULL 값을 SQL NULL로 변환하는 함수 (수정)
     def convert_value(val):
-        if pd.isna(val):
+        # None 체크 먼저
+        if val is None:
             return "NULL"
-        elif isinstance(val, str):
+        # pandas NA 타입 체크
+        if pd.isna(val) if not isinstance(val, (list, tuple, np.ndarray)) else False:
+            return "NULL"
+        # numpy nan 체크
+        try:
+            if np.isnan(val):
+                return "NULL"
+        except (TypeError, ValueError):
+            pass
+        
+        # 타입별 처리
+        if isinstance(val, str):
             # SQL Injection 방지를 위해 escape 처리
-            return f"'{val.replace(chr(39), chr(39)+chr(39))}'"
-        elif isinstance(val, (int, float)):
+            escaped = val.replace("'", "''").replace("\\", "\\\\")
+            return f"'{escaped}'"
+        elif isinstance(val, bool):
+            return str(val).upper()  # TRUE/FALSE
+        elif isinstance(val, (int, float, np.integer, np.floating)):
             return str(val)
-        elif isinstance(val, pd.Timestamp):
-            return f"'{val.strftime('%Y-%m-%d %H:%M:%S')}'"
+        elif isinstance(val, (pd.Timestamp, np.datetime64)):
+            try:
+                ts = pd.Timestamp(val)
+                return f"'{ts.strftime('%Y-%m-%d %H:%M:%S')}'"
+            except:
+                return "NULL"
         else:
-            return f"'{str(val).replace(chr(39), chr(39)+chr(39))}'"
+            # 기타 타입은 문자열로 변환
+            try:
+                escaped = str(val).replace("'", "''").replace("\\", "\\\\")
+                return f"'{escaped}'"
+            except:
+                return "NULL"
     
     # 배치 단위로 INSERT
     batch_size = 1000
@@ -475,9 +497,14 @@ def merge_query_history(**context):
         batch_df = df_audit_enriched.iloc[start_idx:end_idx]
         
         values_list = []
-        for _, row in batch_df.iterrows():
-            row_values = ", ".join([convert_value(row[col]) for col in columns])
-            values_list.append(f"({row_values})")
+        for idx, row in batch_df.iterrows():
+            try:
+                row_values = ", ".join([convert_value(row[col]) for col in columns])
+                values_list.append(f"({row_values})")
+            except Exception as e:
+                print(f"⚠️ Row {idx} 변환 실패: {e}")
+                print(f"   문제 데이터: {row.to_dict()}")
+                raise
         
         values_str = ", ".join(values_list)
         
@@ -486,15 +513,20 @@ def merge_query_history(**context):
         VALUES {values_str}
         """
         
-        cursor.execute(insert_sql)
-        print(f"📝 배치 INSERT 완료: {start_idx+1}-{end_idx}/{total_rows}")
+        try:
+            cursor.execute(insert_sql)
+            print(f"📝 배치 INSERT 완료: {start_idx+1}-{end_idx}/{total_rows}")
+        except Exception as e:
+            print(f"⚠️ INSERT 실패 at batch {start_idx}-{end_idx}")
+            print(f"   SQL 미리보기: {insert_sql[:500]}...")
+            raise
     
     print(f"✅ 임시 테이블 데이터 적재 완료: {total_rows} rows")
     
     # ===== MERGE 실행 =====
     merge_key = 'statement_id'
     
-    # 동적으로 컬럼 리스트 생성 (DataFrame의 실제 컬럼 기준)
+    # 동적으로 컬럼 리스트 생성
     update_set = ", ".join([f"target.`{col}` = source.`{col}`" for col in columns if col != merge_key])
     insert_columns = ", ".join([f"`{col}`" for col in columns])
     insert_values = ", ".join([f"source.`{col}`" for col in columns])
@@ -511,8 +543,6 @@ def merge_query_history(**context):
     """
     
     print(f"📝 MERGE 실행 중...")
-    print(f"🔍 MERGE SQL 미리보기:\n{merge_sql[:500]}...")
-    
     cursor.execute(merge_sql)
     print("✅ 데이터 UPSERT 완료")
     
