@@ -58,6 +58,7 @@ def get_var(key: str, default: str = None, required: bool = False) -> str:
     print(f"ℹ️  {key} 값을 찾을 수 없습니다 (선택사항)")
     return None
 
+NOTION_DATABASE_ID = get_var('NOTION_DATABASE_ID', "230ea67a568180c591fee27d4e90e001")
 
 def get_notion_headers():
     """Notion API 헤더 생성"""
