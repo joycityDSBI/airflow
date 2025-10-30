@@ -104,6 +104,8 @@ def extract_audit_logs(**context):
         FROM system.access.audit
         WHERE service_name = 'aibiGenie'
             AND action_name IN ('createConversationMessage', 'updateConversationMessageFeedback', 'getMessageQueryResult')
+            AND DATE(event_time) >= CURRENT_DATE - INTERVAL 1 DAYS
+            AND DATE(event_time) < CURRENT_DATE
     ),
 
     message_tb AS (
@@ -392,6 +394,8 @@ def merge_query_history(**context):
     FROM system.query.history
     WHERE query_source.genie_space_id IS NOT NULL
         AND statement_type = 'SELECT'
+        AND DATE(end_time) >= CURRENT_DATE - INTERVAL 1 DAYS
+        AND DATE(end_time) < CURRENT_DATE
     """
     
     cursor = connection.cursor()
@@ -434,10 +438,16 @@ def merge_query_history(**context):
     spark_df = spark.createDataFrame(df_audit_enriched)
     
     # Delta 테이블로 저장
-    spark_df.write.format("delta") \
-        .mode("overwrite") \
-        .option("overwriteSchema", "true") \
-        .saveAsTable("datahub.injoy_ops_schema.injoy_monitoring_data")
+    delta_table = DeltaTable.forName(spark, "datahub.injoy_ops_schema.injoy_monitoring_data")
+    
+    # 새 데이터만 INSERT (중복 제외)
+    delta_table.alias("target") \
+        .merge(
+            spark_df.alias("source"),
+            "target.statement_id = source.statement_id"
+        ) \
+        .whenNotMatchedInsertAll() \
+        .execute()
     
     cursor.close()
     connection.close()
