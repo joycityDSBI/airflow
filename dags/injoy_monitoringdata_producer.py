@@ -9,8 +9,9 @@ from airflow import Dataset
 import numpy as np
 import json
 import pyspark
+from airflow.operators.bash import BashOperator
 
-dataset_injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
+injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
 
 # 제외 그룹 필터링
 exclude_groups = ["DITeam", "admins", "users", 
@@ -647,6 +648,12 @@ def merge_query_history(**context):
     return len(df_to_insert)
 
 # Task 정의
+bash_task = BashOperator(
+    task_id = 'bash_task',
+    outlets = [injoy_monitoringdata_producer],
+    bash_command = 'echo "producer_1 수행 완료"'
+)
+
 task0 = PythonOperator(
     task_id='tokenize_databricks',
     python_callable=tokenize_databricks,
@@ -690,6 +697,7 @@ task6 = PythonOperator(
     dag=dag,
 )
 
+
 # Task 의존성 설정
 task0 >> [task1, task2] >> task3
-[task3, task4] >> task5 >> task6
+[task3, task4] >> task5 >> task6 >> bash_task
