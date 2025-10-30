@@ -104,7 +104,6 @@ def extract_audit_logs(**context):
         FROM system.access.audit
         WHERE service_name = 'aibiGenie'
             AND action_name IN ('createConversationMessage', 'updateConversationMessageFeedback', 'getMessageQueryResult')
-            AND DATE(event_time) = '{ds}'  -- 실행 날짜 기준
     ),
 
     message_tb AS (
@@ -393,15 +392,20 @@ def merge_query_history(**context):
     FROM system.query.history
     WHERE query_source.genie_space_id IS NOT NULL
         AND statement_type = 'SELECT'
-        AND DATE(end_time) >= CURRENT_DATE - INTERVAL 7 DAYS
     """
     
     cursor = connection.cursor()
     cursor.execute(query_history_sql)
     query_df = cursor.fetchall_arrow().to_pandas()
+
+    if 'executed_by' not in query_df.columns:
+        print("⚠️ 'executed_by' 컬럼이 query history에 없습니다.")
     
     # 컬럼명 변경
     query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
+
+    if 'user_email' not in query_df_renamed.columns:
+        print("⚠️ 'user_email' 컬럼이 query history에 없습니다.")
     
     # 병합
     df_audit_enriched = df_target.merge(
