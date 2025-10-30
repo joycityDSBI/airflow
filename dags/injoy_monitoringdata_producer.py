@@ -13,12 +13,9 @@ import pyspark
 dataset_injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
 
 # 제외 그룹 필터링
-# exclude_groups = ["DITeam", "admins", "users", 
-#                     "전략사업본부-데이터사이언스실-마케팅사이언스팀", 
-#                     "전략사업본부-데이터사이언스실-예측모델링팀"]
-
-exclude_groups = []
-
+exclude_groups = ["DITeam", "admins", "users", 
+                    "전략사업본부-데이터사이언스실-마케팅사이언스팀", 
+                    "전략사업본부-데이터사이언스실-예측모델링팀"]
 
 # DAG 기본 설정
 default_args = {
