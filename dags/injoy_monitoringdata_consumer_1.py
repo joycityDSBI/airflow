@@ -30,7 +30,7 @@ default_args = {
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retry_delay': timedelta(seconds=10),
 }
 
 
@@ -56,7 +56,14 @@ def get_var(key: str, default: str = None, required: bool = False) -> str:
     
     # 2단계: Airflow Variable 확인
     try:
-        var_value = Variable.get(key, default_var=None)
+        # airflow.sdk.Variable은 default 파라미터 사용
+        # airflow.models.Variable은 default_var 파라미터 사용
+        try:
+            var_value = Variable.get(key, default=None)
+        except TypeError:
+            # fallback for older Airflow versions
+            var_value = Variable.get(key, default_var=None)
+        
         if var_value:
             print(f"✓ Airflow Variable에서 {key} 로드됨")
             return var_value
@@ -429,6 +436,8 @@ def sync_with_notion(**context):
         time.sleep(0.3)
 
     print("\n✨ 모든 동기화 작업이 완료되었습니다! ✨")
+
+
 
 # ============================================================
 # DAG 정의
