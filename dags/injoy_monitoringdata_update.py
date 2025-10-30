@@ -449,19 +449,24 @@ def merge_query_history(**context):
     table_column_types = {row[0]: row[1] for row in table_schema}
     table_columns = list(table_column_types.keys())
     
-    print(f"📊 기존 테이블 컬럼: {table_columns}")
+    print(f"📊 기존 테이블 컬럼 ({len(table_columns)}개): {table_columns}")
+    print(f"📊 DataFrame 컬럼 ({len(df_audit_enriched.columns)}개): {df_audit_enriched.columns.tolist()}")
     
-    # DataFrame 컬럼을 테이블 컬럼에 맞추기
+    # DataFrame 컬럼을 테이블 컬럼에 맞추기 (순서도 유지)
     available_columns = [col for col in table_columns if col in df_audit_enriched.columns]
     df_to_insert = df_audit_enriched[available_columns].copy()
     
-    print(f"📊 UPSERT할 컬럼: {available_columns}")
+    print(f"📊 UPSERT할 컬럼 ({len(available_columns)}개): {available_columns}")
+    
+    # 누락된 컬럼 확인
+    missing_in_df = [col for col in table_columns if col not in df_audit_enriched.columns]
+    if missing_in_df:
+        print(f"⚠️ DataFrame에 없는 테이블 컬럼: {missing_in_df}")
     
     # ===== SQL 리터럴 변환 함수 =====
     
     def value_to_sql_literal(val, col_type):
         """값을 SQL 리터럴로 변환"""
-        # NULL 처리
         if val is None:
             return 'NULL'
         
@@ -474,7 +479,6 @@ def merge_query_history(**context):
         # ARRAY 타입 처리
         if 'array' in col_type.lower():
             if isinstance(val, list):
-                # 리스트의 각 요소를 문자열로 변환하고 이스케이프
                 escaped_items = [f"'{str(item).replace(chr(39), chr(39)+chr(39))}'" for item in val]
                 return f"array({', '.join(escaped_items)})"
             else:
@@ -489,28 +493,27 @@ def merge_query_history(**context):
         
         # DOUBLE/FLOAT 처리
         if col_type.lower() in ['double', 'float']:
-            if pd.notna(val):
+            try:
                 return str(float(val))
-            else:
+            except:
                 return 'NULL'
         
         # BIGINT/INT 처리
         if col_type.lower() in ['bigint', 'int', 'integer']:
-            if pd.notna(val):
+            try:
                 return str(int(val))
-            else:
+            except:
                 return 'NULL'
         
         # STRING 처리 (기본)
         if isinstance(val, str):
-            # 작은따옴표 이스케이프
-            escaped_val = val.replace("'", "''")
+            escaped_val = val.replace("'", "''").replace("\\", "\\\\")
             return f"'{escaped_val}'"
         
         # 기타
         return f"'{str(val)}'"
     
-    # ===== 임시 테이블 생성 (CREATE TABLE AS SELECT VALUES) =====
+    # ===== 임시 테이블 생성 =====
     
     temp_table = "datahub.injoy_ops_schema.temp_monitoring_data"
     
@@ -519,26 +522,30 @@ def merge_query_history(**context):
     print(f"✅ 기존 임시 테이블 삭제")
     
     # VALUES 절 생성
+    print(f"📝 VALUES 절 생성 중...")
     values_list = []
     for idx, row in df_to_insert.iterrows():
         row_values = []
         for col in available_columns:
             col_type = table_column_types[col]
-            sql_literal = value_to_sql_literal(row[col], col_type)
+            val = row[col]
+            sql_literal = value_to_sql_literal(val, col_type)
             row_values.append(sql_literal)
         values_list.append(f"({', '.join(row_values)})")
     
-    # 100개씩 나눠서 INSERT (SQL 문이 너무 길어지는 것 방지)
-    batch_size = 100
+    print(f"✅ VALUES 절 생성 완료: {len(values_list)} rows")
     
-    # 첫 번째 배치로 테이블 생성
+    # 100개씩 나눠서 INSERT
+    batch_size = 100
     first_batch = values_list[:batch_size]
     columns_str = ', '.join([f"`{col}`" for col in available_columns])
+    
+    print(f"📝 임시 테이블 컬럼 순서: {columns_str}")
     
     create_temp_sql = f"""
     CREATE TABLE {temp_table} AS
     SELECT * FROM VALUES
-    {', '.join(first_batch)}
+    {','.join(first_batch)}
     AS t({columns_str})
     """
     
@@ -553,7 +560,7 @@ def merge_query_history(**context):
         insert_batch_sql = f"""
         INSERT INTO {temp_table}
         SELECT * FROM VALUES
-        {', '.join(batch)}
+        {','.join(batch)}
         AS t({columns_str})
         """
         print(f"📝 배치 {batch_idx + 2} 삽입 중 ({len(batch)} rows)...")
@@ -561,7 +568,13 @@ def merge_query_history(**context):
     
     print(f"✅ 임시 테이블에 총 {len(values_list)} rows 삽입 완료")
     
-    # ===== MERGE 실행 (UPSERT) =====
+    # 임시 테이블 스키마 확인 (디버깅)
+    cursor.execute(f"DESCRIBE {temp_table}")
+    temp_schema = cursor.fetchall()
+    temp_columns = [row[0] for row in temp_schema]
+    print(f"📊 임시 테이블 실제 컬럼: {temp_columns}")
+    
+    # ===== MERGE 실행 =====
     
     merge_key = "statement_id"
     update_columns = [col for col in available_columns if col != merge_key]
@@ -592,7 +605,7 @@ def merge_query_history(**context):
     cursor.close()
     connection.close()
     
-    print(f"✅ Delta 테이블 저장 완료: datahub.injoy_ops_schema.injoy_monitoring_data")
+    print(f"✅ Delta 테이블 저장 완료")
     print(f"✅ 총 {len(values_list)} rows UPSERT됨")
     
     return len(values_list)
