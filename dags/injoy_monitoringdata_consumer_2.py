@@ -5,6 +5,7 @@ import requests
 import pandas as pd
 import time
 import os
+from databricks import sql
 
 # Airflow Variable import (버전 호환성 처리)
 try:
@@ -58,7 +59,7 @@ def get_var(key: str, default: str = None, required: bool = False) -> str:
     print(f"ℹ️  {key} 값을 찾을 수 없습니다 (선택사항)")
     return None
 
-NOTION_DATABASE_ID = get_var('NOTION_DATABASE_ID', "230ea67a568180c591fee27d4e90e001")
+NOTION_DATABASE_ID = get_var('NOTION_DB_ID_INJOY_MONITORINGDATA_CONSUMER', "230ea67a568180c591fee27d4e90e001")
 
 def get_notion_headers():
     """Notion API 헤더 생성"""
@@ -155,53 +156,62 @@ def get_all_notion_pages(database_id: str, headers: dict) -> list:
 # Task 함수들
 # ============================================================
 def extract_data(**context):
-    """데이터 소스에서 데이터 추출 (DB 연결 예시)"""
+    """Databricks에서 데이터 추출"""
     print("=" * 50)
-    print("Step 1: 데이터 소스에서 데이터 조회를 시작합니다.")
+    print("Step 1: Databricks에서 데이터 조회를 시작합니다.")
     
-    # TODO: 실제 데이터 소스 연결 설정 필요
-    # 예시 1: PostgreSQL 사용 시
-    # from sqlalchemy import create_engine
-    # engine = create_engine(get_var('DATABASE_URL', required=True))
-    # sql_query = """
-    #     SELECT
-    #         content,
-    #         user_email,
-    #         space_name,
-    #         space_id,
-    #         conversation_id,
-    #         message_id,
-    #         query,
-    #         message_response_duration_seconds,
-    #         event_time_kst
-    #     FROM injoy_monitoring_data
-    #     ORDER BY conversation_id, event_time_kst
-    # """
-    # source_df = pd.read_sql(sql_query, engine)
+    # Databricks 연결 정보 가져오기
+    DATABRICKS_SERVER_HOSTNAME = get_var('DATABRICKS_SERVER_HOSTNAME', required=True)
+    DATABRICKS_HTTP_PATH = get_var('DATABRICKS_HTTP_PATH', required=True)
+    DATABRICKS_TOKEN = get_var('DATABRICKS_TOKEN', required=True)
     
-    # 예시 2: CSV 파일 사용 시
-    # csv_path = get_var('DATA_SOURCE_PATH', '/opt/airflow/data/monitoring_data.csv')
-    # source_df = pd.read_csv(csv_path)
+    try:
+        # Databricks SQL 연결
+        print("🔗 Databricks SQL에 연결 중...")
+        connection = sql.connect(
+            server_hostname=DATABRICKS_SERVER_HOSTNAME,
+            http_path=DATABRICKS_HTTP_PATH,
+            access_token=DATABRICKS_TOKEN
+        )
+        
+        sql_query = """
+            SELECT
+                content,
+                user_email,
+                space_name,
+                space_id,
+                conversation_id,
+                message_id,
+                query,
+                message_response_duration_seconds,
+                event_time_kst
+            FROM 
+                datahub.injoy_ops_schema.injoy_monitoring_data
+            ORDER BY conversation_id, event_time_kst
+        """
+        
+        print("📊 SQL 쿼리 실행 중...")
+        cursor = connection.cursor()
+        cursor.execute(sql_query)
+        
+        # 결과를 DataFrame으로 변환
+        columns = [desc[0] for desc in cursor.description]
+        rows = cursor.fetchall()
+        source_df = pd.DataFrame(rows, columns=columns)
+        
+        cursor.close()
+        connection.close()
+        
+        print(f"✅ Databricks에서 총 {len(source_df)}개의 데이터를 조회했습니다.")
+        
+    except ImportError:
+        print("❌ databricks-sql-connector 라이브러리가 설치되지 않았습니다.")
+        print("💡 다음 명령어로 설치하세요: pip install databricks-sql-connector")
+        raise
+    except Exception as e:
+        print(f"❌ Databricks 연결 또는 쿼리 실행 중 오류 발생: {str(e)}")
+        raise
     
-    # 예시 3: REST API 사용 시
-    # api_url = get_var('DATA_API_URL', required=True)
-    # response = requests.get(api_url, headers={...})
-    # source_df = pd.DataFrame(response.json())
-    
-    # 임시 샘플 데이터 (실제 구현 시 위의 방법 중 선택)
-    source_df = pd.DataFrame({
-        'content': ['질문 예시'],
-        'user_email': ['user@example.com'],
-        'space_name': ['테스트 스페이스'],
-        'space_id': ['space_001'],
-        'conversation_id': ['conv_001'],
-        'message_id': ['msg_001'],
-        'query': ['쿼리 예시'],
-        'message_response_duration_seconds': [1.5],
-        'event_time_kst': [datetime.now()]
-    })
-    
-    print(f"✅ 데이터 소스에서 총 {len(source_df)}개의 데이터를 조회했습니다.")
     print("=" * 50)
     
     # XCom으로 데이터 전달
@@ -251,7 +261,7 @@ def load_to_notion(**context):
     print("Step 3: Notion DB 동기화를 시작합니다.")
     
     # 설정 가져오기
-    NOTION_DB_ID = get_var('NOTION_DATABASE_ID', required=True)
+    NOTION_DB_ID = get_var('NOTION_DB_ID_INJOY_MONITORINGDATA_CONSUMER', "230ea67a568180c591fee27d4e90e001")
     headers = get_notion_headers()
     
     # XCom에서 변환된 데이터 가져오기
