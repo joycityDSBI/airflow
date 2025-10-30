@@ -429,6 +429,25 @@ def merge_query_history(**context):
     )
     
     print(f"📊 Query history 병합 완료: {len(df_audit_enriched)} rows")
+    
+    # ===== message_response_duration_seconds 계산 =====
+    # event_time_kst와 query_end_time_kst의 차이를 초 단위로 계산
+    if 'event_time_kst' in df_audit_enriched.columns and 'query_end_time_kst' in df_audit_enriched.columns:
+        # 문자열을 datetime으로 변환
+        df_audit_enriched['event_time_kst'] = pd.to_datetime(df_audit_enriched['event_time_kst'])
+        df_audit_enriched['query_end_time_kst'] = pd.to_datetime(df_audit_enriched['query_end_time_kst'])
+        
+        # 시간 차이 계산 (초 단위)
+        df_audit_enriched['message_response_duration_seconds'] = (
+            df_audit_enriched['query_end_time_kst'] - df_audit_enriched['event_time_kst']
+        ).dt.total_seconds()
+        
+        print(f"✅ message_response_duration_seconds 계산 완료")
+    else:
+        # 컬럼이 없으면 NULL로 추가
+        df_audit_enriched['message_response_duration_seconds'] = None
+        print(f"⚠️ event_time_kst 또는 query_end_time_kst 컬럼이 없어 message_response_duration_seconds를 NULL로 설정")
+    
     print(f"📋 DataFrame 컬럼: {df_audit_enriched.columns.tolist()}")
     
     # ===== 타겟 테이블 스키마 조회 =====
@@ -450,14 +469,24 @@ def merge_query_history(**context):
     df_columns = df_audit_enriched.columns.tolist()
     common_columns = [col for col in df_columns if col in target_columns]
     missing_in_target = [col for col in df_columns if col not in target_columns]
+    missing_in_df = [col for col in target_columns if col not in df_columns]
     
     if missing_in_target:
         print(f"⚠️ 타겟 테이블에 없는 컬럼 (제외됨): {missing_in_target}")
     
+    if missing_in_df:
+        print(f"⚠️ DataFrame에 없지만 타겟 테이블에 있는 컬럼: {missing_in_df}")
+        # 타겟 테이블에는 있지만 DataFrame에 없는 컬럼을 NULL로 추가
+        for col in missing_in_df:
+            if col not in ['id', 'created_at', 'updated_at']:  # 자동 생성 컬럼 제외
+                df_audit_enriched[col] = None
+                common_columns.append(col)
+                print(f"   → {col} 컬럼을 NULL로 추가")
+    
     # 공통 컬럼만 사용하여 데이터 필터링
     df_to_insert = df_audit_enriched[common_columns].copy()
     
-    print(f"✅ 사용할 컬럼: {common_columns}")
+    print(f"✅ 사용할 컬럼 ({len(common_columns)}개): {common_columns}")
     
     # ===== 임시 테이블 생성 (타겟 테이블의 실제 타입 사용) =====
     
@@ -619,7 +648,6 @@ def merge_query_history(**context):
     print(f"✅ Delta 테이블 저장 완료")
     
     return len(df_to_insert)
-
 
 # Task 정의
 task0 = PythonOperator(
