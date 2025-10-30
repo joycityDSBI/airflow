@@ -456,20 +456,23 @@ def merge_query_history(**context):
     
     print(f"📊 INSERT할 컬럼: {available_columns}")
     
-    # 3. 개선된 데이터 타입 변환 함수
+    # 3. 개선된 데이터 타입 변환 함수 (리스트/딕셔너리 처리 추가)
     def convert_value(val):
         """Pandas 타입을 Python 네이티브 타입으로 변환"""
-        # None이나 NaN 체크
+        # None 체크
         if val is None:
             return None
         
-        # pd.isna()는 스칼라 값에만 사용
+        # NaN 체크 (스칼라만)
         try:
             if pd.isna(val):
                 return None
         except (ValueError, TypeError):
-            # 배열이나 다른 타입인 경우 무시
             pass
+        
+        # 리스트나 딕셔너리는 JSON 문자열로 변환
+        if isinstance(val, (list, dict)):
+            return json.dumps(val, ensure_ascii=False)
         
         # Timestamp 변환
         if isinstance(val, pd.Timestamp):
@@ -480,9 +483,15 @@ def merge_query_history(**context):
             return int(val)
         if isinstance(val, (np.floating, np.float64)):
             return float(val)
+        if isinstance(val, np.bool_):
+            return bool(val)
         
-        # 그 외는 그대로 반환
-        return val
+        # 문자열 변환 (안전하게)
+        if isinstance(val, str):
+            return val
+        
+        # 그 외는 문자열로 변환
+        return str(val)
     
     # 4. INSERT 데이터 준비
     data_tuples = []
