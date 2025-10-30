@@ -1,12 +1,25 @@
-from airflow import DAG
+"""
+Notion DB 동기화 DAG
+- Databricks에서 데이터 조회
+- Pandas로 데이터 집계
+- Notion DB와 동기화 (INSERT/UPDATE/DELETE)
+"""
+
+from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
-from airflow.models import Variable
 from datetime import datetime, timedelta
 import requests
 import pandas as pd
 import time
 import json
 import os
+
+# Airflow Variable import (버전 호환성 처리)
+try:
+    from airflow.sdk import Variable
+except ImportError:
+    from airflow.models import Variable
+
 
 # ============================================================
 # 기본 설정
@@ -17,15 +30,20 @@ default_args = {
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
-    'retry_delay': timedelta(seconds=15),
+    'retry_delay': timedelta(minutes=5),
 }
 
-def get_var(key: str, default: str = None) -> str:
+
+# ============================================================
+# 유틸리티 함수
+# ============================================================
+def get_var(key: str, default: str = None, required: bool = False) -> str:
     """환경 변수 → Airflow Variable 순서로 조회
     
     Args:
         key: 변수 이름
         default: 기본값 (없으면 None)
+        required: 필수 변수 여부
     
     Returns:
         환경 변수 값 또는 Airflow Variable 값
@@ -47,22 +65,30 @@ def get_var(key: str, default: str = None) -> str:
     
     # 3단계: 기본값 반환
     if default is not None:
-        print(f"ℹ️  기본값으로 {key} 설정됨")
+        print(f"ℹ️  기본값으로 {key} 설정됨: {default}")
         return default
     
-    raise ValueError(f"필수 설정 {key}을(를) 찾을 수 없습니다. "
-                     f"환경 변수 또는 Airflow Variable에서 설정하세요.")
+    # 4단계: 필수 변수인 경우 에러, 아니면 None 반환
+    if required:
+        raise ValueError(f"필수 설정 {key}을(를) 찾을 수 없습니다. "
+                         f"환경 변수 또는 Airflow Variable에서 설정하세요.")
+    
+    print(f"ℹ️  {key} 값을 찾을 수 없습니다 (선택사항)")
+    return None
+
 
 def get_notion_headers():
     """Notion API 헤더 생성"""
     return {
-        "Authorization": f"Bearer {get_var('NOTION_TOKEN')}",
+        "Authorization": f"Bearer {get_var('NOTION_TOKEN', required=True)}",
         "Notion-Version": get_var("NOTION_API_VERSION", "2022-06-28"),
         "Content-Type": "application/json"
     }
 
 
-# DBTITLE 1,Notion API 연동 및 데이터 처리 함수
+# ============================================================
+# Notion API 함수들
+# ============================================================
 def get_all_notion_pages(database_id: str, headers: dict) -> list:
     """Notion DB의 모든 페이지를 조회하여 리스트로 반환합니다."""
     url = f"https://api.notion.com/v1/databases/{database_id}/query"
@@ -74,7 +100,7 @@ def get_all_notion_pages(database_id: str, headers: dict) -> list:
         payload = {"page_size": 100}
         if next_cursor:
             payload["start_cursor"] = next_cursor
-
+        
         try:
             res = requests.post(url, headers=headers, json=payload)
             res.raise_for_status()
@@ -85,20 +111,21 @@ def get_all_notion_pages(database_id: str, headers: dict) -> list:
         except requests.exceptions.RequestException as e:
             print(f"❌ Notion API 에러: {e}")
             break
-
+        
         time.sleep(0.3)
     
     return results
 
+
 def get_notion_data_map(pages: list) -> dict:
     """Notion 페이지 리스트를 {key: {page_id, values}} 맵으로 변환합니다."""
     page_map = {}
-
+    
     for page in pages:
         props = page.get("properties", {})
         row = {}
         key_val = ""
-    
+        
         for prop_name, prop_val in props.items():
             content = ""
             prop_type = prop_val.get("type")
@@ -113,13 +140,14 @@ def get_notion_data_map(pages: list) -> dict:
                     content = date_info.get("start")
             
             row[prop_name] = content
-            if prop_name == '대화id': # Notion DB의 Title 속성 이름
+            if prop_name == '대화id':
                 key_val = content
 
         if key_val:
             page_map[key_val] = {"page_id": page["id"], "values": row}
-
+    
     return page_map
+
 
 def build_properties_payload(row_data: dict) -> dict:
     """DataFrame 행을 Notion API 페이로드로 변환합니다."""
@@ -133,9 +161,6 @@ def build_properties_payload(row_data: dict) -> dict:
     }
 
     for key, value in prop_map.items():
-        # ⭐️ 에러 수정 지점 ⭐️
-        # pd.isna()는 '대화순서' 같은 리스트를 만나면 에러가 나므로,
-        # 더 안전한 'is None' 으로 값이 아예 없는 경우만 확인합니다.
         if value is None:
             continue
 
@@ -190,47 +215,91 @@ def has_data_changed(source_row: dict, notion_row: dict) -> bool:
             
     return False
 
+
+# ============================================================
+# DAG Task 함수들
+# ============================================================
 def fetch_data_from_databricks(**context):
     """
     Step 1: Databricks에서 데이터 조회
-    PySpark 대신 Databricks SQL Connector 또는 REST API 사용
     """
     print("Step 1: Databricks에서 데이터 조회를 시작합니다.")
     
-    # TODO: 실제 환경에서는 Databricks SQL Connector를 사용하거나
-    # Databricks REST API를 사용하여 데이터를 가져와야 합니다.
-    # 예시:
-    from databricks import sql
-
-    connection = sql.connect(
-        server_hostname=get_var("DATABRICKS_SERVER_HOSTNAME"),
-        http_path=get_var("DATABRICKS_HTTP_PATH"),
-        access_token=get_var("DATABRICKS_TOKEN")
-    )
-    cursor = connection.cursor()
-    cursor.execute("""
-        SELECT conversation_id, user_email, space_name, content, event_time_kst
-        FROM datahub.injoy_ops_schema.injoy_monitoring_data
-        ORDER BY conversation_id, event_time_kst
-    """)
-    source_df = pd.DataFrame(cursor.fetchall(), columns=[desc[0] for desc in cursor.description])
-    cursor.close()
-    connection.close()
+    # Databricks 설정 확인
+    db_hostname = get_var("DATABRICKS_SERVER_HOSTNAME")
+    db_http_path = get_var("DATABRICKS_HTTP_PATH")
+    db_token = get_var("DATABRICKS_TOKEN")
     
-    # 임시로 데이터 구조만 생성 (실제로는 위 코드 사용)
-    # 실제 구현 시 주석을 해제하고 사용하세요
-    source_df = pd.DataFrame({
-        'conversation_id': [],
-        'user_email': [],
-        'space_name': [],
-        'content': [],
-        'event_time_kst': []
-    })
-    
-    print(f"✅ 총 {len(source_df)}개의 메시지 데이터를 조회했습니다.")
+    # Databricks 설정이 모두 있는 경우에만 실제 연결 시도
+    if db_hostname and db_http_path and db_token:
+        try:
+            from databricks import sql
+            
+            print("✓ Databricks 설정이 확인되었습니다. 연결을 시도합니다.")
+            connection = sql.connect(
+                server_hostname=db_hostname,
+                http_path=db_http_path,
+                access_token=db_token
+            )
+            cursor = connection.cursor()
+            cursor.execute("""
+                SELECT conversation_id, user_email, space_name, content, event_time_kst
+                FROM datahub.injoy_ops_schema.injoy_monitoring_data
+                ORDER BY conversation_id, event_time_kst
+            """)
+            
+            # 결과를 DataFrame으로 변환
+            columns = [desc[0] for desc in cursor.description]
+            data = cursor.fetchall()
+            source_df = pd.DataFrame(data, columns=columns)
+            
+            cursor.close()
+            connection.close()
+            
+            print(f"✅ Databricks에서 {len(source_df)}개의 메시지 데이터를 조회했습니다.")
+            
+        except ImportError:
+            print("⚠️  databricks-sql-connector가 설치되지 않았습니다.")
+            print("   pip install databricks-sql-connector 를 실행하세요.")
+            source_df = pd.DataFrame({
+                'conversation_id': [],
+                'user_email': [],
+                'space_name': [],
+                'content': [],
+                'event_time_kst': []
+            })
+        except Exception as e:
+            print(f"❌ Databricks 연결 중 오류 발생: {e}")
+            print("   빈 데이터프레임으로 계속 진행합니다.")
+            source_df = pd.DataFrame({
+                'conversation_id': [],
+                'user_email': [],
+                'space_name': [],
+                'content': [],
+                'event_time_kst': []
+            })
+    else:
+        # Databricks 설정이 없는 경우
+        print("⚠️  Databricks 설정이 완전하지 않습니다.")
+        print("   다음 변수들을 설정하세요:")
+        print("   - DATABRICKS_SERVER_HOSTNAME")
+        print("   - DATABRICKS_HTTP_PATH")
+        print("   - DATABRICKS_TOKEN")
+        print("   빈 데이터프레임으로 계속 진행합니다.")
+        
+        source_df = pd.DataFrame({
+            'conversation_id': [],
+            'user_email': [],
+            'space_name': [],
+            'content': [],
+            'event_time_kst': []
+        })
     
     # XCom에 데이터 저장 (JSON 직렬화 가능한 형태로)
-    context['task_instance'].xcom_push(key='source_data', value=source_df.to_json(orient='records', date_format='iso'))
+    context['task_instance'].xcom_push(
+        key='source_data', 
+        value=source_df.to_json(orient='records', date_format='iso')
+    )
 
 
 def aggregate_data(**context):
@@ -361,12 +430,9 @@ def sync_with_notion(**context):
 
     print("\n✨ 모든 동기화 작업이 완료되었습니다! ✨")
 
-
 # ============================================================
 # DAG 정의
 # ============================================================
-
-from airflow import Dataset
 
 injoy_monitoringdata_consumer = Dataset('injoy_monitoringdata_consumer')
 
