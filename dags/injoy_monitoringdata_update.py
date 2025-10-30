@@ -6,6 +6,7 @@ from airflow.models import Variable
 import pandas as pd
 import requests
 from airflow import Dataset
+import numpy as np
 
 dataset_injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
 
