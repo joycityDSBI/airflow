@@ -442,6 +442,8 @@ def merge_query_history(**context):
     print(f"📋 타겟 테이블 스키마:")
     print(table_schema[['col_name', 'data_type']].to_string())
     
+    # 컬럼명을 키로, 데이터 타입을 값으로 하는 딕셔너리 생성
+    target_column_types = dict(zip(table_schema['col_name'], table_schema['data_type']))
     target_columns = table_schema['col_name'].tolist()
     
     # DataFrame과 타겟 테이블 공통 컬럼만 선택
@@ -457,37 +459,15 @@ def merge_query_history(**context):
     
     print(f"✅ 사용할 컬럼: {common_columns}")
     
-    # ===== Pandas dtype을 SQL 타입으로 매핑하는 함수 =====
-    def pandas_dtype_to_sql(dtype, col_name):
-        """Pandas dtype을 Databricks SQL 타입으로 변환"""
-        dtype_str = str(dtype)
-        
-        # 특정 컬럼명에 대한 명시적 타입 지정
-        if col_name == 'feedback_rating':
-            return 'STRING'
-        
-        if 'int' in dtype_str:
-            return 'BIGINT'
-        elif 'float' in dtype_str or 'double' in dtype_str:
-            return 'DOUBLE'
-        elif 'bool' in dtype_str:
-            return 'BOOLEAN'
-        elif 'datetime' in dtype_str or 'timestamp' in dtype_str:
-            return 'TIMESTAMP'
-        elif 'object' in dtype_str or 'string' in dtype_str:
-            return 'STRING'
-        else:
-            return 'STRING'  # 기본값
-    
-    # ===== 임시 테이블 생성 (명시적 스키마) =====
+    # ===== 임시 테이블 생성 (타겟 테이블의 실제 타입 사용) =====
     
     # 기존 임시 테이블 삭제
     cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
     
-    # DataFrame의 dtype 기반으로 CREATE TABLE 문 생성
+    # 타겟 테이블의 타입을 사용하여 CREATE TABLE 문 생성
     column_definitions = []
     for col in common_columns:
-        sql_type = pandas_dtype_to_sql(df_to_insert[col].dtype, col)
+        sql_type = target_column_types.get(col, 'STRING')  # 타겟 테이블의 실제 타입 사용
         column_definitions.append(f"`{col}` {sql_type}")
     
     create_table_sql = f"""
@@ -514,7 +494,11 @@ def merge_query_history(**context):
     column_str = ", ".join([f"`{col}`" for col in columns])
     
     # NULL 값을 SQL NULL로 변환하는 함수
-    def convert_value(val):
+    def convert_value(val, col_name):
+        """
+        값을 SQL 문자열로 변환
+        col_name: 타입 체크를 위한 컬럼명
+        """
         # None 체크 먼저
         if val is None:
             return "NULL"
@@ -527,6 +511,22 @@ def merge_query_history(**context):
                 return "NULL"
         except (TypeError, ValueError):
             pass
+        
+        # 타겟 테이블의 타입 확인
+        target_type = target_column_types.get(col_name, '').lower()
+        
+        # ARRAY 타입 처리
+        if 'array' in target_type:
+            if isinstance(val, (list, tuple)):
+                # 리스트를 SQL ARRAY로 변환
+                array_elements = [f"'{str(v).replace(chr(39), chr(39)+chr(39))}'" for v in val]
+                return f"ARRAY({', '.join(array_elements)})"
+            elif isinstance(val, str):
+                # 문자열을 단일 요소 배열로 변환
+                escaped = val.replace("'", "''")
+                return f"ARRAY('{escaped}')"
+            else:
+                return "NULL"
         
         # 타입별 처리
         if isinstance(val, str):
@@ -562,7 +562,7 @@ def merge_query_history(**context):
         values_list = []
         for idx, row in batch_df.iterrows():
             try:
-                row_values = ", ".join([convert_value(row[col]) for col in columns])
+                row_values = ", ".join([convert_value(row[col], col) for col in columns])
                 values_list.append(f"({row_values})")
             except Exception as e:
                 print(f"⚠️ Row {idx} 변환 실패: {e}")
