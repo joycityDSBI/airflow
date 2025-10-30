@@ -455,15 +455,33 @@ def merge_query_history(**context):
     
     print(f"📊 INSERT할 컬럼: {available_columns}")
     
-    # 3. 데이터 타입 변환
+    # 3. 개선된 데이터 타입 변환 함수
     def convert_value(val):
         """Pandas 타입을 Python 네이티브 타입으로 변환"""
-        if pd.isna(val):
+        # None이나 NaN 체크
+        if val is None:
             return None
-        elif isinstance(val, pd.Timestamp):
+        
+        # pd.isna()는 스칼라 값에만 사용
+        try:
+            if pd.isna(val):
+                return None
+        except (ValueError, TypeError):
+            # 배열이나 다른 타입인 경우 무시
+            pass
+        
+        # Timestamp 변환
+        if isinstance(val, pd.Timestamp):
             return val.to_pydatetime()
-        else:
-            return val
+        
+        # NumPy 타입 변환
+        if isinstance(val, (np.integer, np.int64)):
+            return int(val)
+        if isinstance(val, (np.floating, np.float64)):
+            return float(val)
+        
+        # 그 외는 그대로 반환
+        return val
     
     # 4. INSERT 데이터 준비
     data_tuples = []
