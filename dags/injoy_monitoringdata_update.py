@@ -8,7 +8,7 @@ import requests
 from airflow import Dataset
 import numpy as np
 import json
-import logging
+import pyspark
 
 dataset_injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
 
@@ -167,6 +167,7 @@ def extract_audit_logs(**context):
     
     return len(df_audit)
 
+
 def get_user_groups(**context):
     """
     Task 2: SCIM API로 그룹 및 사용자 정보 수집
@@ -224,6 +225,7 @@ def get_user_groups(**context):
     context['ti'].xcom_push(key='df_user_groups', value=df_user_groups.to_json(orient='split'))
     
     return len(df_user_groups)
+
 
 def enrich_with_groups(**context):
     """
@@ -415,13 +417,7 @@ def merge_query_history(**context):
     print(f"📊 Query history 조회 완료: {len(query_df)} rows")
     
     # 컬럼 존재 확인 및 rename
-    if 'executed_by' in query_df.columns:
-        query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
-    else:
-        print(f"⚠️ Warning: 'executed_by' 컬럼이 없습니다.")
-        cursor.close()
-        connection.close()
-        raise KeyError(f"'executed_by' 컬럼을 찾을 수 없습니다.")
+    query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
     
     # 병합
     df_audit_enriched = df_target.merge(
@@ -433,159 +429,21 @@ def merge_query_history(**context):
         on=["statement_id", "user_email"]
     )
     
-    # 응답 소요시간 계산
-    df_audit_enriched["event_time_kst"] = pd.to_datetime(df_audit_enriched["event_time_kst"])
-    df_audit_enriched["query_end_time_kst"] = pd.to_datetime(df_audit_enriched["query_end_time_kst"])
-    df_audit_enriched["message_response_duration_seconds"] = (
-        df_audit_enriched["query_end_time_kst"] - df_audit_enriched["event_time_kst"]
-    ).dt.total_seconds()
-    
-    print(f"✅ Query history 병합 완료: {len(df_audit_enriched)} rows")
+    print(f"📊 Query history 병합 완료: {len(df_audit_enriched)} rows")
     
     # ===== 기존 테이블 스키마 확인 =====
     
-    cursor.execute("DESCRIBE datahub.injoy_ops_schema.injoy_monitoring_data")
-    table_schema = cursor.fetchall()
-    table_column_types = {row[0]: row[1] for row in table_schema}
-    table_columns = list(table_column_types.keys())
-    
-    print(f"📊 기존 테이블 컬럼 ({len(table_columns)}개): {table_columns}")
-    print(f"📊 DataFrame 컬럼 ({len(df_audit_enriched.columns)}개): {df_audit_enriched.columns.tolist()}")
-    
-    # DataFrame 컬럼을 테이블 컬럼에 맞추기 (순서도 유지)
-    available_columns = [col for col in table_columns if col in df_audit_enriched.columns]
-    df_to_insert = df_audit_enriched[available_columns].copy()
-    
-    print(f"📊 UPSERT할 컬럼 ({len(available_columns)}개): {available_columns}")
-    
-    # 누락된 컬럼 확인
-    missing_in_df = [col for col in table_columns if col not in df_audit_enriched.columns]
-    if missing_in_df:
-        print(f"⚠️ DataFrame에 없는 테이블 컬럼: {missing_in_df}")
-    
-    # ===== SQL 리터럴 변환 함수 =====
-    
-    def value_to_sql_literal(val, col_type):
-        """값을 SQL 리터럴로 변환"""
-        if val is None:
-            return 'NULL'
-        
-        try:
-            if pd.isna(val):
-                return 'NULL'
-        except (ValueError, TypeError):
-            pass
-        
-        # ARRAY 타입 처리
-        if 'array' in col_type.lower():
-            if isinstance(val, list):
-                escaped_items = [f"'{str(item).replace(chr(39), chr(39)+chr(39))}'" for item in val]
-                return f"array({', '.join(escaped_items)})"
-            else:
-                return 'NULL'
-        
-        # TIMESTAMP 처리
-        if 'timestamp' in col_type.lower():
-            if isinstance(val, pd.Timestamp):
-                return f"timestamp '{val.strftime('%Y-%m-%d %H:%M:%S')}'"
-            else:
-                return f"timestamp '{str(val)}'"
-        
-        # DOUBLE/FLOAT 처리
-        if col_type.lower() in ['double', 'float']:
-            try:
-                return str(float(val))
-            except:
-                return 'NULL'
-        
-        # BIGINT/INT 처리
-        if col_type.lower() in ['bigint', 'int', 'integer']:
-            try:
-                return str(int(val))
-            except:
-                return 'NULL'
-        
-        # STRING 처리 (기본)
-        if isinstance(val, str):
-            escaped_val = val.replace("'", "''").replace("\\", "\\\\")
-            return f"'{escaped_val}'"
-        
-        # 기타
-        return f"'{str(val)}'"
-    
-    # ===== 임시 테이블 생성 =====
-    
-    temp_table = "datahub.injoy_ops_schema.temp_monitoring_data"
-    
-    # 기존 임시 테이블 삭제
-    cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
-    print(f"✅ 기존 임시 테이블 삭제")
-    
-    # VALUES 절 생성
-    print(f"📝 VALUES 절 생성 중...")
-    values_list = []
-    for idx, row in df_to_insert.iterrows():
-        row_values = []
-        for col in available_columns:
-            col_type = table_column_types[col]
-            val = row[col]
-            sql_literal = value_to_sql_literal(val, col_type)
-            row_values.append(sql_literal)
-        values_list.append(f"({', '.join(row_values)})")
-    
-    print(f"✅ VALUES 절 생성 완료: {len(values_list)} rows")
-    
-    # 100개씩 나눠서 INSERT
-    batch_size = 100
-    first_batch = values_list[:batch_size]
-    columns_str = ', '.join([f"`{col}`" for col in available_columns])
-    
-    print(f"📝 임시 테이블 컬럼 순서: {columns_str}")
-    
-    create_temp_sql = f"""
-    CREATE TABLE {temp_table} AS
-    SELECT * FROM VALUES
-    {','.join(first_batch)}
-    AS t({columns_str})
-    """
-    
-    print(f"📝 임시 테이블 생성 (첫 {len(first_batch)} rows)...")
-    cursor.execute(create_temp_sql)
-    print(f"✅ 임시 테이블 생성 완료")
-    
-    # 나머지 배치 INSERT
-    remaining_batches = [values_list[i:i+batch_size] for i in range(batch_size, len(values_list), batch_size)]
-    
-    for batch_idx, batch in enumerate(remaining_batches):
-        insert_batch_sql = f"""
-        INSERT INTO {temp_table}
-        SELECT * FROM VALUES
-        {','.join(batch)}
-        AS t({columns_str})
-        """
-        print(f"📝 배치 {batch_idx + 2} 삽입 중 ({len(batch)} rows)...")
-        cursor.execute(insert_batch_sql)
-    
-    print(f"✅ 임시 테이블에 총 {len(values_list)} rows 삽입 완료")
-    
-    # 임시 테이블 스키마 확인 (디버깅)
-    cursor.execute(f"DESCRIBE {temp_table}")
-    temp_schema = cursor.fetchall()
-    temp_columns = [row[0] for row in temp_schema]
-    print(f"📊 임시 테이블 실제 컬럼: {temp_columns}")
-    
-    # ===== MERGE 실행 =====
-    
-    merge_key = "statement_id"
-    update_columns = [col for col in available_columns if col != merge_key]
-    update_set = ', '.join([f"target.`{col}` = source.`{col}`" for col in update_columns])
-    
-    insert_columns = ', '.join([f"`{col}`" for col in available_columns])
-    insert_values = ', '.join([f"source.`{col}`" for col in available_columns])
-    
+    target_table = "datahub.injoy_ops_schema.injoy_monitoring_data"
+    merge_key = 'statement_id'
+    update_set = ", ".join([f"target.`{col}` = source.`{col}`" for col in df_audit_enriched.columns if col != merge_key])
+    insert_columns="log_type, user_email, user_id, action_name, space_id, conversation_id, message_id, feedback_rating, event_time_kst," \
+    " space_name, content, query, statement_id, query_end_time_kst, query_duration_seconds, " \
+    "query_result_fetch_duration_seconds, message_response_duration_seconds"
+    insert_values = ", ".join([f"source.`{col}`" for col in df_audit_enriched.columns])
+
     merge_sql = f"""
     MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_data AS target
-    USING {temp_table} AS source
+    USING {target_table} AS source
     ON target.`{merge_key}` = source.`{merge_key}`
     WHEN MATCHED THEN
         UPDATE SET {update_set}
@@ -598,17 +456,12 @@ def merge_query_history(**context):
     cursor.execute(merge_sql)
     print("✅ 데이터 UPSERT 완료")
     
-    # 임시 테이블 삭제
-    cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
-    print(f"✅ 임시 테이블 삭제")
-    
     cursor.close()
     connection.close()
     
     print(f"✅ Delta 테이블 저장 완료")
-    print(f"✅ 총 {len(values_list)} rows UPSERT됨")
     
-    return len(values_list)
+    return len(df_audit_enriched)
 
 
 # Task 정의
