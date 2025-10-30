@@ -374,6 +374,8 @@ def merge_query_history(**context):
     from databricks import sql
     import pandas as pd
     from io import StringIO
+    import numpy as np
+    import json
     
     ti = context['ti']
     config = get_databricks_config()
@@ -441,7 +443,7 @@ def merge_query_history(**context):
     
     print(f"✅ Query history 병합 완료: {len(df_audit_enriched)} rows")
     
-    # ===== 기존 테이블에 데이터 INSERT =====
+    # ===== UPSERT를 위한 임시 테이블 생성 =====
     
     # 1. 테이블의 실제 컬럼 확인
     cursor.execute("DESCRIBE datahub.injoy_ops_schema.injoy_monitoring_data")
@@ -451,21 +453,18 @@ def merge_query_history(**context):
     print(f"📊 기존 테이블 컬럼: {table_columns}")
     print(f"📊 DataFrame 컬럼: {df_audit_enriched.columns.tolist()}")
     
-    # 2. DataFrame 컬럼을 테이블 컬럼 순서에 맞추기
-    # 테이블에 있는 컬럼만 선택
+    # 2. DataFrame 컬럼을 테이블 컬럼에 맞추기
     available_columns = [col for col in table_columns if col in df_audit_enriched.columns]
-    df_to_insert = df_audit_enriched[available_columns]
+    df_to_insert = df_audit_enriched[available_columns].copy()
     
-    print(f"📊 INSERT할 컬럼: {available_columns}")
+    print(f"📊 UPSERT할 컬럼: {available_columns}")
     
-    # 3. 개선된 데이터 타입 변환 함수 (리스트/딕셔너리 처리 추가)
+    # 3. 데이터 타입 변환 함수
     def convert_value(val):
         """Pandas 타입을 Python 네이티브 타입으로 변환"""
-        # None 체크
         if val is None:
             return None
         
-        # NaN 체크 (스칼라만)
         try:
             if pd.isna(val):
                 return None
@@ -476,11 +475,9 @@ def merge_query_history(**context):
         if isinstance(val, (list, dict)):
             return json.dumps(val, ensure_ascii=False)
         
-        # Timestamp 변환
         if isinstance(val, pd.Timestamp):
             return val.to_pydatetime()
         
-        # NumPy 타입 변환
         if isinstance(val, (np.integer, np.int64)):
             return int(val)
         if isinstance(val, (np.floating, np.float64)):
@@ -488,40 +485,70 @@ def merge_query_history(**context):
         if isinstance(val, np.bool_):
             return bool(val)
         
-        # 문자열 변환 (안전하게)
         if isinstance(val, str):
             return val
         
-        # 그 외는 문자열로 변환
         return str(val)
     
-    # 4. INSERT 데이터 준비
+    # 4. 임시 테이블 생성
+    temp_table = "datahub.injoy_ops_schema.temp_monitoring_data"
+    
+    # 기존 임시 테이블 삭제
+    cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
+    print(f"✅ 기존 임시 테이블 삭제")
+    
+    # 테이블 생성
+    column_definitions = []
+    for col in available_columns:
+        dtype = df_to_insert[col].dtype
+        if 'datetime' in str(dtype) or 'timestamp' in str(dtype):
+            sql_type = 'TIMESTAMP'
+        elif 'float' in str(dtype):
+            sql_type = 'DOUBLE'
+        elif 'int' in str(dtype):
+            sql_type = 'BIGINT'
+        else:
+            sql_type = 'STRING'
+        column_definitions.append(f"`{col}` {sql_type}")
+    
+    create_temp_sql = f"""
+    CREATE TABLE {temp_table} (
+        {', '.join(column_definitions)}
+    ) USING DELTA
+    """
+    cursor.execute(create_temp_sql)
+    print(f"✅ 임시 테이블 생성: {temp_table}")
+    
+    # 5. 임시 테이블에 데이터 INSERT
     data_tuples = []
-    for _, row in df_to_insert.iterrows():
+    for idx, row in df_to_insert.iterrows():
         row_tuple = tuple(convert_value(row[col]) for col in available_columns)
         data_tuples.append(row_tuple)
-        
-    # 5. UPSERT (MERGE) 쿼리
+    
     columns_str = ', '.join([f"`{col}`" for col in available_columns])
     placeholders = ', '.join(['?' for _ in available_columns])
-
-    # MERGE 조건 (Primary Key 역할을 할 컬럼들)
-    # statement_id로 중복 체크
-    merge_key = "statement_id"  # 또는 여러 컬럼: ["statement_id", "user_email"]
-
-    # UPDATE할 컬럼들 (merge_key 제외)
+    
+    insert_temp_sql = f"""
+    INSERT INTO {temp_table} ({columns_str})
+    VALUES ({placeholders})
+    """
+    
+    print(f"📝 임시 테이블에 {len(data_tuples)} rows 삽입 중...")
+    cursor.executemany(insert_temp_sql, data_tuples)
+    print(f"✅ 임시 테이블에 데이터 삽입 완료")
+    
+    # 6. MERGE 실행 (UPSERT)
+    merge_key = "statement_id"  # Primary Key
     update_columns = [col for col in available_columns if col != merge_key]
     update_set = ', '.join([f"target.`{col}` = source.`{col}`" for col in update_columns])
-
-    # INSERT할 컬럼들
+    
     insert_columns = ', '.join([f"`{col}`" for col in available_columns])
     insert_values = ', '.join([f"source.`{col}`" for col in available_columns])
-
+    
+    # 임시 테이블을 직접 사용
     merge_sql = f"""
     MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_data AS target
-    USING (
-        SELECT {placeholders}
-    ) AS source ({columns_str})
+    USING {temp_table} AS source
     ON target.`{merge_key}` = source.`{merge_key}`
     WHEN MATCHED THEN
         UPDATE SET {update_set}
@@ -529,14 +556,12 @@ def merge_query_history(**context):
         INSERT ({insert_columns})
         VALUES ({insert_values})
     """
-
+    
     print(f"📝 MERGE SQL:\n{merge_sql}")
-    print(f"📝 {len(data_tuples)} rows UPSERT 중...")
-
-    # 6. Batch MERGE 실행
+    print(f"📝 MERGE 실행 중...")
+    
     try:
-        for data_tuple in data_tuples:
-            cursor.execute(merge_sql, data_tuple)
+        cursor.execute(merge_sql)
         print("✅ 데이터 UPSERT 완료")
     except Exception as e:
         print(f"❌ 데이터 UPSERT 실패: {e}")
@@ -544,11 +569,15 @@ def merge_query_history(**context):
         connection.close()
         raise
     
+    # 7. 임시 테이블 삭제
+    cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
+    print(f"✅ 임시 테이블 삭제: {temp_table}")
+    
     cursor.close()
     connection.close()
     
     print(f"✅ Delta 테이블 저장 완료: datahub.injoy_ops_schema.injoy_monitoring_data")
-    print(f"✅ 총 {len(data_tuples)} rows 추가됨")
+    print(f"✅ 총 {len(data_tuples)} rows UPSERT됨")
     
     return len(data_tuples)
 
