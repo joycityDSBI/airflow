@@ -413,7 +413,6 @@ def merge_query_history(**context):
     query_df = cursor.fetchall_arrow().to_pandas()
     
     print(f"📊 Query history 조회 완료: {len(query_df)} rows")
-    print(f"📊 Query history 컬럼: {query_df.columns.tolist()}")
     
     # 컬럼 존재 확인 및 rename
     if 'executed_by' in query_df.columns:
@@ -443,110 +442,134 @@ def merge_query_history(**context):
     
     print(f"✅ Query history 병합 완료: {len(df_audit_enriched)} rows")
     
-    # ===== UPSERT를 위한 임시 테이블 생성 =====
+    # ===== 기존 테이블 스키마 확인 =====
     
-    # 1. 테이블의 실제 컬럼과 타입 확인
     cursor.execute("DESCRIBE datahub.injoy_ops_schema.injoy_monitoring_data")
     table_schema = cursor.fetchall()
-    
-    # 컬럼명과 타입을 딕셔너리로 저장
     table_column_types = {row[0]: row[1] for row in table_schema}
     table_columns = list(table_column_types.keys())
     
     print(f"📊 기존 테이블 컬럼: {table_columns}")
-    print(f"📊 DataFrame 컬럼: {df_audit_enriched.columns.tolist()}")
     
-    # 2. DataFrame 컬럼을 테이블 컬럼에 맞추기
+    # DataFrame 컬럼을 테이블 컬럼에 맞추기
     available_columns = [col for col in table_columns if col in df_audit_enriched.columns]
     df_to_insert = df_audit_enriched[available_columns].copy()
     
     print(f"📊 UPSERT할 컬럼: {available_columns}")
     
-    # 3. 데이터 타입 변환 함수
-    def convert_value(val):
-        """Pandas 타입을 Python 네이티브 타입으로 변환"""
+    # ===== SQL 리터럴 변환 함수 =====
+    
+    def value_to_sql_literal(val, col_type):
+        """값을 SQL 리터럴로 변환"""
+        # NULL 처리
         if val is None:
-            return None
+            return 'NULL'
         
         try:
             if pd.isna(val):
-                return None
+                return 'NULL'
         except (ValueError, TypeError):
             pass
         
-        # 리스트는 그대로 유지 (ARRAY 타입을 위해)
-        if isinstance(val, list):
-            return val
+        # ARRAY 타입 처리
+        if 'array' in col_type.lower():
+            if isinstance(val, list):
+                # 리스트의 각 요소를 문자열로 변환하고 이스케이프
+                escaped_items = [f"'{str(item).replace(chr(39), chr(39)+chr(39))}'" for item in val]
+                return f"array({', '.join(escaped_items)})"
+            else:
+                return 'NULL'
         
-        # 딕셔너리는 JSON 문자열로 변환
-        if isinstance(val, dict):
-            return json.dumps(val, ensure_ascii=False)
+        # TIMESTAMP 처리
+        if 'timestamp' in col_type.lower():
+            if isinstance(val, pd.Timestamp):
+                return f"timestamp '{val.strftime('%Y-%m-%d %H:%M:%S')}'"
+            else:
+                return f"timestamp '{str(val)}'"
         
-        if isinstance(val, pd.Timestamp):
-            return val.to_pydatetime()
+        # DOUBLE/FLOAT 처리
+        if col_type.lower() in ['double', 'float']:
+            if pd.notna(val):
+                return str(float(val))
+            else:
+                return 'NULL'
         
-        if isinstance(val, (np.integer, np.int64)):
-            return int(val)
-        if isinstance(val, (np.floating, np.float64)):
-            return float(val)
-        if isinstance(val, np.bool_):
-            return bool(val)
+        # BIGINT/INT 처리
+        if col_type.lower() in ['bigint', 'int', 'integer']:
+            if pd.notna(val):
+                return str(int(val))
+            else:
+                return 'NULL'
         
+        # STRING 처리 (기본)
         if isinstance(val, str):
-            return val
+            # 작은따옴표 이스케이프
+            escaped_val = val.replace("'", "''")
+            return f"'{escaped_val}'"
         
-        return str(val)
+        # 기타
+        return f"'{str(val)}'"
     
-    # 4. 임시 테이블 생성 (기존 테이블과 동일한 스키마)
+    # ===== 임시 테이블 생성 (CREATE TABLE AS SELECT VALUES) =====
+    
     temp_table = "datahub.injoy_ops_schema.temp_monitoring_data"
     
     # 기존 임시 테이블 삭제
     cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
     print(f"✅ 기존 임시 테이블 삭제")
     
-    # 기존 테이블의 타입을 그대로 사용
-    column_definitions = []
-    for col in available_columns:
-        sql_type = table_column_types[col]
-        column_definitions.append(f"`{col}` {sql_type}")
+    # VALUES 절 생성
+    values_list = []
+    for idx, row in df_to_insert.iterrows():
+        row_values = []
+        for col in available_columns:
+            col_type = table_column_types[col]
+            sql_literal = value_to_sql_literal(row[col], col_type)
+            row_values.append(sql_literal)
+        values_list.append(f"({', '.join(row_values)})")
+    
+    # 100개씩 나눠서 INSERT (SQL 문이 너무 길어지는 것 방지)
+    batch_size = 100
+    
+    # 첫 번째 배치로 테이블 생성
+    first_batch = values_list[:batch_size]
+    columns_str = ', '.join([f"`{col}`" for col in available_columns])
     
     create_temp_sql = f"""
-    CREATE TABLE {temp_table} (
-        {', '.join(column_definitions)}
-    ) USING DELTA
+    CREATE TABLE {temp_table} AS
+    SELECT * FROM VALUES
+    {', '.join(first_batch)}
+    AS t({columns_str})
     """
     
-    print(f"📝 임시 테이블 생성 SQL:\n{create_temp_sql}")
+    print(f"📝 임시 테이블 생성 (첫 {len(first_batch)} rows)...")
     cursor.execute(create_temp_sql)
-    print(f"✅ 임시 테이블 생성: {temp_table}")
+    print(f"✅ 임시 테이블 생성 완료")
     
-    # 5. 임시 테이블에 데이터 INSERT
-    data_tuples = []
-    for idx, row in df_to_insert.iterrows():
-        row_tuple = tuple(convert_value(row[col]) for col in available_columns)
-        data_tuples.append(row_tuple)
+    # 나머지 배치 INSERT
+    remaining_batches = [values_list[i:i+batch_size] for i in range(batch_size, len(values_list), batch_size)]
     
-    columns_str = ', '.join([f"`{col}`" for col in available_columns])
-    placeholders = ', '.join(['?' for _ in available_columns])
+    for batch_idx, batch in enumerate(remaining_batches):
+        insert_batch_sql = f"""
+        INSERT INTO {temp_table}
+        SELECT * FROM VALUES
+        {', '.join(batch)}
+        AS t({columns_str})
+        """
+        print(f"📝 배치 {batch_idx + 2} 삽입 중 ({len(batch)} rows)...")
+        cursor.execute(insert_batch_sql)
     
-    insert_temp_sql = f"""
-    INSERT INTO {temp_table} ({columns_str})
-    VALUES ({placeholders})
-    """
+    print(f"✅ 임시 테이블에 총 {len(values_list)} rows 삽입 완료")
     
-    print(f"📝 임시 테이블에 {len(data_tuples)} rows 삽입 중...")
-    cursor.executemany(insert_temp_sql, data_tuples)
-    print(f"✅ 임시 테이블에 데이터 삽입 완료")
+    # ===== MERGE 실행 (UPSERT) =====
     
-    # 6. MERGE 실행 (UPSERT)
-    merge_key = "statement_id"  # Primary Key
+    merge_key = "statement_id"
     update_columns = [col for col in available_columns if col != merge_key]
     update_set = ', '.join([f"target.`{col}` = source.`{col}`" for col in update_columns])
     
     insert_columns = ', '.join([f"`{col}`" for col in available_columns])
     insert_values = ', '.join([f"source.`{col}`" for col in available_columns])
     
-    # 임시 테이블을 직접 사용
     merge_sql = f"""
     MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_data AS target
     USING {temp_table} AS source
@@ -558,29 +581,21 @@ def merge_query_history(**context):
         VALUES ({insert_values})
     """
     
-    print(f"📝 MERGE SQL:\n{merge_sql}")
     print(f"📝 MERGE 실행 중...")
+    cursor.execute(merge_sql)
+    print("✅ 데이터 UPSERT 완료")
     
-    try:
-        cursor.execute(merge_sql)
-        print("✅ 데이터 UPSERT 완료")
-    except Exception as e:
-        print(f"❌ 데이터 UPSERT 실패: {e}")
-        cursor.close()
-        connection.close()
-        raise
-    
-    # 7. 임시 테이블 삭제
+    # 임시 테이블 삭제
     cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
-    print(f"✅ 임시 테이블 삭제: {temp_table}")
+    print(f"✅ 임시 테이블 삭제")
     
     cursor.close()
     connection.close()
     
     print(f"✅ Delta 테이블 저장 완료: datahub.injoy_ops_schema.injoy_monitoring_data")
-    print(f"✅ 총 {len(data_tuples)} rows UPSERT됨")
+    print(f"✅ 총 {len(values_list)} rows UPSERT됨")
     
-    return len(data_tuples)
+    return len(values_list)
 
 
 # Task 정의
