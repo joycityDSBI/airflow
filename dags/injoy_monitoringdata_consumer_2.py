@@ -243,7 +243,18 @@ def transform_data(**context):
     
     # 날짜 형식 변환
     s = pd.to_datetime(df_renamed['질문날짜'], errors='coerce')
-    s = s.dt.tz_localize('Asia/Seoul', ambiguous='infer', nonexistent='shift_forward')
+    
+    # 타임존 처리: 이미 타임존이 있는지 확인 후 처리
+    if s.dt.tz is None:
+        # 타임존이 없는 경우: tz_localize 사용
+        print("ℹ️  타임존 정보가 없습니다. Asia/Seoul로 설정합니다.")
+        s = s.dt.tz_localize('Asia/Seoul', ambiguous='infer', nonexistent='shift_forward')
+    else:
+        # 이미 타임존이 있는 경우: tz_convert 사용
+        print(f"ℹ️  기존 타임존({s.dt.tz})을 Asia/Seoul로 변환합니다.")
+        s = s.dt.tz_convert('Asia/Seoul')
+    
+    # ISO 8601 형식으로 변환
     df_renamed['질문날짜'] = s.apply(lambda x: x.isoformat(timespec='seconds') if pd.notna(x) else None)
     df_renamed.loc[s.isna(), '질문날짜'] = None
     print("🔄 '질문날짜' 컬럼을 Notion 표준 시간 형식으로 변환했습니다.")
