@@ -324,7 +324,7 @@ with DAG(
     dag_id='injoy_monitoringdata_consumer_2',
     default_args=default_args,
     description='Databricks 데이터를 Notion DB에 동기화하는 DAG',
-    schedule_interval=[injoy_monitoringdata_consumer],
+    schedule=[injoy_monitoringdata_consumer],
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['notion', 'sync', 'monitoring'],
@@ -334,18 +334,21 @@ with DAG(
     extract_task = PythonOperator(
         task_id='extract_data',
         python_callable=extract_data,
+        dag=dag,
     )
 
     # Task 2: 데이터 변환
     transform_task = PythonOperator(
         task_id='transform_data',
         python_callable=transform_data,
+        dag=dag,
     )
 
     # Task 3: Notion 적재
     load_task = PythonOperator(
         task_id='load_to_notion',
         python_callable=load_to_notion,
+        dag=dag,
     )
 
     # Task 의존성 설정
