@@ -377,7 +377,6 @@ def merge_query_history(**context):
     import pandas as pd
     from io import StringIO
     import numpy as np
-    import json
     
     ti = context['ti']
     config = get_databricks_config()
@@ -416,7 +415,7 @@ def merge_query_history(**context):
     
     print(f"📊 Query history 조회 완료: {len(query_df)} rows")
     
-    # 컬럼 존재 확인 및 rename
+    # 컬럼 rename
     query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
     
     # 병합
@@ -431,19 +430,78 @@ def merge_query_history(**context):
     
     print(f"📊 Query history 병합 완료: {len(df_audit_enriched)} rows")
     
-    # ===== 기존 테이블 스키마 확인 =====
+    # 실제 DataFrame 컬럼 확인
+    print(f"📋 DataFrame 컬럼: {df_audit_enriched.columns.tolist()}")
     
+    # ===== 임시 테이블 생성 및 데이터 INSERT =====
     target_table = "datahub.injoy_ops_schema.injoy_monitoring_data"
+    temp_table = "datahub.injoy_ops_schema.temp_merge_data"
+    
+    # 기존 임시 테이블 삭제
+    cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
+    
+    # 임시 테이블 생성 (기존 테이블 스키마 복사)
+    create_temp_table_sql = f"""
+    CREATE TABLE {temp_table}
+    LIKE {target_table}
+    """
+    cursor.execute(create_temp_table_sql)
+    print(f"📝 임시 테이블 생성 완료: {temp_table}")
+    
+    # DataFrame을 batch INSERT
+    columns = df_audit_enriched.columns.tolist()
+    column_str = ", ".join([f"`{col}`" for col in columns])
+    
+    # NULL 값을 SQL NULL로 변환하는 함수
+    def convert_value(val):
+        if pd.isna(val):
+            return "NULL"
+        elif isinstance(val, str):
+            # SQL Injection 방지를 위해 escape 처리
+            return f"'{val.replace(chr(39), chr(39)+chr(39))}'"
+        elif isinstance(val, (int, float)):
+            return str(val)
+        elif isinstance(val, pd.Timestamp):
+            return f"'{val.strftime('%Y-%m-%d %H:%M:%S')}'"
+        else:
+            return f"'{str(val).replace(chr(39), chr(39)+chr(39))}'"
+    
+    # 배치 단위로 INSERT
+    batch_size = 1000
+    total_rows = len(df_audit_enriched)
+    
+    for start_idx in range(0, total_rows, batch_size):
+        end_idx = min(start_idx + batch_size, total_rows)
+        batch_df = df_audit_enriched.iloc[start_idx:end_idx]
+        
+        values_list = []
+        for _, row in batch_df.iterrows():
+            row_values = ", ".join([convert_value(row[col]) for col in columns])
+            values_list.append(f"({row_values})")
+        
+        values_str = ", ".join(values_list)
+        
+        insert_sql = f"""
+        INSERT INTO {temp_table} ({column_str})
+        VALUES {values_str}
+        """
+        
+        cursor.execute(insert_sql)
+        print(f"📝 배치 INSERT 완료: {start_idx+1}-{end_idx}/{total_rows}")
+    
+    print(f"✅ 임시 테이블 데이터 적재 완료: {total_rows} rows")
+    
+    # ===== MERGE 실행 =====
     merge_key = 'statement_id'
-    update_set = ", ".join([f"target.`{col}` = source.`{col}`" for col in df_audit_enriched.columns if col != merge_key])
-    insert_columns="log_type, user_email, user_id, action_name, space_id, conversation_id, message_id, feedback_rating, event_time_kst," \
-    " space_name, content, query, statement_id, query_end_time_kst, query_duration_seconds, " \
-    "query_result_fetch_duration_seconds, message_response_duration_seconds"
-    insert_values = ", ".join([f"source.`{col}`" for col in df_audit_enriched.columns])
-
+    
+    # 동적으로 컬럼 리스트 생성 (DataFrame의 실제 컬럼 기준)
+    update_set = ", ".join([f"target.`{col}` = source.`{col}`" for col in columns if col != merge_key])
+    insert_columns = ", ".join([f"`{col}`" for col in columns])
+    insert_values = ", ".join([f"source.`{col}`" for col in columns])
+    
     merge_sql = f"""
-    MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_data AS target
-    USING {target_table} AS source
+    MERGE INTO {target_table} AS target
+    USING {temp_table} AS source
     ON target.`{merge_key}` = source.`{merge_key}`
     WHEN MATCHED THEN
         UPDATE SET {update_set}
@@ -453,8 +511,14 @@ def merge_query_history(**context):
     """
     
     print(f"📝 MERGE 실행 중...")
+    print(f"🔍 MERGE SQL 미리보기:\n{merge_sql[:500]}...")
+    
     cursor.execute(merge_sql)
     print("✅ 데이터 UPSERT 완료")
+    
+    # 임시 테이블 삭제
+    cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
+    print(f"🗑️ 임시 테이블 삭제 완료")
     
     cursor.close()
     connection.close()
@@ -462,7 +526,6 @@ def merge_query_history(**context):
     print(f"✅ Delta 테이블 저장 완료")
     
     return len(df_audit_enriched)
-
 
 # Task 정의
 task0 = PythonOperator(
