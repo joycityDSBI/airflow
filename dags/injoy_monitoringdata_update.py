@@ -27,7 +27,7 @@ default_args = {
     'email_on_failure': True,
     'email_on_retry': False,
     'retries': 2,
-    'retry_delay': timedelta(minutes=5),
+    'retry_delay': timedelta(seconds=10),
 }
 
 dag = DAG(
@@ -431,26 +431,89 @@ def merge_query_history(**context):
     print(f"📊 Query history 병합 완료: {len(df_audit_enriched)} rows")
     print(f"📋 DataFrame 컬럼: {df_audit_enriched.columns.tolist()}")
     
-    # ===== 임시 테이블 생성 및 데이터 INSERT =====
+    # ===== 타겟 테이블 스키마 조회 =====
     target_table = "datahub.injoy_ops_schema.injoy_monitoring_data"
     temp_table = "datahub.injoy_ops_schema.temp_merge_data"
+    
+    # 타겟 테이블의 컬럼 목록 및 타입 조회
+    cursor.execute(f"DESCRIBE TABLE {target_table}")
+    table_schema = cursor.fetchall_arrow().to_pandas()
+    
+    print(f"📋 타겟 테이블 스키마:")
+    print(table_schema[['col_name', 'data_type']].to_string())
+    
+    target_columns = table_schema['col_name'].tolist()
+    
+    # DataFrame과 타겟 테이블 공통 컬럼만 선택
+    df_columns = df_audit_enriched.columns.tolist()
+    common_columns = [col for col in df_columns if col in target_columns]
+    missing_in_target = [col for col in df_columns if col not in target_columns]
+    
+    if missing_in_target:
+        print(f"⚠️ 타겟 테이블에 없는 컬럼 (제외됨): {missing_in_target}")
+    
+    # 공통 컬럼만 사용하여 데이터 필터링
+    df_to_insert = df_audit_enriched[common_columns].copy()
+    
+    print(f"✅ 사용할 컬럼: {common_columns}")
+    
+    # ===== Pandas dtype을 SQL 타입으로 매핑하는 함수 =====
+    def pandas_dtype_to_sql(dtype, col_name):
+        """Pandas dtype을 Databricks SQL 타입으로 변환"""
+        dtype_str = str(dtype)
+        
+        # 특정 컬럼명에 대한 명시적 타입 지정
+        if col_name == 'feedback_rating':
+            return 'STRING'
+        
+        if 'int' in dtype_str:
+            return 'BIGINT'
+        elif 'float' in dtype_str or 'double' in dtype_str:
+            return 'DOUBLE'
+        elif 'bool' in dtype_str:
+            return 'BOOLEAN'
+        elif 'datetime' in dtype_str or 'timestamp' in dtype_str:
+            return 'TIMESTAMP'
+        elif 'object' in dtype_str or 'string' in dtype_str:
+            return 'STRING'
+        else:
+            return 'STRING'  # 기본값
+    
+    # ===== 임시 테이블 생성 (명시적 스키마) =====
     
     # 기존 임시 테이블 삭제
     cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
     
-    # 임시 테이블 생성 (기존 테이블 스키마 복사)
-    create_temp_table_sql = f"""
-    CREATE TABLE {temp_table}
-    LIKE {target_table}
+    # DataFrame의 dtype 기반으로 CREATE TABLE 문 생성
+    column_definitions = []
+    for col in common_columns:
+        sql_type = pandas_dtype_to_sql(df_to_insert[col].dtype, col)
+        column_definitions.append(f"`{col}` {sql_type}")
+    
+    create_table_sql = f"""
+    CREATE TABLE {temp_table} (
+        {', '.join(column_definitions)}
+    )
+    USING DELTA
     """
-    cursor.execute(create_temp_table_sql)
-    print(f"📝 임시 테이블 생성 완료: {temp_table}")
+    
+    print(f"📝 임시 테이블 생성 SQL:")
+    print(create_table_sql)
+    
+    cursor.execute(create_table_sql)
+    print(f"✅ 임시 테이블 생성 완료: {temp_table}")
+    
+    # 생성된 임시 테이블 스키마 확인
+    cursor.execute(f"DESCRIBE TABLE {temp_table}")
+    temp_schema = cursor.fetchall_arrow().to_pandas()
+    print(f"📋 생성된 임시 테이블 스키마:")
+    print(temp_schema[['col_name', 'data_type']].to_string())
     
     # DataFrame을 batch INSERT
-    columns = df_audit_enriched.columns.tolist()
+    columns = common_columns
     column_str = ", ".join([f"`{col}`" for col in columns])
     
-    # NULL 값을 SQL NULL로 변환하는 함수 (수정)
+    # NULL 값을 SQL NULL로 변환하는 함수
     def convert_value(val):
         # None 체크 먼저
         if val is None:
@@ -490,11 +553,11 @@ def merge_query_history(**context):
     
     # 배치 단위로 INSERT
     batch_size = 1000
-    total_rows = len(df_audit_enriched)
+    total_rows = len(df_to_insert)
     
     for start_idx in range(0, total_rows, batch_size):
         end_idx = min(start_idx + batch_size, total_rows)
-        batch_df = df_audit_enriched.iloc[start_idx:end_idx]
+        batch_df = df_to_insert.iloc[start_idx:end_idx]
         
         values_list = []
         for idx, row in batch_df.iterrows():
@@ -555,7 +618,8 @@ def merge_query_history(**context):
     
     print(f"✅ Delta 테이블 저장 완료")
     
-    return len(df_audit_enriched)
+    return len(df_to_insert)
+
 
 # Task 정의
 task0 = PythonOperator(
