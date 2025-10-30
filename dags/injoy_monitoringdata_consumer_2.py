@@ -340,13 +340,13 @@ def load_to_notion(**context):
 # DAG 정의
 # ============================================================
 
-injoy_monitoringdata_consumer = Dataset('injoy_monitoringdata_consumer')
+injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
 
 with DAG(
     dag_id='injoy_monitoringdata_consumer_2',
     default_args=default_args,
     description='Databricks 데이터를 Notion DB에 동기화하는 DAG',
-    schedule=[injoy_monitoringdata_consumer],
+    schedule=[injoy_monitoringdata_producer],
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['notion', 'sync', 'monitoring'],
