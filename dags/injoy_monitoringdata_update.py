@@ -371,7 +371,6 @@ def merge_query_history(**context):
     from databricks import sql
     import pandas as pd
     from io import StringIO
-    from datetime import datetime
     
     ti = context['ti']
     config = get_databricks_config()
@@ -415,7 +414,7 @@ def merge_query_history(**context):
     if 'executed_by' in query_df.columns:
         query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
     else:
-        print(f"⚠️ Warning: 'executed_by' 컬럼이 없습니다. 사용 가능한 컬럼: {query_df.columns.tolist()}")
+        print(f"⚠️ Warning: 'executed_by' 컬럼이 없습니다.")
         cursor.close()
         connection.close()
         raise KeyError(f"'executed_by' 컬럼을 찾을 수 없습니다.")
@@ -424,7 +423,7 @@ def merge_query_history(**context):
     df_audit_enriched = df_target.merge(
         query_df_renamed[[
             "statement_id", "user_email", "query_end_time_kst", 
-            "query_duration_seconds", "query_result_fetch_duration_seconds"
+            "query_duration_seconds", "query_result_fetch_duration_seconds", "execution_status"
         ]],
         how="left",
         on=["statement_id", "user_email"]
@@ -439,53 +438,89 @@ def merge_query_history(**context):
     
     print(f"✅ Query history 병합 완료: {len(df_audit_enriched)} rows")
     
-    # 3. 데이터 타입 변환 함수
+    # ===== 기존 테이블에 데이터 INSERT =====
+    
+    # 1. 테이블의 실제 컬럼 확인
+    cursor.execute("DESCRIBE datahub.injoy_ops_schema.injoy_monitoring_data")
+    table_schema = cursor.fetchall()
+    table_columns = [row[0] for row in table_schema]
+    
+    print(f"📊 기존 테이블 컬럼: {table_columns}")
+    print(f"📊 DataFrame 컬럼: {df_audit_enriched.columns.tolist()}")
+    
+    # 2. DataFrame 컬럼을 테이블 컬럼 순서에 맞추기
+    # 테이블에 있는 컬럼만 선택
+    available_columns = [col for col in table_columns if col in df_audit_enriched.columns]
+    df_to_insert = df_audit_enriched[available_columns]
+    
+    print(f"📊 INSERT할 컬럼: {available_columns}")
+    
+    # 3. 데이터 타입 변환
     def convert_value(val):
         """Pandas 타입을 Python 네이티브 타입으로 변환"""
         if pd.isna(val):
             return None
         elif isinstance(val, pd.Timestamp):
-            # Pandas Timestamp -> Python datetime
             return val.to_pydatetime()
-        elif isinstance(val, (pd.Int64Dtype, pd.Float64Dtype)):
-            return float(val) if pd.notna(val) else None
         else:
             return val
     
-    # 4. DataFrame을 튜플 리스트로 변환 (타입 변환 포함)
+    # 4. INSERT 데이터 준비
     data_tuples = []
-    for _, row in df_audit_enriched.iterrows():
-        data_tuples.append((
-            convert_value(row['statement_id']),
-            convert_value(row['user_email']),
-            convert_value(row['event_time_kst']),  # Timestamp -> datetime
-            convert_value(row['query_end_time_kst']),  # Timestamp -> datetime
-            convert_value(row['query_duration_seconds']),
-            convert_value(row['query_result_fetch_duration_seconds']),
-            convert_value(row['message_response_duration_seconds']),
-            convert_value(row.get('execution_status', None))
-        ))
-    
-    # 5. INSERT 쿼리
-    insert_sql = """
-    INSERT INTO datahub.injoy_ops_schema.injoy_monitoring_data 
-    (statement_id, user_email, event_time_kst, query_end_time_kst, 
-     query_duration_seconds, query_result_fetch_duration_seconds, 
-     message_response_duration_seconds, execution_status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    for _, row in df_to_insert.iterrows():
+        row_tuple = tuple(convert_value(row[col]) for col in available_columns)
+        data_tuples.append(row_tuple)
+        
+    # 5. UPSERT (MERGE) 쿼리
+    columns_str = ', '.join([f"`{col}`" for col in available_columns])
+    placeholders = ', '.join(['?' for _ in available_columns])
+
+    # MERGE 조건 (Primary Key 역할을 할 컬럼들)
+    # statement_id로 중복 체크
+    merge_key = "statement_id"  # 또는 여러 컬럼: ["statement_id", "user_email"]
+
+    # UPDATE할 컬럼들 (merge_key 제외)
+    update_columns = [col for col in available_columns if col != merge_key]
+    update_set = ', '.join([f"target.`{col}` = source.`{col}`" for col in update_columns])
+
+    # INSERT할 컬럼들
+    insert_columns = ', '.join([f"`{col}`" for col in available_columns])
+    insert_values = ', '.join([f"source.`{col}`" for col in available_columns])
+
+    merge_sql = f"""
+    MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_data AS target
+    USING (
+        SELECT {placeholders}
+    ) AS source ({columns_str})
+    ON target.`{merge_key}` = source.`{merge_key}`
+    WHEN MATCHED THEN
+        UPDATE SET {update_set}
+    WHEN NOT MATCHED THEN
+        INSERT ({insert_columns})
+        VALUES ({insert_values})
     """
-    
-    # 6. Batch insert
-    print(f"📝 {len(data_tuples)} rows 삽입 중...")
-    cursor.executemany(insert_sql, data_tuples)
+
+    print(f"📝 MERGE SQL:\n{merge_sql}")
+    print(f"📝 {len(data_tuples)} rows UPSERT 중...")
+
+    # 6. Batch MERGE 실행
+    try:
+        for data_tuple in data_tuples:
+            cursor.execute(merge_sql, data_tuple)
+        print("✅ 데이터 UPSERT 완료")
+    except Exception as e:
+        print(f"❌ 데이터 UPSERT 실패: {e}")
+        cursor.close()
+        connection.close()
+        raise
     
     cursor.close()
     connection.close()
     
     print(f"✅ Delta 테이블 저장 완료: datahub.injoy_ops_schema.injoy_monitoring_data")
-    print(f"✅ 총 {len(df_audit_enriched)} rows 저장됨")
+    print(f"✅ 총 {len(data_tuples)} rows 추가됨")
     
-    return len(df_audit_enriched)
+    return len(data_tuples)
 
 # Task 정의
 task0 = PythonOperator(
