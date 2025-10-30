@@ -445,10 +445,13 @@ def merge_query_history(**context):
     
     # ===== UPSERT를 위한 임시 테이블 생성 =====
     
-    # 1. 테이블의 실제 컬럼 확인
+    # 1. 테이블의 실제 컬럼과 타입 확인
     cursor.execute("DESCRIBE datahub.injoy_ops_schema.injoy_monitoring_data")
     table_schema = cursor.fetchall()
-    table_columns = [row[0] for row in table_schema]
+    
+    # 컬럼명과 타입을 딕셔너리로 저장
+    table_column_types = {row[0]: row[1] for row in table_schema}
+    table_columns = list(table_column_types.keys())
     
     print(f"📊 기존 테이블 컬럼: {table_columns}")
     print(f"📊 DataFrame 컬럼: {df_audit_enriched.columns.tolist()}")
@@ -471,8 +474,12 @@ def merge_query_history(**context):
         except (ValueError, TypeError):
             pass
         
-        # 리스트나 딕셔너리는 JSON 문자열로 변환
-        if isinstance(val, (list, dict)):
+        # 리스트는 그대로 유지 (ARRAY 타입을 위해)
+        if isinstance(val, list):
+            return val
+        
+        # 딕셔너리는 JSON 문자열로 변환
+        if isinstance(val, dict):
             return json.dumps(val, ensure_ascii=False)
         
         if isinstance(val, pd.Timestamp):
@@ -490,25 +497,17 @@ def merge_query_history(**context):
         
         return str(val)
     
-    # 4. 임시 테이블 생성
+    # 4. 임시 테이블 생성 (기존 테이블과 동일한 스키마)
     temp_table = "datahub.injoy_ops_schema.temp_monitoring_data"
     
     # 기존 임시 테이블 삭제
     cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
     print(f"✅ 기존 임시 테이블 삭제")
     
-    # 테이블 생성
+    # 기존 테이블의 타입을 그대로 사용
     column_definitions = []
     for col in available_columns:
-        dtype = df_to_insert[col].dtype
-        if 'datetime' in str(dtype) or 'timestamp' in str(dtype):
-            sql_type = 'TIMESTAMP'
-        elif 'float' in str(dtype):
-            sql_type = 'DOUBLE'
-        elif 'int' in str(dtype):
-            sql_type = 'BIGINT'
-        else:
-            sql_type = 'STRING'
+        sql_type = table_column_types[col]
         column_definitions.append(f"`{col}` {sql_type}")
     
     create_temp_sql = f"""
@@ -516,6 +515,8 @@ def merge_query_history(**context):
         {', '.join(column_definitions)}
     ) USING DELTA
     """
+    
+    print(f"📝 임시 테이블 생성 SQL:\n{create_temp_sql}")
     cursor.execute(create_temp_sql)
     print(f"✅ 임시 테이블 생성: {temp_table}")
     
@@ -580,6 +581,7 @@ def merge_query_history(**context):
     print(f"✅ 총 {len(data_tuples)} rows UPSERT됨")
     
     return len(data_tuples)
+
 
 # Task 정의
 task0 = PythonOperator(
