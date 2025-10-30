@@ -363,17 +363,21 @@ def get_message_details(**context):
     
     return len(df_target)
 
+
 def merge_query_history(**context):
     """
     Task 6: Query history와 병합 및 최종 데이터 저장
     """
     from databricks import sql
+    import pandas as pd
+    from io import StringIO
     
     ti = context['ti']
     config = get_databricks_config()
     
     # 데이터 가져오기
-    df_target = pd.read_json(ti.xcom_pull(task_ids='get_message_details', key='df_target'), orient='split')
+    json_data = ti.xcom_pull(task_ids='get_message_details', key='df_target')
+    df_target = pd.read_json(StringIO(json_data), orient='split')
     
     # Databricks SQL 연결
     connection = sql.connect(
@@ -381,6 +385,8 @@ def merge_query_history(**context):
         http_path=Variable.get('databricks_http_path'),
         access_token=config['token']
     )
+    
+    cursor = connection.cursor()
     
     # Query history 조회
     query_history_sql = """
@@ -394,22 +400,23 @@ def merge_query_history(**context):
     FROM system.query.history
     WHERE query_source.genie_space_id IS NOT NULL
         AND statement_type = 'SELECT'
-        AND DATE(end_time) >= CURRENT_DATE - INTERVAL 1 DAYS
-        AND DATE(end_time) < CURRENT_DATE
+        AND DATE(end_time) >= CURRENT_DATE - INTERVAL 7 DAYS
     """
     
-    cursor = connection.cursor()
     cursor.execute(query_history_sql)
     query_df = cursor.fetchall_arrow().to_pandas()
-
-    if 'executed_by' not in query_df.columns:
-        print("⚠️ 'executed_by' 컬럼이 query history에 없습니다.")
     
-    # 컬럼명 변경
-    query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
-
-    if 'user_email' not in query_df_renamed.columns:
-        print("⚠️ 'user_email' 컬럼이 query history에 없습니다.")
+    print(f"📊 Query history 조회 완료: {len(query_df)} rows")
+    print(f"📊 Query history 컬럼: {query_df.columns.tolist()}")
+    
+    # 컬럼 존재 확인 및 rename
+    if 'executed_by' in query_df.columns:
+        query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
+    else:
+        print(f"⚠️ Warning: 'executed_by' 컬럼이 없습니다. 사용 가능한 컬럼: {query_df.columns.tolist()}")
+        cursor.close()
+        connection.close()
+        raise KeyError(f"'executed_by' 컬럼을 찾을 수 없습니다.")
     
     # 병합
     df_audit_enriched = df_target.merge(
@@ -430,29 +437,72 @@ def merge_query_history(**context):
     
     print(f"✅ Query history 병합 완료: {len(df_audit_enriched)} rows")
     
-    # Spark DataFrame으로 변환 및 저장
-    from pyspark.sql import SparkSession
-    spark = SparkSession.builder.getOrCreate()
+    # ===== Delta 테이블에 저장 (PySpark 없이) =====
     
-    # Pandas to Spark DataFrame
-    spark_df = spark.createDataFrame(df_audit_enriched)
+    # 1. 테이블이 없으면 생성
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS datahub.injoy_ops_schema.injoy_monitoring_data (
+        statement_id STRING,
+        user_email STRING,
+        event_time_kst TIMESTAMP,
+        query_end_time_kst TIMESTAMP,
+        query_duration_seconds DOUBLE,
+        query_result_fetch_duration_seconds DOUBLE,
+        message_response_duration_seconds DOUBLE,
+        -- 필요한 다른 컬럼들도 추가하세요
+        execution_status STRING
+    ) USING DELTA
+    """
     
-    # Delta 테이블로 저장
-    delta_table = DeltaTable.forName(spark, "datahub.injoy_ops_schema.injoy_monitoring_data")
+    try:
+        cursor.execute(create_table_sql)
+        print("✅ 테이블 생성/확인 완료")
+    except Exception as e:
+        print(f"⚠️ 테이블 생성 중 에러 (이미 존재할 수 있음): {e}")
     
-    # 새 데이터만 INSERT (중복 제외)
-    delta_table.alias("target") \
-        .merge(
-            spark_df.alias("source"),
-            "target.statement_id = source.statement_id"
-        ) \
-        .whenNotMatchedInsertAll() \
-        .execute()
+    # 2. 기존 데이터 삭제 (TRUNCATE 대신)
+    try:
+        cursor.execute("DELETE FROM datahub.injoy_ops_schema.injoy_monitoring_data")
+        print("✅ 기존 데이터 삭제 완료")
+    except Exception as e:
+        print(f"⚠️ 데이터 삭제 중 에러: {e}")
+    
+    # 3. 새 데이터 INSERT
+    # NULL 값을 None으로 변환
+    df_audit_enriched = df_audit_enriched.where(pd.notnull(df_audit_enriched), None)
+    
+    # INSERT 쿼리 준비
+    insert_sql = """
+    INSERT INTO datahub.injoy_ops_schema.injoy_monitoring_data 
+    (statement_id, user_email, event_time_kst, query_end_time_kst, 
+     query_duration_seconds, query_result_fetch_duration_seconds, 
+     message_response_duration_seconds, execution_status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """
+    
+    # DataFrame을 튜플 리스트로 변환
+    data_tuples = []
+    for _, row in df_audit_enriched.iterrows():
+        data_tuples.append((
+            row['statement_id'],
+            row['user_email'],
+            row['event_time_kst'],
+            row['query_end_time_kst'],
+            row['query_duration_seconds'],
+            row['query_result_fetch_duration_seconds'],
+            row['message_response_duration_seconds'],
+            row.get('execution_status', None)  # 컬럼이 있으면 사용, 없으면 None
+        ))
+    
+    # Batch insert (한 번에 모두 INSERT)
+    print(f"📝 {len(data_tuples)} rows 삽입 중...")
+    cursor.executemany(insert_sql, data_tuples)
     
     cursor.close()
     connection.close()
     
     print(f"✅ Delta 테이블 저장 완료: datahub.injoy_ops_schema.injoy_monitoring_data")
+    print(f"✅ 총 {len(df_audit_enriched)} rows 저장됨")
     
     return len(df_audit_enriched)
 
