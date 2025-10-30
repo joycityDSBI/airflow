@@ -401,7 +401,8 @@ def merge_query_history(**context):
     FROM system.query.history
     WHERE query_source.genie_space_id IS NOT NULL
         AND statement_type = 'SELECT'
-        AND DATE(end_time) >= CURRENT_DATE - INTERVAL 7 DAYS
+        AND DATE(end_time) >= CURRENT_DATE - INTERVAL 1 DAYS
+        AND DATE(end_time) < CURRENT_DATE
     """
     
     cursor.execute(query_history_sql)
@@ -437,35 +438,6 @@ def merge_query_history(**context):
     ).dt.total_seconds()
     
     print(f"✅ Query history 병합 완료: {len(df_audit_enriched)} rows")
-    
-    # ===== Delta 테이블에 저장 =====
-    
-    # 1. 테이블 생성
-    create_table_sql = """
-    CREATE TABLE IF NOT EXISTS datahub.injoy_ops_schema.injoy_monitoring_data (
-        statement_id STRING,
-        user_email STRING,
-        event_time_kst TIMESTAMP,
-        query_end_time_kst TIMESTAMP,
-        query_duration_seconds DOUBLE,
-        query_result_fetch_duration_seconds DOUBLE,
-        message_response_duration_seconds DOUBLE,
-        execution_status STRING
-    ) USING DELTA
-    """
-    
-    try:
-        cursor.execute(create_table_sql)
-        print("✅ 테이블 생성/확인 완료")
-    except Exception as e:
-        print(f"⚠️ 테이블 생성 중 에러: {e}")
-    
-    # 2. 기존 데이터 삭제
-    try:
-        cursor.execute("DELETE FROM datahub.injoy_ops_schema.injoy_monitoring_data")
-        print("✅ 기존 데이터 삭제 완료")
-    except Exception as e:
-        print(f"⚠️ 데이터 삭제 중 에러: {e}")
     
     # 3. 데이터 타입 변환 함수
     def convert_value(val):
