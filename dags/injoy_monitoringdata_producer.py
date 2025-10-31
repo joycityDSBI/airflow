@@ -14,7 +14,7 @@ from airflow.operators.bash import BashOperator
 injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
 
 # 제외 그룹 필터링
-exclude_groups = ["DITeam", "admins", "users", 
+exclude_groups = ["Operators", "admins", "users", 
                     "전략사업본부-데이터사이언스실-마케팅사이언스팀", 
                     "전략사업본부-데이터사이언스실-예측모델링팀"]
 
