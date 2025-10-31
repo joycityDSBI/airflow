@@ -6,9 +6,11 @@ import pytz
 from databricks import sql
 import os
 from airflow.models import Variable
-from airflow import DAG
+from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
 
+injoy_notion_permission_producer = Dataset('injoy_notion_permission_producer')
 
 default_args = {
     'owner': 'airflow',
@@ -20,7 +22,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='injoy_notion_permission_consumer',
+    dag_id='injoy_notion_permission_producer',
     default_args=default_args,
     description='Databricks Notion 권한 동기화 모니터링',
     schedule= '10 23 * * *', # 매일 새벽 2시 10분 실행
@@ -494,6 +496,11 @@ with DAG(
 
 
 
+    bash_task = BashOperator(
+        task_id = 'bash_task',
+        outlets = [injoy_notion_permission_producer],
+        bash_command = 'echo "producer_1 수행 완료"'
+    )
 
     task_tokenize_databricks = PythonOperator(
         task_id='tokenize_databricks',
@@ -516,4 +523,4 @@ with DAG(
         dag=dag,
     )
 
-    task_tokenize_databricks >> task_detect_and_store_changes
+    task_tokenize_databricks >> task_detect_and_store_changes >> bash_task
