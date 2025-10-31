@@ -20,9 +20,9 @@ default_args = {
 }
 
 with DAG(
-    dag_id='injoy_monitoringdata_consumer_2',
+    dag_id='injoy_notion_permission_consumer',
     default_args=default_args,
-    description='Databricks 데이터를 Notion DB에 동기화하는 DAG',
+    description='Databricks Notion 권한 동기화 모니터링',
     schedule= '10 23 * * *', # 매일 새벽 2시 10분 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
