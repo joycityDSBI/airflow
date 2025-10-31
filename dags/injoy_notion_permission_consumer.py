@@ -21,7 +21,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='injoy_notion_sync',
+    dag_id='injoy_notion_permission_consumer',
     default_args=default_args,
     description='Databricks 데이터를 Notion DB에 동기화하는 DAG',
     schedule= [injoy_notion_permission_producer],
