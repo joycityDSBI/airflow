@@ -407,28 +407,29 @@ with DAG(
 
     def detect_and_store_changes(databricks_config=None):
         """변경 사항 감지 및 저장"""
-        
-        # 모든 권한 정보 통합
         df_final = complex_all_permissions()
 
-        # Databricks 연결 정보
         config = databricks_config or {
             'server_hostname': get_var('DATABRICKS_SERVER_HOSTNAME'),
-            'http_path': get_var('databricks_http_path'),
-            'access_token': get_var('databricks_token')
+            'http_path': get_var('DATABRICKS_HTTP_PATH'),
+            'access_token': get_var('DATABRICKS_TOKEN')
         }
         
-        target_table = "datahub.injoy_ops_schema.user_permission_snapshot"
+        # ✅ 테이블명을 catalog, schema, table로 분리
+        catalog = "datahub"
+        schema = "injoy_ops_schema"
+        table = "user_permission_snapshot"
+        target_table = f"`{catalog}`.`{schema}`.`{table}`"  # ✅ 각 부분을 백틱으로 감싸기
+        
         changes_detected = False
 
-        # 기존 데이터 로드 시도
         try:
+            # ✅ SELECT 쿼리도 백틱 사용
             with sql.connect(**config) as conn:
                 df_existing = pd.read_sql(f"SELECT * FROM {target_table}", conn)
             
             print(f"✅ 기존 테이블 로드 완료")
             
-            # 'loaded_at' 제외하고 비교
             compare_cols = [col for col in df_final.columns if col != 'loaded_at']
             df_new = df_final[compare_cols].sort_values(by=compare_cols).reset_index(drop=True)
             df_old = df_existing[compare_cols].sort_values(by=compare_cols).reset_index(drop=True)
@@ -443,20 +444,24 @@ with DAG(
             else:
                 raise e
 
-        # 변경 사항이 있으면 저장
         if changes_detected:
             print("🚀 테이블 저장 중...")
             with sql.connect(**config) as conn:
                 cursor = conn.cursor()
                 
-                # 테이블 재생성
+                # ✅ DROP TABLE도 백틱 사용
                 cursor.execute(f"DROP TABLE IF EXISTS {target_table}")
+                print(f"✅ 기존 테이블 삭제 완료")
                 
                 # 컬럼 타입 매핑
                 type_map = {'object': 'STRING', 'int64': 'BIGINT', 'float64': 'DOUBLE', 'bool': 'BOOLEAN'}
                 cols = ', '.join([f"`{col}` {type_map.get(str(df_final[col].dtype), 'STRING')}" 
                                 for col in df_final.columns])
-                cursor.execute(f"CREATE TABLE {target_table} ({cols})")
+                
+                # ✅ CREATE TABLE도 백틱 사용
+                create_sql = f"CREATE TABLE {target_table} ({cols})"
+                cursor.execute(create_sql)
+                print(f"✅ 테이블 생성 완료")
                 
                 # SQL 값 이스케이프 처리
                 def escape_sql_value(v):
@@ -465,13 +470,18 @@ with DAG(
                     s = str(v).replace("\\", "\\\\").replace("'", "''")
                     return f"'{s}'"
                 
-                for i in range(0, len(df_final), 1000):
+                # 데이터 삽입
+                total_rows = len(df_final)
+                for i in range(0, total_rows, 1000):
                     batch = df_final.iloc[i:i+1000]
                     values = []
                     for _, row in batch.iterrows():
-                        row_values = [escape_sql_value(v) for v in row]  # ✅ 수정
+                        row_values = [escape_sql_value(v) for v in row]
                         values.append(f"({', '.join(row_values)})")
-                    cursor.execute(f"INSERT INTO {target_table} VALUES {', '.join(values)}")
+                    
+                    insert_sql = f"INSERT INTO {target_table} VALUES {', '.join(values)}"
+                    cursor.execute(insert_sql)
+                    print(f"  ➡️ {min(i+1000, total_rows)}/{total_rows} 행 삽입 완료")
                 
                 cursor.close()
             
