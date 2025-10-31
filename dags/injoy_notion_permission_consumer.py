@@ -17,7 +17,7 @@ default_args = {
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
-    'retry_delay': timedelta(seconds=10),
+    'retry_delay': timedelta(seconds=15),
 }
 
 with DAG(
@@ -73,8 +73,8 @@ with DAG(
         """Databricks 연결 설정 반환"""
         return {
             'server_hostname': get_var('DATABRICKS_SERVER_HOSTNAME', required=True),
-            'http_path': get_var('DATABRICKS_HTTP_PATH', required=True),
-            'access_token': get_var('DATABRICKS_TOKEN', required=True)
+            'http_path': get_var('databricks_http_path', required=True),
+            'access_token': get_var('databricks_token', required=True)
         }
 
     # ==================== Notion 함수 ====================
