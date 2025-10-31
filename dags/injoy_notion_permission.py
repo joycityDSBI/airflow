@@ -68,8 +68,8 @@ with DAG(
         }
 
     NOTION_HEADERS = get_notion_headers()
-    DATABRICKS_INSTANCE = get_var("DATABRICKS_INSTANCE", required=True)
-    DATABRICKS_TOKEN = get_var("DATABRICKS_TOKEN", required=True)
+    DATABRICKS_INSTANCE = get_var("databricks_instance", required=True)
+    DATABRICKS_TOKEN = get_var("databricks_token", required=True)
     url = f"{DATABRICKS_INSTANCE}/api/2.0/token/list"
 
     DATABRICKS_HEADERS = {
