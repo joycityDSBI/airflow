@@ -46,3 +46,6 @@ psycopg2-binary==2.9.9
 
 # Databricks
 databricks-sql-connector==4.0.0
+
+# timezone
+pytz==2023.2
