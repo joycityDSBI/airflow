@@ -454,7 +454,7 @@ with DAG(
         print("🔄 Syncing groups to Notion...")
         
         headers = get_notion_headers()
-        db_id = get_var("NOTION_DB_ID_GROUP", required=True)
+        db_id = get_var("NOTION_DB_ID_GROUP", "22aea67a568180cda6e4dae66bf7459b")
         
         df_json = context['task_instance'].xcom_pull(task_ids='load_group_permissions', key='df_group_perm')
         df = pd.read_json(df_json, orient='records')
@@ -467,8 +467,8 @@ with DAG(
         print("🔄 Syncing users to Notion...")
         
         headers = get_notion_headers()
-        db_id_user = get_var("NOTION_DB_ID_USER", required=True)
-        db_id_group = get_var("NOTION_DB_ID_GROUP", required=True)
+        db_id_user = get_var("NOTION_DB_ID_USER", "22cea67a568180a7bfd6f070aa04fa30")
+        db_id_group = get_var("NOTION_DB_ID_GROUP", "22aea67a568180cda6e4dae66bf7459b")
         
         df_json = context['task_instance'].xcom_pull(task_ids='load_user_permissions', key='df_user_perm')
         df = pd.read_json(df_json, orient='records')
@@ -492,10 +492,10 @@ with DAG(
         print("🔄 Syncing assets to Notion...")
         
         headers = get_notion_headers()
-        db_id_asset = get_var("NOTION_DB_ID_ASSET", required=True)
-        db_id_group = get_var("NOTION_DB_ID_GROUP", required=True)
-        db_id_user = get_var("NOTION_DB_ID_USER", required=True)
-        
+        db_id_asset = get_var("NOTION_DB_ID_ASSET", "22dea67a5681808d9672e4bfe621045c")
+        db_id_group = get_var("NOTION_DB_ID_GROUP", "22aea67a568180cda6e4dae66bf7459b")
+        db_id_user = get_var("NOTION_DB_ID_USER", "22cea67a568180a7bfd6f070aa04fa30")
+
         df_json = context['task_instance'].xcom_pull(task_ids='load_asset_permissions', key='df_asset_perm')
         df = pd.read_json(df_json, orient='records')
         
