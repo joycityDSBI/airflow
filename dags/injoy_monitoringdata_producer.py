@@ -412,240 +412,253 @@ def merge_query_history(**context):
     query_df = cursor.fetchall_arrow().to_pandas()
     
     print(f"📊 Query history 조회 완료: {len(query_df)} rows")
-    
-    # 컬럼 rename
-    query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
-    
-    # 병합
-    df_audit_enriched = df_target.merge(
-        query_df_renamed[[
-            "statement_id", "user_email", "query_end_time_kst", 
-            "query_duration_seconds", "query_result_fetch_duration_seconds", "execution_status"
-        ]],
-        how="left",
-        on=["statement_id", "user_email"]
-    )
-    
-    print(f"📊 Query history 병합 완료: {len(df_audit_enriched)} rows")
-    
-    # ===== message_response_duration_seconds 계산 =====
-    # event_time_kst와 query_end_time_kst의 차이를 초 단위로 계산
-    if 'event_time_kst' in df_audit_enriched.columns and 'query_end_time_kst' in df_audit_enriched.columns:
-        # 문자열을 datetime으로 변환
-        df_audit_enriched['event_time_kst'] = pd.to_datetime(df_audit_enriched['event_time_kst'])
-        df_audit_enriched['query_end_time_kst'] = pd.to_datetime(df_audit_enriched['query_end_time_kst'])
+    # ===== 🔥 빈 DataFrame 체크 추가 =====
+    if query_df.empty:
+        print("⚠️ Query history가 비어있습니다. Query 관련 컬럼을 NULL로 설정합니다.")
         
-        # 시간 차이 계산 (초 단위)
-        df_audit_enriched['message_response_duration_seconds'] = (
-            df_audit_enriched['query_end_time_kst'] - df_audit_enriched['event_time_kst']
-        ).dt.total_seconds()
-        
-        print(f"✅ message_response_duration_seconds 계산 완료")
-    else:
-        # 컬럼이 없으면 NULL로 추가
+        # Query 관련 컬럼을 NULL로 추가
+        df_audit_enriched = df_target.copy()
+        df_audit_enriched['query_end_time_kst'] = None
+        df_audit_enriched['query_duration_seconds'] = None
+        df_audit_enriched['query_result_fetch_duration_seconds'] = None
+        df_audit_enriched['execution_status'] = None
         df_audit_enriched['message_response_duration_seconds'] = None
-        print(f"⚠️ event_time_kst 또는 query_end_time_kst 컬럼이 없어 message_response_duration_seconds를 NULL로 설정")
-    
-    print(f"📋 DataFrame 컬럼: {df_audit_enriched.columns.tolist()}")
-    
-    # ===== 타겟 테이블 스키마 조회 =====
-    target_table = "datahub.injoy_ops_schema.injoy_monitoring_data"
-    temp_table = "datahub.injoy_ops_schema.temp_merge_data"
-    
-    # 타겟 테이블의 컬럼 목록 및 타입 조회
-    cursor.execute(f"DESCRIBE TABLE {target_table}")
-    table_schema = cursor.fetchall_arrow().to_pandas()
-    
-    print(f"📋 타겟 테이블 스키마:")
-    print(table_schema[['col_name', 'data_type']].to_string())
-    
-    # 컬럼명을 키로, 데이터 타입을 값으로 하는 딕셔너리 생성
-    target_column_types = dict(zip(table_schema['col_name'], table_schema['data_type']))
-    target_columns = table_schema['col_name'].tolist()
-    
-    # DataFrame과 타겟 테이블 공통 컬럼만 선택
-    df_columns = df_audit_enriched.columns.tolist()
-    common_columns = [col for col in df_columns if col in target_columns]
-    missing_in_target = [col for col in df_columns if col not in target_columns]
-    missing_in_df = [col for col in target_columns if col not in df_columns]
-    
-    if missing_in_target:
-        print(f"⚠️ 타겟 테이블에 없는 컬럼 (제외됨): {missing_in_target}")
-    
-    if missing_in_df:
-        print(f"⚠️ DataFrame에 없지만 타겟 테이블에 있는 컬럼: {missing_in_df}")
-        # 타겟 테이블에는 있지만 DataFrame에 없는 컬럼을 NULL로 추가
-        for col in missing_in_df:
-            if col not in ['id', 'created_at', 'updated_at']:  # 자동 생성 컬럼 제외
-                df_audit_enriched[col] = None
-                common_columns.append(col)
-                print(f"   → {col} 컬럼을 NULL로 추가")
-    
-    # 공통 컬럼만 사용하여 데이터 필터링
-    df_to_insert = df_audit_enriched[common_columns].copy()
-    
-    print(f"✅ 사용할 컬럼 ({len(common_columns)}개): {common_columns}")
-    
-    # ===== 임시 테이블 생성 (타겟 테이블의 실제 타입 사용) =====
-    
-    # 기존 임시 테이블 삭제
-    cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
-    
-    # 타겟 테이블의 타입을 사용하여 CREATE TABLE 문 생성
-    column_definitions = []
-    for col in common_columns:
-        sql_type = target_column_types.get(col, 'STRING')  # 타겟 테이블의 실제 타입 사용
-        column_definitions.append(f"`{col}` {sql_type}")
-    
-    create_table_sql = f"""
-    CREATE TABLE {temp_table} (
-        {', '.join(column_definitions)}
-    )
-    USING DELTA
-    """
-    
-    print(f"📝 임시 테이블 생성 SQL:")
-    print(create_table_sql)
-    
-    cursor.execute(create_table_sql)
-    print(f"✅ 임시 테이블 생성 완료: {temp_table}")
-    
-    # 생성된 임시 테이블 스키마 확인
-    cursor.execute(f"DESCRIBE TABLE {temp_table}")
-    temp_schema = cursor.fetchall_arrow().to_pandas()
-    print(f"📋 생성된 임시 테이블 스키마:")
-    print(temp_schema[['col_name', 'data_type']].to_string())
-    
-    # DataFrame을 batch INSERT
-    columns = common_columns
-    column_str = ", ".join([f"`{col}`" for col in columns])
-    
-    # NULL 값을 SQL NULL로 변환하는 함수
-    def convert_value(val, col_name):
-        """
-        값을 SQL 문자열로 변환
-        col_name: 타입 체크를 위한 컬럼명
-        """
-        # None 체크 먼저
-        if val is None:
-            return "NULL"
-        # pandas NA 타입 체크
-        if pd.isna(val) if not isinstance(val, (list, tuple, np.ndarray)) else False:
-            return "NULL"
-        # numpy nan 체크
-        try:
-            if np.isnan(val):
-                return "NULL"
-        except (TypeError, ValueError):
-            pass
         
-        # 타겟 테이블의 타입 확인
-        target_type = target_column_types.get(col_name, '').lower()
+        print(f"✅ Query history 없이 진행: {len(df_audit_enriched)} rows")
+    else:
+        # 컬럼 rename
+        query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
         
-        # ARRAY 타입 처리
-        if 'array' in target_type:
-            if isinstance(val, (list, tuple)):
-                # 리스트를 SQL ARRAY로 변환
-                array_elements = [f"'{str(v).replace(chr(39), chr(39)+chr(39))}'" for v in val]
-                return f"ARRAY({', '.join(array_elements)})"
-            elif isinstance(val, str):
-                # 문자열을 단일 요소 배열로 변환
-                escaped = val.replace("'", "''")
-                return f"ARRAY('{escaped}')"
-            else:
-                return "NULL"
+        # 병합
+        df_audit_enriched = df_target.merge(
+            query_df_renamed[[
+                "statement_id", "user_email", "query_end_time_kst", 
+                "query_duration_seconds", "query_result_fetch_duration_seconds", "execution_status"
+            ]],
+            how="left",
+            on=["statement_id", "user_email"]
+        )
         
-        # 타입별 처리
-        if isinstance(val, str):
-            # SQL Injection 방지를 위해 escape 처리
-            escaped = val.replace("'", "''").replace("\\", "\\\\")
-            return f"'{escaped}'"
-        elif isinstance(val, bool):
-            return str(val).upper()  # TRUE/FALSE
-        elif isinstance(val, (int, float, np.integer, np.floating)):
-            return str(val)
-        elif isinstance(val, (pd.Timestamp, np.datetime64)):
-            try:
-                ts = pd.Timestamp(val)
-                return f"'{ts.strftime('%Y-%m-%d %H:%M:%S')}'"
-            except:
-                return "NULL"
+        print(f"📊 Query history 병합 완료: {len(df_audit_enriched)} rows")
+        
+        # ===== message_response_duration_seconds 계산 =====
+        # event_time_kst와 query_end_time_kst의 차이를 초 단위로 계산
+        if 'event_time_kst' in df_audit_enriched.columns and 'query_end_time_kst' in df_audit_enriched.columns:
+            # 문자열을 datetime으로 변환
+            df_audit_enriched['event_time_kst'] = pd.to_datetime(df_audit_enriched['event_time_kst'])
+            df_audit_enriched['query_end_time_kst'] = pd.to_datetime(df_audit_enriched['query_end_time_kst'])
+            
+            # 시간 차이 계산 (초 단위)
+            df_audit_enriched['message_response_duration_seconds'] = (
+                df_audit_enriched['query_end_time_kst'] - df_audit_enriched['event_time_kst']
+            ).dt.total_seconds()
+            
+            print(f"✅ message_response_duration_seconds 계산 완료")
         else:
-            # 기타 타입은 문자열로 변환
-            try:
-                escaped = str(val).replace("'", "''").replace("\\", "\\\\")
-                return f"'{escaped}'"
-            except:
-                return "NULL"
-    
-    # 배치 단위로 INSERT
-    batch_size = 1000
-    total_rows = len(df_to_insert)
-    
-    for start_idx in range(0, total_rows, batch_size):
-        end_idx = min(start_idx + batch_size, total_rows)
-        batch_df = df_to_insert.iloc[start_idx:end_idx]
+            # 컬럼이 없으면 NULL로 추가
+            df_audit_enriched['message_response_duration_seconds'] = None
+            print(f"⚠️ event_time_kst 또는 query_end_time_kst 컬럼이 없어 message_response_duration_seconds를 NULL로 설정")
         
-        values_list = []
-        for idx, row in batch_df.iterrows():
+        print(f"📋 DataFrame 컬럼: {df_audit_enriched.columns.tolist()}")
+        
+        # ===== 타겟 테이블 스키마 조회 =====
+        target_table = "datahub.injoy_ops_schema.injoy_monitoring_data"
+        temp_table = "datahub.injoy_ops_schema.temp_merge_data"
+        
+        # 타겟 테이블의 컬럼 목록 및 타입 조회
+        cursor.execute(f"DESCRIBE TABLE {target_table}")
+        table_schema = cursor.fetchall_arrow().to_pandas()
+        
+        print(f"📋 타겟 테이블 스키마:")
+        print(table_schema[['col_name', 'data_type']].to_string())
+        
+        # 컬럼명을 키로, 데이터 타입을 값으로 하는 딕셔너리 생성
+        target_column_types = dict(zip(table_schema['col_name'], table_schema['data_type']))
+        target_columns = table_schema['col_name'].tolist()
+        
+        # DataFrame과 타겟 테이블 공통 컬럼만 선택
+        df_columns = df_audit_enriched.columns.tolist()
+        common_columns = [col for col in df_columns if col in target_columns]
+        missing_in_target = [col for col in df_columns if col not in target_columns]
+        missing_in_df = [col for col in target_columns if col not in df_columns]
+        
+        if missing_in_target:
+            print(f"⚠️ 타겟 테이블에 없는 컬럼 (제외됨): {missing_in_target}")
+        
+        if missing_in_df:
+            print(f"⚠️ DataFrame에 없지만 타겟 테이블에 있는 컬럼: {missing_in_df}")
+            # 타겟 테이블에는 있지만 DataFrame에 없는 컬럼을 NULL로 추가
+            for col in missing_in_df:
+                if col not in ['id', 'created_at', 'updated_at']:  # 자동 생성 컬럼 제외
+                    df_audit_enriched[col] = None
+                    common_columns.append(col)
+                    print(f"   → {col} 컬럼을 NULL로 추가")
+        
+        # 공통 컬럼만 사용하여 데이터 필터링
+        df_to_insert = df_audit_enriched[common_columns].copy()
+        
+        print(f"✅ 사용할 컬럼 ({len(common_columns)}개): {common_columns}")
+        
+        # ===== 임시 테이블 생성 (타겟 테이블의 실제 타입 사용) =====
+        
+        # 기존 임시 테이블 삭제
+        cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
+        
+        # 타겟 테이블의 타입을 사용하여 CREATE TABLE 문 생성
+        column_definitions = []
+        for col in common_columns:
+            sql_type = target_column_types.get(col, 'STRING')  # 타겟 테이블의 실제 타입 사용
+            column_definitions.append(f"`{col}` {sql_type}")
+        
+        create_table_sql = f"""
+        CREATE TABLE {temp_table} (
+            {', '.join(column_definitions)}
+        )
+        USING DELTA
+        """
+        
+        print(f"📝 임시 테이블 생성 SQL:")
+        print(create_table_sql)
+        
+        cursor.execute(create_table_sql)
+        print(f"✅ 임시 테이블 생성 완료: {temp_table}")
+        
+        # 생성된 임시 테이블 스키마 확인
+        cursor.execute(f"DESCRIBE TABLE {temp_table}")
+        temp_schema = cursor.fetchall_arrow().to_pandas()
+        print(f"📋 생성된 임시 테이블 스키마:")
+        print(temp_schema[['col_name', 'data_type']].to_string())
+        
+        # DataFrame을 batch INSERT
+        columns = common_columns
+        column_str = ", ".join([f"`{col}`" for col in columns])
+        
+        # NULL 값을 SQL NULL로 변환하는 함수
+        def convert_value(val, col_name):
+            """
+            값을 SQL 문자열로 변환
+            col_name: 타입 체크를 위한 컬럼명
+            """
+            # None 체크 먼저
+            if val is None:
+                return "NULL"
+            # pandas NA 타입 체크
+            if pd.isna(val) if not isinstance(val, (list, tuple, np.ndarray)) else False:
+                return "NULL"
+            # numpy nan 체크
             try:
-                row_values = ", ".join([convert_value(row[col], col) for col in columns])
-                values_list.append(f"({row_values})")
+                if np.isnan(val):
+                    return "NULL"
+            except (TypeError, ValueError):
+                pass
+            
+            # 타겟 테이블의 타입 확인
+            target_type = target_column_types.get(col_name, '').lower()
+            
+            # ARRAY 타입 처리
+            if 'array' in target_type:
+                if isinstance(val, (list, tuple)):
+                    # 리스트를 SQL ARRAY로 변환
+                    array_elements = [f"'{str(v).replace(chr(39), chr(39)+chr(39))}'" for v in val]
+                    return f"ARRAY({', '.join(array_elements)})"
+                elif isinstance(val, str):
+                    # 문자열을 단일 요소 배열로 변환
+                    escaped = val.replace("'", "''")
+                    return f"ARRAY('{escaped}')"
+                else:
+                    return "NULL"
+            
+            # 타입별 처리
+            if isinstance(val, str):
+                # SQL Injection 방지를 위해 escape 처리
+                escaped = val.replace("'", "''").replace("\\", "\\\\")
+                return f"'{escaped}'"
+            elif isinstance(val, bool):
+                return str(val).upper()  # TRUE/FALSE
+            elif isinstance(val, (int, float, np.integer, np.floating)):
+                return str(val)
+            elif isinstance(val, (pd.Timestamp, np.datetime64)):
+                try:
+                    ts = pd.Timestamp(val)
+                    return f"'{ts.strftime('%Y-%m-%d %H:%M:%S')}'"
+                except:
+                    return "NULL"
+            else:
+                # 기타 타입은 문자열로 변환
+                try:
+                    escaped = str(val).replace("'", "''").replace("\\", "\\\\")
+                    return f"'{escaped}'"
+                except:
+                    return "NULL"
+        
+        # 배치 단위로 INSERT
+        batch_size = 1000
+        total_rows = len(df_to_insert)
+        
+        for start_idx in range(0, total_rows, batch_size):
+            end_idx = min(start_idx + batch_size, total_rows)
+            batch_df = df_to_insert.iloc[start_idx:end_idx]
+            
+            values_list = []
+            for idx, row in batch_df.iterrows():
+                try:
+                    row_values = ", ".join([convert_value(row[col], col) for col in columns])
+                    values_list.append(f"({row_values})")
+                except Exception as e:
+                    print(f"⚠️ Row {idx} 변환 실패: {e}")
+                    print(f"   문제 데이터: {row.to_dict()}")
+                    raise
+            
+            values_str = ", ".join(values_list)
+            
+            insert_sql = f"""
+            INSERT INTO {temp_table} ({column_str})
+            VALUES {values_str}
+            """
+            
+            try:
+                cursor.execute(insert_sql)
+                print(f"📝 배치 INSERT 완료: {start_idx+1}-{end_idx}/{total_rows}")
             except Exception as e:
-                print(f"⚠️ Row {idx} 변환 실패: {e}")
-                print(f"   문제 데이터: {row.to_dict()}")
+                print(f"⚠️ INSERT 실패 at batch {start_idx}-{end_idx}")
+                print(f"   SQL 미리보기: {insert_sql[:500]}...")
                 raise
         
-        values_str = ", ".join(values_list)
+        print(f"✅ 임시 테이블 데이터 적재 완료: {total_rows} rows")
         
-        insert_sql = f"""
-        INSERT INTO {temp_table} ({column_str})
-        VALUES {values_str}
+        # ===== MERGE 실행 =====
+        merge_key = 'statement_id'
+        
+        # 동적으로 컬럼 리스트 생성
+        update_set = ", ".join([f"target.`{col}` = source.`{col}`" for col in columns if col != merge_key])
+        insert_columns = ", ".join([f"`{col}`" for col in columns])
+        insert_values = ", ".join([f"source.`{col}`" for col in columns])
+        
+        merge_sql = f"""
+        MERGE INTO {target_table} AS target
+        USING {temp_table} AS source
+        ON target.`{merge_key}` = source.`{merge_key}`
+        WHEN MATCHED THEN
+            UPDATE SET {update_set}
+        WHEN NOT MATCHED THEN
+            INSERT ({insert_columns})
+            VALUES ({insert_values})
         """
         
-        try:
-            cursor.execute(insert_sql)
-            print(f"📝 배치 INSERT 완료: {start_idx+1}-{end_idx}/{total_rows}")
-        except Exception as e:
-            print(f"⚠️ INSERT 실패 at batch {start_idx}-{end_idx}")
-            print(f"   SQL 미리보기: {insert_sql[:500]}...")
-            raise
-    
-    print(f"✅ 임시 테이블 데이터 적재 완료: {total_rows} rows")
-    
-    # ===== MERGE 실행 =====
-    merge_key = 'statement_id'
-    
-    # 동적으로 컬럼 리스트 생성
-    update_set = ", ".join([f"target.`{col}` = source.`{col}`" for col in columns if col != merge_key])
-    insert_columns = ", ".join([f"`{col}`" for col in columns])
-    insert_values = ", ".join([f"source.`{col}`" for col in columns])
-    
-    merge_sql = f"""
-    MERGE INTO {target_table} AS target
-    USING {temp_table} AS source
-    ON target.`{merge_key}` = source.`{merge_key}`
-    WHEN MATCHED THEN
-        UPDATE SET {update_set}
-    WHEN NOT MATCHED THEN
-        INSERT ({insert_columns})
-        VALUES ({insert_values})
-    """
-    
-    print(f"📝 MERGE 실행 중...")
-    cursor.execute(merge_sql)
-    print("✅ 데이터 UPSERT 완료")
-    
-    # 임시 테이블 삭제
-    cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
-    print(f"🗑️ 임시 테이블 삭제 완료")
-    
-    cursor.close()
-    connection.close()
-    
-    print(f"✅ Delta 테이블 저장 완료")
-    
-    return len(df_to_insert)
+        print(f"📝 MERGE 실행 중...")
+        cursor.execute(merge_sql)
+        print("✅ 데이터 UPSERT 완료")
+        
+        # 임시 테이블 삭제
+        cursor.execute(f"DROP TABLE IF EXISTS {temp_table}")
+        print(f"🗑️ 임시 테이블 삭제 완료")
+        
+        cursor.close()
+        connection.close()
+        
+        print(f"✅ Delta 테이블 저장 완료")
+        
+        return len(df_to_insert)
 
 # Task 정의
 bash_task = BashOperator(
