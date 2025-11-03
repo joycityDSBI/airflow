@@ -51,7 +51,7 @@ def get_var(key: str, default: str = None) -> str:
 # 설정 값들
 NETWORK_BASE_PATH = get_var('__network_base_path', '/mnt/creative/')
 SPREADSHEET_ID = get_var('__spreadsheet_id', '1n2-pedl4-QH8Jo4poqPk62ynyaezMaM0dKuWitRqyDo')
-CREDENTIALS_FILE = get_var('GOOGLE_CREDENTIAL_JSON')
+CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 GCS_BUCKET = get_var('__gcs_bucket', 'ua_creative_files')
 NOTION_API_KEY = get_var('NOTION_TOKEN')
 NOTION_DB_ID = get_var('__notion_db_id', '273ea67a5681806880f2ff1faac3ec71')
@@ -70,10 +70,6 @@ def check_dependencies(**context):
         except ImportError:
             print(f"⚠️  {package} 설치 중...")
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
-    
-    # 인증 파일 확인
-    if not os.path.exists(CREDENTIALS_FILE):
-        raise FileNotFoundError(f"GCS 인증 파일을 찾을 수 없습니다: {CREDENTIALS_FILE}")
     
     # 네트워크 경로 확인
     if not os.path.exists(NETWORK_BASE_PATH):
@@ -94,11 +90,13 @@ def initialize_clients(**context):
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    sheet_creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+
+    cred_dict = json.loads(CREDENTIALS_JSON)
+    sheet_creds = Credentials.from_service_account_info(cred_dict, scopes=SCOPES)
     gc = gspread.authorize(sheet_creds)
     
     # GCS 클라이언트
-    storage_client = storage.Client.from_service_account_json(CREDENTIALS_FILE)
+    storage_client = storage.Client.from_service_account_info(cred_dict)
     bucket = storage_client.bucket(GCS_BUCKET)
     
     # Notion 클라이언트
@@ -477,11 +475,12 @@ def process_sheet(sheet_name, **context):
     }
     
     # === 클라이언트 초기화 ===
-    sheet_creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+    cred_dict = json.loads(CREDENTIALS_JSON)
+    sheet_creds = Credentials.from_service_account_info(cred_dict, scopes=SCOPES)
     gc = gspread.authorize(sheet_creds)
     spreadsheet = gc.open_by_key(SPREADSHEET_ID)
-    
-    storage_client = storage.Client.from_service_account_json(CREDENTIALS_FILE)
+
+    storage_client = storage.Client.from_service_account_info(cred_dict)
     bucket = storage_client.bucket(GCS_BUCKET)
     
     notion = NotionClient(auth=NOTION_API_KEY)
