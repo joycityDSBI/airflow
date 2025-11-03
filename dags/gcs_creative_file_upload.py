@@ -54,7 +54,7 @@ SPREADSHEET_ID = get_var('__spreadsheet_id', '1n2-pedl4-QH8Jo4poqPk62ynyaezMaM0d
 CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 GCS_BUCKET = get_var('__gcs_bucket', 'ua_creative_files')
 NOTION_API_KEY = get_var('NOTION_TOKEN')
-NOTION_DB_ID = get_var('__notion_db_id', '273ea67a5681806880f2ff1faac3ec71')
+NOTION_DB_ID = get_var('NOTION_DB_ID_UA_CREATIVE_FILE')
 
 TARGET_SHEETS = ['POTC', 'GBTW', 'WWMC', 'DRSG', 'DRB', 'JTWN', 'BSTD', 'RESU']
 
