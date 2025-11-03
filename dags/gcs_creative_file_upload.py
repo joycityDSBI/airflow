@@ -6,7 +6,6 @@ Google Sheets → GCS 링크 정규화 & Notion DB 업로드 DAG
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.utils.dates import days_ago
 from airflow.models import Variable
 from datetime import datetime, timedelta
 import os
@@ -36,7 +35,7 @@ dag = DAG(
     default_args=default_args,
     description='Google Sheets 링크 정규화 및 Notion DB 자동 업로드',
     schedule='0 2 * * *',  # 매일 새벽 2시 실행 (KST 기준 조정 필요)
-    start_date=days_ago(1),
+    start_date=datetime(2025, 1, 1),
     catchup=False,
     max_active_runs=1,
     tags=['creative', 'notion', 'marketing'],
