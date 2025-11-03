@@ -49,3 +49,6 @@ databricks-sql-connector==4.0.0
 
 # timezone
 pytz==2023.2
+
+# notion
+notion-client==2.4.0
