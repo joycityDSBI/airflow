@@ -58,6 +58,25 @@ NOTION_DB_ID = get_var('__notion_db_id', '273ea67a5681806880f2ff1faac3ec71')
 
 TARGET_SHEETS = ['POTC', 'GBTW', 'WWMC', 'DRSG', 'DRB', 'JTWN', 'BSTD', 'RESU']
 
+cred_dict = json.loads(CREDENTIALS_JSON)
+
+if 'private_key' in cred_dict:
+    private_key = cred_dict['private_key']
+    # 만약 \\n (이중 이스케이프)로 저장되어 있다면
+    if '\\n' in private_key:
+        cred_dict['private_key'] = private_key.replace('\\n', '\n')
+    # 또는 공백이나 다른 문자로 깨진 경우
+    elif 'BEGIN PRIVATE KEY-----' in private_key and '\n' not in private_key:
+        print("⚠️ Private key에 줄바꿈이 없습니다. 수정 중...")
+        # 수동으로 줄바꿈 추가
+        cred_dict['private_key'] = private_key.replace(
+            '-----BEGIN PRIVATE KEY-----', 
+            '-----BEGIN PRIVATE KEY-----\n'
+        ).replace(
+            '-----END PRIVATE KEY-----', 
+            '\n-----END PRIVATE KEY-----\n'
+        )
+
 def check_dependencies(**context):
     """필수 라이브러리 및 환경 확인"""
     import subprocess
@@ -91,7 +110,7 @@ def initialize_clients(**context):
         "https://www.googleapis.com/auth/drive"
     ]
 
-    cred_dict = json.loads(CREDENTIALS_JSON)
+    
     sheet_creds = Credentials.from_service_account_info(cred_dict, scopes=SCOPES)
     gc = gspread.authorize(sheet_creds)
     
@@ -475,7 +494,7 @@ def process_sheet(sheet_name, **context):
     }
     
     # === 클라이언트 초기화 ===
-    cred_dict = json.loads(CREDENTIALS_JSON)
+    
     sheet_creds = Credentials.from_service_account_info(cred_dict, scopes=SCOPES)
     gc = gspread.authorize(sheet_creds)
     spreadsheet = gc.open_by_key(SPREADSHEET_ID)
