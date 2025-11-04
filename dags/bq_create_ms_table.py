@@ -18,7 +18,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='bigquery_create_table_dag',
+    dag_id='bq_create_ms_table',
     default_args=default_args,
     description='BigQuery 테이블 생성 예시',
     schedule=[gcs_creative_file_upload],
