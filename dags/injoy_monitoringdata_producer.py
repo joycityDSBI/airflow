@@ -412,8 +412,8 @@ def merge_query_history(**context):
     FROM system.query.history
     WHERE query_source.genie_space_id IS NOT NULL
         AND statement_type = 'SELECT'
-        AND DATE(end_time) >= CURRENT_DATE - INTERVAL 1 DAYS
-        AND DATE(end_time) < CURRENT_DATE
+        AND DATE(end_time) >= CURRENT_DATE - INTERVAL 2 DAYS
+        AND DATE(end_time) < CURRENT_DATE - INTERVAL 1 DAYS
     """
     
     cursor.execute(query_history_sql)
