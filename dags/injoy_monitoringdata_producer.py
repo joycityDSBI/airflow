@@ -93,6 +93,7 @@ def extract_audit_logs(**context):
         access_token=config['token']
     )
 
+    # 아침 8시에 배치가 진행되기 때문에 intervarl 2days와 1days를 진행
     query = f"""
     WITH raw_log AS (
         SELECT 
@@ -105,8 +106,8 @@ def extract_audit_logs(**context):
         FROM system.access.audit
         WHERE service_name = 'aibiGenie'
             AND action_name IN ('createConversationMessage', 'updateConversationMessageFeedback', 'getMessageQueryResult')
-            AND DATE(event_time) >= CURRENT_DATE - INTERVAL 1 DAYS
-            AND DATE(event_time) < CURRENT_DATE
+            AND DATE(event_time) >= CURRENT_DATE - INTERVAL 2 DAYS
+            AND DATE(event_time) < CURRENT_DATE - INTERVAL 1 DAYS
     ),
 
     message_tb AS (
@@ -184,6 +185,8 @@ def get_user_groups(**context):
     df_groups = pd.DataFrame([{"group_name": g["displayName"], "group_id": g["id"]} for g in groups])
     
     target_groups = df_groups[~df_groups["group_name"].isin(exclude_groups)]
+    
+    print("⚠️ 타겟 그룹 리스트", target_groups)
     
     # Step 3: 각 그룹의 구성원 수집
     user_group_list = []
