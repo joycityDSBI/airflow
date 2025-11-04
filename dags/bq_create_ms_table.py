@@ -18,18 +18,29 @@ def get_var(key: str, default: str = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
-CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
-cred_dict = json.loads(CREDENTIALS_JSON)
+def get_bigquery_client():
+    """BigQuery 클라이언트 생성"""
+    CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
+    cred_dict = json.loads(CREDENTIALS_JSON)
+    
+    # ✅ private_key의 \\n을 실제 줄바꿈으로 변환
+    if 'private_key' in cred_dict:
+        cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+    
+    credentials = service_account.Credentials.from_service_account_info(
+        cred_dict,
+        scopes=['https://www.googleapis.com/auth/bigquery']
+    )
+    
+    client = bigquery.Client(
+        credentials=credentials,
+        project='data-science-division-216308'
+    )
+    
+    return client
 
-credentials = service_account.Credentials.from_service_account_info(
-    cred_dict,
-    scopes=['https://www.googleapis.com/auth/bigquery']  # 필요한 스코프 추가
-)
-
-client=bigquery.Client(
-    credentials=credentials,
-    project='data-science-division-216308'
-)
+# 사용
+client = get_bigquery_client()
 
 
 ## DAG 설정
