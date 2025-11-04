@@ -227,9 +227,6 @@ def get_user_groups(**context):
         )
     
     print(f"✅ 사용자 그룹 정보 수집 완료: {len(df_user_groups)} users")
-    print("✅ 사용자 그룹 리스트:")
-    for _, row in df_user_groups.iterrows():
-        print(f"  - {row['group_name']} ({row['user_id']})")
 
     # XCom으로 데이터 전달
     context['ti'].xcom_push(key='df_user_groups', value=df_user_groups.to_json(orient='split'))
@@ -253,6 +250,9 @@ def enrich_with_groups(**context):
     df_audit_with_group = df_audit_with_group.dropna(subset=["group_name"])
     
     print(f"✅ 그룹 정보 병합 완료: {len(df_audit_with_group)} rows")
+    print(f"✅ 사용자 그룹 리스트:")
+    for _, row in df_audit_with_group.iterrows():
+        print(f"  - {row['user_email']} ({row['user_id']})")
     
     context['ti'].xcom_push(key='df_audit_with_group', value=df_audit_with_group.to_json(orient='split', date_format='iso'))
     
