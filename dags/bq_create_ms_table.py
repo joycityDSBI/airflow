@@ -21,6 +21,11 @@ def get_var(key: str, default: str = None) -> str:
 CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 cred_dict = json.loads(CREDENTIALS_JSON)
 
+credentials = service_account.Credentials.from_service_account_info(
+    cred_dict,
+    scopes=['https://www.googleapis.com/auth/bigquery']  # 필요한 스코프 추가
+)
+
 client=bigquery.Client(
     credentials=cred_dict,
     project='data-science-division-216308'
