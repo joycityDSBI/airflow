@@ -21,9 +21,9 @@ def get_var(key: str, default: str = None) -> str:
 CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 cred_dict = json.loads(CREDENTIALS_JSON)
 
-client = bigquery.Client(
+client=bigquery.Client(
     credentials=cred_dict,
-    proejct='data-science-division-216308'
+    project='data-science-division-216308'
 )
 
 
