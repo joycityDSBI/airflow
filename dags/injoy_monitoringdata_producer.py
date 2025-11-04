@@ -229,7 +229,7 @@ def get_user_groups(**context):
     print(f"✅ 사용자 그룹 정보 수집 완료: {len(df_user_groups)} users")
     print("✅ 사용자 그룹 리스트:")
     for _, row in df_user_groups.iterrows():
-        print(f"  - {row['group_name']} ({row['group_id']})")
+        print(f"  - {row['group_name']} ({row['user_id']})")
 
     # XCom으로 데이터 전달
     context['ti'].xcom_push(key='df_user_groups', value=df_user_groups.to_json(orient='split'))
