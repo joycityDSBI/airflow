@@ -4,7 +4,7 @@ Google Sheets → GCS 링크 정규화 & Notion DB 업로드 DAG
 일일 배치로 실행되며, 각 프로젝트별 시트를 병렬 처리합니다.
 """
 
-from airflow import DAG, DataSet
+from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.models import Variable
@@ -21,7 +21,7 @@ except ImportError:
     import gspread
 
 
-gcs_creative_file_upload = DataSet('gcs_creative_file_upload')
+gcs_creative_file_upload = Dataset('gcs_creative_file_upload')
 
 # 기본 DAG 설정
 default_args = {

@@ -171,6 +171,7 @@ def get_user_groups(**context):
     """
     Task 2: SCIM API로 그룹 및 사용자 정보 수집
     """
+    exclude_user_id = "6547992203707764"
     config = get_databricks_config()
     headers = {"Authorization": f"Bearer {config['token']}"}
     
@@ -182,19 +183,20 @@ def get_user_groups(**context):
         raise Exception(f"그룹 조회 실패: {group_resp.status_code} - {group_resp.text}")
     
     groups = group_resp.json().get("Resources", [])
-    df_groups = pd.DataFrame([{"group_name": g["displayName"], "group_id": g["id"]} for g in groups])
+    print(f"⏭️ 전체 그룹 리스트: {groups}")
     
-    target_groups = df_groups[~df_groups["group_name"].isin(exclude_groups)]
-    
-    print("⚠️ 타겟 그룹 리스트", target_groups)
-    
-    # Step 3: 각 그룹의 구성원 수집
+    # Step 2: 각 그룹의 구성원 수집 (exclude_groups 제외)
     user_group_list = []
-    exclude_user_id = "6547992203707764"
     
-    for _, row in target_groups.iterrows():
-        group_name = row["group_name"]
-        group_id = row["group_id"]
+    for g in groups:
+        group_name = g.get("displayName", "")
+        group_id = g.get("id", "")
+        
+        # exclude_groups에 포함된 그룹은 건너뛰기
+        if group_name in exclude_groups:
+            print(f"⏭️ 제외된 그룹 건너뛰기: {group_name}")
+            continue
+        
         group_detail_url = f"{config['instance']}/api/2.0/preview/scim/v2/Groups/{group_id}"
         detail_resp = requests.get(group_detail_url, headers=headers)
         
@@ -210,15 +212,19 @@ def get_user_groups(**context):
             if user_id and user_id != exclude_user_id:
                 user_group_list.append({"user_id": user_id, "group_name": group_name})
     
-    # Step 4: DataFrame으로 변환 및 그룹핑
-    df_user_groups = pd.DataFrame(user_group_list).drop_duplicates()
-    
-    df_user_groups = (
-        df_user_groups
-        .groupby("user_id")["group_name"]
-        .apply(lambda x: sorted(set(x)))
-        .reset_index()
-    )
+    # Step 3: DataFrame으로 변환 및 그룹핑
+    if not user_group_list:
+        print("⚠️ 수집된 사용자-그룹 매핑이 없습니다.")
+        df_user_groups = pd.DataFrame(columns=["user_id", "group_name"])
+    else:
+        df_user_groups = pd.DataFrame(user_group_list).drop_duplicates()
+        
+        df_user_groups = (
+            df_user_groups
+            .groupby("user_id")["group_name"]
+            .apply(lambda x: sorted(set(x)))
+            .reset_index()
+        )
     
     print(f"✅ 사용자 그룹 정보 수집 완료: {len(df_user_groups)} users")
     
@@ -226,7 +232,6 @@ def get_user_groups(**context):
     context['ti'].xcom_push(key='df_user_groups', value=df_user_groups.to_json(orient='split'))
     
     return len(df_user_groups)
-
 
 def enrich_with_groups(**context):
     """
