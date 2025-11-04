@@ -27,7 +27,7 @@ credentials = service_account.Credentials.from_service_account_info(
 )
 
 client=bigquery.Client(
-    credentials=cred_dict,
+    credentials=credentials,
     project='data-science-division-216308'
 )
 
