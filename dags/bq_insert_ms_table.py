@@ -50,8 +50,6 @@ def get_bigquery_client():
 
 
 # 사용
-client = get_bigquery_client()
-
 def check_service_account():
     """서비스 계정 정보 확인 및 안내"""
     try:
@@ -83,6 +81,39 @@ def check_service_account():
         raise
 
 
+def check_dataset_location(**context):
+    """Dataset 위치 확인"""
+    client = get_bigquery_client()
+    
+    project_id = "data-science-division-216308"
+    dataset_id = "ALL_GAMES"
+    
+    try:
+        dataset_ref = f"{project_id}.{dataset_id}"
+        dataset = client.get_dataset(dataset_ref)
+        
+        print(f"✅ Dataset 발견!")
+        print(f"   Dataset ID: {dataset.dataset_id}")
+        print(f"   위치(Location): {dataset.location}")
+        
+        return dataset.location
+        
+    except Exception as e:
+        print(f"❌ Dataset을 찾을 수 없습니다: {str(e)}")
+        
+        # 프로젝트 내 모든 Dataset 나열
+        print(f"\n📂 프로젝트 내 Dataset 목록:")
+        datasets = list(client.list_datasets(project_id))
+        if datasets:
+            for ds in datasets:
+                print(f"   - {ds.dataset_id} (위치: {ds.location})")
+        else:
+            print(f"   (Dataset이 없습니다)")
+        
+        raise
+
+
+
 bq_create_ms_table = Dataset('bq_create_ms_table')
 
 default_args = {
@@ -102,6 +133,9 @@ with DAG(
 ) as dag:
     
     def Truncate_performance_creatives(**context):
+
+        client = get_bigquery_client()
+
         query = """
         TRUNCATE TABLE `data-science-division-216308.ALL_GAMES.Performance_Creatives`
         """
@@ -112,6 +146,9 @@ with DAG(
         print(f"✅ Performance_Creatives ✅ 테이블 TRUNCATE 완료")
 
     def Insert_performance_creatives(**context):
+
+        client = get_bigquery_client()
+
         query = """
         INSERT INTO `data-science-division-216308.ALL_GAMES.Performance_Creatives`
         with
@@ -834,6 +871,11 @@ with DAG(
         python_callable=check_service_account,
     )
 
+    check_dataset = PythonOperator(
+        task_id='check_dataset_location',
+        python_callable=check_dataset_location,
+    )
+
     task_truncate_performance_creatives = PythonOperator(
         task_id='Truncate_performance_creatives',
         python_callable=Truncate_performance_creatives,
@@ -851,4 +893,4 @@ with DAG(
         dag=dag,
     )
 
-    check_account >> task_truncate_performance_creatives >> tast_insert_performance_creatives >> task_send_email
+    check_account >> check_dataset >> task_truncate_performance_creatives >> tast_insert_performance_creatives >> task_send_email
