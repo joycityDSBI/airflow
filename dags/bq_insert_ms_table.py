@@ -1,6 +1,4 @@
 from airflow import DAG, Dataset
-from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobOperator
-from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from datetime import timedelta, datetime
 from google.oauth2 import service_account
@@ -82,14 +80,15 @@ def check_service_account():
 
 
 def check_dataset_location(**context):
-    """Dataset 위치 확인"""
+    """Dataset 위치 확인 및 생성"""
     client = get_bigquery_client()
     
     project_id = "data-science-division-216308"
-    dataset_id = "ALL_GAMES"
+    dataset_id = "ALL_games"
+    dataset_ref = f"{project_id}.{dataset_id}"
     
     try:
-        dataset_ref = f"{project_id}.{dataset_id}"
+        # Dataset이 존재하는지 확인
         dataset = client.get_dataset(dataset_ref)
         
         print(f"✅ Dataset 발견!")
@@ -101,16 +100,39 @@ def check_dataset_location(**context):
     except Exception as e:
         print(f"❌ Dataset을 찾을 수 없습니다: {str(e)}")
         
-        # 프로젝트 내 모든 Dataset 나열
+        # 프로젝트 내 모든 Dataset 나열 (수정)
         print(f"\n📂 프로젝트 내 Dataset 목록:")
-        datasets = list(client.list_datasets(project_id))
-        if datasets:
-            for ds in datasets:
-                print(f"   - {ds.dataset_id} (위치: {ds.location})")
-        else:
-            print(f"   (Dataset이 없습니다)")
+        try:
+            datasets = list(client.list_datasets(project_id))
+            if datasets:
+                for ds in datasets:
+                    # ✅ DatasetListItem에서 dataset_id만 가져오기
+                    print(f"   - {ds.dataset_id}")
+                    # 각 dataset의 상세 정보 가져오기
+                    try:
+                        full_dataset = client.get_dataset(f"{project_id}.{ds.dataset_id}")
+                        print(f"     위치: {full_dataset.location}")
+                    except:
+                        pass
+            else:
+                print(f"   (Dataset이 없습니다)")
+        except Exception as list_error:
+            print(f"   Dataset 목록 조회 실패: {str(list_error)}")
         
-        raise
+        # Dataset 생성
+        print(f"\n📝 Dataset '{dataset_id}'를 생성합니다...")
+        new_dataset = bigquery.Dataset(dataset_ref)
+        new_dataset.location = "asia-northeast3"  # 원하는 리전으로 변경
+        
+        try:
+            created_dataset = client.create_dataset(new_dataset, timeout=30)
+            print(f"✅ Dataset 생성 완료!")
+            print(f"   Dataset ID: {created_dataset.dataset_id}")
+            print(f"   위치(Location): {created_dataset.location}")
+            return created_dataset.location
+        except Exception as create_error:
+            print(f"❌ Dataset 생성 실패: {str(create_error)}")
+            raise
 
 
 
@@ -137,7 +159,7 @@ with DAG(
         client = get_bigquery_client()
 
         query = """
-        TRUNCATE TABLE `data-science-division-216308.ALL_GAMES.Performance_Creatives`
+        TRUNCATE TABLE `data-science-division-216308.ALL_games.Performance_Creatives`
         """
 
         job = client.query(query)
@@ -150,7 +172,7 @@ with DAG(
         client = get_bigquery_client()
 
         query = """
-        INSERT INTO `data-science-division-216308.ALL_GAMES.Performance_Creatives`
+        INSERT INTO `data-science-division-216308.ALL_games.Performance_Creatives`
         with
         params as (
         select
