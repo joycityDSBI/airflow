@@ -21,6 +21,10 @@ def get_var(key: str, default: str = None) -> str:
 def get_bigquery_client():
     """BigQuery 클라이언트 생성"""
     CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
+    
+    if not CREDENTIALS_JSON:
+        raise ValueError("GOOGLE_CREDENTIAL_JSON이 설정되지 않았습니다.")
+    
     cred_dict = json.loads(CREDENTIALS_JSON)
     
     # ✅ private_key의 \\n을 실제 줄바꿈으로 변환
@@ -32,8 +36,11 @@ def get_bigquery_client():
         scopes=[
             'https://www.googleapis.com/auth/bigquery',
             'https://www.googleapis.com/auth/drive.readonly',
+            'https://www.googleapis.com/auth/spreadsheets.readonly',
             ]
     )
+
+    print(f"📧 사용 중인 서비스 계정: {cred_dict.get('client_email')}")
     
     client = bigquery.Client(
         credentials=credentials,
@@ -42,8 +49,40 @@ def get_bigquery_client():
     
     return client
 
+
 # 사용
 client = get_bigquery_client()
+
+def check_service_account():
+    """서비스 계정 정보 확인 및 안내"""
+    try:
+        CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
+        cred_dict = json.loads(CREDENTIALS_JSON)
+        
+        email = cred_dict.get('client_email', 'Not found')
+        project = cred_dict.get('project_id', 'Not found')
+        
+        print("=" * 80)
+        print("📧 서비스 계정 이메일:")
+        print(f"   {email}")
+        print()
+        print("📁 프로젝트 ID:")
+        print(f"   {project}")
+        print()
+        print("⚠️  다음 단계를 수행하세요:")
+        print("   1. Google Sheets를 엽니다")
+        print("   2. 우측 상단 '공유' 버튼을 클릭합니다")
+        print(f"   3. 위의 이메일({email})을 추가합니다")
+        print("   4. 권한을 '뷰어'로 설정합니다")
+        print("   5. '완료'를 클릭합니다")
+        print("=" * 80)
+        
+        return email
+        
+    except Exception as e:
+        print(f"❌ 확인 실패: {str(e)}")
+        raise
+
 
 
 ## DAG 설정
@@ -604,6 +643,11 @@ with DAG(
 
 
 
+    # 먼저 서비스 계정 확인
+    check_account = PythonOperator(
+        task_id='check_service_account',
+        python_callable=check_service_account,
+    )
 
     task_POTC_standard_creative_list = PythonOperator(
         task_id='POTC_standard_creative_list',
@@ -664,7 +708,8 @@ with DAG(
         dag=dag,
     )
 
-    [ 
+
+    check_account >> [ 
         task_POTC_standard_creative_list, 
         task_GBTW_standard_creative_list,
         task_GBTW_Old_standard_creative_list,
