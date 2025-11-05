@@ -602,75 +602,75 @@ with DAG(
 
 
 
-task_POTC_standard_creative_list = PythonOperator(
-    task_id='POTC_standard_creative_list',
-    python_callable=POTC_standard_creative_list,
-)
+    task_POTC_standard_creative_list = PythonOperator(
+        task_id='POTC_standard_creative_list',
+        python_callable=POTC_standard_creative_list,
+    )
 
-task_GBTW_standard_creative_list = PythonOperator(
-    task_id='GBTW_standard_creative_list',
-    python_callable=GBTW_standard_creative_list,
-)
+    task_GBTW_standard_creative_list = PythonOperator(
+        task_id='GBTW_standard_creative_list',
+        python_callable=GBTW_standard_creative_list,
+    )
 
-task_GBTW_Old_standard_creative_list = PythonOperator(
-    task_id='GBTW_Old_standard_creative_list',
-    python_callable=GBTW_Old_standard_creative_list,
-)
+    task_GBTW_Old_standard_creative_list = PythonOperator(
+        task_id='GBTW_Old_standard_creative_list',
+        python_callable=GBTW_Old_standard_creative_list,
+    )
 
-task_WWM_standard_creative_list = PythonOperator(
-    task_id='WWM_standard_creative_list',
-    python_callable=WWM_standard_creative_list,
-)
+    task_WWM_standard_creative_list = PythonOperator(
+        task_id='WWM_standard_creative_list',
+        python_callable=WWM_standard_creative_list,
+    )
 
-task_DS_standard_creative_list = PythonOperator(
-    task_id='DS_standard_creative_list',
-    python_callable=DS_standard_creative_list,
-)
+    task_DS_standard_creative_list = PythonOperator(
+        task_id='DS_standard_creative_list',
+        python_callable=DS_standard_creative_list,
+    )
 
-task_DRB_standard_creative_list = PythonOperator(
-    task_id='DRB_standard_creative_list',
-    python_callable=DRB_standard_creative_list,
-)
+    task_DRB_standard_creative_list = PythonOperator(
+        task_id='DRB_standard_creative_list',
+        python_callable=DRB_standard_creative_list,
+    )
 
-task_JYWN_standard_creative_list = PythonOperator(
-    task_id='JYWN_standard_creative_list',
-    python_callable=JYWN_standard_creative_list,
-)
+    task_JYWN_standard_creative_list = PythonOperator(
+        task_id='JYWN_standard_creative_list',
+        python_callable=JYWN_standard_creative_list,
+    )
 
-task_BSTD_standard_creative_list = PythonOperator(
-    task_id='BSTD_standard_creative_list',
-    python_callable=BSTD_standard_creative_list,
-)
+    task_BSTD_standard_creative_list = PythonOperator(
+        task_id='BSTD_standard_creative_list',
+        python_callable=BSTD_standard_creative_list,
+    )
 
-task_RESU_standard_creative_list = PythonOperator(
-    task_id='RESU_standard_creative_list',
-    python_callable=RESU_standard_creative_list,
-)
+    task_RESU_standard_creative_list = PythonOperator(
+        task_id='RESU_standard_creative_list',
+        python_callable=RESU_standard_creative_list,
+    )
 
-task_all_standard_creative_list = PythonOperator(
-    task_id='all_standard_creative_list',
-    python_callable=all_standard_creative_list,
-)
+    task_all_standard_creative_list = PythonOperator(
+        task_id='all_standard_creative_list',
+        python_callable=all_standard_creative_list,
+    )
 
 
 
-task_send_email = PythonOperator(
-    task_id='send_status_email',
-    python_callable=send_status_email,
-    trigger_rule='all_done',  # 이전 task 성공/실패 관계없이 항상 실행
-    dag=dag,
-)
+    task_send_email = PythonOperator(
+        task_id='send_status_email',
+        python_callable=send_status_email,
+        trigger_rule='all_done',  # 이전 task 성공/실패 관계없이 항상 실행
+        dag=dag,
+    )
 
-[ 
-    task_POTC_standard_creative_list, 
-    task_GBTW_standard_creative_list,
-    task_GBTW_Old_standard_creative_list,
-    task_WWM_standard_creative_list,
-    task_DS_standard_creative_list,
-    task_DRB_standard_creative_list,
-    task_JYWN_standard_creative_list,
-    task_BSTD_standard_creative_list,
-    task_RESU_standard_creative_list 
-] >> task_all_standard_creative_list >> task_send_email
+    [ 
+        task_POTC_standard_creative_list, 
+        task_GBTW_standard_creative_list,
+        task_GBTW_Old_standard_creative_list,
+        task_WWM_standard_creative_list,
+        task_DS_standard_creative_list,
+        task_DRB_standard_creative_list,
+        task_JYWN_standard_creative_list,
+        task_BSTD_standard_creative_list,
+        task_RESU_standard_creative_list 
+    ] >> task_all_standard_creative_list >> task_send_email
 
 
