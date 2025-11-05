@@ -29,7 +29,10 @@ def get_bigquery_client():
     
     credentials = service_account.Credentials.from_service_account_info(
         cred_dict,
-        scopes=['https://www.googleapis.com/auth/bigquery']
+        scopes=[
+            'https://www.googleapis.com/auth/bigquery',
+            'https://www.googleapis.com/auth/drive.readonly',
+            ]
     )
     
     client = bigquery.Client(
