@@ -171,7 +171,6 @@ def get_user_groups(**context):
     """
     Task 2: SCIM API로 그룹 및 사용자 정보 수집
     """
-    exclude_user_id = "6547992203707764"
     config = get_databricks_config()
     headers = {"Authorization": f"Bearer {config['token']}"}
     
@@ -209,7 +208,7 @@ def get_user_groups(**context):
         
         for m in members:
             user_id = m.get("value")
-            if user_id and user_id != exclude_user_id:
+            if user_id:
                 user_group_list.append({"user_id": user_id, "group_name": group_name})
     
     # Step 3: DataFrame으로 변환 및 그룹핑
