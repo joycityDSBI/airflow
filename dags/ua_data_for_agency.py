@@ -153,15 +153,12 @@ def generate_all_projects_reports(**context):
             )
             print(f"[프로젝트: {project_name}] 쿼리 실행 중...")
             df = bq_client.query(query, job_config=job_config).to_dataframe()
-            excel_buffer = io.BytesIO()
-            # csv_buffer = io.StringIO()
-            df.to_excel(excel_buffer, index=False, engine='openpyxl')
-            excel_buffer.seek(0)
-
-            blob_name = f"all_reports/{project_name}_{today}.xlsx"
-            blob = bucket.blob(blob_name)
             
-            blob.upload_from_string(excel_buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            csv_buffer = io.StringIO()
+            df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+            blob_name = f"all_reports/{project_name}_{today}.csv"
+            blob = bucket.blob(blob_name)
+            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8")
             print(f"✓ GCS 업로드 완료: {blob.name}")
             
             expiration = timedelta(hours=24)
@@ -230,8 +227,8 @@ def generate_agency_reports(**context):
     print(f"대행사 리스트: {agency_list}")
     
     bucket = storage_client.bucket(GCS_BUCKET_NAME)
-    today = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d')    
-    two_days_ago = (datetime.now(timezone(timedelta(hours=9))) - timedelta(days=2)).strftime('%Y-%m-%d')
+    today = datetime.today().strftime('%Y-%m-%d')
+    two_days_ago = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')  # 수정: 날짜 형식 통일
     
     columns_to_select = """
         project_name, joyple_game_code, regdate_joyple_kst, app_id, gcat,
@@ -294,14 +291,13 @@ def generate_agency_reports(**context):
             df = bq_client.query(base_query, job_config=job_config).to_dataframe()
             
             # CSV로 변환
-            excel_buffer = io.BytesIO()
-            # csv_buffer = io.StringIO()
-            df.to_excel(excel_buffer, index=False, engine='openpyxl')
+            csv_buffer = io.StringIO()
+            df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
             
             # GCS에 업로드
-            blob_name = f"agency_reports/{pr_name}_{agency_name}_{today}.xlsx"
+            blob_name = f"agency_reports/{pr_name}_{agency_name}_{today}.csv"
             blob = bucket.blob(blob_name)
-            blob.upload_from_string(excel_buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8")
 
             print(f"✓ GCS 업로드 완료: {blob.name}")
             
@@ -335,7 +331,7 @@ def generate_agency_reports(**context):
             success_count += 1
 
             # 2일 전 파일 삭제
-            old_blob_name = f"agency_reports/{pr_name}_{agency_name}_{two_days_ago}.xlsx"
+            old_blob_name = f"agency_reports/{pr_name}_{agency_name}_{two_days_ago}.csv"
             old_blob = bucket.blob(old_blob_name)
             if old_blob.exists():
                 old_blob.delete()
