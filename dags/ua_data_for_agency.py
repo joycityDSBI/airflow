@@ -155,7 +155,7 @@ def generate_all_projects_reports(**context):
             df = bq_client.query(query, job_config=job_config).to_dataframe()
             
             csv_buffer = io.StringIO()
-            df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+            df.to_csv(csv_buffer, index=False, encoding='cp949')
             blob_name = f"all_reports/{project_name}_{today}.csv"
             blob = bucket.blob(blob_name)
             blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv")
@@ -229,6 +229,7 @@ def generate_agency_reports(**context):
     bucket = storage_client.bucket(GCS_BUCKET_NAME)
     today = datetime.today().strftime('%Y-%m-%d')
     two_days_ago = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')  # 수정: 날짜 형식 통일
+    day_after_tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     
     columns_to_select = """
         project_name, joyple_game_code, regdate_joyple_kst, app_id, gcat,
@@ -292,10 +293,10 @@ def generate_agency_reports(**context):
             
             # CSV로 변환
             csv_buffer = io.StringIO()
-            df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+            df.to_csv(csv_buffer, index=False, encoding='cp949')
             
             # GCS에 업로드
-            blob_name = f"agency_reports/{pr_name}_{agency_name}_{today}.csv"
+            blob_name = f"agency_reports/{pr_name}_{agency_name}_{day_after_tomorrow}.csv"
             blob = bucket.blob(blob_name)
             blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv")
 
