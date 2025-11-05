@@ -3,6 +3,7 @@ from airflow.providers.google.cloud.operators.bigquery import BigQueryInsertJobO
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from datetime import timedelta, datetime
+from google.oauth2 import service_account
 import os
 from airflow.models import Variable
 import smtplib
