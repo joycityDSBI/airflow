@@ -585,10 +585,6 @@ with DAG(
         print(f"✅ all_standard_creative_list ✅ 테이블 생성 완료")   
 
 
-    def get_var(key: str, default: str = None) -> str:
-        """환경 변수 또는 Airflow Variable 조회"""
-        return os.environ.get(key) or Variable.get(key, default_var=default)
-
     RECIPIENT_EMAIL = '65e43b85.joycity.com@kr.teams.ms'
     SMTP_HOST = get_var("SMTP_HOST", "smtp.gmail.com")
     SMTP_PORT = int(get_var("SMTP_PORT", "587"))

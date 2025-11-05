@@ -199,10 +199,19 @@ def extract_data(**context):
         rows = cursor.fetchall()
         source_df = pd.DataFrame(rows, columns=columns)
         
+        # 하드코딩으로 유저 제외
+        exclude_emails = ['heegle@joycity.com', 'kimjack415@joycity.com']
+        source_df = source_df[~source_df['user_email'].isin(exclude_emails)]
+
         cursor.close()
         connection.close()
         
         print(f"✅ Databricks에서 총 {len(source_df)}개의 데이터를 조회했습니다.")
+        email_list = source_df['user_email'].tolist()
+        
+        for email in email_list:
+            print(f"💡 eeeeeee Email 리스트: {email}")
+
         
     except ImportError:
         print("❌ databricks-sql-connector 라이브러리가 설치되지 않았습니다.")
@@ -252,7 +261,9 @@ def transform_data(**context):
     else:
         # 이미 타임존이 있는 경우: tz_convert 사용
         print(f"ℹ️  기존 타임존({s.dt.tz})을 Asia/Seoul로 변환합니다.")
+        print(f"ℹ️ 기존 타임존 {s.dt.tz}")
         s = s.dt.tz_convert('Asia/Seoul')
+        print(f"ℹ️ 변경 타임존 {s.dt.tz}")
     
     # ISO 8601 형식으로 변환
     df_renamed['질문날짜'] = s.apply(lambda x: x.isoformat(timespec='seconds') if pd.notna(x) else None)
