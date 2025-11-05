@@ -184,7 +184,7 @@ def extract_data(**context):
                 message_id,
                 query,
                 message_response_duration_seconds,
-                event_time_kst
+                event_time_kst + INTERVAL 9 HOURS as event_time_kst
             FROM 
                 datahub.injoy_ops_schema.injoy_monitoring_data
             ORDER BY conversation_id, event_time_kst
