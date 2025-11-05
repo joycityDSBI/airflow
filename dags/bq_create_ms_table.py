@@ -62,7 +62,7 @@ with DAG(
     tags=['bigquery', 'create_table'],
 ) as dag:
 
-    def POTC_standard_creative_list(client):
+    def POTC_standard_creative_list(**context):
         query = """
         CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.POTC_standard_creative_list`
         (
@@ -98,7 +98,7 @@ with DAG(
         print(f"✅ POTC_standard_creative_list ✅ 테이블 생성 완료")
 
 
-    def GBTW_standard_creative_list(client):
+    def GBTW_standard_creative_list(**context):
         query = """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.GBTW_standard_creative_list`
             (
@@ -133,7 +133,7 @@ with DAG(
         print(f"✅ GBTW_standard_creative_list ✅ 테이블 생성 완료")
 
 
-    def GBTW_Old_standard_creative_list(client):
+    def GBTW_Old_standard_creative_list(**context):
         query = """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.GBTW_Old_standard_creative_list`
             (
@@ -163,7 +163,7 @@ with DAG(
 
         print(f"✅ GBTW_Old_standard_creative_list ✅ 테이블 생성 완료")
 
-    def WWM_standard_creative_list(client):
+    def WWM_standard_creative_list(**context):
         query = """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.WWM_standard_creative_list`
             (
@@ -198,7 +198,7 @@ with DAG(
         print(f"✅ WWM_standard_creative_list ✅ 테이블 생성 완료")
 
 
-    def DS_standard_creative_list(client):
+    def DS_standard_creative_list(**context):
         query= """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.DS_standard_creative_list`
             (
@@ -232,7 +232,7 @@ with DAG(
 
         print(f"✅ DS_standard_creative_list ✅ 테이블 생성 완료")
 
-    def DRB_standard_creative_list(client):
+    def DRB_standard_creative_list(**context):
         query="""
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.DRB_standard_creative_list`
             (
@@ -267,7 +267,7 @@ with DAG(
         print(f"✅ DRB_standard_creative_list ✅ 테이블 생성 완료")    
 
 
-    def JYWN_standard_creative_list(client):
+    def JYWN_standard_creative_list(**context):
         query= """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.JYWN_standard_creative_list`
             (
@@ -301,7 +301,7 @@ with DAG(
         print(f"✅ JYWN_standard_creative_list ✅ 테이블 생성 완료")           
 
 
-    def BSTD_standard_creative_list(client):
+    def BSTD_standard_creative_list(**context):
         query = """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.BSTD_standard_creative_list`
             (
@@ -334,7 +334,7 @@ with DAG(
 
         print(f"✅ BSTD_standard_creative_list ✅ 테이블 생성 완료")          
 
-    def RESU_standard_creative_list(client):
+    def RESU_standard_creative_list(**context):
         query = """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.RESU_standard_creative_list`
             (
@@ -367,7 +367,7 @@ with DAG(
 
         print(f"✅ RESU_standard_creative_list ✅ 테이블 생성 완료")
 
-    def all_standard_creative_list(client):
+    def all_standard_creative_list(**context):
         query = """
             CREATE OR REPLACE TABLE `data-science-division-216308.Creative.all_standard_creative_list` AS 
             select
@@ -604,52 +604,52 @@ with DAG(
 
 task_POTC_standard_creative_list = PythonOperator(
     task_id='POTC_standard_creative_list',
-    python_callable=POTC_standard_creative_list(client),
+    python_callable=POTC_standard_creative_list(),
 )
 
 task_GBTW_standard_creative_list = PythonOperator(
     task_id='GBTW_standard_creative_list',
-    python_callable=GBTW_standard_creative_list(client),
+    python_callable=GBTW_standard_creative_list(),
 )
 
 task_GBTW_Old_standard_creative_list = PythonOperator(
     task_id='GBTW_Old_standard_creative_list',
-    python_callable=GBTW_Old_standard_creative_list(client),
+    python_callable=GBTW_Old_standard_creative_list(),
 )
 
 task_WWM_standard_creative_list = PythonOperator(
     task_id='WWM_standard_creative_list',
-    python_callable=WWM_standard_creative_list(client),
+    python_callable=WWM_standard_creative_list(),
 )
 
 task_DS_standard_creative_list = PythonOperator(
     task_id='DS_standard_creative_list',
-    python_callable=DS_standard_creative_list(client),
+    python_callable=DS_standard_creative_list(),
 )
 
 task_DRB_standard_creative_list = PythonOperator(
     task_id='DRB_standard_creative_list',
-    python_callable=DRB_standard_creative_list(client),
+    python_callable=DRB_standard_creative_list(),
 )
 
 task_JYWN_standard_creative_list = PythonOperator(
     task_id='JYWN_standard_creative_list',
-    python_callable=JYWN_standard_creative_list(client),
+    python_callable=JYWN_standard_creative_list(),
 )
 
 task_BSTD_standard_creative_list = PythonOperator(
     task_id='BSTD_standard_creative_list',
-    python_callable=BSTD_standard_creative_list(client),
+    python_callable=BSTD_standard_creative_list(),
 )
 
 task_RESU_standard_creative_list = PythonOperator(
     task_id='RESU_standard_creative_list',
-    python_callable=RESU_standard_creative_list(client),
+    python_callable=RESU_standard_creative_list(),
 )
 
 task_all_standard_creative_list = PythonOperator(
     task_id='all_standard_creative_list',
-    python_callable=all_standard_creative_list(client),
+    python_callable=all_standard_creative_list(),
 )
 
 
