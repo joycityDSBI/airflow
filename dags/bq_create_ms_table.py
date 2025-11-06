@@ -87,6 +87,7 @@ def check_service_account():
 
 ## DAG 설정
 gcs_creative_file_upload = Dataset('gcs_creative_file_upload')
+bq_create_ms_table=Dataset('bq_create_ms_table')
 
 default_args = {
     'owner': 'airflow',
@@ -711,7 +712,7 @@ with DAG(
     # Task 정의
     bash_task = BashOperator(
         task_id = 'bash_task',
-        outlets = [gcs_creative_file_upload],
+        outlets = [bq_create_ms_table],
         bash_command = 'echo "producer_1 수행 완료"'
     )
 
