@@ -1109,6 +1109,16 @@ for sheet in TARGET_SHEETS:
         task_id=f'process_{sheet.lower()}',
         python_callable=process_sheet,
         op_kwargs={'sheet_name': sheet},
+
+        # Pool을 사용한 동시 실행 제한
+        pool='sheets_api_pool',  # 미리 생성 필요
+        pool_slots=2,
+        
+        # 재시도 설정
+        retries=5,
+        retry_delay=timedelta(seconds=30),
+        retry_exponential_backoff=True,
+        max_retry_delay=timedelta(minutes=15),
         dag=dag,
     )
     sheet_tasks.append(task)
