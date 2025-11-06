@@ -1,6 +1,6 @@
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 from google.oauth2 import service_account
 import os
 from airflow.models import Variable
@@ -846,9 +846,14 @@ with DAG(
         print("Task 3: 완료 알림 이메일 발송 시작")
         print("=" * 80)
         
-        # 실행 날짜 (logical_date 사용)
-        logical_date = context['logical_date']
-        execution_date = logical_date.strftime('%Y-%m-%d %H:%M:%S KST')
+        # KST (UTC+9) 시간대 객체 정의
+        KST = timezone(timedelta(hours=9))
+
+        # 현재 시간(KST)을 얻음
+        current_datetime_kst = datetime.now(KST)
+
+        # 원하는 포맷으로 문자열 변환
+        execution_date = current_datetime_kst.strftime('%Y-%m-%d %H:%M:%S KST')
         
         # 이메일 제목 및 본문 작성
         subject = "✅ MS Performance Creatives 데이터 인입 완료"
