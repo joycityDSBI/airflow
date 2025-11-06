@@ -175,7 +175,7 @@ def get_user_groups(**context):
     headers = {"Authorization": f"Bearer {config['token']}"}
     
     # Step 1: 그룹 전체 목록 조회
-    group_url = f"{config['instance']}/api/2.0/preview/scim/v2/Groups"
+    group_url = f"http://{config['instance']}/api/2.0/preview/scim/v2/Groups"
     group_resp = requests.get(group_url, headers=headers)
     
     if group_resp.status_code != 200:
@@ -330,7 +330,7 @@ def get_message_details(**context):
             statement_ids.append(None)
             continue
         
-        url = f"{config['instance']}/api/2.0/genie/spaces/{space_id}/conversations/{conversation_id}/messages/{message_id}"
+        url = f"https://{config['instance']}/api/2.0/genie/spaces/{space_id}/conversations/{conversation_id}/messages/{message_id}"
         
         try:
             resp = requests.get(url, headers=headers)
