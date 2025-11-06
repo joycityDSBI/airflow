@@ -196,7 +196,7 @@ def get_user_groups(**context):
             print(f"⏭️ 제외된 그룹 건너뛰기: {group_name}")
             continue
         
-        group_detail_url = f"{config['instance']}/api/2.0/preview/scim/v2/Groups/{group_id}"
+        group_detail_url = f"https://{config['instance']}/api/2.0/preview/scim/v2/Groups/{group_id}"
         detail_resp = requests.get(group_detail_url, headers=headers)
         
         if detail_resp.status_code != 200:
