@@ -265,7 +265,7 @@ def get_space_info(**context):
     headers = {"Authorization": f"Bearer {config['token']}"}
     
     # 스페이스 목록 조회
-    spaces_url = f"{config['instance']}/api/2.0/genie/spaces"
+    spaces_url = f"https://{config['instance']}/api/2.0/genie/spaces"
     resp = requests.get(spaces_url, headers=headers)
     
     if resp.status_code != 200:
