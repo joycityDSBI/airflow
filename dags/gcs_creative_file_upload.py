@@ -30,7 +30,7 @@ default_args = {
     'email_on_failure': True,
     'email_on_retry': False,
     'email': ['65e43b85.joycity.com@kr.teams.ms'],  # 실패 시 알림 이메일
-    'retries': 1,
+    'retries': 2,
     'retry_delay': timedelta(minutes=2),
 }
 
