@@ -4,7 +4,7 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from google.cloud import bigquery
 from google.oauth2 import service_account
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 import os
 from airflow.models import Variable
 import smtplib
@@ -600,7 +600,11 @@ with DAG(
         
         # 실행 날짜 (logical_date 사용)
         
-        execution_date = datetime.now(timedelta(hours=9)).strftime('%Y-%m-%d')
+        # UTC+9 시간대 객체 생성
+        KST = timezone(timedelta(hours=9))
+
+        # 현재 시간(KST)을 얻음
+        execution_date = datetime.now(KST).strftime('%Y-%m-%d')
         
         # 이메일 제목 및 본문 작성
         subject = "✅ MS Creative List Table 생성 완료"
