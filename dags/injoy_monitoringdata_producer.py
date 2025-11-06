@@ -32,7 +32,7 @@ dag = DAG(
     dag_id='injoy_monitoringdata_producer',
     default_args=default_args,
     description='Process Databricks audit logs for aibiGenie',
-    schedule='0 23 * * *',  # 매일 새벽 1시 실행
+    schedule='0 1 * * *',  # 매일 새벽 1시 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['databricks', 'audit', 'genie'],
@@ -106,8 +106,8 @@ def extract_audit_logs(**context):
         FROM system.access.audit
         WHERE service_name = 'aibiGenie'
             AND action_name IN ('createConversationMessage', 'updateConversationMessageFeedback', 'getMessageQueryResult')
-            AND DATE(event_time) >= CURRENT_DATE - INTERVAL 2 DAYS
-            AND DATE(event_time) < CURRENT_DATE - INTERVAL 1 DAYS
+            AND DATE(event_time) >= CURRENT_DATE - INTERVAL 1 DAYS
+            AND DATE(event_time) < CURRENT_DATE - INTERVAL 0 DAYS
     ),
 
     message_tb AS (
