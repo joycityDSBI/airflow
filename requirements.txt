@@ -3,7 +3,7 @@ requests==2.32.4
 protobuf==4.25.3
 
 # Apache Airflow
-apache-airflow==3.1.0
+# apache-airflow==3.1.0
 apache-airflow-providers-http==5.3.4
 apache-airflow-providers-smtp==2.3.1
 apache-airflow-providers-postgres==6.4.0
@@ -28,6 +28,7 @@ pyarrow==21.0.0
 numpy>=1.26.0,<2.0.0
 db-dtypes==1.1.1
 pyspark==4.0.0
+pandas-gbq==0.30.0
 
 # Web frameworks
 flask==2.2.5
