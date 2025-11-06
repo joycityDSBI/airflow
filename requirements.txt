@@ -5,6 +5,7 @@ protobuf>=4.21,<5.0
 # Apache Airflow - 베이스 이미지에 포함되어 있으므로 주석 처리
 # apache-airflow는 Dockerfile의 FROM에서 이미 설치됨
 # apache-airflow-providers-* 도 제외
+apache-airflow-providers-databricks==7.7.4
 
 # Google Cloud Platform
 google-cloud-bigquery>=3.11,<3.12  # Python 3.8 호환
@@ -19,7 +20,7 @@ google-auth-oauthlib>=1.0,<1.1
 google-auth-httplib2>=0.1,<0.2
 
 # Data processing - Python 3.8 호환 버전
-pandas>=2.0,<2.1  # 2.0.3이 Python 3.8 최대
+pandas>=1.8,<2.0  # 2.0.3이 Python 3.8 최대
 openpyxl>=3.0,<3.2
 pyarrow>=10.0,<17.0  # Python 3.8은 17.0까지만 지원
 numpy>=1.22,<1.25  # Python 3.8 호환
