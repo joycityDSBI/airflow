@@ -14,7 +14,7 @@ google-api-python-client>=2.95,<2.100
 
 # Google Auth & Sheets
 gspread>=6.0,<6.2
-google-auth>=2.22,<2.23
+google-auth>=2.35.0
 google-auth-oauthlib>=1.0,<1.1
 google-auth-httplib2>=0.1,<0.2
 
