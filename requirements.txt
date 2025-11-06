@@ -4,10 +4,10 @@ protobuf==4.25.3
 
 # Apache Airflow
 # apache-airflow==3.1.0
-apache-airflow-providers-http==5.3.4
-apache-airflow-providers-smtp==2.3.1
-apache-airflow-providers-postgres==6.4.0
-apache-airflow-providers-databricks==7.7.4 # 버전 명시
+# apache-airflow-providers-http==5.3.4
+# apache-airflow-providers-smtp==2.3.1
+# apache-airflow-providers-postgres==6.4.0
+# apache-airflow-providers-databricks==7.7.4 # 버전 명시
 
 # Google Cloud
 google-cloud-bigquery==3.24.0
