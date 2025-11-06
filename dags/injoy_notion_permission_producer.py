@@ -72,7 +72,7 @@ with DAG(
     NOTION_HEADERS = get_notion_headers()
     DATABRICKS_INSTANCE = get_var("databricks_instance", required=True)
     DATABRICKS_TOKEN = get_var("databricks_token", required=True)
-    url = f"{DATABRICKS_INSTANCE}/api/2.0/token/list"
+    url = f"https://{DATABRICKS_INSTANCE}/api/2.0/token/list"
 
     DATABRICKS_HEADERS = {
         "Authorization": f"Bearer {DATABRICKS_TOKEN}",
@@ -109,7 +109,7 @@ with DAG(
     def search_databricks_users(**context):
 
         try:
-            user_url = f"{DATABRICKS_INSTANCE}/api/2.0/preview/scim/v2/Users"
+            user_url = f"https://{DATABRICKS_INSTANCE}/api/2.0/preview/scim/v2/Users"
             user_resp = requests.get(user_url, headers=DATABRICKS_HEADERS)
             user_resp.raise_for_status()
             user_list = user_resp.json().get("Resources", [])
@@ -134,7 +134,7 @@ with DAG(
 
     def search_databricks_groups(**context):
         try:
-            group_url = f"{DATABRICKS_INSTANCE}/api/2.0/preview/scim/v2/Groups"
+            group_url = f"https://{DATABRICKS_INSTANCE}/api/2.0/preview/scim/v2/Groups"
             group_resp = requests.get(group_url, headers=DATABRICKS_HEADERS)
             group_resp.raise_for_status()
             groups = group_resp.json().get("Resources", [])
@@ -169,7 +169,7 @@ with DAG(
             catalog_objects.append({"type": "catalog", "full_name": catalog_name})
 
             # schema 수집 (단, information_schema 제외)
-            schemas_url = f"{DATABRICKS_INSTANCE}/api/2.1/unity-catalog/schemas?catalog_name={catalog_name}"
+            schemas_url = f"https://{DATABRICKS_INSTANCE}/api/2.1/unity-catalog/schemas?catalog_name={catalog_name}"
             sch_resp = requests.get(schemas_url, headers=DATABRICKS_HEADERS)
             sch_resp.raise_for_status()
             schemas = sch_resp.json().get("schemas", [])
@@ -182,7 +182,7 @@ with DAG(
                 catalog_objects.append({"type": "schema", "full_name": sch_full})
 
                 # table 수집
-                tables_url = f"{DATABRICKS_INSTANCE}/api/2.1/unity-catalog/tables?catalog_name={catalog_name}&schema_name={sch['name']}"
+                tables_url = f"https://{DATABRICKS_INSTANCE}/api/2.1/unity-catalog/tables?catalog_name={catalog_name}&schema_name={sch['name']}"
                 tbl_resp = requests.get(tables_url, headers=DATABRICKS_HEADERS)
                 tbl_resp.raise_for_status()
                 tables = tbl_resp.json().get("tables", [])
@@ -209,7 +209,7 @@ with DAG(
         
         for _, row in df_catalog_objects.iterrows():
             try:
-                url = f"{DATABRICKS_INSTANCE}/api/2.1/unity-catalog/permissions/{row['type']}/{row['full_name']}"
+                url = f"https://{DATABRICKS_INSTANCE}/api/2.1/unity-catalog/permissions/{row['type']}/{row['full_name']}"
                 perm_resp = requests.get(url, headers=DATABRICKS_HEADERS)
                 perm_resp.raise_for_status()
                 acl_list = perm_resp.json().get("privilege_assignments", [])
@@ -235,7 +235,7 @@ with DAG(
 
         # 5-1️⃣ Warehouses 수집
         try:
-            warehouse_url = f"{DATABRICKS_INSTANCE}/api/2.0/sql/warehouses"
+            warehouse_url = f"https://{DATABRICKS_INSTANCE}/api/2.0/sql/warehouses"
             resp = requests.get(warehouse_url, headers=DATABRICKS_HEADERS)
             resp.raise_for_status()
 
@@ -252,7 +252,7 @@ with DAG(
 
         # 5-2️⃣ Dashboards 수집
         try:
-            dashboard_url = f"{DATABRICKS_INSTANCE}/api/2.0/lakeview/dashboards"
+            dashboard_url = f"https://{DATABRICKS_INSTANCE}/api/2.0/lakeview/dashboards"
             resp = requests.get(dashboard_url, headers=DATABRICKS_HEADERS)
             resp.raise_for_status()
 
@@ -272,7 +272,7 @@ with DAG(
 
         for obj in workspace_objects:
             try:
-                url = f"{DATABRICKS_INSTANCE}/api/2.0/permissions/{obj['type']}/{obj['object_id']}"
+                url = f"https://{DATABRICKS_INSTANCE}/api/2.0/permissions/{obj['type']}/{obj['object_id']}"
                 resp = requests.get(url, headers=DATABRICKS_HEADERS)
                 resp.raise_for_status()
 
