@@ -2,69 +2,72 @@
 requests>=2.28,<3.0
 protobuf>=4.21,<5.0
 
-# Apache Airflow
-# apache-airflow==3.1.0
-# apache-airflow-providers-http==5.3.4
-# apache-airflow-providers-smtp==2.3.1
-# apache-airflow-providers-postgres==6.4.0
-# apache-airflow-providers-databricks==7.7.4 # 버전 명시
+# Apache Airflow - 베이스 이미지에 포함되어 있으므로 주석 처리
+# apache-airflow는 Dockerfile의 FROM에서 이미 설치됨
+# apache-airflow-providers-* 도 제외
 
-# Google Cloud
-google-cloud-bigquery>=3.11,<4.0
-google-cloud-storage>=2.10,<3.0
-google-cloud-tasks>=2.13,<3.0
-google-api-python-client>=2.95,<3.0
+# Google Cloud Platform
+google-cloud-bigquery>=3.11,<3.12  # Python 3.8 호환
+google-cloud-storage>=2.10,<2.11
+google-cloud-tasks>=2.13,<2.15
+google-api-python-client>=2.95,<2.100
 
 # Google Auth & Sheets
-gspread>=6.0,<7.0
-google-auth>=2.22,<3.0
-google-auth-oauthlib>=1.0,<2.0
-google-auth-httplib2>=0.1,<1.0
+gspread>=6.0,<6.2
+google-auth>=2.22,<2.23
+google-auth-oauthlib>=1.0,<1.1
+google-auth-httplib2>=0.1,<0.2
 
-# Data processing
-pandas>=1.5,<2.1  # 2.1 미만만 Python 3.8 지원
-openpyxl>=3.0,<4.0
+# Data processing - Python 3.8 호환 버전
+pandas>=2.0,<2.1  # 2.0.3이 Python 3.8 최대
+openpyxl>=3.0,<3.2
+pyarrow>=10.0,<17.0  # Python 3.8은 17.0까지만 지원
+numpy>=1.22,<1.25  # Python 3.8 호환
+db-dtypes>=1.1,<1.2
+pandas-gbq>=0.19,<0.20  # 0.29+ 는 Python 3.9+ 필요
 
-pandas-gbq==0.29.0
-pyarrow==21.0.0
-numpy>=1.26.0,<2.0.0
-db-dtypes==1.1.1
-pyspark==4.0.0
-pandas-gbq==0.30.0
+# PySpark - Python 3.8 호환
+pyspark>=3.3,<3.5  # 4.0.0은 Python 3.9+ 필요
 
-# Web frameworks
-flask==2.2.5
-functions-framework==3.7.0
+# Web frameworks - Python 3.8 호환
+flask>=2.2,<2.3
+functions-framework>=3.5,<3.8
 
 # Task queue & caching
-celery==5.5.0
-redis==5.0.1
+celery>=5.2,<5.4  # 5.5.0은 Python 3.9+ 선호
+redis>=4.5,<5.0  # 5.0.1은 Python 3.9+ 필요
 
-# SQLAlchemy 버전 고정 (중요!)
+# SQLAlchemy - Airflow 2.7.0과 호환
 SQLAlchemy>=1.4.0,<2.0.0
 flask-sqlalchemy>=2.5.0,<3.0.0
 
 # Database
-psycopg2-binary==2.9.9
+psycopg2-binary>=2.9,<2.10
 
-# Databricks
-databricks-sql-connector==4.0.0
+# Databricks - Python 3.8 호환
+databricks-sql-connector>=2.9,<3.0  # 4.0.0은 Python 3.9+ 필요
 
-# timezone
-pytz==2023.2
+# Timezone
+pytz>=2023.0
 
-# notion
-notion-client==2.4.0
+# Notion
+notion-client>=2.0,<2.5
 
-# notebook for Framework
-nest-asyncio==1.6.0
-playwright==1.55.0
-Jinja2==3.1.6
-adjustText==1.3.0
-vertexai==1.71.1
-google-genai==1.48.0
-matplotlib>=3.5,<4.0
-pillow==12.0.0
-ipython==9.6.0
-beautifulsoup4==4.14.2
-seaborn==0.13.2
+# Notebook & Framework
+nest-asyncio>=1.5,<1.7
+playwright>=1.40,<1.50  # 1.55.0은 Python 3.9+ 필요
+Jinja2>=3.1,<3.2
+adjustText>=0.8,<1.0  # 1.3.0은 매우 최신
+beautifulsoup4>=4.12,<4.13
+
+# Vertex AI & Google GenAI - Python 3.8 제약
+vertexai>=1.38,<1.50  # 1.71.1은 Python 3.9+ 필요
+# google-genai>=1.0,<1.50  # 1.48.0은 Python 3.9+ 필요할 수 있음
+
+# Visualization
+matplotlib>=3.7,<3.8  # Python 3.8 최대
+seaborn>=0.12,<0.13  # 0.13.2는 Python 3.9+ 권장
+pillow>=10.0,<10.5  # 12.0.0은 Python 3.9+ 필요
+
+# IPython
+ipython>=8.12,<8.13  # 9.6.0은 Python 3.9+ 필요
