@@ -599,8 +599,8 @@ with DAG(
         print("=" * 80)
         
         # 실행 날짜 (logical_date 사용)
-        logical_date = context['logical_date']
-        execution_date = logical_date.strftime('%Y-%m-%d %H:%M:%S KST')
+        
+        execution_date = datetime.now(timedelta(hours=9)).strftime('%Y-%m-%d')
         
         # 이메일 제목 및 본문 작성
         subject = "✅ MS Creative List Table 생성 완료"
