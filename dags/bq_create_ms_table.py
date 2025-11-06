@@ -708,6 +708,13 @@ with DAG(
         dag=dag,
     )
 
+    # Task 정의
+    bash_task = BashOperator(
+        task_id = 'bash_task',
+        outlets = [gcs_creative_file_upload],
+        bash_command = 'echo "producer_1 수행 완료"'
+    )
+
 
     check_account >> [ 
         task_POTC_standard_creative_list, 
@@ -719,6 +726,6 @@ with DAG(
         task_JYWN_standard_creative_list,
         task_BSTD_standard_creative_list,
         task_RESU_standard_creative_list 
-    ] >> task_all_standard_creative_list >> task_send_email
+    ] >> task_all_standard_creative_list >> task_send_email >> bash_task
 
 
