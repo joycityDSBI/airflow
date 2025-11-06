@@ -50,7 +50,7 @@ headers = {
     "Authorization": f"Bearer {get_databricks_config()['token']}"
 }
 
-url = f"{get_databricks_config()['instance']}/api/2.0/token/list"
+url = f"https://{get_databricks_config()['instance']}/api/2.0/token/list"
 
 def tokenize_databricks(url, headers):
     
