@@ -32,7 +32,7 @@ dag = DAG(
     dag_id='injoy_monitoringdata_producer',
     default_args=default_args,
     description='Process Databricks audit logs for aibiGenie',
-    schedule='0 1 * * *',  # 매일 새벽 1시 실행
+    schedule='0 24 * * *',  # 매일 새벽 1시 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['databricks', 'audit', 'genie'],
@@ -637,7 +637,7 @@ def merge_query_history(**context):
         print(f"✅ 임시 테이블 데이터 적재 완료: {total_rows} rows")
         
         # ===== MERGE 실행 =====
-        merge_key = 'statement_id'
+        merge_key = 'message_id'
         
         # 동적으로 컬럼 리스트 생성
         update_set = ", ".join([f"target.`{col}` = source.`{col}`" for col in columns if col != merge_key])
