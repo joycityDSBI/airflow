@@ -31,7 +31,7 @@ default_args = {
     'email_on_retry': False,
     'email': ['65e43b85.joycity.com@kr.teams.ms'],  # 실패 시 알림 이메일
     'retries': 1,
-    'retry_delay': timedelta(seconds=10),
+    'retry_delay': timedelta(minutes=2),
 }
 
 dag = DAG(
@@ -42,7 +42,7 @@ dag = DAG(
     start_date=datetime(2025, 1, 1),
     catchup=False,
     max_active_runs=1,
-    max_active_tasks=2,
+    max_active_tasks=1,
     tags=['creative', 'notion', 'marketing'],
 )
 
@@ -1109,16 +1109,15 @@ for sheet in TARGET_SHEETS:
         task_id=f'process_{sheet.lower()}',
         python_callable=process_sheet,
         op_kwargs={'sheet_name': sheet},
-
-        # Pool을 사용한 동시 실행 제한
-        pool='sheets_api_pool',  # 미리 생성 필요
-        pool_slots=2,
+        # # Pool을 사용한 동시 실행 제한
+        # pool='sheets_api_pool',  # 미리 생성 필요
+        # pool_slots=2,
         
-        # 재시도 설정
-        retries=5,
-        retry_delay=timedelta(seconds=30),
-        retry_exponential_backoff=True,
-        max_retry_delay=timedelta(minutes=15),
+        # # 재시도 설정
+        # retries=5,
+        # retry_delay=timedelta(seconds=30),
+        # retry_exponential_backoff=True,
+        # max_retry_delay=timedelta(minutes=15),
         dag=dag,
     )
     sheet_tasks.append(task)
