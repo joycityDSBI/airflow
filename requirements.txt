@@ -5,7 +5,7 @@ protobuf>=4.21,<5.0
 # Apache Airflow - 베이스 이미지에 포함되어 있으므로 주석 처리
 # apache-airflow는 Dockerfile의 FROM에서 이미 설치됨
 # apache-airflow-providers-* 도 제외
-apache-airflow-providers-databricks==7.7.4
+apache-airflow-providers-databricks==7.7.0
 
 # Google Cloud Platform
 google-cloud-bigquery>=3.11,<3.12  # Python 3.8 호환
@@ -46,7 +46,8 @@ flask-sqlalchemy>=2.5.0,<3.0.0
 psycopg2-binary>=2.9,<2.10
 
 # Databricks - Python 3.8 호환
-databricks-sql-connector>=2.9,<3.0  # 4.0.0은 Python 3.9+ 필요
+databricks-sql-connector>=4.0.0  # 4.0.0은 Python 3.9+ 필요
+databricks-sdk>=0.17
 
 # Timezone
 pytz>=2023.0
