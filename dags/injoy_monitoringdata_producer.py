@@ -439,6 +439,9 @@ def merge_query_history(**context):
         # 컬럼 rename
         query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
         
+        print(f"📊 df_target 컬럼: {df_target.columns.tolist()}")
+        print(f"📊 df_target head:\n{df_target.head()}")
+        
         # 병합
         df_audit_enriched = df_target.merge(
             query_df_renamed[[
@@ -446,7 +449,8 @@ def merge_query_history(**context):
                 "query_duration_seconds", "query_result_fetch_duration_seconds", "execution_status"
             ]],
             how="left",
-            on=["statement_id", "user_email"]
+            left_on=["statement_id", "user_id"],  # ← df_target의 실제 컬럼명
+            right_on=["statement_id", "user_email"]  # ← query_df_renamed의 컬럼명
         )
         
         print(f"📊 Query history 병합 완료: {len(df_audit_enriched)} rows")
