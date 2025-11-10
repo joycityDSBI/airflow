@@ -392,7 +392,16 @@ def merge_query_history(**context):
     # 데이터 가져오기
     json_data = ti.xcom_pull(task_ids='get_message_details', key='df_target')
     df_target = pd.read_json(StringIO(json_data), orient='split')
-    
+        
+    print(f"📊 df_target 컬럼: {df_target.columns.tolist()}")
+    print(f"📊 df_target head:\n{df_target.head()}")
+
+    if df_target.empty:
+        print("⚠️ df_target이 비어있습니다. 작업을 중단합니다.")
+        print("이전 Task('get_message_details')에서 데이터 조회가 실패했을 수 있습니다.")
+        return 0  # 또는 raise Exception("df_target is empty")
+
+
     # Databricks SQL 연결
     connection = sql.connect(
         server_hostname=config['instance'].replace('https://', ''),
@@ -438,10 +447,7 @@ def merge_query_history(**context):
     else:
         # 컬럼 rename
         query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
-        
-        print(f"📊 df_target 컬럼: {df_target.columns.tolist()}")
-        print(f"📊 df_target head:\n{df_target.head()}")
-        
+   
         # 병합
         df_audit_enriched = df_target.merge(
             query_df_renamed[[
@@ -449,8 +455,7 @@ def merge_query_history(**context):
                 "query_duration_seconds", "query_result_fetch_duration_seconds", "execution_status"
             ]],
             how="left",
-            left_on=["statement_id", "user_id"],  # ← df_target의 실제 컬럼명
-            right_on=["statement_id", "user_email"]  # ← query_df_renamed의 컬럼명
+            on=["statement_id", "user_email"]
         )
         
         print(f"📊 Query history 병합 완료: {len(df_audit_enriched)} rows")
