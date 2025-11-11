@@ -1,9 +1,8 @@
 """
-Airflow DAG: BigQuery Metadata → Notion ETL (Sensor 방식 - 수정됨)
-- 한 번만 시작하여 계속 실행
-- Sensor가 5분마다 변경 감지
-- 변경 시 ETL 실행 후 다시 Sensor로 복귀
-- Airflow 2.x/3.x 호환
+수정된 부분:
+1. Variable.get() 에러 처리 개선 (KeyError, VARIABLE_NOT_FOUND)
+2. Airflow 3.0+ 호환성 처리
+3. 초기 실행 시 Variable 자동 생성
 """
 
 import hashlib
@@ -34,13 +33,16 @@ def get_config(key: str, default: str = None) -> str:
         return env_value
     
     try:
-        # Airflow 버전 호환성
-        return Variable.get(key, default_var=default)
-    except TypeError:
-        # Airflow 3.0+
-        return Variable.get(key, default)
-    except KeyError:
+        # Airflow 3.0+ 호환성
+        try:
+            from airflow.sdk import Variable as SDKVariable
+            return SDKVariable.get(key, default)
+        except ImportError:
+            # Airflow 2.x
+            return Variable.get(key, default_var=default)
+    except Exception:
         return default
+
 
 # 이메일 설정
 SMTP_HOST = get_config("SMTP_HOST", "smtp.gmail.com")
@@ -74,7 +76,7 @@ ORDER BY full_table_id, column_name
 """
 
 
-# ===== Custom Sensor =====
+# ===== Custom Sensor (수정됨) =====
 class BigQueryMetadataChangeSensor(BaseSensorOperator):
     """BigQuery 메타데이터 변경 감지 Sensor"""
     
@@ -92,6 +94,30 @@ class BigQueryMetadataChangeSensor(BaseSensorOperator):
         self.project_id = project_id
         self.query = query
         self.hash_variable = hash_variable
+    
+    def _get_variable_safely(self, key: str, default: str = None) -> str:
+        """Variable을 안전하게 가져오기 (에러 처리 포함)"""
+        try:
+            # Airflow 3.0+ 호환성
+            try:
+                from airflow.sdk import Variable as SDKVariable
+                return SDKVariable.get(key, default)
+            except ImportError:
+                # Airflow 2.x
+                return Variable.get(key, default_var=default)
+        except Exception as e:
+            logging.warning(f"⚠️ Variable '{key}' 조회 실패: {type(e).__name__}")
+            return default
+    
+    def _set_variable_safely(self, key: str, value: str) -> bool:
+        """Variable을 안전하게 저장"""
+        try:
+            Variable.set(key, value)
+            logging.info(f"💾 Variable 저장 성공: {key}")
+            return True
+        except Exception as e:
+            logging.error(f"🔥 Variable 저장 실패: {type(e).__name__} - {e}")
+            return False
     
     def poke(self, context: Dict[str, Any]) -> bool:
         """메타데이터 변경 감지"""
@@ -113,13 +139,15 @@ class BigQueryMetadataChangeSensor(BaseSensorOperator):
             
             logging.info(f"📊 현재 해시: {current_hash[:16]}...")
             
-            # 이전 해시 가져오기
-            try:
-                previous_hash = Variable.get(self.hash_variable)
+            # 이전 해시 가져오기 (안전하게)
+            previous_hash = self._get_variable_safely(self.hash_variable)
+            
+            if previous_hash:
                 logging.info(f"📋 이전 해시: {previous_hash[:16]}...")
-            except KeyError:
-                previous_hash = None
-                logging.info("📋 이전 해시 없음 (초기 실행)")
+            else:
+                logging.info("📋 이전 해시 없음 (초기 실행) → Variable 초기화")
+                # 초기 실행 시 current_hash를 Variable에 저장
+                self._set_variable_safely(self.hash_variable, current_hash)
             
             # 변경 감지
             if current_hash != previous_hash:
@@ -131,7 +159,8 @@ class BigQueryMetadataChangeSensor(BaseSensorOperator):
                 return False
                 
         except Exception as e:
-            logging.error(f"🔥 Sensor 에러: {e}")
+            logging.error(f"🔥 Sensor 에러: {type(e).__name__} - {e}", exc_info=True)
+            # Sensor는 False를 반환하여 계속 대기
             return False
 
 
@@ -185,11 +214,14 @@ def sync_to_notion(**context):
         # Notion 동기화
         update_notion_databases(df)
         
-        # 해시 업데이트
+        # 해시 업데이트 (안전하게)
         current_hash = ti.xcom_pull(task_ids='detect_metadata_change', key='current_hash')
         if current_hash:
-            Variable.set(METADATA_HASH_VAR, current_hash)
-            logging.info(f"💾 해시 업데이트: {current_hash[:16]}...")
+            try:
+                Variable.set(METADATA_HASH_VAR, current_hash)
+                logging.info(f"💾 해시 업데이트 완료: {current_hash[:16]}...")
+            except Exception as e:
+                logging.error(f"⚠️ 해시 업데이트 실패: {e}")
         
         took = time.time() - start_ts
         logging.info(f"🎉 Notion 동기화 완료 (⏱️ {took:.1f}s)")
