@@ -12,11 +12,17 @@ import pandas as pd
  
 logging.basicConfig(level=logging.INFO)
  
+
+def get_var(key: str, default: str = None) -> str:
+    """환경 변수 또는 Airflow Variable 조회"""
+    return os.environ.get(key) or Variable.get(key, default_var=default)
+
+
 # ===== Notion ENV (이 4개만 환경변수로 사용) =====
-NOTION_TOKEN = os.environ.get("NOTION_TOKEN")
-DB_A_ID = os.environ.get("NOTION_DB_A")  # 테이블 정보용 (키: Hub 테이블명)
-DB_B_ID = os.environ.get("NOTION_DB_B")  # 컬럼 정보용 (키: Hub 컬럼명)
-DB_C_ID = os.environ.get("NOTION_DB_C")  # 테이블-컬럼 매핑용 (relation: A/B)
+NOTION_TOKEN = get_var("NOTION_TOKEN")
+DB_A_ID = get_var("NOTION_DB_A")  # 테이블 정보용 (키: Hub 테이블명)
+DB_B_ID = get_var("NOTION_DB_B")  # 컬럼 정보용 (키: Hub 컬럼명)
+DB_C_ID = get_var("NOTION_DB_C")  # 테이블-컬럼 매핑용 (relation: A/B)
  
 if not (NOTION_TOKEN and DB_A_ID and DB_B_ID and DB_C_ID):
     logging.warning("⚠️ NOTION_TOKEN / NOTION_DB_A / NOTION_DB_B / NOTION_DB_C 중 누락이 있습니다.")
