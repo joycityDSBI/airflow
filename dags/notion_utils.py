@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, Set, Tuple, List
 import requests
 import pandas as pd
+from airflow.models import Variable
  
 logging.basicConfig(level=logging.INFO)
  
