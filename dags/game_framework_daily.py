@@ -522,7 +522,7 @@ def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, 
     return gcs_path
 
 
-def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
+def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, NOTION_TOKEN, NOTION_VERSION,  **context):
 
     current_context = get_current_context()
     
@@ -581,18 +581,23 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     print(f"✅ upload url : {upload_url}")
 
     headers_upload = {
+        "Authorization": f"Bearer {NOTION_TOKEN}",
+        "Notion-Version": NOTION_VERSION,
         "Content-Type": "image/png"
     }
-    
+
     # file_upload["upload_url"] 도 응답에 포함됨
     # 2) 파일 바이너리 전송 (multipart/form-data)
     send_url = f"https://api.notion.com/v1/file_uploads/{file_upload_id}/send"
     files = {"file": (filename, BytesIO(image_bytes), "image/png")}
-    headers_send = headers_json
 
-    send_resp = requests.post(send_url, headers=headers_upload, files=files)
-    send_resp.raise_for_status()
-    print(f"✅ NOTION 이미지 업로드 완료")
+    try: 
+        send_resp = requests.post(send_url, headers=headers_upload, files=files)
+        send_resp.raise_for_status()
+        print(f"✅ NOTION 이미지 업로드 완료")
+    except Exception as e:
+        print(f"작업 실패 : {e}")
+        raise e
 
     # 3) 이미지 블록으로 페이지에 첨부
     append_url = f"https://api.notion.com/v1/blocks/{page_id}/children"
