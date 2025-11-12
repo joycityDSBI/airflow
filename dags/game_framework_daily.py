@@ -255,7 +255,10 @@ def merge_daily_revenue(path_daily_revenue:str, path_daily_revenue_yoy:str, buck
 
 ## 프롬프트 
 ### 4> 일자별 매출에 대한 제미나이 코멘트
-def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, **context):
+def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
+    
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     query_result1_dailySales = load_df_from_gcs(bucket, path_daily_revenue)
     query_result1_monthlySales = load_df_from_gcs(bucket, path_monthly_revenue)
@@ -265,7 +268,7 @@ def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INST
             "run_id": RUN_ID,
             "datascience_division_service_sub" : service_sub}
 
-    response1_salesComment = genai_client.generate_content(
+    response1_salesComment = genai_client.models.generate_content(
     model=MODEL_NAME,
     contents = f"""
     당월 매출은 일할계산시 {f"{int((query_result1_monthlySales.iat[0,0])):,}"}이고 목표는 {f"{int((query_result1_monthlySales.iat[0,1])):,}"}이야.
