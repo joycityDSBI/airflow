@@ -462,19 +462,26 @@ def daily_revenue_YOY_graph_draw(gameidx: str, bucket, **context):
 # 1) 파일 경로
 def merge_daily_graph(joyplegameid: int, gameidx: str, bucket):
     p1 = daily_revenue_graph_draw(joyplegameid, gameidx)
+    print(f"✅ p1 경로: {p1}")
+
     p2 = daily_revenue_YOY_graph_draw(joyplegameid, gameidx)
+    print(f"✅ p2 경로: {p2}")
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
+    print(f"📥 GCS에서 이미지 다운로드 중...")
     blob1 = bucket.blob(p1)
     blob2 = bucket.blob(p2)
 
+    print(f"📥 blob1 다운로드 중 ...")
     im1 = blob1.download_as_bytes()
     im2 = blob2.download_as_bytes()
 
+    print(f"🖼️ Image 객체 생성 중...")
     im1 = Image.open(BytesIO(im1))
     im2 = Image.open(BytesIO(im2))
 
     # ---- [옵션 A] 원본 크기 유지 + 세로 패딩으로 높이 맞추기 (권장: 왜곡 없음) ----
+    print(f"🔄 이미지 높이 맞추는 중...")
     target_h = max(im1.height, im2.height)
 
     def pad_to_height(img, h, bg=(255, 255, 255, 0)):  # 투명 배경: 알파 0
@@ -488,15 +495,20 @@ def merge_daily_graph(joyplegameid: int, gameidx: str, bucket):
 
     im1_p = pad_to_height(im1, target_h)
     im2_p = pad_to_height(im2, target_h)
+    print(f"✅ im1_p 크기: {im1_p.size}")
+    print(f"✅ im2_p 크기: {im2_p.size}")
 
+    print(f"🔗 이미지 합치는 중...")
     gap = 0  # 이미지 사이 여백(px). 필요하면 20 등으로 변경
     bg = (255, 255, 255, 0)  # 전체 배경(투명). 흰색 원하면 (255,255,255,255)
 
+    print(f"💾 PNG로 인코딩 중...")
     out = Image.new("RGBA", (im1_p.width + gap + im2_p.width, target_h), bg)
     out.paste(im1_p, (0, 0), im1_p)
     out.paste(im2_p, (im1_p.width + gap, 0), im2_p)
 
     # 3) GCS에 저장
+    print(f"📤 GCS에 업로드 중...")
     output_buffer = BytesIO()
     out.save(output_buffer, format='PNG')
     output_buffer.seek(0)
@@ -505,7 +517,7 @@ def merge_daily_graph(joyplegameid: int, gameidx: str, bucket):
     gcs_path = f'{gameidx}/graph1_dailySales_monthlySales.png'
     blob = bucket.blob(gcs_path)
     blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
-
+    print(f"✅ GCS 업로드 완료: gs://{bucket.name}/{gcs_path}")
     return gcs_path
 
 
