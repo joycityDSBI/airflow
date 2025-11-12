@@ -207,7 +207,7 @@ with DAG(
         else :
             print(f"❌ {gameidx}: {service_sub} merge_daily_revenue 실패")
 
-        img_gcs_path = merge_daily_graph(joyplegameid=joyplegameid, gameidx=gameidx, bucket=bucket)
+        img_gcs_path = merge_daily_graph(gameidx=gameidx, daily_revenue_path=st1, daily_revenue_yoy_path=st2, bucket=bucket)
         if len(img_gcs_path) > 0:
             print(f"✅ {gameidx}: {service_sub} merge_daily_graph 완료")
         else :

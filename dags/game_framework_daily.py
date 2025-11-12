@@ -303,27 +303,11 @@ def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INST
     # 코멘트 출력
     return response1_salesComment.text
 
-# 코멘트 정리 ( 향후 요약에 사용하기 용도 )
-#gemini_result.loc[len(gemini_result)] = response.text
-
-# ## 한글깨짐 방지를 위해 폰트 지정
-# font_path = "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"
-# if Path(font_path).exists():
-#     fm.fontManager.addfont(font_path)       # 수동 등록
-#     mpl.rc('font', family='NanumGothic')    # 기본 폰트 지정
-#     mpl.rc('axes', unicode_minus=False)     # 마이너스 깨짐 방지
-# else:
-#     print("⚠️ NanumGothic 설치 실패. 다른 폰트를 써야 합니다.")
 
 ## 그래프 그리기 : arg 값으로 게임 코드
-def daily_revenue_graph_draw(gameidx: str, bucket, **context):
+def daily_revenue_graph_draw(gameidx: str, path_daily_revenue:str, bucket, **context):
 
-    current_context = get_current_context()
-
-    df_daily = current_context['task_instance'].xcom_pull(
-        task_ids='daily_revenue_query',  # ← 첫 번째 Task의 task_id
-        key='daily_revenue_df'
-    )
+    df_daily = load_df_from_gcs(bucket, path_daily_revenue)
     
     x  = df_daily.iloc[:, 0]
     y1 = pd.to_numeric(df_daily.iloc[:, 1], errors='coerce')
@@ -388,14 +372,9 @@ def daily_revenue_graph_draw(gameidx: str, bucket, **context):
 
 
 ## 월간 매출 그래프 그리기
-def daily_revenue_YOY_graph_draw(gameidx: str, bucket, **context):
+def daily_revenue_YOY_graph_draw(gameidx: str, path_daily_revenue_yoy: str, bucket, **context):
 
-    current_context = get_current_context()
-
-    query_result1_monthlySales = current_context['task_instance'].xcom_pull(
-        task_ids='Daily_revenue_YOY_query',  # ← 첫 번째 Task의 task_id
-        key='Daily_revenue_YOY_df'
-    )
+    query_result1_monthlySales = load_df_from_gcs(bucket, path_daily_revenue_yoy)
 
     x  = query_result1_monthlySales.iloc[:, 0]
     y1 = pd.to_numeric(query_result1_monthlySales.iloc[:, 1], errors='coerce')
@@ -460,11 +439,11 @@ def daily_revenue_YOY_graph_draw(gameidx: str, bucket, **context):
 
 
 # 1) 파일 경로
-def merge_daily_graph(joyplegameid: int, gameidx: str, bucket):
-    p1 = daily_revenue_graph_draw(joyplegameid, gameidx)
+def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, bucket, **context):
+    p1 = daily_revenue_graph_draw(gameidx, daily_revenue_path, bucket)
     print(f"✅ p1 경로: {p1}")
 
-    p2 = daily_revenue_YOY_graph_draw(joyplegameid, gameidx)
+    p2 = daily_revenue_YOY_graph_draw(gameidx, daily_revenue_yoy_path, bucket)
     print(f"✅ p2 경로: {p2}")
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
@@ -521,7 +500,7 @@ def merge_daily_graph(joyplegameid: int, gameidx: str, bucket):
     return gcs_path
 
 
-def daily_revenue_data_upload_to_notion(gameidx: str, service_sub, genai_client, MOEDEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
+def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MOEDEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
     current_context = get_current_context()
 
@@ -529,15 +508,8 @@ def daily_revenue_data_upload_to_notion(gameidx: str, service_sub, genai_client,
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
-    query_result1_dailySales=current_context['task_instance'].xcom_pull(
-        task_ids='daily_revenue_query',  # ← 첫 번째 Task의 task_id
-        key='daily_revenue_df'
-    )
-
-    query_result1_monthlySales=current_context['task_instance'].xcom_pull(
-        task_ids='Daily_revenue_YOY_query',  # ← 첫 번째 Task의 task_id
-        key='Daily_revenue_YOY_df'
-    )
+    query_result1_dailySales=load_df_from_gcs(bucket, st1)
+    query_result1_monthlySales=load_df_from_gcs(bucket, st2)
 
     notion.blocks.children.append(
         PAGE_INFO["id"],
