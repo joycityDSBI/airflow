@@ -464,7 +464,7 @@ def save_df_to_gcs(df: pd.DataFrame, bucket, path: str) -> str:
         blob = bucket.blob(path)
         blob.upload_from_string(parquet_buffer, content_type='application/octet-stream')
         
-        gcs_path = f"gs://{bucket.name}/{path}"
+        gcs_path = f"{bucket.name}/{path}"
         print(f"✅ GCS 저장 완료: {gcs_path}")
         return gcs_path
         
