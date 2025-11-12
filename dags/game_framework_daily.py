@@ -569,36 +569,47 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
         "filename": filename,
         "content_type": "image/png"
     }
-    headers_json = headers_json
+    # headers_json = headers_json (이 줄은 headers_json이 상위 스코프에 정의되어 있음을 의미)
     resp = requests.post(create_url, headers=headers_json, data=json.dumps(payload))
     resp.raise_for_status()
     file_upload = resp.json()
 
     print(f"📊 API 응답: {file_upload}")
+    file_upload_id = file_upload["id"]  # 업로드 ID
 
-    file_upload_id = file_upload["id"]   # 업로드 ID
-    upload_url = file_upload["upload_url"]
-    print(f"✅ upload url : {upload_url}")
-
-    headers_upload = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "image/png"
-    }
-
-    # file_upload["upload_url"] 도 응답에 포함됨
-    # 2) 파일 바이너리 전송 (multipart/form-data)
+    # 2) 파일 바이너리 전송 (multipart/form-data) - 수정된 부분
     send_url = f"https://api.notion.com/v1/file_uploads/{file_upload_id}/send"
     files = {"file": (filename, BytesIO(image_bytes), "image/png")}
 
-    try: 
-        send_resp = requests.post(send_url, headers=headers_upload, files=files)
+    # ★★★★★
+    # [수정] 401 오류 해결: headers_json에서 인증 정보를 가져옵니다.
+    # [수정] 400 오류 해결: Content-Type을 제거하여 requests가 자동 생성하도록 합니다.
+    #
+    # headers_json이 아래와 같다고 가정:
+    # headers_json = {
+    #     "Authorization": f"Bearer {NOTION_TOKEN}",
+    #     "Notion-Version": NOTION_VERSION,
+    #     "Content-Type": "application/json" 
+    # }
+
+    # Content-Type을 제외한 나머지 헤더(인증, 버전)를 사용합니다.
+    headers_send = {
+        "Authorization": headers_json.get("Authorization"),
+        "Notion-Version": headers_json.get("Notion-Version")
+    }
+
+    try:
+        # [수정] headers=headers_upload 대신 headers=headers_send 를 사용
+        send_resp = requests.post(send_url, headers=headers_send, files=files) 
         send_resp.raise_for_status()
         print(f"✅ NOTION 이미지 업로드 완료")
     except Exception as e:
         print(f"작업 실패 : {e}")
+        # 실패 시 응답 내용을 확인하면 디버깅에 도움이 됩니다.
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"오류 응답: {e.response.text}")
         raise e
-
+    
     # 3) 이미지 블록으로 페이지에 첨부
     append_url = f"https://api.notion.com/v1/blocks/{page_id}/children"
     append_payload = {
