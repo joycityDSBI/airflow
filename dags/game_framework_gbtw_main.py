@@ -3,7 +3,7 @@ import pandas as pd
 from google.cloud import bigquery
 from google import genai
 from google.genai import types
-from goole.cloud import storage
+from google.cloud import storage
 from vertexai import rag
 import vertexai
 from google.genai import Client

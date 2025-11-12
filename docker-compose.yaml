@@ -221,16 +221,6 @@ services:
     environment:
       <<: *airflow-common-env
       DUMB_INIT_SETSID: "0"
-      NOTION_TOKEN: ${NOTION_TOKEN}
-      NOTION_DB_A: ${NOTION_DB_A}
-      NOTION_DB_B: ${NOTION_DB_B}
-      NOTION_DB_C: ${NOTION_DB_C}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      EMAIL_TO: ${EMAIL_TO}
-      EMAIL_FROM: ${EMAIL_FROM}
 
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
