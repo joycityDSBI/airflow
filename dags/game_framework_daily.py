@@ -580,13 +580,17 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     upload_url = file_upload["upload_url"]
     print(f"✅ upload url : {upload_url}")
 
+    headers_upload = {
+        "Content-Type": "image/png"
+    }
+    
     # file_upload["upload_url"] 도 응답에 포함됨
     # 2) 파일 바이너리 전송 (multipart/form-data)
-    send_url = f"https://api.notion.com/v1/file_uploads/{page_id}/send"
+    send_url = f"https://api.notion.com/v1/file_uploads/{file_upload_id}/send"
     files = {"file": (filename, BytesIO(image_bytes), "image/png")}
     headers_send = headers_json
 
-    send_resp = requests.post(send_url, headers=headers_send, files=files)
+    send_resp = requests.post(send_url, headers=headers_upload, files=files)
     send_resp.raise_for_status()
     print(f"✅ NOTION 이미지 업로드 완료")
 
