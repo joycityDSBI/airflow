@@ -221,6 +221,9 @@ def merge_daily_revenue(path_daily_revenue:str, path_daily_revenue_yoy:str, buck
         s_total = load_df_from_gcs(bucket, path_daily_revenue)
         val_total = load_df_from_gcs(bucket, path_daily_revenue_yoy)
 
+        print("s total, val total head 값 3개")
+        print(s_total.head(3))
+        print(val_total.head(3))
         # ✅ 값 추출
         val = val_total.iat[0, 0]
         s = s_total.iloc[:, 2]
