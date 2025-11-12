@@ -401,7 +401,7 @@ def daily_revenue_YOY_graph_draw(gameidx: str, path_daily_revenue_yoy: str, buck
         print(f"⚠️ 유효한 데이터가 없음")
         return None
     
-    
+
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(x, y2, marker='o',
             markersize=3, linewidth=1, # 마커 크기 작게
@@ -526,10 +526,13 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
 
     current_context = get_current_context()
 
+    
     PAGE_INFO=current_context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
+
+    print(f"✅ PAGE_INFO 가져오기 성공")
     query_result1_dailySales=load_df_from_gcs(bucket, st1)
     query_result1_monthlySales=load_df_from_gcs(bucket, st2)
 
@@ -551,6 +554,8 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     image_bytes = blob.download_as_bytes()
     filename = 'graph1_dailySales_monthlySales.png'
 
+    print(f"✅ GCS 파일 다운로드 완료")
+
     ########### (2) 그래프 업로드
     # 일자별 매출
     # 그래프는 파일 저장후 올리는 구조밖에 되지않아서
@@ -566,6 +571,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     file_upload = resp.json()
     file_upload_id = file_upload["id"]   # 업로드 ID
     upload_url = file_upload[upload_url]
+    print(f"✅ NOTION 업로드 객체 생성 완료 완료")
 
     # 2) 이미지 업로드
     headers_upload = {
@@ -581,6 +587,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
 
     send_resp = requests.post(send_url, headers=headers_send, files=files)
     send_resp.raise_for_status()
+    print(f"✅ NOTION 이미지 업로드 완료")
 
     # 3) 이미지 블록으로 페이지에 첨부
     append_url = f"https://api.notion.com/v1/blocks/{file_upload_id}/children"
@@ -603,6 +610,8 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     append_resp = requests.patch(append_url, headers=headers_json_patch, data=json.dumps(append_payload))
     append_resp.raise_for_status()
 
+    print(f"✅ 이미지 블록으로 페이지 첨부 완료")
+
     resp = df_to_notion_table_under_toggle(
         notion=notion,
         page_id=PAGE_INFO["id"],
@@ -621,6 +630,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
         batch_size=100,
     )
 
+    print(f"GEMINI 문의 처리 시작")
     response1_salesComment = daily_revenue_gemini(service_sub, genai_client, MOEDEL_NAME, SYSTEM_INSTRUCTION)
 
     ## 제미나이
@@ -629,6 +639,8 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
         block_id=PAGE_INFO["id"],
         children=blocks
     )
+
+    print(f"GEMINI 답변 등록 완료")
 
     return True
 
