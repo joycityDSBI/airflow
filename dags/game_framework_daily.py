@@ -217,8 +217,8 @@ def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery
 ## 전년 대비 월 매출 추이 수정 - 당월은 일할계산 매출
 def merge_daily_revenue(path_daily_revenue:str, path_daily_revenue_yoy:str, bucket, **context):
 
-    s_total = load_df_from_gcs(bucket, path_daily_revenue.split('/')[-1])
-    val_total = load_df_from_gcs(bucket, path_daily_revenue_yoy.split('/')[-1])
+    s_total = load_df_from_gcs(bucket, path_daily_revenue)
+    val_total = load_df_from_gcs(bucket, path_daily_revenue_yoy)
 
     # ✅ 데이터 검증
     print(f"📊 s_total type: {type(s_total)}, val: {s_total}")

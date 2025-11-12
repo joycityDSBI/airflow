@@ -472,6 +472,7 @@ def save_df_to_gcs(df: pd.DataFrame, bucket, path: str) -> str:
         print(f"❌ GCS 저장 실패: {e}")
         raise
 
+
 def load_df_from_gcs(bucket, path: str) -> pd.DataFrame:
     """
     GCS에서 DataFrame 로드 (Parquet 형식)
@@ -497,6 +498,6 @@ def load_df_from_gcs(bucket, path: str) -> pd.DataFrame:
 
 
 
-    
+
 ################################ 메인 함수 처리 ################################
 
