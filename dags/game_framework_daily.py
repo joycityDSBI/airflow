@@ -47,6 +47,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from adjustText import adjust_text
 from airflow.models import Variable
+from airflow.operators.python import get_current_context
 from zoneinfo import ZoneInfo  # Python 3.9 이상
 from pathlib import Path
 from game_framework_util import *
@@ -80,7 +81,9 @@ def Daily_revenue_query(joyplegameid: int, bigquery_client, **context):
 
     """
     query_result = query_run_method('1_daily_sales', bigquery_client, query)
-    context['task_instance'].xcom_push(key='daily_revenue_df', value=query_result)
+    # ✅ get_current_context()로 context 가져오기
+    current_context = get_current_context()
+    current_context['task_instance'].xcom_push(key='daily_revenue_df', value=query_result)
 
     return True
     
@@ -115,7 +118,9 @@ def Daily_revenue_YOY_query(joyplegameid: int, bigquery_client, **context):
 
     """
     query_result = query_run_method('1_daily_sales', bigquery_client, query)
-    context['task_instance'].xcom_push(key='Daily_revenue_YOY_df', value=query_result)
+
+    current_context = get_current_context()
+    current_context['task_instance'].xcom_push(key='Daily_revenue_YOY_df', value=query_result)
 
     return True
 
@@ -195,7 +200,9 @@ def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery
     """
 
     query_result = query_run_method('1_daily_sales', bigquery_client, query)
-    context['task_instance'].xcom_push(key='Daily_revenue_target_revenue_df', value=query_result)
+    
+    current_context = get_current_context()
+    current_context['task_instance'].xcom_push(key='Daily_revenue_target_revenue_df', value=query_result)
 
     return True
 
@@ -473,7 +480,7 @@ def merge_daily_graph(joyplegameid: int, gameidx: str, bucket):
     return gcs_path
 
 
-def daily_revenue_data_upload_to_notion(gameidx: str, service_sub, genai_client, MOEDEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, header_json, **context):
+def daily_revenue_data_upload_to_notion(gameidx: str, service_sub, genai_client, MOEDEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
     PAGE_INFO=context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
