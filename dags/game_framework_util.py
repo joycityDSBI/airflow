@@ -435,7 +435,7 @@ def query_run_method(service_sub: str, bigquery_client, query):
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}} ## 딕셔너리 형태로 붙일 수 있음.
+            f"datascience_division_service_sub" : service_sub} ## 딕셔너리 형태로 붙일 수 있음.
     print("📧 RUN_ID=", RUN_ID, "📧 LABEL_ID=", LABELS)
 
     query_result = bigquery_client.query(query, job_config=bigquery.QueryJobConfig(labels=LABELS)).to_dataframe()
