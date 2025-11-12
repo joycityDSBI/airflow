@@ -172,6 +172,7 @@ with DAG(
             print(f"✅ {gameidx} NOTION 페이지 생성 완료")
         except Exception as e:
             print(f"❌ {gameidx} NOTION 페이지 생성 실패")
+            print(f"🔴 {e}")
             
 
     ####### 일자별 게임 프레임 워크
