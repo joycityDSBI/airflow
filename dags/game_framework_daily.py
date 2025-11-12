@@ -52,6 +52,9 @@ from zoneinfo import ZoneInfo  # Python 3.9 이상
 from pathlib import Path
 from game_framework_util import *
 
+PROJECT_ID = "data-science-division-216308"
+LOCATION = "us-central1"
+
 
 ## 일자별 매출
 def Daily_revenue_query(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
@@ -646,7 +649,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     )
 
     print(f"GEMINI 문의 처리 시작")
-    response1_salesComment = daily_revenue_gemini(service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, st1, st2, bucket)
+    response1_salesComment = daily_revenue_gemini(service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, st1, st2, bucket, PROJECT_ID=PROJECT_ID, LOCATION=LOCATION)
 
     ## 제미나이
     blocks = md_to_notion_blocks(response1_salesComment)
