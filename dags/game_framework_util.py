@@ -466,7 +466,7 @@ def save_df_to_gcs(df: pd.DataFrame, bucket, path: str) -> str:
         
         gcs_path = f"{bucket.name}/{path}"
         print(f"✅ GCS 저장 완료: {gcs_path}")
-        return gcs_path
+        return path
         
     except Exception as e:
         print(f"❌ GCS 저장 실패: {e}")
