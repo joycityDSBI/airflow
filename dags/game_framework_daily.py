@@ -524,10 +524,7 @@ def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, 
 
 def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MOEDEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    current_context = get_current_context()
-
-    
-    PAGE_INFO=current_context['task_instance'].xcom_pull(
+    PAGE_INFO=context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )

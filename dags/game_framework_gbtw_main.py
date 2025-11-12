@@ -215,6 +215,9 @@ with DAG(
 
         try :
             daily_revenue_data_upload_to_notion(
+                st1=st1,
+                st2=st2,
+                MOEDEL_NAME=MODEL_NAME,
                 gameidx=gameidx, 
                 service_sub=service_sub[0], 
                 genai_client=genai_client, 
