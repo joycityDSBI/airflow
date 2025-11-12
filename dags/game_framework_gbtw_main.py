@@ -249,8 +249,9 @@ with DAG(
             'MODEL_NAME': MODEL_NAME,
             'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
             'bucket': bucket,
-            'header_json': headers_json,
-            'genai_client': genai_client
+            'headers_json': headers_json,
+            'genai_client': genai_client,
+            'notion':notion
         },
         dag=dag,
     )
