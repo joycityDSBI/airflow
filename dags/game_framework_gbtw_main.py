@@ -182,19 +182,19 @@ with DAG(
         
         print(f"📧 RUN 데일리 데이터 게임 프로엠워크 시작: {gameidx}")
         
-        st1 = Daily_revenue_query(joyplegameid=joyplegameid, bigquery_client=bigquery_client)
+        st1 = Daily_revenue_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
         if st1 == True:
             print(f"✅ {gameidx}: {service_sub} Daily_revenue_query 완료")
         else :
             print(f"❌ {gameidx}: {service_sub} Daily_revenue_query 실패")
 
-        st2 = Daily_revenue_YOY_query(joyplegameid=joyplegameid, bigquery_client=bigquery_client)
+        st2 = Daily_revenue_YOY_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
         if st2 == True:
             print(f"✅ {gameidx}: {service_sub} Daily_revenue_YOY_query 완료")
         else :
             print(f"❌ {gameidx}: {service_sub} Daily_revenue_YOY_query 실패")
 
-        st3 = Daily_revenue_target_revenue_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client)
+        st3 = Daily_revenue_target_revenue_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
         if st3 == True:
             print(f"✅ {gameidx}: {service_sub} Daily_revenue_target_revenue_query 완료")
         else :
