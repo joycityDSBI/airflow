@@ -109,10 +109,27 @@ with DAG(
     credentials.refresh(Request())
 
 
+    vertexai.init(project=PROJECT_ID, location=LOCATION)
+
+        # 클라이언트 모음
+    try:
+        genai_client = Client()  # vertexai=True 제거
+        print("✅ genai_client 초기화 성공")
+    except Exception as e:
+        print(f"❌ genai_client 초기화 실패: {e}")
+        raise
+
+    bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
+    
+    try:
+        notion = notionClient(auth=NOTION_TOKEN)
+        print("✅ Notion 클라이언트 초기화 성공")
+    except Exception as e:
+        print(f"❌ Notion 클라이언트 초기화 실패: {e}")
+        raise
+
+
     # 클라이언트 모음
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-    bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)# location=LOCATION ## us-central1 로 할 경우 허브 조회불가능
-    notion = notionClient(auth=NOTION_TOKEN)
     gcs_client = storage.Client.from_service_account_info(cred_dict)
     bucket = gcs_client.bucket('game-framework1')
 
