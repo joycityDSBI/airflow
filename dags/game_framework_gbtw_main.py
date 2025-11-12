@@ -73,7 +73,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='injoy_notion_permission_consumer',
+    dag_id='game_framework_gbtw_main',
     default_args=default_args,
     description='Databricks 데이터를 Notion DB에 동기화하는 DAG',
     schedule= '0 23 * * *',
