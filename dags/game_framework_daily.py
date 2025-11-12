@@ -221,6 +221,10 @@ def merge_daily_revenue(**context):
         key='Daily_revenue_YOY_df'
     )
 
+    # ✅ 데이터 검증
+    print(f"📊 s_total type: {type(s_total)}, val: {s_total}")
+    print(f"📊 val_total type: {type(val_total)}, val: {val_total}")
+    
     val = val_total.iat[0, 0]
     s = s_total.iloc[:, 2]
     try:
