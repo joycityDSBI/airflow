@@ -94,7 +94,7 @@ def make_gameframework_notion_page(
             },
             "프로젝트": {
                 "multi_select": [
-                    {"name": {gameidx}}   # 다중 선택 옵션
+                    {"name": gameidx}   # 다중 선택 옵션
                 ]
             },
             "리포트 종류": {
