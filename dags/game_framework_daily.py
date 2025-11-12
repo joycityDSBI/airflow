@@ -573,8 +573,11 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     resp = requests.post(create_url, headers=headers_json, data=json.dumps(payload))
     resp.raise_for_status()
     file_upload = resp.json()
+
+    print(f"📊 API 응답: {file_upload}")
+
     file_upload_id = file_upload["id"]   # 업로드 ID
-    upload_url = file_upload[upload_url]
+    upload_url = file_upload["upload_url"]
     print(f"✅ NOTION 업로드 객체 생성 완료 완료")
 
     # 2) 이미지 업로드
