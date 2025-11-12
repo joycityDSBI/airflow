@@ -196,9 +196,9 @@ with DAG(
 
         st3 = Daily_revenue_target_revenue_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client)
         if st3 == True:
-            print(f"✅ {gameidx}: {service_sub} Daily_revenue_YOY_query 완료")
+            print(f"✅ {gameidx}: {service_sub} Daily_revenue_target_revenue_query 완료")
         else :
-            print(f"❌ {gameidx}: {service_sub} Daily_revenue_YOY_query 실패")
+            print(f"❌ {gameidx}: {service_sub} Daily_revenue_target_revenue_query 실패")
         
         s_total = merge_daily_revenue()
         if len(s_total) > 0:

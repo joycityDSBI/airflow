@@ -210,11 +210,13 @@ def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery
 ## 전년 대비 월 매출 추이 수정 - 당월은 일할계산 매출
 def merge_daily_revenue(**context):
 
-    s_total = context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+
+    s_total = current_context['task_instance'].xcom_pull(
         task_ids = 'Daily_revenue_query',
         key='daily_revenue_df'
     )
-    val_total = context['task_instance'].xcom_pull(
+    val_total = current_context['task_instance'].xcom_pull(
         task_ids = 'Daily_revenue_YOY_query',
         key='Daily_revenue_YOY_df'
     )
@@ -234,13 +236,14 @@ def merge_daily_revenue(**context):
 ### 4> 일자별 매출에 대한 제미나이 코멘트
 def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, **context):
 
+    current_context = get_current_context()
 
-    query_result1_dailySales = context['task_instance'].xcom_pull(
+    query_result1_dailySales = current_context['task_instance'].xcom_pull(
         task_ids = 'Daily_revenue_query',
         key='daily_revenue_df'
     )
 
-    query_result1_monthlySales = context['task_instance'].xcom_pull(
+    query_result1_monthlySales = current_context['task_instance'].xcom_pull(
         task_ids = 'Daily_revenue_YOY_query',
         key='Daily_revenue_YOY_df'
     )
@@ -294,7 +297,9 @@ def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INST
 ## 그래프 그리기 : arg 값으로 게임 코드
 def daily_revenue_graph_draw(gameidx: str, bucket, **context):
 
-    df_daily = context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+
+    df_daily = current_context['task_instance'].xcom_pull(
         task_ids='daily_revenue_query',  # ← 첫 번째 Task의 task_id
         key='daily_revenue_df'
     )
@@ -364,7 +369,9 @@ def daily_revenue_graph_draw(gameidx: str, bucket, **context):
 ## 월간 매출 그래프 그리기
 def daily_revenue_YOY_graph_draw(gameidx: str, bucket, **context):
 
-    query_result1_monthlySales = context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+
+    query_result1_monthlySales = current_context['task_instance'].xcom_pull(
         task_ids='Daily_revenue_YOY_query',  # ← 첫 번째 Task의 task_id
         key='Daily_revenue_YOY_df'
     )
@@ -483,16 +490,18 @@ def merge_daily_graph(joyplegameid: int, gameidx: str, bucket):
 
 def daily_revenue_data_upload_to_notion(gameidx: str, service_sub, genai_client, MOEDEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
-    query_result1_dailySales=context['task_instance'].xcom_pull(
+    query_result1_dailySales=current_context['task_instance'].xcom_pull(
         task_ids='daily_revenue_query',  # ← 첫 번째 Task의 task_id
         key='daily_revenue_df'
     )
 
-    query_result1_monthlySales=context['task_instance'].xcom_pull(
+    query_result1_monthlySales=current_context['task_instance'].xcom_pull(
         task_ids='Daily_revenue_YOY_query',  # ← 첫 번째 Task의 task_id
         key='Daily_revenue_YOY_df'
     )
@@ -524,7 +533,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, service_sub, genai_client,
         "filename": filename,
         "content_type": "image/png"
     }
-    headers_json = header_json
+    headers_json = headers_json
     resp = requests.post(create_url, headers=headers_json, data=json.dumps(payload))
     resp.raise_for_status()
     file_upload = resp.json()
@@ -541,7 +550,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, service_sub, genai_client,
     # 2) 파일 바이너리 전송 (multipart/form-data)
     send_url = f"https://api.notion.com/v1/file_uploads/{file_upload_id}/send"
     files = {"file": (filename, BytesIO(image_bytes), "image/png")}
-    headers_send = header_json
+    headers_send = headers_json
 
     send_resp = requests.post(send_url, headers=headers_send, files=files)
     send_resp.raise_for_status()
@@ -563,7 +572,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, service_sub, genai_client,
         ]
     }
 
-    headers_json_patch = header_json
+    headers_json_patch = headers_json
     append_resp = requests.patch(append_url, headers=headers_json_patch, data=json.dumps(append_payload))
     append_resp.raise_for_status()
 
