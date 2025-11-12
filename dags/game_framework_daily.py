@@ -531,7 +531,12 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
         key='page_info'
     )
 
+    print(f"📊 page_info type: {type(PAGE_INFO)}")
+    print(f"📊 page_info: {PAGE_INFO}")
     print(f"✅ PAGE_INFO 가져오기 성공")
+
+    page_id = PAGE_INFO.get('id')
+
     query_result1_dailySales=load_df_from_gcs(bucket, st1)
     query_result1_monthlySales=load_df_from_gcs(bucket, st2)
 
