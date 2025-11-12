@@ -4,7 +4,6 @@ from google.cloud import bigquery
 from google import genai
 from google.genai import types
 from google.cloud import storage
-from vertexai import rag
 import vertexai
 from google.genai import Client
 from google.genai.types import GenerateContentConfig, Retrieval, Tool, VertexRagStore
