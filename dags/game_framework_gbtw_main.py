@@ -115,7 +115,7 @@ with DAG(
 
         # 클라이언트 모음
     try:
-        genai_client = Client()  # vertexai=True 제거
+        genai_client = Client(project=PROJECT_ID,location=LOCATION)  # vertexai=True 제거
         print("✅ genai_client 초기화 성공")
     except Exception as e:
         print(f"❌ genai_client 초기화 실패: {e}")

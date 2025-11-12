@@ -255,26 +255,17 @@ def merge_daily_revenue(path_daily_revenue:str, path_daily_revenue_yoy:str, buck
 
 ## 프롬프트 
 ### 4> 일자별 매출에 대한 제미나이 코멘트
-def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, **context):
+def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, **context):
 
-    current_context = get_current_context()
-
-    query_result1_dailySales = current_context['task_instance'].xcom_pull(
-        task_ids = 'Daily_revenue_query',
-        key='daily_revenue_df'
-    )
-
-    query_result1_monthlySales = current_context['task_instance'].xcom_pull(
-        task_ids = 'Daily_revenue_YOY_query',
-        key='Daily_revenue_YOY_df'
-    )
+    query_result1_dailySales = load_df_from_gcs(bucket, path_daily_revenue)
+    query_result1_monthlySales = load_df_from_gcs(bucket, path_monthly_revenue)
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
             "datascience_division_service_sub" : service_sub}
 
-    response1_salesComment = genai_client.models.generate_content(
+    response1_salesComment = genai_client.generate_content(
     model=MODEL_NAME,
     contents = f"""
     당월 매출은 일할계산시 {f"{int((query_result1_monthlySales.iat[0,0])):,}"}이고 목표는 {f"{int((query_result1_monthlySales.iat[0,1])):,}"}이야.
@@ -652,7 +643,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     )
 
     print(f"GEMINI 문의 처리 시작")
-    response1_salesComment = daily_revenue_gemini(service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION)
+    response1_salesComment = daily_revenue_gemini(service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, st1, st2, bucket)
 
     ## 제미나이
     blocks = md_to_notion_blocks(response1_salesComment)
