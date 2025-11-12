@@ -35,6 +35,7 @@ pyspark>=3.3,<3.5  # 4.0.0은 Python 3.9+ 필요
 # Web frameworks - Python 3.8 호환
 flask>=2.2,<2.3
 functions-framework>=3.5,<3.8
+flask-limiter
 
 # Task queue & caching
 celery>=5.2,<5.4  # 5.5.0은 Python 3.9+ 선호
