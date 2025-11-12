@@ -233,7 +233,9 @@ with DAG(
                 SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
                 notion=notion, 
                 bucket=bucket, 
-                headers_json=headers_json
+                headers_json=headers_json,
+                NOTION_TOKEN=NOTION_TOKEN,
+                NOTION_VERSION=NOTION_VERSION
             )
             print(f"✅ {gameidx}: {service_sub} daily_revenue_data_upload_to_notion 완료")
         except Exception as e:
