@@ -177,7 +177,7 @@ with DAG(
 
     ####### 일자별 게임 프레임 워크
 
-    def datily_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, header_json): 
+    def datily_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
         
         print(f"📧 RUN 데일리 데이터 게임 프로엠워크 시작: {gameidx}")
         
@@ -216,11 +216,11 @@ with DAG(
                 gameidx=gameidx, 
                 service_sub=service_sub[0], 
                 genai_client=genai_client, 
-                MOEDEL_NAME=MODEL_NAME, 
+                MODEL_NAME=MODEL_NAME, 
                 SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
                 notion=notion, 
                 bucket=bucket, 
-                header_json=header_json
+                headers_json=headers_json
             )
             print(f"✅ {gameidx}: {service_sub} daily_revenue_data_upload_to_notion 완료")
         except Exception as e:
@@ -241,6 +241,17 @@ with DAG(
     daily_gameframework_run = PythonOperator(
         task_id='datily_data_game_framework',
         python_callable=datily_data_game_framework,
+        op_kwargs={
+            'joyplegameid':joyplegameid,
+            'gameidx':gameidx,
+            'service_sub':service_sub[0],
+            'bigquery_client':bigquery_client,
+            'MODEL_NAME': MODEL_NAME,
+            'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+            'bucket': bucket,
+            'header_json': headers_json,
+            'genai_client': genai_client
+        },
         dag=dag,
     )
 
