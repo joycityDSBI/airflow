@@ -138,7 +138,8 @@ with DAG(
     joyplegameid = 133
     service_sub = [
         '1_daily_sales',
-        '2_inhouse_sales'
+        '2_inhouse_sales',
+        '3'
     ]
 
     ## 페이지 생성 함수 //////////// task 함수

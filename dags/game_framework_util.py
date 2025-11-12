@@ -116,7 +116,7 @@ def make_gameframework_notion_page(
 
     if res.status_code == 200:
         page_info = res.json() # ✅ 페이지 ID page_info["id"]
-        print(f"✅ 페이지 생성 성공 ✅ 페이지 ID : {page_info["id"]}")
+        print(f"✅ 페이지 생성 성공 ✅ 페이지 ID : {page_info['id']}")
     else:
         print(f"⚠️ 에러 발생: {res.status_code} >> {res.text}")
 
