@@ -83,7 +83,7 @@ def Daily_revenue_query(joyplegameid: int, bigquery_client, **context):
     query_result = query_run_method('1_daily_sales', bigquery_client, query)
     # ✅ get_current_context()로 context 가져오기
     current_context = get_current_context()
-    current_context['task_instance'].xcom_push(key='daily_revenue_df', value=query_result)
+    current_context['task_instance'].xcom_push(key='daily_revenue_df', value=query_result.to_json())
 
     return True
     
@@ -120,7 +120,7 @@ def Daily_revenue_YOY_query(joyplegameid: int, bigquery_client, **context):
     query_result = query_run_method('1_daily_sales', bigquery_client, query)
 
     current_context = get_current_context()
-    current_context['task_instance'].xcom_push(key='Daily_revenue_YOY_df', value=query_result)
+    current_context['task_instance'].xcom_push(key='Daily_revenue_YOY_df', value=query_result.to_json())
 
     return True
 
@@ -202,7 +202,7 @@ def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery
     query_result = query_run_method('1_daily_sales', bigquery_client, query)
     
     current_context = get_current_context()
-    current_context['task_instance'].xcom_push(key='Daily_revenue_target_revenue_df', value=query_result)
+    current_context['task_instance'].xcom_push(key='Daily_revenue_target_revenue_df', value=query_result.to_json())
 
     return True
 
@@ -224,7 +224,7 @@ def merge_daily_revenue(**context):
     # ✅ 데이터 검증
     print(f"📊 s_total type: {type(s_total)}, val: {s_total}")
     print(f"📊 val_total type: {type(val_total)}, val: {val_total}")
-    
+
     val = val_total.iat[0, 0]
     s = s_total.iloc[:, 2]
     try:
