@@ -178,32 +178,29 @@ with DAG(
 
     ####### 일자별 게임 프레임 워크
 
-    def Daily_revenue_query_gf(joyplegameid=joyplegameid, bigquery_client=bigquery_client):
+    def daily_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
+        
+        print(f"📧 RUN 데일리 데이터 게임 프로엠워크 시작: {gameidx}")
+        
         st1 = Daily_revenue_query(joyplegameid=joyplegameid, bigquery_client=bigquery_client)
         if st1 == True:
             print(f"✅ {gameidx}: {service_sub} Daily_revenue_query 완료")
         else :
             print(f"❌ {gameidx}: {service_sub} Daily_revenue_query 실패")
-        
-    def Daily_revenue_YOY_query_gf(joyplegameid=joyplegameid, bigquery_client=bigquery_client):
+
         st2 = Daily_revenue_YOY_query(joyplegameid=joyplegameid, bigquery_client=bigquery_client)
         if st2 == True:
             print(f"✅ {gameidx}: {service_sub} Daily_revenue_YOY_query 완료")
         else :
             print(f"❌ {gameidx}: {service_sub} Daily_revenue_YOY_query 실패")
 
-    def Daily_revenue_target_revenue_query_gf(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client):
         st3 = Daily_revenue_target_revenue_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client)
         if st3 == True:
             print(f"✅ {gameidx}: {service_sub} Daily_revenue_target_revenue_query 완료")
         else :
             print(f"❌ {gameidx}: {service_sub} Daily_revenue_target_revenue_query 실패")
-
-    def daily_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
         
-        print(f"📧 RUN 데일리 데이터 게임 프로엠워크 시작: {gameidx}")
-        
-        s_total = merge_daily_revenue()
+        s_total = merge_daily_revenue(st1, st2, bucket=bucket)
         if len(s_total) > 0:
             print(f"✅ {gameidx}: {service_sub} merge_daily_revenue 완료")
         else :
@@ -241,36 +238,6 @@ with DAG(
         dag=dag,
     )
 
-    daily_revenue_query_run=PythonOperator(
-        task_id='daily_revenue_query_run',
-        python_callable = Daily_revenue_query_gf,
-        op_kwargs={
-            'joyplegameid':joyplegameid,
-            'bigquery_client':bigquery_client,
-        },
-        dag=dag,
-    )
-
-    daily_revenue_YOY_query_run=PythonOperator(
-        task_id='daily_revenue_YOY_query_run',
-        python_callable = Daily_revenue_YOY_query_gf,
-        op_kwargs={
-            'joyplegameid':joyplegameid,
-            'bigquery_client':bigquery_client,
-        },
-        dag=dag,
-    )
-
-    daily_revenue_target_revenue_query_run=PythonOperator(
-        task_id='daily_revenue_target_revenue_query_run',
-        python_callable = Daily_revenue_target_revenue_query_gf,
-        op_kwargs={
-            'joyplegameid':joyplegameid,
-            'bigquery_client':bigquery_client,
-            'gameidx':gameidx,
-        },
-        dag=dag,
-    )
 
     daily_gameframework_run = PythonOperator(
         task_id='datily_data_game_framework',
@@ -290,5 +257,5 @@ with DAG(
         dag=dag,
     )
 
-create_gameframework_notion_page >> daily_revenue_query_run >> daily_revenue_YOY_query_run >> daily_revenue_target_revenue_query_run >> daily_gameframework_run
+create_gameframework_notion_page >> daily_gameframework_run
 

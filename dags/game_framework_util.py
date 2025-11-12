@@ -100,13 +100,13 @@ def make_gameframework_notion_page(
                     "multi_select": [
                         {"name": "게임분석"}   # 다중 선택 옵션
                     ]
-                },
-                "작성자": {
-                    "people": [
-                        {"id": "ce95f16a-6b6b-447d-a996-a9c5f0cc0113"},  # Notion user_id
-                        {"id": "662575bc-731c-481c-afc7-13b2fdf5482a"}  # Notion user_id
-                    ]
                 }
+                # , "작성자": {
+                #     "people": [
+                #         {"id": "ce95f16a-6b6b-447d-a996-a9c5f0cc0113"},  # Notion user_id
+                #         {"id": "662575bc-731c-481c-afc7-13b2fdf5482a"}  # Notion user_id
+                #     ]
+                # }
             }
         }
 
@@ -442,5 +442,61 @@ def query_run_method(service_sub: str, bigquery_client, query):
     query_result = bigquery_client.query(query, job_config=bigquery.QueryJobConfig(labels=LABELS)).to_dataframe()
     return query_result
 
+
+
+def save_df_to_gcs(df: pd.DataFrame, bucket, path: str) -> str:
+    """
+    DataFrame을 GCS에 저장 (Parquet 형식)
+    
+    Args:
+        df: 저장할 DataFrame
+        bucket: GCS bucket 객체
+        path: GCS 경로 (e.g., 'data/daily_revenue_20251112.parquet')
+    
+    Returns:
+        GCS 파일 경로
+    """
+    try:
+        # Parquet으로 바이너리 변환
+        parquet_buffer = df.to_parquet()
+        
+        # GCS에 업로드
+        blob = bucket.blob(path)
+        blob.upload_from_string(parquet_buffer, content_type='application/octet-stream')
+        
+        gcs_path = f"gs://{bucket.name}/{path}"
+        print(f"✅ GCS 저장 완료: {gcs_path}")
+        return gcs_path
+        
+    except Exception as e:
+        print(f"❌ GCS 저장 실패: {e}")
+        raise
+
+def load_df_from_gcs(bucket, path: str) -> pd.DataFrame:
+    """
+    GCS에서 DataFrame 로드 (Parquet 형식)
+    
+    Args:
+        bucket: GCS bucket 객체
+        path: GCS 경로
+    
+    Returns:
+        로드된 DataFrame
+    """
+    try:
+        blob = bucket.blob(path)
+        parquet_buffer = blob.download_as_bytes()
+        
+        df = pd.read_parquet(io.BytesIO(parquet_buffer))
+        print(f"✅ GCS 로드 완료: gs://{bucket.name}/{path}, shape: {df.shape}")
+        return df
+        
+    except Exception as e:
+        print(f"❌ GCS 로드 실패: {e}")
+        raise
+
+
+
+    
 ################################ 메인 함수 처리 ################################
 

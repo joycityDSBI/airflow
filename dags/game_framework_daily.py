@@ -54,7 +54,7 @@ from game_framework_util import *
 
 
 ## 일자별 매출
-def Daily_revenue_query(joyplegameid: int, bigquery_client, **context):
+def Daily_revenue_query(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     query = f"""
 
     select day
@@ -83,15 +83,16 @@ def Daily_revenue_query(joyplegameid: int, bigquery_client, **context):
     query_result = query_run_method('1_daily_sales', bigquery_client, query)
     # ✅ get_current_context()로 context 가져오기
 
-    print(query_result.head(5))
-    current_context = get_current_context()
-    current_context['task_instance'].xcom_push(key='daily_revenue_df', value=query_result.to_dict('records'))
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
 
-    return True
+    return saved_path
     
     
 #### 전년 대비 월 매출 추이
-def Daily_revenue_YOY_query(joyplegameid: int, bigquery_client, **context):
+def Daily_revenue_YOY_query(joyplegameid: int, gameidx:str, bigquery_client, bucket, **context):
     query = f"""
 
     select month
@@ -121,15 +122,16 @@ def Daily_revenue_YOY_query(joyplegameid: int, bigquery_client, **context):
     """
     query_result = query_run_method('1_daily_sales', bigquery_client, query)
 
-    print(query_result.head(5))
-    current_context = get_current_context()
-    current_context['task_instance'].xcom_push(key='Daily_revenue_YOY_df', value=query_result.to_dict('records'))
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
 
-    return True
+    return saved_path
 
 
 ## 현재 매출과 목표 매출
-def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery_client, **context):
+def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     query = f"""
     ### 1> 이번달 일자별 매출 실측치
     with thismonthRev as (
@@ -203,26 +205,20 @@ def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery
     """
 
     query_result = query_run_method('1_daily_sales', bigquery_client, query)
-    print(query_result.head(5))
-    current_context = get_current_context()
-    current_context['task_instance'].xcom_push(key='Daily_revenue_target_revenue_df', value=query_result.to_dict('records'))
 
-    return True
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
+
+    return saved_path
 
 
 ## 전년 대비 월 매출 추이 수정 - 당월은 일할계산 매출
-def merge_daily_revenue(**context):
+def merge_daily_revenue(path_daily_revenue:str, path_daily_revenue_yoy:str, bucket, **context):
 
-    current_context = get_current_context()
-
-    s_total = current_context['task_instance'].xcom_pull(
-        task_ids = 'Daily_revenue_query',
-        key='daily_revenue_df'
-    )
-    val_total = current_context['task_instance'].xcom_pull(
-        task_ids = 'Daily_revenue_YOY_query',
-        key='Daily_revenue_YOY_df'
-    )
+    s_total = load_df_from_gcs(bucket, path_daily_revenue.split('/')[-1])
+    val_total = load_df_from_gcs(bucket, path_daily_revenue_yoy.split('/')[-1])
 
     # ✅ 데이터 검증
     print(f"📊 s_total type: {type(s_total)}, val: {s_total}")
