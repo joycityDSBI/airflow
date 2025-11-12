@@ -158,8 +158,6 @@ def make_gameframework_notion_page(
         else:
             print(f"⚠️ 에러 발생: {res.status_code} >> {res.text}")
 
-        context['task_instance'].xcom_push(key='page_info', value=page_info)
-
         return page_info 
     except Exception as e:
         print(f"⚠️ 페이지 생성 실패: {e}")

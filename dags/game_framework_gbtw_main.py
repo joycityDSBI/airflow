@@ -172,6 +172,13 @@ with DAG(
                 notion = notion
                 )
             print(f"✅ {gameidx} NOTION 페이지 생성 완료")
+            
+            current_context = get_current_context()
+            current_context['task_instance'].xcom_push(
+                key='page_info',
+                value=page_info
+            )
+
             return page_info
         except Exception as e:
             print(f"❌ {gameidx} NOTION 페이지 생성 실패")
