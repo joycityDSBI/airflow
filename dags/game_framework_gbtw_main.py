@@ -50,6 +50,7 @@ from airflow.models import Variable
 from airflow.operators.python import get_current_context
 from zoneinfo import ZoneInfo  # Python 3.9 이상
 from pathlib import Path
+import io
 
 # 게임 프레임워크 모듈
 from game_framework_util import *

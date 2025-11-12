@@ -50,6 +50,7 @@ from airflow.models import Variable
 from airflow.operators.python import get_current_context
 from zoneinfo import ZoneInfo  # Python 3.9 이상
 from pathlib import Path
+import io
 
 
 ## 페이지 생성 함수 //////////// task 함수
