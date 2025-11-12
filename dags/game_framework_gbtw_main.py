@@ -165,13 +165,14 @@ with DAG(
 
     def make_gameframework_notion_page_wraper(**context):
         try:
-            make_gameframework_notion_page(
+            page_info = make_gameframework_notion_page(
                 gameidx=gameidx,
                 NOTION_TOKEN=NOTION_TOKEN,
                 DATABASE_ID=DATABASE_ID,
                 notion = notion
                 )
             print(f"✅ {gameidx} NOTION 페이지 생성 완료")
+            return page_info
         except Exception as e:
             print(f"❌ {gameidx} NOTION 페이지 생성 실패")
             print(f"🔴 {e}")

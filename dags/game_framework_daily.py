@@ -522,10 +522,12 @@ def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, 
     return gcs_path
 
 
-def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MOEDEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
+def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+    current_context = get_current_context()
+    
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -628,7 +630,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     )
 
     print(f"GEMINI 문의 처리 시작")
-    response1_salesComment = daily_revenue_gemini(service_sub, genai_client, MOEDEL_NAME, SYSTEM_INSTRUCTION)
+    response1_salesComment = daily_revenue_gemini(service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION)
 
     ## 제미나이
     blocks = md_to_notion_blocks(response1_salesComment)
