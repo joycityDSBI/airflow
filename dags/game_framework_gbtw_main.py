@@ -41,7 +41,7 @@ import os
 import math
 import time
 import pandas as pd
-from notion_client import Client
+from notion_client import Client as notionClient
 import requests
 import json
 from datetime import datetime, timezone, timedelta
@@ -112,7 +112,7 @@ with DAG(
     # 클라이언트 모음
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
     bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)# location=LOCATION ## us-central1 로 할 경우 허브 조회불가능
-    notion = Client(auth=NOTION_TOKEN)
+    notion = notionClient(auth=NOTION_TOKEN)
     gcs_client = storage.Client.from_service_account_info(cred_dict)
     bucket = gcs_client.bucket('game-framework1')
 
