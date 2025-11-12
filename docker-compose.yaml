@@ -62,23 +62,6 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
-    # NOTION 설정
-    NOTION_TOKEN: ${NOTION_TOKEN}
-    NOTION_DB_A: ${NOTION_DB_A}
-    NOTION_DB_B: ${NOTION_DB_B}
-    NOTION_DB_C: ${NOTION_DB_C}
-    NOTION_DBID: ${NOTION_DBID}
-    # DATABRICKS 설정
-    DATABRICKS_HOST: ${DATABRICKS_HOST}
-    DATABRICKS_TOKEN: ${DATABRICKS_TOKEN}
-    DATABRICKS_CLUSTER_ID: ${DATABRICKS_CLUSTER_ID}
-    # SMTP 설정
-    SMTP_HOST: ${SMTP_HOST}
-    SMTP_PORT: ${SMTP_PORT}
-    SMTP_USER: ${SMTP_USER}
-    SMTP_PASSWORD: ${SMTP_PASSWORD}
-    EMAIL_TO: ${EMAIL_TO}
-    EMAIL_FROM: ${EMAIL_FROM}
     
     # Create admin user if missing
     _AIRFLOW_WWW_USER_CREATE: 'true'
@@ -87,6 +70,11 @@ x-airflow-common:
     _AIRFLOW_WWW_USER_FIRSTNAME: Admin
     _AIRFLOW_WWW_USER_LASTNAME: User
     _AIRFLOW_WWW_USER_EMAIL: admin@example.com
+
+    # Flask limiter Redis 설정
+    AIRFLOW__API__ENABLE_EXPERIMENTAL_API: 'true'
+    # rate limiting 비활성화 (개발 환경)
+    AIRFLOW__API__MAXIMUM_PAGE_LIMIT: 100
 
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
@@ -168,6 +156,7 @@ services:
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
+
 
   airflow-scheduler:
     <<: *airflow-common

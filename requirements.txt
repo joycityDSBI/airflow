@@ -5,7 +5,7 @@ protobuf>=4.21,<5.0
 # Apache Airflow - 베이스 이미지에 포함되어 있으므로 주석 처리
 # apache-airflow는 Dockerfile의 FROM에서 이미 설치됨
 # apache-airflow-providers-* 도 제외
-apache-airflow-providers-databricks==7.7.0
+apache-airflow-providers-databricks==7.5.0
 
 # Google Cloud Platform
 google-cloud-bigquery>=3.11,<3.12  # Python 3.8 호환
@@ -18,7 +18,7 @@ gspread>=6.0,<6.2
 google-auth>=2.35.0
 google-auth-oauthlib>=1.0,<1.1
 google-auth-httplib2>=0.1,<0.2
-goole == 3.0.0
+google == 3.0.0
 google-genai >=1.33.0
 
 # Data processing - Python 3.8 호환 버전
