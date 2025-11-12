@@ -152,7 +152,7 @@ def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery
         CAST(REPLACE(sales, ',', '') AS INT64) as salesGoalMonthly # 쉼표 포함한 string 형태로 적재되어있어서 int64 형태로 전처리
     , CAST(REPLACE(sales, ',', '') AS INT64)/cast(num_of_days as int64) as salesGoalDaily # 일평균 목표매출
     from `data-science-division-216308.gameInsightFramework.slgMonthlyGoal`
-    where idx = {gameidx}
+    where idx = '{gameidx}'
     and month = FORMAT_DATE('%Y-%m', DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY))
     ),
 
@@ -234,6 +234,7 @@ def merge_daily_revenue(**context):
 ### 4> 일자별 매출에 대한 제미나이 코멘트
 def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, **context):
 
+
     query_result1_dailySales = context['task_instance'].xcom_pull(
         task_ids = 'Daily_revenue_query',
         key='daily_revenue_df'
@@ -247,7 +248,7 @@ def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INST
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
 
     response1_salesComment = genai_client.models.generate_content(
     model=MODEL_NAME,
