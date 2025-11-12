@@ -66,101 +66,103 @@ def make_gameframework_notion_page(
         "Notion-Version": "2022-06-28"
     }
 
+    page_info = None # 초기화
+
     # 타임존 지정
-    kst = ZoneInfo("Asia/Seoul")
-    # 오늘
-    today_kst = datetime.now(kst).date()
-    # 어제
-    yesterday_kst = today_kst - timedelta(days=1)
+    try: 
+        kst = ZoneInfo("Asia/Seoul")
+        today_kst = datetime.now(kst).date()
+        yesterday_kst = today_kst - timedelta(days=1)
 
-    # 이번 달 1일 (어제 날짜 기준)
-    first_day = yesterday_kst.replace(day=1)
+        # 타이틀 문자열 만들기
+        title = f"{yesterday_kst.strftime('%y')}년 {yesterday_kst.month}월 매출현황( ~ {yesterday_kst})"
+        print(f"{title} : {gameidx}")
 
-    # 타이틀 문자열 만들기
-    title = f"{yesterday_kst.strftime('%y')}년 {yesterday_kst.month}월 매출현황( ~ {yesterday_kst})"
-    print(f"{title} : {gameidx}")
-
-    # 페이지 생성 요청 바디
-    data = {
-        "parent": {"database_id": DATABASE_ID},
-        "properties": {
-            "이름": {
-                "title": [
-                    {"text": {"content": title }}
-                ]
-            },
-            "등록 날짜": {
-                "date": {"start": today_kst.isoformat() }
-            },
-            "프로젝트": {
-                "multi_select": [
-                    {"name": gameidx}   # 다중 선택 옵션
-                ]
-            },
-            "리포트 종류": {
-                "multi_select": [
-                    {"name": "게임분석"}   # 다중 선택 옵션
-                ]
-            },
-            "작성자": {
-                "people": [
-                    {"id": "ce95f16a-6b6b-447d-a996-a9c5f0cc0113"},  # Notion user_id
-                    {"id": "662575bc-731c-481c-afc7-13b2fdf5482a"}  # Notion user_id
-                ]
-            }
-        }
-    }
-
-    res = requests.post(url, headers=headers, json=data)
-
-    if res.status_code == 200:
-        page_info = res.json() # ✅ 페이지 ID page_info["id"]
-        print(f"✅ 페이지 생성 성공 ✅ 페이지 ID : {page_info['id']}")
-    else:
-        print(f"⚠️ 에러 발생: {res.status_code} >> {res.text}")
-
-    notion.blocks.children.append(
-        block_id=page_info["id"] ,
-        children=[
-            {
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [
-                        {
-                            "type": "text",
-                            "text": {"content": " ◾ 목차"},
-                            "annotations": {"bold": True}
-                        }
+        # 페이지 생성 요청 바디
+        data = {
+            "parent": {"database_id": DATABASE_ID},
+            "properties": {
+                "이름": {
+                    "title": [
+                        {"text": {"content": title }}
+                    ]
+                },
+                "등록 날짜": {
+                    "date": {"start": today_kst.isoformat() }
+                },
+                "프로젝트": {
+                    "multi_select": [
+                        {"name": gameidx}   # 다중 선택 옵션
+                    ]
+                },
+                "리포트 종류": {
+                    "multi_select": [
+                        {"name": "게임분석"}   # 다중 선택 옵션
+                    ]
+                },
+                "작성자": {
+                    "people": [
+                        {"id": "ce95f16a-6b6b-447d-a996-a9c5f0cc0113"},  # Notion user_id
+                        {"id": "662575bc-731c-481c-afc7-13b2fdf5482a"}  # Notion user_id
                     ]
                 }
             }
-        ]
-    )
+        }
 
-    # 목차 블록 추가
-    notion.blocks.children.append(
-        block_id=page_info["id"] ,
-        children=[
-            {
-                "object": "block",
-                "type": "table_of_contents",
-                "table_of_contents": {
-                    "color": "default"  # "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red" 가능
+        res = requests.post(url, headers=headers, json=data)
+
+        if res.status_code == 200:
+            page_info = res.json() # ✅ 페이지 ID page_info["id"]
+            print(f"✅ 페이지 생성 성공 ✅ 페이지 ID : {page_info['id']}")
+        else:
+            print(f"⚠️ Notion API 에러 발생: {res.status_code} >> {res.text}")
+
+        notion.blocks.children.append(
+            block_id=page_info["id"] ,
+            children=[
+                {
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {"content": " ◾ 목차"},
+                                "annotations": {"bold": True}
+                            }
+                        ]
+                    }
                 }
-            }
-        ],
-    )
-    
-    if res.status_code == 200:
-        page_info = res.json()
-        print(f"✅ 페이지 생성 성공 ✅ 페이지 ID : {page_info['id']}")
-    else:
-        print(f"⚠️ 에러 발생: {res.status_code} >> {res.text}")
+            ]
+        )
 
-    context['task_instance'].xcom_push(key='page_info', value=page_info)
+        # 목차 블록 추가
+        notion.blocks.children.append(
+            block_id=page_info["id"] ,
+            children=[
+                {
+                    "object": "block",
+                    "type": "table_of_contents",
+                    "table_of_contents": {
+                        "color": "default"  # "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red" 가능
+                    }
+                }
+            ],
+        )
+        
+        if res.status_code == 200:
+            page_info = res.json()
+            print(f"✅ 페이지 생성 성공 ✅ 페이지 ID : {page_info['id']}")
+        else:
+            print(f"⚠️ 에러 발생: {res.status_code} >> {res.text}")
 
-    return page_info 
+        context['task_instance'].xcom_push(key='page_info', value=page_info)
+
+        return page_info 
+    except Exception as e:
+        print(f"⚠️ 페이지 생성 실패: {e}")
+
+        return page_info
 
 
 
