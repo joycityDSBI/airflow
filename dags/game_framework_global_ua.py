@@ -1184,12 +1184,16 @@ def country_group_to_df(joyplegameid:int, gameidx:str, bigquery_client, bucket, 
     num_cols = grouped_dfs_union.select_dtypes(include="number").columns
     grouped_dfs_union[num_cols] = grouped_dfs_union[num_cols].astype(int)
 
+
     return grouped_dfs, grouped_dfs_union
 
 
 
 def country_group_to_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, bucket, **context):
 
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+    
     query_result = load_df_from_gcs(bucket=bucket, path=path_daily_revenue)
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
@@ -1664,6 +1668,7 @@ def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, st1, se
         path_daily_revenue=st1,
         bucket=bucket
     )
+
     blocks = md_to_notion_blocks(text)
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],

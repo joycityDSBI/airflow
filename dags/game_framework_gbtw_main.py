@@ -357,7 +357,7 @@ with DAG(
                 NOTION_VERSION=NOTION_VERSION
             )
         except Exception as e:
-            print(f"❌ {gameidx}: {service_sub} os_data_upload_to_notion 실패 ")
+            print(f"❌ {gameidx}: {service_sub} country_group_data_upload_to_notion 실패 ")
             print(f"🔴 {e}") 
 
 
