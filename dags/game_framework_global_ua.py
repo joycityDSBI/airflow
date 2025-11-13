@@ -1193,13 +1193,13 @@ def country_group_to_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTE
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-    
+
     query_result = load_df_from_gcs(bucket=bucket, path=path_daily_revenue)
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            f"datascience_division_service_sub" : service_sub}
 
     response_GeoPGSales = genai_client.models.generate_content(
         model=MODEL_NAME,
@@ -1415,7 +1415,7 @@ def merge_country_group_df_draw(joyplegameid: int, gameidx: str, bigquery_client
     return merged_paths
 
 
-def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, st1, service_sub, 
+def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, st1, service_sub: str, 
                                         genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bigquery_client,
                                         bucket, headers_json, NOTION_TOKEN, NOTION_VERSION, 
                                         bucket_name: str = "game-framework1", merged_image_dir: str= "merged", **context):
