@@ -408,13 +408,16 @@ def merge_inhouse_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **
 def inhouse_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, NOTION_TOKEN, NOTION_VERSION,  **context):
 
     current_context = get_current_context()
-
+    
     PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
+    print(f"📊 page_info type: {type(PAGE_INFO)}")
+    print(f"📊 page_info: {PAGE_INFO}")
     print(f"✅ PAGE_INFO 가져오기 성공")
+
     page_id = PAGE_INFO.get('id')
 
     query_result1_inhouseSales=load_df_from_gcs(bucket, st1)
