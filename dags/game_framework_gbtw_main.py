@@ -55,6 +55,8 @@ import io
 # 게임 프레임워크 모듈
 from game_framework_util import *
 from game_framework_daily import *
+from game_framework_inhouse import *
+from game_framework_global_ua import *
 
 # Airflow function
 from airflow import DAG, Dataset
@@ -246,7 +248,47 @@ with DAG(
             print(f"🔴 {e}")
 
 
+    ###### 인하우스 게임 프레임워크
+    def inhouse_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
 
+        print(f"📧 RUN 인하우스 데이터 게임 프로엠워크 시작: {gameidx}")
+
+        st1 = inhouse_sales_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if len(st1) > 0:
+            print(f"✅ {gameidx}: {service_sub} inhouse_sales_query 완료")
+        else :
+            print(f"❌ {gameidx}: {service_sub} inhouse_sales_query 실패")
+
+        st2 = inhouse_sales_before24_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if len(st2) > 0:
+            print(f"✅ {gameidx}: {service_sub} inhouse_sales_before24_query 완료")
+        else :
+            print(f"❌ {gameidx}: {service_sub} inhouse_sales_before24_query 실패")
+
+        merged_img_path = merge_inhouse_graph(gameidx, st1, st2, bucket)
+        if len(merged_img_path) > 0:
+            print(f"✅ {gameidx}: {service_sub} merge_inhouse_graph 완료")
+        else :
+            print(f"❌ {gameidx}: {service_sub} merge_inhouse_graph 실패")
+
+        try:
+            inhouse_revenue_data_upload_to_notion(
+                gameidx=gameidx,
+                st1 = st1,
+                st2 = st2,
+                service_sub=service_sub,
+                genai_client=genai_client,
+                MODEL_NAME = MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                notion=notion,
+                bucket=bucket,
+                headers_json=headers_json,
+                NOTION_TOKEN=NOTION_TOKEN,
+                NOTION_VERSION=NOTION_VERSION,
+            )
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} daily_revenue_data_upload_to_notion 실패 ")
+            print(f"🔴 {e}")
 
 
 
@@ -292,5 +334,24 @@ with DAG(
         dag=dag,
     )
 
-create_gameframework_notion_page >> daily_gameframework_run
+    inhouse_gameframework_run = PythonOperator(
+        task_id='inhouse_data_game_framework',
+        python_callable=inhouse_data_game_framework,
+        op_kwargs={
+            'joyplegameid':joyplegameid,
+            'gameidx':gameidx,
+            'service_sub':service_sub[1],
+            'bigquery_client':bigquery_client,
+            'MODEL_NAME': MODEL_NAME,
+            'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+            'bucket': bucket,
+            'headers_json': headers_json,
+            'genai_client': genai_client,
+            'notion':notion
+        },
+        dag=dag,
+    )
+
+
+create_gameframework_notion_page >> daily_gameframework_run >> inhouse_gameframework_run
 
