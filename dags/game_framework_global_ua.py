@@ -523,8 +523,8 @@ def by_country_cost_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
 
 
 def merge_contry_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **context):
-    p1=by_country_revenue_graph_draw(gcs_path_1, gameidx, bucket)
-    p2=by_country_cost_graph_draw(gcs_path_2, gameidx, bucket)
+    p1=by_country_revenue_graph_draw(gameidx, gcs_path_1, bucket)
+    p2=by_country_cost_graph_draw(gameidx, gcs_path_2, bucket)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     print(f"📥 GCS에서 이미지 다운로드 중...")
