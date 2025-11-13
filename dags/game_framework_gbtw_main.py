@@ -112,10 +112,10 @@ with DAG(
     )
     credentials.refresh(Request())
 
-
+    ## vertexai 초기화 진행
     vertexai.init(project=PROJECT_ID, location=LOCATION)
 
-        # 클라이언트 모음
+    # 클라이언트 모음
     try:
         genai_client = Client()  # vertexai=True 제거
         print("✅ genai_client 초기화 성공")
@@ -132,8 +132,6 @@ with DAG(
         print(f"❌ Notion 클라이언트 초기화 실패: {e}")
         raise
 
-
-    # 클라이언트 모음
     gcs_client = storage.Client.from_service_account_info(cred_dict)
     bucket = gcs_client.bucket('game-framework1')
 
@@ -169,7 +167,6 @@ with DAG(
     databaseschema='GW'
 
     ## 페이지 생성 함수 //////////// task 함수
-
     def make_gameframework_notion_page_wraper(**context):
         try:
             page_info = make_gameframework_notion_page(
