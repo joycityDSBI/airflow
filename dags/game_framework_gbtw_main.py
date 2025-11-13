@@ -336,7 +336,7 @@ with DAG(
         st6 = cohort_by_country_cost(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
         if_else_length(path=st6, gameidx=gameidx, service_sub=service_sub, func_name="cohort_by_country_cost")
 
-        merged_country_group_graph = merge_country_group_df_draw(joyplegameid=joyplegameid, gameidx=gameidx)
+        merged_country_group_graph = merge_country_group_df_draw(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
         if_else_length(path=merged_country_group_graph, gameidx=gameidx, service_sub=service_sub, func_name="merge_country_group_df_draw")  
 
         try:

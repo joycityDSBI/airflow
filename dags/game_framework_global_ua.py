@@ -1384,7 +1384,7 @@ def merge_images_by_three_gcs(
     return uploaded_paths
 
 
-def merge_country_group_df_draw(joyplegameid: int, gameidx: str, **context):
+def merge_country_group_df_draw(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     """
     Airflow DAG에서 사용할 wrapper 함수
     """
@@ -1395,7 +1395,7 @@ def merge_country_group_df_draw(joyplegameid: int, gameidx: str, **context):
     bucket = client.bucket("game-framework1")  # 버킷명 수정 필요
     
     # 이미지 저장 경로 가져오기 (리스트)
-    img_gcs_list = country_group_df_draw(joyplegameid, gameidx, **context)
+    img_gcs_list = country_group_df_draw(joyplegameid, gameidx, bigquery_client, bucket)
     
     # 합치기 처리
     merged_paths = merge_images_by_three_gcs(
