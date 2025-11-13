@@ -158,7 +158,11 @@ with DAG(
     service_sub = [
         '1_daily_sales',
         '2_inhouse_sales',
-        '3'
+        '3_global_ua',
+        '4_detail_sales',
+        '5_logterm_sales',
+        '6_newuser_roas',
+        '7_etc'
     ]
     databaseschema='GW'
 
@@ -240,6 +244,24 @@ with DAG(
         except Exception as e:
             print(f"❌ {gameidx}: {service_sub} daily_revenue_data_upload_to_notion 실패 ")
             print(f"🔴 {e}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
