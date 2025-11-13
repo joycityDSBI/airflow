@@ -443,7 +443,7 @@ def authorize_gcs_access(**context):
         update_data = [[link]]  # 단일 셀만 업데이트
         
         # C 열의 행 번호 계산 (idx는 0부터 시작, 헤더는 제외되었으므로 idx+2부터 시작)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        current_time = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
         
         request_body = {
             'data': [

@@ -515,11 +515,12 @@ def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, 
     gcs_path = f'{gameidx}/graph1_dailySales_monthlySales.png'
     blob = bucket.blob(gcs_path)
     blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
+    
     print(f"✅ GCS 업로드 완료: gs://{bucket.name}/{gcs_path}")
     return gcs_path
 
 
-def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, NOTION_TOKEN, NOTION_VERSION,  **context):
+def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
     current_context = get_current_context()
     
@@ -648,7 +649,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
         batch_size=100,
     )
 
-    print(f"GEMINI 문의 처리 시작")
+    print(f"1️⃣ GEMINI 문의 처리 시작")
     response1_salesComment = daily_revenue_gemini(service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, st1, st2, bucket, PROJECT_ID=PROJECT_ID, LOCATION=LOCATION)
 
     ## 제미나이
@@ -658,7 +659,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
         children=blocks
     )
 
-    print(f"GEMINI 답변 등록 완료")
+    print(f"2️⃣ GEMINI 답변 등록 완료")
 
     return True
 
