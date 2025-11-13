@@ -222,7 +222,7 @@ def cohort_by_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCT
 #gemini_result.loc[len(gemini_result)] = response.text
 
 ## OS별 cost
-def os_cost(joyplegameid: int, **context):
+def os_cost(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     query = f"""
     with osCost as (
     select os, cast(sum(cost) as int64) cost
@@ -247,14 +247,18 @@ def os_cost(joyplegameid: int, **context):
     cross join
     (select * from allCost) as b
     """
+    query_result = query_run_method('3_global_ua', bigquery_client, query)
 
-    query_result =query_run_method('3_global_ua', query)
-    context['task_instance'].xcom_push(key='os_cost_df', value=query_result)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
 
-    return True
+    return saved_path
+
 
 ## OS별 매출
-def os_rev(joyplegameid: int, **context):
+def os_rev(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     query = f"""
     with osRev as (
 
@@ -287,34 +291,39 @@ def os_rev(joyplegameid: int, **context):
     (select * from allRev) as b
     """
     ## 129.93MB
-    query_result =query_run_method('3_global_ua', query)
-    context['task_instance'].xcom_push(key='os_rev_df', value=query_result)
+    query_result = query_run_method('3_global_ua', bigquery_client, query)
 
-    return True
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
+
+    return saved_path
+
 
 
 ### 4> 일자별 매출에 대한 제미나이 코멘트
 
 #client = genai.Client(api_key="AIzaSyAVv2B6DM6w9jd1MxiP3PbzAEMkl97SCGY")
-def os_by_gemini(joyplegameid: int, **context):
+def os_by_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
     
-    os_rev_df= context['task_instance'].xcom_pull(
-        task_ids='os_cost',
-        key='os_cost_df'
-    )
-    os_cost_df= context['task_instance'].xcom_pull(
-        task_ids='os_rev',
-        key='os_rev_df'
-    )
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    os_rev_df = load_df_from_gcs(bucket, path_daily_revenue)
+    os_cost_df = load_df_from_gcs(bucket, path_monthly_revenue)
+
+    RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
+    LABELS = {"datascience_division_service": 'gameinsight_framework',
+            "run_id": RUN_ID,
+            "datascience_division_service_sub" : service_sub}
 
     response3_revAndCostByOs = genai_client.models.generate_content(
     model=MODEL_NAME,
-
     contents = f"""
 
     이번달에 IOS 에 몇 % 마케팅 비용 사용했으며 IOS 의 매출비중은 몇% 입니다.
     의 형식으로 알려줘.
-
 
     <원하는 서식>
     1. 요약해주겠다 말 하지말고 요약한 내용에 대해서만 적어주면 돼.
@@ -335,7 +344,7 @@ def os_by_gemini(joyplegameid: int, **context):
             system_instruction=SYSTEM_INSTRUCTION,
             # tools=[RAG],
             temperature=0.5,
-            labels=labels
+            labels=LABELS
         )
 
     )
@@ -348,12 +357,9 @@ def os_by_gemini(joyplegameid: int, **context):
 ### 그래프 그리기
 ## 국가별 매출
 
-def by_country_revenue_graph_draw(joyplegameid: int, gameidx: str, **context):
+def by_country_revenue_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
     
-    query_result3_revByCountry = context['task_instance'].xcom_pull(
-        task_ids = 'cohort_by_country_revenue',
-        key='cohort_by_country_revenue_df'
-    )
+    query_result3_revByCountry = load_df_from_gcs(bucket, gcs_path)
 
     sizes = query_result3_revByCountry["rev"].to_numpy()
     labels = query_result3_revByCountry["country"].to_numpy()
@@ -432,12 +438,9 @@ def by_country_revenue_graph_draw(joyplegameid: int, gameidx: str, **context):
 
 
 
-def by_country_cost_graph_draw(joyplegameid: int, gameidx: str, **context):
+def by_country_cost_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
     
-    query_result3_costByCountry = context['task_instance'].xcom_pull(
-        task_ids = 'cohort_by_country_cost',
-        key='cohort_by_country_cost_df'
-    )
+    query_result3_costByCountry = load_df_from_gcs(bucket, gcs_path)
 
     ### 국가별 Cost
     sizes = query_result3_costByCountry["cost"].to_numpy()
@@ -517,21 +520,25 @@ def by_country_cost_graph_draw(joyplegameid: int, gameidx: str, **context):
     return f'{gameidx}/{filepath1_dailySales}'
 
 
-def merge_contry_graph(joyplegameid: int, gameidx: str):
-    p1=by_country_revenue_graph_draw(joyplegameid, gameidx)
-    p2=by_country_cost_graph_draw(joyplegameid, gameidx)
+def merge_contry_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **context):
+    p1=by_country_revenue_graph_draw(gcs_path_1, gameidx)
+    p2=by_country_cost_graph_draw(gcs_path_2, gameidx)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
+    print(f"📥 GCS에서 이미지 다운로드 중...")
     blob1 = bucket.blob(p1)
     blob2 = bucket.blob(p2)
 
+    print(f"📥 blob1 다운로드 중 ...")
     im1 = blob1.download_as_bytes()
     im2 = blob2.download_as_bytes()
 
+    print(f"🖼️ Image 객체 생성 중...")
     im1 = Image.open(BytesIO(im1))
     im2 = Image.open(BytesIO(im2))
 
     # ---- [옵션 A] 원본 크기 유지 + 세로 패딩으로 높이 맞추기 (권장: 왜곡 없음) ----
+    print(f"🔄 이미지 높이 맞추는 중...")
     target_h = max(im1.height, im2.height)
 
     def pad_to_height(img, h, bg=(255, 255, 255, 0)):  # 투명 배경: 알파 0
@@ -554,6 +561,7 @@ def merge_contry_graph(joyplegameid: int, gameidx: str):
     out.paste(im2_p, (im1_p.width + gap, 0), im2_p)
 
     # 3) GCS에 저장
+    print(f"📤 GCS에 업로드 중...")
     output_buffer = BytesIO()
     out.save(output_buffer, format='PNG')
     output_buffer.seek(0)
@@ -563,15 +571,16 @@ def merge_contry_graph(joyplegameid: int, gameidx: str):
     blob = bucket.blob(gcs_path)
     blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
 
+    print(f"✅ GCS 업로드 완료: gs://{bucket.name}/{gcs_path}")
+
     return gcs_path
 
-### OS 별 매출
-def os_rev_graph_draw(joyplegameid: int, gameidx: str, **context):
 
-    query_result3_revByOs = context['task_instance'].xcom_pull(
-        task_ids='os_rev',
-        key='os_rev_df'
-    )
+
+### OS 별 매출
+def os_rev_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
+
+    query_result3_revByOs = load_df_from_gcs(bucket, gcs_path)
 
     sizes = query_result3_revByOs["rev"].to_numpy()
     labels = query_result3_revByOs["os"].to_numpy()
@@ -651,12 +660,9 @@ def os_rev_graph_draw(joyplegameid: int, gameidx: str, **context):
     
 
 ### os 별 Cost
-def os_cost_graph_draw(joyplegameid: int, gameidx: str, **context):
+def os_cost_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
 
-    query_result3_costByOs = context['task_instance'].xcom_pull(
-        task_ids='os_cost',
-        key='os_cost_df'
-    )
+    query_result3_costByOs = load_df_from_gcs(bucket, gcs_path)
 
     sizes = query_result3_costByOs["cost"].to_numpy()
     labels = query_result3_costByOs["os"].to_numpy()
@@ -734,21 +740,25 @@ def os_cost_graph_draw(joyplegameid: int, gameidx: str, **context):
     return f'{gameidx}/{filepath1_dailySales}'
 
 
-def merge_os_graph(joyplegameid: int, gameidx: str):
-    p1 = os_rev_graph_draw(joyplegameid, gameidx)
-    p2 = os_cost_graph_draw(joyplegameid, gameidx)
+def merge_os_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **context):
+    p1 = os_rev_graph_draw(gameidx, gcs_path_1, bucket)
+    p2 = os_cost_graph_draw(gameidx, gcs_path_2, bucket)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
+    print(f"📥 GCS에서 이미지 다운로드 중...")
     blob1 = bucket.blob(p1)
     blob2 = bucket.blob(p2)
 
+    print(f"📥 blob1 다운로드 중 ...")
     im1 = blob1.download_as_bytes()
     im2 = blob2.download_as_bytes()
 
+    print(f"🖼️ Image 객체 생성 중...")
     im1 = Image.open(BytesIO(im1))
     im2 = Image.open(BytesIO(im2))
 
-    # ---- [옵션 A] 원본 크기 유지 + 세로 패딩으로 높이 맞추기 (권장: 왜곡 없음) ----
+      # ---- [옵션 A] 원본 크기 유지 + 세로 패딩으로 높이 맞추기 (권장: 왜곡 없음) ----
+    print(f"🔄 이미지 높이 맞추는 중...")
     target_h = max(im1.height, im2.height)
 
     def pad_to_height(img, h, bg=(255, 255, 255, 0)):  # 투명 배경: 알파 0
@@ -771,6 +781,7 @@ def merge_os_graph(joyplegameid: int, gameidx: str):
     out.paste(im2_p, (im1_p.width + gap, 0), im2_p)
 
     # 3) GCS에 저장
+    print(f"📤 GCS에 업로드 중...")
     output_buffer = BytesIO()
     out.save(output_buffer, format='PNG')
     output_buffer.seek(0)
@@ -780,17 +791,22 @@ def merge_os_graph(joyplegameid: int, gameidx: str):
     blob = bucket.blob(gcs_path)
     blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
 
+    print(f"✅ GCS 업로드 완료: gs://{bucket.name}/{gcs_path}")
+
     return gcs_path
 
 
 #### 노션에 업로드
 
-def country_data_upload_to_notion(joyplegameid: int, gameidx: str, **context):
+def country_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
     PAGE_INFO=context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
+
+    query_result3_revByCountry=load_df_from_gcs(bucket, st1)
+    query_result3_costByCountry=load_df_from_gcs(bucket, st2)
 
     ########### (1) 제목
     notion.blocks.children.append(
@@ -819,47 +835,51 @@ def country_data_upload_to_notion(joyplegameid: int, gameidx: str, **context):
         ],
     )
 
-    query_result3_revByCountry=context['task_instance'].xcom_pull(
-        task_ids='cohort_by_country_revenue',  # ← 첫 번째 Task의 task_id
-        key='cohort_by_country_revenue_df'
-    )
-    query_result3_costByCountry=context['task_instance'].xcom_pull(
-        task_ids='cohort_by_country_cost',  # ← 첫 번째 Task의 task_id
-        key='cohort_by_country_cost_df'
-    )
 
-    filePath3_revAndCostByCountry = merge_contry_graph(joyplegameid, gameidx)
+    gcs_path = merge_contry_graph(gameidx=gameidx, gcs_path_1=st1, gcs_path_2=st2, bucket=bucket)
+    blob = bucket.blob(gcs_path)
+    image_bytes = blob.download_as_bytes()
+    print(f"✅ gcs_path : {gcs_path}")
+    filename = gcs_path.split('/')[-1]
+
+    print(f"✅ GCS 파일 다운로드 완료")
+
     ########### (2) 그래프 업로드
-    ## IAP+유가젬
-    # 1) 업로드 객체 생성 (file_upload 생성)
     create_url = "https://api.notion.com/v1/file_uploads"
     payload = {
-        "filename": os.path.basename(filePath3_revAndCostByCountry),
+        "filename": filename,
         "content_type": "image/png"
     }
-    headers_json = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
-    }
+    headers_json = headers_json
     resp = requests.post(create_url, headers=headers_json, data=json.dumps(payload))
     resp.raise_for_status()
     file_upload = resp.json()
+    
+    print(f"📊 API 응답: {file_upload}")
     file_upload_id = file_upload["id"]   # 업로드 ID
-    # file_upload["upload_url"] 도 응답에 포함됨
+    upload_url = file_upload['upload_url']
 
-    # 2) 파일 바이너리 전송 (multipart/form-data)
+# 2) 파일 바이너리 전송 (multipart/form-data) - 수정된 부분
     send_url = f"https://api.notion.com/v1/file_uploads/{file_upload_id}/send"
-    with open(filePath3_revAndCostByCountry, "rb") as f:
-        files = {"file": (os.path.basename(filePath3_revAndCostByCountry), f, "image/png")}
-        headers_send = {
-            "Authorization": f"Bearer {NOTION_TOKEN}",
-            "Notion-Version": NOTION_VERSION
-            # Content-Type은 files로 자동 설정됨
-        }
-        send_resp = requests.post(send_url, headers=headers_send, files=files)
-        send_resp.raise_for_status()
+    files = {"file": (filename, BytesIO(image_bytes), "image/png")}
 
+    # 2) 이미지 업로드
+    headers_send = {
+        "Authorization": headers_json.get("Authorization"),
+        "Notion-Version": headers_json.get("Notion-Version")
+    }
+
+    try:
+        # [수정] headers=headers_upload 대신 headers=headers_send 를 사용
+        send_resp = requests.post(send_url, headers=headers_send, files=files) 
+        send_resp.raise_for_status()
+        print(f"✅ NOTION 이미지 업로드 완료")
+    except Exception as e:
+        print(f"작업 실패 : {e}")
+        # 실패 시 응답 내용을 확인하면 디버깅에 도움이 됩니다.
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"오류 응답: {e.response.text}")
+        raise e
 
     # 3) 이미지 블록으로 페이지에 첨부
     append_url = f"https://api.notion.com/v1/blocks/{PAGE_INFO['id']}/children"
@@ -878,11 +898,7 @@ def country_data_upload_to_notion(joyplegameid: int, gameidx: str, **context):
         ]
     }
 
-    headers_json_patch = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
-    }
+    headers_json_patch = headers_json
     append_resp = requests.patch(append_url, headers=headers_json_patch, data=json.dumps(append_payload))
     append_resp.raise_for_status()
 
@@ -908,13 +924,22 @@ def country_data_upload_to_notion(joyplegameid: int, gameidx: str, **context):
     ### 국가별 cost rev 코멘트
     ########### (3) 제미나이 해석
 
-    text = cohort_by_gemini(joyplegameid)
+    text = cohort_by_gemini(
+        service_sub=service_sub,
+        genai_client=genai_client,
+        MODEL_NAME = MODEL_NAME,
+        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+        path_daily_revenue=st1,
+        path_monthly_revenue=st2,
+        bucket=bucket,
+        PROJECT_ID=PROJECT_ID,
+        LOCATION=LOCATION
+    )
     blocks = md_to_notion_blocks(text)
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
         children=blocks
     )
-
 
     ## 부제목
     notion.blocks.children.append(
@@ -936,54 +961,64 @@ def country_data_upload_to_notion(joyplegameid: int, gameidx: str, **context):
 ## os별 cost, rev 그래프
 ########### (2) 그래프 업로드
 ## IAP+유가젬
-def country_data_upload_to_notion(joyplegameid: int, gameidx: str, **context):
+def country_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
     PAGE_INFO=context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
 
-    query_result3_costByOs= context['task_instance'].xcom_pull(
-        task_ids='os_cost',
-        key='os_cost_df'
-    )
-    query_result3_revByOs= context['task_instance'].xcom_pull(
-        task_ids='os_rev',
-        key='os_rev_df'
-    )
+    print(f"✅ PAGE_INFO 가져오기 성공")
 
-    filePath3_revAndCostByOs = merge_os_graph(joyplegameid, gameidx)
+    page_id = PAGE_INFO.get('id')
+
+    query_result3_costByOs=load_df_from_gcs(bucket, st1)
+    query_result3_revByOs=load_df_from_gcs(bucket, st2)
+
+    gcs_path = merge_os_graph(gameidx=gameidx, gcs_path_1=st1, gcs_path_2=st2, bucket=bucket, **context)
+    blob = bucket.blob(gcs_path)
+    image_bytes = blob.download_as_bytes()
+    filename = gcs_path.split('/')[-1]
+
+    print(f"✅ GCS 파일 다운로드 완료")
 
     # 1) 업로드 객체 생성 (file_upload 생성)
     create_url = "https://api.notion.com/v1/file_uploads"
     payload = {
-        "filename": os.path.basename(filePath3_revAndCostByOs),
+        "filename": filename,
         "content_type": "image/png"
     }
-    headers_json = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
-    }
+    headers_json = headers_json
     resp = requests.post(create_url, headers=headers_json, data=json.dumps(payload))
     resp.raise_for_status()
     file_upload = resp.json()
+
+    print(f"📊 API 응답: {file_upload}")
     file_upload_id = file_upload["id"]   # 업로드 ID
-    # file_upload["upload_url"] 도 응답에 포함됨
+    upload_url = file_upload['upload_url']
 
-    # 2) 파일 바이너리 전송 (multipart/form-data)
+    # 2) 파일 바이너리 전송 (multipart/form-data) - 수정된 부분
     send_url = f"https://api.notion.com/v1/file_uploads/{file_upload_id}/send"
-    with open(filePath3_revAndCostByOs, "rb") as f:
-        files = {"file": (os.path.basename(filePath3_revAndCostByOs), f, "image/png")}
-        headers_send = {
-            "Authorization": f"Bearer {NOTION_TOKEN}",
-            "Notion-Version": NOTION_VERSION
-            # Content-Type은 files로 자동 설정됨
-        }
-        send_resp = requests.post(send_url, headers=headers_send, files=files)
+    files = {"file": (filename, BytesIO(image_bytes), "image/png")}
+
+    # 2) 이미지 업로드
+    headers_send = {
+        "Authorization": headers_json.get("Authorization"),
+        "Notion-Version": headers_json.get("Notion-Version")
+    }
+
+    try:
+        # [수정] headers=headers_upload 대신 headers=headers_send 를 사용
+        send_resp = requests.post(send_url, headers=headers_send, files=files) 
         send_resp.raise_for_status()
-
-
+        print(f"✅ NOTION 이미지 업로드 완료")
+    except Exception as e:
+        print(f"작업 실패 : {e}")
+        # 실패 시 응답 내용을 확인하면 디버깅에 도움이 됩니다.
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"오류 응답: {e.response.text}")
+        raise e
+    
     # 3) 이미지 블록으로 페이지에 첨부
     append_url = f"https://api.notion.com/v1/blocks/{PAGE_INFO['id']}/children"
     append_payload = {
@@ -1001,11 +1036,7 @@ def country_data_upload_to_notion(joyplegameid: int, gameidx: str, **context):
         ]
     }
 
-    headers_json_patch = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
-    }
+    headers_json_patch = headers_json
     append_resp = requests.patch(append_url, headers=headers_json_patch, data=json.dumps(append_payload))
     append_resp.raise_for_status()
 
@@ -1030,7 +1061,17 @@ def country_data_upload_to_notion(joyplegameid: int, gameidx: str, **context):
 
     ## os별 cost, rev 코멘트
     ########### (3) 제미나이 해석
-    blocks = md_to_notion_blocks(os_by_gemini(joyplegameid))
+    gemini_text = os_by_gemini(
+        service_sub=service_sub, 
+        genai_client=genai_client, 
+        MODEL_NAME=MODEL_NAME, 
+        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+        path_daily_revenue=st1,
+        path_monthly_revenue=st2,
+        bucket=bucket,
+        PROJECT_ID=PROJECT_ID,
+        LOCATION=LOCATION)
+    blocks = md_to_notion_blocks(gemini_text)
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
         children=blocks
@@ -1049,7 +1090,7 @@ def country_data_upload_to_notion(joyplegameid: int, gameidx: str, **context):
 # 아메리카: 캐나다, 멕시코, 브라질, 아르헨티나, 칠레, 콜롬비아, 페루
 # 기타: 그 외 국가
 
-def country_group_rev(joyplegameid: int, gameidx: str, **context):
+def country_group_rev(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     query = f"""
     with chk as (
     SELECT
@@ -1098,19 +1139,20 @@ def country_group_rev(joyplegameid: int, gameidx: str, **context):
             end
             , LogDateKST, PGName
     """
+    query_result = query_run_method('3_global_ua', bigquery_client, query)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
+
+    return saved_path
 
 
-    query_result = query_run_method('3_global_ua', query)
-    context['task_instance'].xcom_push(key='country_group_rev', value=query_result)
+def country_group_to_df(joyplegameid:int, gameidx:str, bigquery_client, bucket, **context):
 
-    return True
-
-def country_group_to_df(**context):
-
-    query_result = context['task_instance'].xcom_pull(
-        task_ids='country_group_rev',
-        key='country_group_rev'
-    )
+    saved_path = country_group_rev(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket, **context)
+    query_result = load_df_from_gcs(bucket=bucket, path=saved_path)
 
     grouped_dfs = {
         country: group_df.pivot_table(
@@ -1140,12 +1182,9 @@ def country_group_to_df(**context):
 
 
 
-def country_group_to_df_gemini(joyplegameid: int, service_sub: str, **context):
+def country_group_to_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, bucket, **context):
 
-    query_result = context['task_instance'].xcom_pull(
-        task_ids='country_group_rev',
-        key='country_group_rev'
-    )
+    query_result = load_df_from_gcs(bucket=bucket, path=path_daily_revenue)
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
@@ -1173,10 +1212,10 @@ def country_group_to_df_gemini(joyplegameid: int, service_sub: str, **context):
 
 
 
-def country_group_df_draw(joyplegameid: int, gameidx: str, **context):
+def country_group_df_draw(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     
     gcs_paths = []
-    grouped_dfs, _ = country_group_to_df(**context)
+    grouped_dfs, _ = country_group_to_df(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket, **context)
 
     # ✅ 모든 그룹별로 그래프 생성
     for country, df in grouped_dfs.items():
@@ -1220,6 +1259,9 @@ def country_group_df_draw(joyplegameid: int, gameidx: str, **context):
         filepath1_dailySales = f"graph_{country}.png"
         plt.savefig(filepath1_dailySales, dpi=160) # dpi : 해상도
         plt.close()
+
+        blob = bucket.blob(f'{gameidx}/{filepath1_dailySales}')
+        blob.upload_from_filename(filepath1_dailySales)
 
         blob = bucket.blob(f'{gameidx}/{filepath1_dailySales}')
         blob.upload_from_filename(filepath1_dailySales)
@@ -1363,12 +1405,18 @@ def merge_country_group_df_draw(joyplegameid: int, gameidx: str, **context):
     return merged_paths
 
 
-def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, bucket_name: str = "game-framework1", merged_image_dir: str= "merged", **context):
+def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, st1, service_sub, 
+                                        genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, 
+                                        bucket, headers_json, NOTION_TOKEN, NOTION_VERSION, 
+                                        bucket_name: str = "game-framework1", merged_image_dir: str= "merged", **context):
 
     PAGE_INFO=context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
+
+    print(f"✅ PAGE_INFO 가져오기 성공")
+    page_id = PAGE_INFO.get('id')
 
     notion.blocks.children.append(
         PAGE_INFO['id'],
@@ -1514,12 +1562,7 @@ def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, bucket_
     
 
     # 공통 헤더
-    headers_json = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
-    }
-
+    headers_json = headers_json
     # GCS에서 이미지 다운로드 및 Notion 업로드
     for gcs_path in gcs_image_paths:
         filename = gcs_path.split('/')[-1]
@@ -1584,7 +1627,13 @@ def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, bucket_
     
     print("\n🎉 모든 이미지 업로드 완료!")
 
-    _, grouped_dfs_union =country_group_to_df(**context)
+    _, grouped_dfs_union =country_group_to_df(
+        joyplegameid=joyplegameid, 
+        gameidx=gameidx, 
+        bigquery_client=bigquery_client,
+        bucket=bucket,
+        **context
+    )
 
     resp = df_to_notion_table_under_toggle(
         notion=notion,
@@ -1595,7 +1644,16 @@ def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, bucket_
         batch_size=100,
     )
 
-    blocks = md_to_notion_blocks(country_group_to_df_gemini(joyplegameid, "3_global_ua"))
+
+    text = country_group_to_df_gemini(
+        service_sub=service_sub,
+        genai_client=genai_client,
+        MODEL_NAME=MODEL_NAME,
+        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+        path_daily_revenue=st1,
+        bucket=bucket
+    )
+    blocks = md_to_notion_blocks(text)
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
         children=blocks

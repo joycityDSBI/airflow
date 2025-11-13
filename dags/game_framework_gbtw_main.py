@@ -160,6 +160,7 @@ with DAG(
         '2_inhouse_sales',
         '3'
     ]
+    databaseschema='GW'
 
     ## 페이지 생성 함수 //////////// task 함수
 

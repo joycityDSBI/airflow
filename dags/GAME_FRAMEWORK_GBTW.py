@@ -728,12 +728,9 @@ def daily_revenue_gemini(joyplegameid: int, service_sub: str, **context):
 #     print("⚠️ NanumGothic 설치 실패. 다른 폰트를 써야 합니다.")
 
 ## 그래프 그리기 : arg 값으로 게임 코드
-def daily_revenue_graph_draw(joyplegameid: int, gameidx: str, **context):
+def daily_revenue_graph_draw(joyplegameid: int, gameidx: str, daily_revenue_query_path:str, **context):
 
-    df_daily = context['task_instance'].xcom_pull(
-        task_ids='daily_revenue_query',  # ← 첫 번째 Task의 task_id
-        key='daily_revenue_df'
-    )
+    df_daily = load_df_from_gcs(bucket, daily_revenue_query_path.split('/')[-1])
     
     x  = df_daily.iloc[:, 0]
     y1 = pd.to_numeric(df_daily.iloc[:, 1], errors='coerce')

@@ -366,8 +366,6 @@ def merge_inhouse_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **
 
     # ---- [옵션 A] 원본 크기 유지 + 세로 패딩으로 높이 맞추기 (권장: 왜곡 없음) ----
     print(f"🔄 이미지 높이 맞추는 중...")
-
-    # ---- [옵션 A] 원본 크기 유지 + 세로 패딩으로 높이 맞추기 (권장: 왜곡 없음) ----
     target_h = max(im1.height, im2.height)
 
     def pad_to_height(img, h, bg=(255, 255, 255, 0)):  # 투명 배경: 알파 0
@@ -433,10 +431,10 @@ def inhouse_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, g
         ],
     )
 
-    gcs_path = f'{gameidx}/graph2_selfPaymentSales.png'
+    gcs_path = merge_inhouse_graph(gameidx=gameidx, gcs_path_1=st1, gcs_path_2=st2, bucket=bucket, **context)
     blob = bucket.blob(gcs_path)
     image_bytes = blob.download_as_bytes()
-    filename = 'graph2_selfPaymentSales.png'
+    filename = gcs_path.split('/')[-1]
 
     print(f"✅ GCS 파일 다운로드 완료")
 
@@ -453,7 +451,7 @@ def inhouse_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, g
     
     print(f"📊 API 응답: {file_upload}")
     file_upload_id = file_upload["id"]   # 업로드 ID
-    upload_url = file_upload[upload_url]
+    upload_url = file_upload['upload_url']
 
     # 2) 파일 바이너리 전송 (multipart/form-data) - 수정된 부분
     send_url = f"https://api.notion.com/v1/file_uploads/{file_upload_id}/send"
