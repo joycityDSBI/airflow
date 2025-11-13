@@ -341,6 +341,7 @@ with DAG(
 
         try:
             country_group_data_upload_to_notion(
+                joyplegameid=joyplegameid,
                 gameidx=gameidx,
                 st1 = st5,
                 st2 = st6,
