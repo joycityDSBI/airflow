@@ -222,42 +222,6 @@ def cohort_by_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCT
 # 코멘트 정리 ( 향후 요약에 사용하기 용도 )
 #gemini_result.loc[len(gemini_result)] = response.text
 
-## OS별 cost
-def os_cost(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
-    query = f"""
-    with osCost as (
-    select os, cast(sum(cost) as int64) cost
-    from `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
-    where joyplegameid = {joyplegameid}
-    and cmpgndate >= DATE_TRUNC(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)
-    and cmpgndate <=LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)
-    group by os
-    ),
-
-    allCost as (
-    select cast(sum(cost) as int64) cost
-    from `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
-    where joyplegameid = {joyplegameid}
-    and cmpgndate >= DATE_TRUNC(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)
-    and cmpgndate <=LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)
-    )
-
-    select a.*, safe_divide(a.cost,b.cost) as cost_percent
-    from
-    (select * from osCost) as a
-    cross join
-    (select * from allCost) as b
-    """
-    query_result = query_run_method('3_global_ua', bigquery_client, query)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    gcs_path = f"{gameidx}/{timestamp}.parquet"
-        
-    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
-
-    return saved_path
-
-
 ## OS별 매출
 def os_rev(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     query = f"""
@@ -300,6 +264,43 @@ def os_rev(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
 
     return saved_path
+
+
+## OS별 cost
+def os_cost(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
+    query = f"""
+    with osCost as (
+    select os, cast(sum(cost) as int64) cost
+    from `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
+    where joyplegameid = {joyplegameid}
+    and cmpgndate >= DATE_TRUNC(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)
+    and cmpgndate <=LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)
+    group by os
+    ),
+
+    allCost as (
+    select cast(sum(cost) as int64) cost
+    from `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
+    where joyplegameid = {joyplegameid}
+    and cmpgndate >= DATE_TRUNC(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)
+    and cmpgndate <=LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)
+    )
+
+    select a.*, safe_divide(a.cost,b.cost) as cost_percent
+    from
+    (select * from osCost) as a
+    cross join
+    (select * from allCost) as b
+    """
+    query_result = query_run_method('3_global_ua', bigquery_client, query)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
+
+    return saved_path
+
 
 
 
@@ -801,8 +802,10 @@ def merge_os_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **conte
 
 def country_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+    current_context = get_current_context()
+
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -962,10 +965,12 @@ def country_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_cli
 ## os별 cost, rev 그래프
 ########### (2) 그래프 업로드
 ## IAP+유가젬
-def country_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
+def os_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+    current_context = get_current_context()
+
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -1407,16 +1412,21 @@ def merge_country_group_df_draw(joyplegameid: int, gameidx: str, **context):
 
 
 def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, st1, service_sub, 
-                                        genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, 
+                                        genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bigquery_client,
                                         bucket, headers_json, NOTION_TOKEN, NOTION_VERSION, 
                                         bucket_name: str = "game-framework1", merged_image_dir: str= "merged", **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+    current_context = get_current_context()
+
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
+    print(f"📊 page_info type: {type(PAGE_INFO)}")
+    print(f"📊 page_info: {PAGE_INFO}")
     print(f"✅ PAGE_INFO 가져오기 성공")
+
     page_id = PAGE_INFO.get('id')
 
     notion.blocks.children.append(

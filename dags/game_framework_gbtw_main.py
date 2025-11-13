@@ -166,6 +166,13 @@ with DAG(
     ]
     databaseschema='GW'
 
+    ## 에러 출력 함수 
+    def if_else_length(path: str, gameidx: str, service_sub: str, func_name: str):
+        if len(path) > 0:
+            print(f"✅ {gameidx}: {service_sub} {func_name} 완료")
+        else:
+            print(f"❌ {gameidx}: {service_sub} {func_name} 실패")
+
     ## 페이지 생성 함수 //////////// task 함수
     def make_gameframework_notion_page_wraper(**context):
         try:
@@ -192,38 +199,22 @@ with DAG(
     ####### 일자별 게임 프레임 워크
 
     def daily_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
-        
         print(f"📧 RUN 데일리 데이터 게임 프로엠워크 시작: {gameidx}")
         
         st1 = Daily_revenue_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
-        if len(st1) > 0:
-            print(f"✅ {gameidx}: {service_sub} Daily_revenue_query 완료")
-        else :
-            print(f"❌ {gameidx}: {service_sub} Daily_revenue_query 실패")
+        if_else_length(path=st1, gameidx=gameidx, service_sub=service_sub, func_name="Daily_revenue_query")
 
         st2 = Daily_revenue_YOY_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
-        if len(st2) > 0:
-            print(f"✅ {gameidx}: {service_sub} Daily_revenue_YOY_query 완료")
-        else :
-            print(f"❌ {gameidx}: {service_sub} Daily_revenue_YOY_query 실패")
+        if_else_length(path=st2, gameidx=gameidx, service_sub=service_sub, func_name="Daily_revenue_YOY_query")
 
         st3 = Daily_revenue_target_revenue_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
-        if len(st3) > 0:
-            print(f"✅ {gameidx}: {service_sub} Daily_revenue_target_revenue_query 완료")
-        else :
-            print(f"❌ {gameidx}: {service_sub} Daily_revenue_target_revenue_query 실패")
+        if_else_length(path=st3, gameidx=gameidx, service_sub=service_sub, func_name="Daily_revenue_target_revenue_query")
         
         s_total = merge_daily_revenue(st1, st2, bucket=bucket)
-        if len(s_total) > 0:
-            print(f"✅ {gameidx}: {service_sub} merge_daily_revenue 완료")
-        else :
-            print(f"❌ {gameidx}: {service_sub} merge_daily_revenue 실패")
+        if_else_length(path=s_total, gameidx=gameidx, service_sub=service_sub, func_name="merge_daily_revenue")
 
         img_gcs_path = merge_daily_graph(gameidx=gameidx, daily_revenue_path=st1, daily_revenue_yoy_path=st2, bucket=bucket)
-        if len(img_gcs_path) > 0:
-            print(f"✅ {gameidx}: {service_sub} merge_daily_graph 완료")
-        else :
-            print(f"❌ {gameidx}: {service_sub} merge_daily_graph 실패")
+        if_else_length(path=img_gcs_path, gameidx=gameidx, service_sub=service_sub, func_name="merge_daily_graph")
 
         try :
             daily_revenue_data_upload_to_notion(
@@ -247,26 +238,16 @@ with DAG(
 
     ###### 인하우스 게임 프레임워크
     def inhouse_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
-
         print(f"📧 RUN 인하우스 데이터 게임 프로엠워크 시작: {gameidx}")
 
         st1 = inhouse_sales_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
-        if len(st1) > 0:
-            print(f"✅ {gameidx}: {service_sub} inhouse_sales_query 완료")
-        else :
-            print(f"❌ {gameidx}: {service_sub} inhouse_sales_query 실패")
+        if_else_length(path=st1, gameidx=gameidx, service_sub=service_sub, func_name="inhouse_sales_query")
 
         st2 = inhouse_sales_before24_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
-        if len(st2) > 0:
-            print(f"✅ {gameidx}: {service_sub} inhouse_sales_before24_query 완료")
-        else :
-            print(f"❌ {gameidx}: {service_sub} inhouse_sales_before24_query 실패")
+        if_else_length(path=st2, gameidx=gameidx, service_sub=service_sub, func_name="inhouse_sales_before24_query")
 
         merged_img_path = merge_inhouse_graph(gameidx, st1, st2, bucket)
-        if len(merged_img_path) > 0:
-            print(f"✅ {gameidx}: {service_sub} merge_inhouse_graph 완료")
-        else :
-            print(f"❌ {gameidx}: {service_sub} merge_inhouse_graph 실패")
+        if_else_length(path=merged_img_path, gameidx=gameidx, service_sub=service_sub, func_name="merge_inhouse_graph")
 
         try:
             inhouse_revenue_data_upload_to_notion(
@@ -288,16 +269,93 @@ with DAG(
             print(f"🔴 {e}")
 
 
+    def global_ua_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
+        print(f"📧 RUN 글로벌 UA 데이터 게임 프로엠워크 시작: {gameidx}")
 
+        st1 = cohort_by_country_revenue(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=st1, gameidx=gameidx, service_sub=service_sub, func_name="cohort_by_country_revenue")
 
+        st2 = cohort_by_country_cost(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=st2, gameidx=gameidx, service_sub=service_sub, func_name="cohort_by_country_cost")
 
+        st3 = os_rev(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=st3, gameidx=gameidx, service_sub=service_sub, func_name="os_rev")
 
+        st4 = os_cost(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=st4, gameidx=gameidx, service_sub=service_sub, func_name="os_cost")
 
+        merged_country_graph = merge_contry_graph(gameidx=gameidx, gcs_path_1=st1, gcs_path_2=st2, bucket=bucket)
+        if_else_length(path=merged_country_graph, gameidx=gameidx, service_sub=service_sub, func_name="merge_contry_graph")
 
+        merged_os_graph = merge_os_graph(gameidx=gameidx, gcs_path_1=st3, gcs_path_2=st4, bucket=bucket)
+        if_else_length(path=merged_os_graph, gameidx=gameidx, service_sub=service_sub, func_name="merge_os_graph")
 
+        try:
+            country_data_upload_to_notion(
+                gameidx=gameidx,
+                st1 = st1,
+                st2 = st2,
+                service_sub=service_sub,
+                genai_client=genai_client,
+                MODEL_NAME = MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                notion=notion,
+                bucket=bucket,
+                headers_json=headers_json,
+                NOTION_TOKEN=NOTION_TOKEN,
+                NOTION_VERSION=NOTION_VERSION,
+            )
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} country_data_upload_to_notion 실패 ")
+            print(f"🔴 {e}")
 
+        try:
+            os_data_upload_to_notion(
+                gameidx=gameidx,
+                st1 = st3,
+                st2 = st4,
+                service_sub=service_sub,
+                genai_client=genai_client,
+                MODEL_NAME = MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                notion=notion,
+                bucket=bucket,
+                headers_json=headers_json,
+                NOTION_TOKEN=NOTION_TOKEN,
+                NOTION_VERSION=NOTION_VERSION,
+            )
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} os_data_upload_to_notion 실패 ")
+            print(f"🔴 {e}")  
 
+        st5 = country_group_rev(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=st5, gameidx=gameidx, service_sub=service_sub, func_name="country_group_rev")        
 
+        st6 = cohort_by_country_cost(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=st6, gameidx=gameidx, service_sub=service_sub, func_name="cohort_by_country_cost")
+
+        merged_country_group_graph = merge_country_group_df_draw(joyplegameid=joyplegameid, gameidx=gameidx)
+        if_else_length(path=merged_country_group_graph, gameidx=gameidx, service_sub=service_sub, func_name="merge_country_group_df_draw")  
+
+        try:
+            country_group_data_upload_to_notion(
+                gameidx=gameidx,
+                st1 = st5,
+                st2 = st6,
+                service_sub=service_sub,
+                genai_client=genai_client,
+                MODEL_NAME = MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                notion=notion,
+                bigquery_client=bigquery_client,
+                bucket=bucket,
+                headers_json=headers_json,
+                NOTION_TOKEN=NOTION_TOKEN,
+                NOTION_VERSION=NOTION_VERSION
+            )
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} os_data_upload_to_notion 실패 ")
+            print(f"🔴 {e}") 
 
 
 
@@ -331,13 +389,31 @@ with DAG(
     #     dag=dag,
     # )
 
-    inhouse_gameframework_run = PythonOperator(
-        task_id='inhouse_data_game_framework',
-        python_callable=inhouse_data_game_framework,
+    # inhouse_gameframework_run = PythonOperator(
+    #     task_id='inhouse_data_game_framework',
+    #     python_callable=inhouse_data_game_framework,
+    #     op_kwargs={
+    #         'joyplegameid':joyplegameid,
+    #         'gameidx':gameidx,
+    #         'service_sub':service_sub[1],
+    #         'bigquery_client':bigquery_client,
+    #         'MODEL_NAME': MODEL_NAME,
+    #         'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+    #         'bucket': bucket,
+    #         'headers_json': headers_json,
+    #         'genai_client': genai_client,
+    #         'notion':notion
+    #     },
+    #     dag=dag,
+    # )
+
+    global_ua_gameframework_run = PythonOperator(
+        task_id='global_ua_data_game_framework',
+        python_callable=global_ua_data_game_framework,
         op_kwargs={
             'joyplegameid':joyplegameid,
             'gameidx':gameidx,
-            'service_sub':service_sub[1],
+            'service_sub':service_sub[2],
             'bigquery_client':bigquery_client,
             'MODEL_NAME': MODEL_NAME,
             'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
@@ -350,5 +426,5 @@ with DAG(
     )
 
 
-create_gameframework_notion_page >> inhouse_gameframework_run
+create_gameframework_notion_page >> global_ua_gameframework_run
 
