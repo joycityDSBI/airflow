@@ -57,6 +57,7 @@ from game_framework_util import *
 from game_framework_daily import *
 from game_framework_inhouse import *
 from game_framework_global_ua import *
+from game_framework_rgroup_IAP_gem_ruby import *
 
 # Airflow function
 from airflow import DAG, Dataset
@@ -269,6 +270,7 @@ with DAG(
             print(f"🔴 {e}")
 
 
+    ##### 글로벌 UA 프레임 워크
     def global_ua_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
         print(f"📧 RUN 글로벌 UA 데이터 게임 프로엠워크 시작: {gameidx}")
 
@@ -358,7 +360,11 @@ with DAG(
             print(f"🔴 {e}") 
 
 
+    ##### R Group, IAP, GEM, RUBY 프레임 워크
+    # def rgroup_iapgemruby_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
+    #     print(f"📧 RUN R Group, IAP, GEM, RUBY 데이터 게임 프로엠워크 시작: {gameidx}")
 
+    #     st1 = rev_group_rev_pu()
 
 
 
