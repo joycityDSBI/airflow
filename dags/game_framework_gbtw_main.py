@@ -316,23 +316,23 @@ with DAG(
     )
 
 
-    daily_gameframework_run = PythonOperator(
-        task_id='datily_data_game_framework',
-        python_callable=daily_data_game_framework,
-        op_kwargs={
-            'joyplegameid':joyplegameid,
-            'gameidx':gameidx,
-            'service_sub':service_sub[0],
-            'bigquery_client':bigquery_client,
-            'MODEL_NAME': MODEL_NAME,
-            'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
-            'bucket': bucket,
-            'headers_json': headers_json,
-            'genai_client': genai_client,
-            'notion':notion
-        },
-        dag=dag,
-    )
+    # daily_gameframework_run = PythonOperator(
+    #     task_id='datily_data_game_framework',
+    #     python_callable=daily_data_game_framework,
+    #     op_kwargs={
+    #         'joyplegameid':joyplegameid,
+    #         'gameidx':gameidx,
+    #         'service_sub':service_sub[0],
+    #         'bigquery_client':bigquery_client,
+    #         'MODEL_NAME': MODEL_NAME,
+    #         'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+    #         'bucket': bucket,
+    #         'headers_json': headers_json,
+    #         'genai_client': genai_client,
+    #         'notion':notion
+    #     },
+    #     dag=dag,
+    # )
 
     inhouse_gameframework_run = PythonOperator(
         task_id='inhouse_data_game_framework',
@@ -353,5 +353,5 @@ with DAG(
     )
 
 
-create_gameframework_notion_page >> daily_gameframework_run >> inhouse_gameframework_run
+create_gameframework_notion_page >> inhouse_gameframework_run
 

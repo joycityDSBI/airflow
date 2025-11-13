@@ -50,6 +50,7 @@ from airflow.models import Variable
 from airflow.operators.python import get_current_context
 from zoneinfo import ZoneInfo  # Python 3.9 이상
 from pathlib import Path
+from airflow.sdk import get_current_context
 from game_framework_util import *
 
 PROJECT_ID = "data-science-division-216308"

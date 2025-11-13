@@ -50,6 +50,7 @@ from airflow.models import Variable
 from airflow.operators.python import get_current_context
 from zoneinfo import ZoneInfo  # Python 3.9 이상
 from pathlib import Path
+from airflow.sdk import get_current_context
 from game_framework_util import *
 
 PROJECT_ID = "data-science-division-216308"
@@ -406,7 +407,9 @@ def merge_inhouse_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **
 
 def inhouse_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, NOTION_TOKEN, NOTION_VERSION,  **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
