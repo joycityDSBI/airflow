@@ -2295,9 +2295,12 @@ def iap_gem_ruby_RUBY_graph_draw(gameidx: str, path_ruby_df:str, bucket, **conte
 
 
 ### 1위
-def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str, bigquery_client, bucket, **context):
+def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str,
+                    path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, **context):
 
-    dfs, _ = top3_items_rev(joyplegameid, gameidx, databaseschema, service_sub, bigquery_client, bucket, **context)
+    dfs, _ = top3_items_rev(joyplegameid, gameidx, databaseschema, service_sub, 
+                            path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION,
+                            bigquery_client, bucket, **context)
 
     df = dfs.get("query_result4_salesByPackage_forCategoryGraph_1")
     df["일자"] = pd.to_datetime(df["일자"])
@@ -2386,9 +2389,12 @@ def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
 
 
 ### 2위
-def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str, bigquery_client, bucket, **context):
+def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str,
+                    path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, **context):
 
-    dfs, _ = top3_items_rev(joyplegameid, gameidx, databaseschema, service_sub, bigquery_client, bucket, **context)
+    dfs, _ = top3_items_rev(joyplegameid, gameidx, databaseschema, service_sub, 
+                            path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION,
+                            bigquery_client, bucket, **context)
 
     df = dfs.get("query_result4_salesByPackage_forCategoryGraph_1")
     df["일자"] = pd.to_datetime(df["일자"])
@@ -2478,9 +2484,12 @@ def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
 
 
 ### 3위
-def top3_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str, bigquery_client, bucket, **context):
+def top3_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str,
+                    path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, **context):
 
-    dfs, _ = top3_items_rev(joyplegameid, gameidx, databaseschema, service_sub, bigquery_client, bucket, **context)
+    dfs, _ = top3_items_rev(joyplegameid, gameidx, databaseschema, service_sub, 
+                            path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION,
+                            bigquery_client, bucket, **context)
 
     df = dfs.get("query_result4_salesByPackage_forCategoryGraph_1")
     df["일자"] = pd.to_datetime(df["일자"])
