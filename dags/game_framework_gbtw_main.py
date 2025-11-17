@@ -482,7 +482,8 @@ with DAG(
                 PROJECT_ID=PROJECT_ID,
                 LOCATION=LOCATION,
                 bucket=bucket,
-                notion=notion
+                notion=notion,
+                headers_json=headers_json
             )
             print(f"✅ {gameidx}: {service_sub} iap_toggle_add 완료")
         except Exception as e:
@@ -500,7 +501,8 @@ with DAG(
                 PROJECT_ID=PROJECT_ID,
                 LOCATION=LOCATION,
                 bucket=bucket,
-                notion=notion
+                notion=notion,
+                headers_json=headers_json
                 )
             print(f"✅ {gameidx}: {service_sub} gem_toggle_add 완료")
         except Exception as e:
@@ -518,7 +520,8 @@ with DAG(
                 PROJECT_ID=PROJECT_ID,
                 LOCATION=LOCATION,
                 bucket=bucket,
-                notion=notion
+                notion=notion,
+                headers_json=headers_json
                 )
             print(f"✅ {gameidx}: {service_sub} ruby_toggle_add 완료")
         except Exception as e:
@@ -536,7 +539,8 @@ with DAG(
                 PROJECT_ID=PROJECT_ID,
                 LOCATION=LOCATION,
                 bucket=bucket,
-                notion=notion
+                notion=notion,
+                headers_json=headers_json
                 )
             print(f"✅ {gameidx}: {service_sub} rgroup_pu_top3_upload_notion 완료")
         except Exception as e:

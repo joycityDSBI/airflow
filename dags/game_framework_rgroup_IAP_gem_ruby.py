@@ -3455,7 +3455,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
 
 
 def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
-                   path_iap_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, **context):
+                   path_iap_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, headers_json, **context):
     
     current_context = get_current_context()
     PAGE_INFO=current_context['task_instance'].xcom_pull(
@@ -3550,10 +3550,10 @@ def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
         print(f"❌ 예기치 않은 에러: {str(e)}")
         raise
 
-    query_result4_salesByPackage_IAP = context['task_instance'].xcom_pull(
-        task_ids='iap_df',
-        key='iap_df'
-    )
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    query_result4_salesByPackage_IAP = load_df_from_gcs(bucket=bucket, path=path_iap_df)
 
     resp = df_to_notion_table_under_toggle(
         notion=notion,
@@ -3588,7 +3588,7 @@ def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
 
 
 def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
-                   path_gem_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, **context):
+                   path_gem_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, headers_json, **context):
     
     current_context = get_current_context()
     PAGE_INFO=current_context['task_instance'].xcom_pull(
@@ -3683,10 +3683,10 @@ def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
         raise
 
 ###########
-    query_result4_salesByPackage_GEM = context['task_instance'].xcom_pull(
-        task_ids='gem_df',
-        key='gem_df'
-    )
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    query_result4_salesByPackage_GEM = load_df_from_gcs(bucket=bucket, path=path_gem_df)
 
     resp = df_to_notion_table_under_toggle(
         notion=notion,
@@ -3696,9 +3696,6 @@ def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
         max_first_batch_rows=90,
         batch_size=100,
     )
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     blocks = md_to_notion_blocks(gem_df_gemini(service_sub=service_sub,
                                                genai_client=genai_client,
@@ -3720,7 +3717,7 @@ def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
 
 
 def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
-                   path_ruby_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, **context):
+                   path_ruby_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, headers_json, **context):
 
     current_context = get_current_context()
     PAGE_INFO=current_context['task_instance'].xcom_pull(
@@ -3815,10 +3812,10 @@ def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRU
         print(f"❌ 예기치 않은 에러: {str(e)}")
         raise
 
-    query_result4_salesByPackage_RUBY = context['task_instance'].xcom_pull(
-        task_ids='ruby_df',
-        key='ruby_df'
-    )
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    query_result4_salesByPackage_RUBY = load_df_from_gcs(bucket=bucket, path=path_ruby_df)
 
     resp = df_to_notion_table_under_toggle(
         notion=notion,
@@ -3852,7 +3849,7 @@ def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRU
 
 
 def rgroup_top3_upload_notion(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
-                   path_rgroup_top3_pu:str, path_rgroup_top3_rev:str, PROJECT_ID: str, LOCATION:str, bucket, notion, **context):
+                   path_rgroup_top3_pu:str, path_rgroup_top3_rev:str, PROJECT_ID: str, LOCATION:str, bucket, notion, headers_json, **context):
 
     current_context = get_current_context()
     PAGE_INFO=current_context['task_instance'].xcom_pull(
