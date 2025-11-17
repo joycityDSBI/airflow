@@ -682,8 +682,9 @@ def monthly_day_average_rev_table_draw(gameidx:str, path_monthly_day_average_rev
         blob = bucket.blob(f'{gameidx}/{out_path}')
         blob.upload_from_filename(out_path, content_type='image/png')
 
+        print(f"📤 Table image saved to {gameidx}/{out_path} in GCS bucket.")
         # 메모리에 올라간 이미지 파일 삭제
-        os.remove(out_path)
+        # os.remove(out_path)
 
         return f'{gameidx}/{out_path}'
     
@@ -738,7 +739,7 @@ def monthly_day_average_rev_graph_draw(gameidx:str, path_monthly_day_average_rev
     blob.upload_from_filename(file_path5_dailyAvgRevenueLine)
 
     # 메모리에 올라간 이미지 파일 삭제
-    os.remove(file_path5_dailyAvgRevenueLine)
+    # os.remove(file_path5_dailyAvgRevenueLine)
 
     return f'{gameidx}/{file_path5_dailyAvgRevenueLine}'
 
@@ -780,7 +781,7 @@ def monthly_day_average_merge_graph(gameidx:str, path_monthly_day_average_rev:st
     blob.upload_from_filename(save_to)
 
     # 메모리에 올라간 이미지 파일 삭제
-    os.remove(save_to)
+    # os.remove(save_to)
 
     return f'{gameidx}/{save_to}'
 
@@ -960,7 +961,7 @@ def rgroup_rev_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **co
         blob.upload_from_filename(out_path, content_type='image/png')
 
         # 메모리에 올라간 이미지 파일 삭제
-        os.remove(out_path)
+        # os.remove(out_path)
 
         return f'{gameidx}/{out_path}'
     
@@ -1163,7 +1164,7 @@ def rgroup_pu_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **con
         blob.upload_from_filename(out_path, content_type='image/png')
 
         # 메모리에 올라간 이미지 파일 삭제
-        os.remove(out_path)
+        # os.remove(out_path)
 
         return f'{gameidx}/{out_path}'
     
@@ -1447,7 +1448,7 @@ def rgroup_rev_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, 
         blob.upload_from_filename(out_path, content_type='image/png')
 
         # 메모리에 올라간 이미지 파일 삭제
-        os.remove(out_path)
+        # os.remove(out_path)
 
         return f'{gameidx}/{out_path}'
     
@@ -1649,7 +1650,7 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
         blob.upload_from_filename(out_path, content_type='image/png')
 
         # 메모리에 올라간 이미지 파일 삭제
-        os.remove(out_path)
+        # os.remove(out_path)
 
         return f'{gameidx}/{out_path}'
     
