@@ -943,9 +943,8 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
     
     weekly_iapcategory_rev_cols = load_df_from_gcs(bucket, path_weekly_iapcategory_rev_cols)
-    print(f"top3 items by category 에서 weekly_iapcategory_rev_cols : ", weekly_iapcategory_rev_cols)
 
-    if isinstance(df2, pd.DataFrame):
+    if isinstance(weekly_iapcategory_rev_cols, pd.DataFrame):
         # df2의 첫 번째 컬럼에서 값 추출
         weekly_iapcategory_rev_cols = weekly_iapcategory_rev_cols.iloc[:, 0].tolist()
         print(f"✅ cols_list: {weekly_iapcategory_rev_cols}")
