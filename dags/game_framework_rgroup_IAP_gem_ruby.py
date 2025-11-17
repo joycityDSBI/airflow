@@ -1523,9 +1523,18 @@ def rgroup_top3_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRU
 
 
 
-def category_for_bigquery_sql(service_sub:str, **context):
+def category_for_bigquery_sql(service_sub:str, path_weekly_iapcategory_rev:str, 
+                              genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bucket, **context):
 
-    _, _, _, response4_CategoryListUp = iapcategory_rev_df_gemini(service_sub, **context)
+    _, _, _, response4_CategoryListUp = iapcategory_rev_df_gemini(service_sub, 
+                                                                        genai_client, 
+                                                                        MODEL_NAME, 
+                                                                        SYSTEM_INSTRUCTION, 
+                                                                        path_weekly_iapcategory_rev,
+                                                                        bucket, 
+                                                                        PROJECT_ID, 
+                                                                        LOCATION,
+                                                                        **context)
 
     CategoryListUp = re.search(r"\(.*\)", response4_CategoryListUp.text)
     if CategoryListUp:
@@ -1545,9 +1554,17 @@ def category_for_bigquery_sql(service_sub:str, **context):
     return CategoryListUp_SQL, case_when_str, CategoryListUp_Top3
 
 
-def top3_items_rev(joyplegameid:int, gameidx:str, databaseschema:str, service_sub:str, bigquery_client, bucket, **context):
+def top3_items_rev(joyplegameid:int, gameidx:str, databaseschema:str, service_sub:str, 
+                   path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list,
+                   bigquery_client, bucket, **context):
     
-    CategoryListUp_SQL, case_when_str, _ = category_for_bigquery_sql(service_sub=service_sub)
+    CategoryListUp_SQL, case_when_str, _ = category_for_bigquery_sql(service_sub=service_sub,
+                                                                    path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+                                                                    genai_client=genai_client,
+                                                                    MODEL_NAME=MODEL_NAME,
+                                                                    SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                                                                    bucket=bucket,
+                                                                    **context)
 
     query = f"""
     with sales_data as (

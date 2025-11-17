@@ -368,7 +368,7 @@ with DAG(
     ##### R Group, IAP, GEM, RUBY 프레임 워크
     def rgroup_iapgemruby_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, databaseschema: str, 
                                               bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
-        print(f"📧 RUN R Group, IAP, GEM, RUBY 데이터 게임 프로엠워크 시작: {gameidx}")
+        print(f"📧 RUN R Group, IAP, GEM, RUBY 데이터 게임 프레임워크 시작: {gameidx}")
 
         path_rev_group_rev_pu = rev_group_rev_pu(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
         if_else_length(path=path_rev_group_rev_pu, gameidx=gameidx, service_sub=service_sub, func_name="rev_group_rev_pu")
