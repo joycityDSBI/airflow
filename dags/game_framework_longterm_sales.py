@@ -751,15 +751,15 @@ def monthly_day_average_merge_graph(gameidx:str, path_monthly_day_average_rev:st
     save_to = 'graph5_dailyAvgRevenue.png'  # 저장 경로
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
-    print(f"📥 GCS에서 이미지 다운로드 중...")
+    print(f"📥 GCS에서 이미지 다운로드 중...monthly_day_average_merge_graph")
     blob1 = bucket.blob(p1)
     blob2 = bucket.blob(p2)
 
-    print(f"📥 blob1 다운로드 중 ...")
+    print(f"📥 blob1 다운로드 중 ...monthly_day_average_merge_graph")
     im1 = blob1.download_as_bytes()
     im2 = blob2.download_as_bytes()
 
-    print(f"🖼️ Image 객체 생성 중...")
+    print(f"🖼️ Image 객체 생성 중...monthly_day_average_merge_graph")
     im1 = Image.open(BytesIO(im1))
     im2 = Image.open(BytesIO(im2))
 
@@ -785,9 +785,16 @@ def monthly_day_average_merge_graph(gameidx:str, path_monthly_day_average_rev:st
     out.paste(im1_p, (0, 0), im1_p)
     out.paste(im2_p, (im1_p.width + gap, 0), im2_p)
 
-    # PNG로 저장
-    blob = bucket.blob(f'{gameidx}/{save_to}')
-    blob.upload_from_filename(save_to)
+    # 3) GCS에 저장
+    print(f"📤 GCS에 업로드 중...")
+    output_buffer = BytesIO()
+    out.save(output_buffer, format='PNG')
+    output_buffer.seek(0)
+
+    # GCS 경로
+    gcs_path = f'{gameidx}/{save_to}'
+    blob = bucket.blob(gcs_path)
+    blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
 
     # 메모리에 올라간 이미지 파일 삭제
     # os.remove(save_to)
