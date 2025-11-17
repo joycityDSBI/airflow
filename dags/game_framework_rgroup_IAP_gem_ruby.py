@@ -946,14 +946,11 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
 
     if isinstance(weekly_iapcategory_rev_cols, pd.DataFrame):
         # df2의 첫 번째 컬럼에서 값 추출
-        weekly_iapcategory_rev_cols = weekly_iapcategory_rev_cols.iloc[:, 0].tolist()
-        print(f"✅ cols_list: {weekly_iapcategory_rev_cols}")
-    else:
-        cols_list = []
+        weekly_iapcategory_rev_cols = weekly_iapcategory_rev_cols.iloc[1:, 0].tolist()
     
     # ✅ SQL에서 사용할 컬럼 문자열 생성
-    weekly_iapcategory_rev_cols = ', '.join(f"'{col}'" for col in cols_list)
-
+    weekly_iapcategory_rev_cols = ', '.join(f"'{col}'" for col in weekly_iapcategory_rev_cols)
+    print(f"✅ cols_list: {weekly_iapcategory_rev_cols}")
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
