@@ -2052,9 +2052,10 @@ def longterm_rev_upload_notion(gameidx:str, service_sub:str,
         batch_size=100,
     )
 
-    blocks = md_to_notion_blocks(monthly_day_average_rev_gemini(service_sub=service_sub, 
-                                                               path_monthly_day_average_rev=path_monthly_day_average_rev,
-                                                               MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, **context))
+    text = monthly_day_average_rev_gemini(service_sub=service_sub, 
+                                          path_monthly_day_average_rev=path_monthly_day_average_rev,
+                                          MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, **context)
+    blocks = md_to_notion_blocks(text)
 
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
@@ -2208,9 +2209,9 @@ def monthly_rgroup_upload_notion(gameidx:str, service_sub:str,
     )
 
     ## 프롬프트
-    blocks = md_to_notion_blocks(rgroup_rev_total_gemini(service_sub=service_sub, 
-                                                        path_rgroup_rev_DOD=path_rgroup_rev_DOD,
-                                                        MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, **context))
+    text = rgroup_rev_total_gemini(service_sub=service_sub, path_rgroup_rev_DOD=path_rgroup_rev_DOD, 
+                                   MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, **context)
+    blocks = md_to_notion_blocks(text)
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
         children=blocks
