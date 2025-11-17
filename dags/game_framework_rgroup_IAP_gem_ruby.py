@@ -3198,7 +3198,8 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
 
 ## 상품카테고리별 매출 1위 그래프 삽입
     try:
-        gcs_path = top1_graph_draw(joyplegameid, gameidx, databaseschema, service_sub, bigquery_client, bucket, **context)
+        gcs_path = top1_graph_draw(joyplegameid, gameidx, databaseschema, service_sub,
+                    path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_Category1.png'
@@ -3276,7 +3277,8 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
 
     ## 상품카테고리별 매출 2위 그래프 삽입
     try:
-        gcs_path = top2_graph_draw(joyplegameid, gameidx, databaseschema, service_sub, bigquery_client, bucket, **context)
+        gcs_path = top2_graph_draw(joyplegameid, gameidx, databaseschema, service_sub,
+                    path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_Category2.png'
@@ -3350,7 +3352,8 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
 
     ## 상품카테고리별 매출 3위 그래프 삽입
     try:
-        gcs_path = top3_graph_draw(joyplegameid, gameidx, databaseschema, service_sub, bigquery_client, bucket, **context)
+        gcs_path = top3_graph_draw(joyplegameid, gameidx, databaseschema, service_sub,
+                    path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_Category3.png'
