@@ -34,6 +34,7 @@ from io import BytesIO
 from typing import List, Tuple
 from matplotlib import rcParams
 from matplotlib.patches import Rectangle
+from game_framework_util import *
 
 # 전처리 관련 패키지
 import numpy as np
@@ -6718,7 +6719,7 @@ def rgroup_top3_upload_notion(gameidx: str, service_sub:str, **context):
 
 ### 월별 일 평균 매출
 def monthly_day_average_rev(joyplegameid:int, gameidx:str, databaseschema:str, **context):
-    query = """
+    query = f"""
     select month
     , cast(sum(pricekrw) as int64) as `총매출`
     , max(day) `일 수`
@@ -6727,7 +6728,7 @@ def monthly_day_average_rev(joyplegameid:int, gameidx:str, databaseschema:str, *
     (select * , cast(format_date('%d',  logdatekst ) as int64) as day
     , format_date('%Y-%m',  logdatekst ) as month
     from `dataplatform-reporting.DataService.V_0317_0000_AuthAccountPerformance_V`
-    where joyplegameid = 133
+    where joyplegameid = {joyplegameid}
     and logdatekst>='2024-01-01'
     and logdatekst<=DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
     )
@@ -6737,22 +6738,25 @@ def monthly_day_average_rev(joyplegameid:int, gameidx:str, databaseschema:str, *
     """
 
     query_result =query_run_method('5_logterm_sales', query)
-    context['task_instance'].xcom_push(key='monthly_day_average_rev', value=query_result)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
 
-    return True
+    return saved_path
 
+######### 월별 일 평균 매출 - 제미나이 코멘트 생성
+def monthly_day_average_rev_gemini(joyplegameid: int, service_sub: str, path_monthly_day_average_rev:str, **context):
 
-def monthly_day_average_rev_gemini(joyplegameid: int, service_sub: str, **context):
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
-    query_result5_dailyAvgRevenue = context['task_instance'].xcom_pull(
-        task_ids = 'monthly_day_average_rev',
-        key='monthly_day_average_rev'
-    )
+    query_result5_dailyAvgRevenue = load_df_from_gcs(bucket, path_monthly_day_average_rev)
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
     
     response5_dailyAvgRevenue = genai_client.models.generate_content(
     model=MODEL_NAME,
@@ -6792,15 +6796,16 @@ def monthly_day_average_rev_gemini(joyplegameid: int, service_sub: str, **contex
     return response5_dailyAvgRevenue.text
 
 
+###### 과금그룹별 매출
 def rgroup_rev_DOD(joyplegameid:int, gameidx:str, databaseschema:str, **context):
-    query = """
+    query = f"""
     with sales_raw as ( ## 6208778
     select *
     , format_date('%Y-%m',  logdatekst ) as month
     , cast(format_date('%d',  logdatekst ) as int64) as day
 
     from `dataplatform-reporting.DataService.V_0317_0000_AuthAccountPerformance_V`
-    where joyplegameid = 133
+    where joyplegameid = {joyplegameid}
     and logdatekst>='2024-01-01'
     ),
 
@@ -6874,13 +6879,17 @@ def rgroup_rev_DOD(joyplegameid:int, gameidx:str, databaseschema:str, **context)
     """
 
     query_result =query_run_method('5_logterm_sales', query)
-    context['task_instance'].xcom_push(key='rgroup_rev_DOD', value=query_result)
 
-    return True
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
 
+    return saved_path
 
+####### 과금그룹별 총 매출
 def rgroup_rev_total(joyplegameid:int, gameidx:str, databaseschema:str, **context):
-    query = """
+    query = f"""
 
     with sales_raw as ( ## 6208778
     select *
@@ -6888,7 +6897,7 @@ def rgroup_rev_total(joyplegameid:int, gameidx:str, databaseschema:str, **contex
     , cast(format_date('%d',  logdatekst ) as int64) as day
 
     from `dataplatform-reporting.DataService.V_0317_0000_AuthAccountPerformance_V`
-    where joyplegameid = 133
+    where joyplegameid = {joyplegameid}
     and logdatekst>='2024-01-01'
     ),
 
@@ -6960,11 +6969,16 @@ def rgroup_rev_total(joyplegameid:int, gameidx:str, databaseschema:str, **contex
     """
 
     query_result =query_run_method('5_logterm_sales', query)
-    context['task_instance'].xcom_push(key='rgroup_rev_total', value=query_result)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
 
-    return True
+    return saved_path
 
 
+####### 과금그룹별 총 매출 - 제미나이 코멘트 생성
 def rgroup_rev_total_gemini(joyplegameid: int, service_sub: str, **context):
 
     query_result5_monthlyRgroupRevenue = context['task_instance'].xcom_pull(
@@ -6975,7 +6989,7 @@ def rgroup_rev_total_gemini(joyplegameid: int, service_sub: str, **context):
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
     
     response5_monthlyRgroup = genai_client.models.generate_content(
     model=MODEL_NAME,
@@ -7029,7 +7043,7 @@ def rgroup_rev_total_gemini(joyplegameid: int, service_sub: str, **context):
 
 ## 가입연도별 매출
 def rev_cohort_year(joyplegameid:int, gameidx:str, databaseschema:str, **context):
-    query = """
+    query = f"""
     with sales_raw as (
     select *
     , format_date('%Y-%m',  logdatekst ) as month
@@ -7037,7 +7051,7 @@ def rev_cohort_year(joyplegameid:int, gameidx:str, databaseschema:str, **context
     , cast(format_date('%d',  logdatekst ) as int64) as day
     , EXTRACT(DAY FROM LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)) as maxday
     from `dataplatform-reporting.DataService.V_0317_0000_AuthAccountPerformance_V`
-    where joyplegameid = 133
+    where joyplegameid = {joyplegameid}
     and logdatekst>='2024-01-01'
     and logdatekst<= DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
     and authaccountregdatekst is not null

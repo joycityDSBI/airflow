@@ -2944,6 +2944,7 @@ def rgroup_rev_upload_notion(gameidx: str, path_rev_group_rev_pu, rev_group_rev_
     )
 
     ########### (3) 제미나이 해석
+    print("■ 제미나이 해석 시작 ■")
 
     blocks = md_to_notion_blocks(rev_group_rev_pu_gemini(service_sub,
                                                          genai_client,
@@ -2955,7 +2956,8 @@ def rgroup_rev_upload_notion(gameidx: str, path_rev_group_rev_pu, rev_group_rev_
                                                          LOCATION,
                                                          **context
                                                         )
-                                                    )
+                                                        , blank_blocks=3
+                                                        )
 
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
