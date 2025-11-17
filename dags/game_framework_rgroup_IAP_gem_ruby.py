@@ -1096,7 +1096,7 @@ def top3_items_by_category_gemini(service_sub: str, genai_client, MODEL_NAME, SY
             "run_id": RUN_ID,
             "datascience_division_service_sub" : service_sub}
 
-    _, _, response4_salesByCategory = iapcategory_rev_df_gemini(service_sub, 
+    _, _, response4_salesByCategory, _ = iapcategory_rev_df_gemini(service_sub, 
                                                                         genai_client, 
                                                                         MODEL_NAME, 
                                                                         SYSTEM_INSTRUCTION, 
@@ -3087,6 +3087,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
 
     query_result4_salesByPackage = load_df_from_gcs(bucket, path_iapgemruby)
 
+    print("■■■■■■■■ IAP 젬/루비 사용내역 로데이터 Notion 업로드 시작 ■■■■■■")
     resp = df_to_notion_table_under_toggle(
         notion=notion,
         page_id=PAGE_INFO['id'],
@@ -3096,6 +3097,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         batch_size=100,
         )
     
+    print("■■■■■■■■ IAP 젬/루비 사용내역 제미나이 해석 시작 ■■■■■■")
     blocks = md_to_notion_blocks(iap_gem_ruby_gemini(
         service_sub=service_sub,
         genai_client=genai_client,
@@ -3113,7 +3115,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
     )
 
     # 프롬프트 결과 중간에 그래프 삽입을 위한 결과 텍스트 5분할
-
+    print("■■■■■■■■ IAP 젬/루비 사용내역 - 상품카테고리별 매출 제미나이 해석 시작 ■■■■■■")
     text = top3_items_by_category_gemini(
         service_sub=service_sub,
         genai_client=genai_client,

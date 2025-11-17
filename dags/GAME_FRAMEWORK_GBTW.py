@@ -6979,12 +6979,12 @@ def rgroup_rev_total(joyplegameid:int, gameidx:str, databaseschema:str, **contex
 
 
 ####### 과금그룹별 총 매출 - 제미나이 코멘트 생성
-def rgroup_rev_total_gemini(joyplegameid: int, service_sub: str, **context):
+def rgroup_rev_total_gemini(joyplegameid: int, service_sub: str, path_rgroup_rev_DOD:str, **context):
 
-    query_result5_monthlyRgroupRevenue = context['task_instance'].xcom_pull(
-        task_ids = 'rgroup_rev_DOD',
-        key='rgroup_rev_DOD'
-    )
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_DOD)
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
@@ -7128,14 +7128,22 @@ def rev_cohort_year(joyplegameid:int, gameidx:str, databaseschema:str, **context
     pv2['총합'] = pv2[year_cols_sorted].fillna(0).sum(axis=1)
 
     # xcom에 insert
-    # query_result : query_result5_regyearRevenue
-    context['task_instance'].xcom_push(key='rev_cohort_year', value=pv2)
-    context['task_instance'].xcom_push(key='rev_cohort_year_original', value=query_result)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path_1 = f"{gameidx}/{timestamp}_1.parquet"
+    gcs_path_2 = f"{gameidx}/{timestamp}_2.parquet"
+        
+    path_regyearRevenue = save_df_to_gcs(query_result, bucket, gcs_path_1)
+    path_regyearRevenue_pv2 = save_df_to_gcs(pv2, bucket, gcs_path_2)
 
-    return True
+    return path_regyearRevenue, path_regyearRevenue_pv2
 
 
-def rev_cohort_year_gemini(joyplegameid: int, service_sub: str, **context):
+def rev_cohort_year_gemini(joyplegameid: int, service_sub: str, path_rev_cohort_year:str, **context):
+
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    pv2 = load_df_from_gcs(bucket, path_rev_cohort_year)
 
     pv2 = context['task_instance'].xcom_pull(
         task_ids = 'rev_cohort_year',
@@ -7145,7 +7153,7 @@ def rev_cohort_year_gemini(joyplegameid: int, service_sub: str, **context):
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
     
     response5_regyearRevenue = genai_client.models.generate_content(
     model=MODEL_NAME,
