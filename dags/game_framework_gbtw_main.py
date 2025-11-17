@@ -414,7 +414,16 @@ with DAG(
         path_rgroup_top3_rev = rgroup_top3_rev(joyplegameid=joyplegameid, gameidx=gameidx, databaseschema=databaseschema, bigquery_client=bigquery_client, bucket=bucket)
         if_else_length(path=path_rgroup_top3_rev, gameidx=gameidx, service_sub=service_sub, func_name="rgroup_top3_rev")
 
-        path_top3_items_rev = top3_items_rev(joyplegameid=joyplegameid, gameidx=gameidx, databaseschema=databaseschema, service_sub=service_sub, bigquery_client=bigquery_client, bucket=bucket)
+        path_top3_items_rev = top3_items_rev(joyplegameid=joyplegameid, 
+                                             gameidx=gameidx, 
+                                             databaseschema=databaseschema, 
+                                             service_sub=service_sub, 
+                                             path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+                                             genai_client=genai_client,
+                                             MODEL_NAME=MODEL_NAME,
+                                             SYSTEM_INSTRUCTION= SYSTEM_INSTRUCTION,
+                                             bigquery_client=bigquery_client, 
+                                             bucket=bucket)
         if_else_length(path=path_top3_items_rev, gameidx=gameidx, service_sub=service_sub, func_name="top3_items_rev")
 
         path_merge_rgroup_graph = merge_rgroup_graph(gameidx=gameidx, path_group_rev_pu=path_rev_group_rev_pu,bucket=bucket)
