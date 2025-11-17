@@ -82,8 +82,9 @@ def rev_group_rev_pu(joyplegameid: int, gameidx: str, bigquery_client, bucket, *
                     cast(date_add(cast(DATE_TRUNC(logdatekst,week(Wednesday)) as date), interval 6 day) as string)) as Week
     from `data-science-division-216308.gameInsightFramework.paymentGroup`
     where logdatekst>= DATE_SUB(DATE_TRUNC(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH), INTERVAL 1 MONTH)
-    and logdatekst<=LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH))
-    and joypleGameID = {joyplegameid}
+        and logdatekst<=LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)
+        and joypleGameID = {joyplegameid}
+    )
     group by 1,2
     order by 1
     """
