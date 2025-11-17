@@ -107,7 +107,7 @@ def rev_group_rev_pu_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_I
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
 
     response4_RgroupSales = genai_client.models.generate_content(
     model=MODEL_NAME,
@@ -543,7 +543,7 @@ def iap_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
     
     response4_salesByPackage_IAP = genai_client.models.generate_content(
     model=MODEL_NAME,
@@ -615,7 +615,7 @@ def gem_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
     
     response4_salesByPackage_GEM = genai_client.models.generate_content(
     model=MODEL_NAME,
@@ -686,7 +686,7 @@ def ruby_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTIO
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
     
     response4_salesByPackage_RUBY = genai_client.models.generate_content(
     model=MODEL_NAME,
@@ -889,7 +889,7 @@ def iapcategory_rev_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
 
     response4_salesByCategory = genai_client.models.generate_content(
     model=MODEL_NAME,
@@ -947,7 +947,7 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
     
 
     print(f"top3 items by category 에서 타입 : ", type(service_sub))
@@ -1086,7 +1086,7 @@ def top3_items_by_category_gemini(service_sub: str, genai_client, MODEL_NAME, SY
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
 
     _, _, response4_salesByCategory = iapcategory_rev_df_gemini(service_sub, 
                                                                         genai_client, 
@@ -1458,7 +1458,7 @@ def rgroup_top3_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRU
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
-            f"datascience_division_service_sub" : {service_sub}}
+            "datascience_division_service_sub" : service_sub}
 
 
     response4_thisWeekRgroup = genai_client.models.generate_content(
