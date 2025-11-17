@@ -943,6 +943,7 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
     
     weekly_iapcategory_rev_cols = load_df_from_gcs(bucket, path_weekly_iapcategory_rev_cols)
+    print(f"top3 items by category 에서 weekly_iapcategory_rev_cols : ", weekly_iapcategory_rev_cols)
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
@@ -988,7 +989,7 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
     (select 'IAP' As idx, logdate_kst, datetime(logtime_kst) as logtime_kst, authaccountname
     , package_name, cat_shop, cat_package, cast(package_kind as string) as package_kind
     , pricekrw as sales_usegem, pricekrw as sales_buygem
-    from `data-science-division-216308.{databaseschema}.Sales_iap_hub`
+    from `data-science-division-216308.GW.Sales_iap_hub`
     where (cat_package not in ('젬','루비') or cat_package is null)
                 and logdate_kst >= CASE
                             WHEN EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) = 4
@@ -1063,7 +1064,6 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
 
     """
 
-    print("top3 items by category 쿼리문 : ", query)
     query_result=query_run_method(service_sub, bigquery_client, query)
     query_result['매출'] = query_result['매출'].map(lambda x: f"{int(x)}")
 
