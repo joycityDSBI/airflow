@@ -745,8 +745,8 @@ def monthly_day_average_rev_graph_draw(gameidx:str, path_monthly_day_average_rev
 
 def monthly_day_average_merge_graph(gameidx:str, path_monthly_day_average_rev:str, bucket, **context):
     # 1) 파일 경로
-    p1 = monthly_day_average_rev_table_draw(gameidx, path_monthly_day_average_rev, **context)   # 첫 번째 이미지
-    p2 = monthly_day_average_rev_graph_draw(gameidx, path_monthly_day_average_rev,**context)   # 두 번째 이미지
+    p1 = monthly_day_average_rev_table_draw(gameidx, path_monthly_day_average_rev, bucket, **context)   # 첫 번째 이미지
+    p2 = monthly_day_average_rev_graph_draw(gameidx, path_monthly_day_average_rev, bucket, **context)   # 두 번째 이미지
     save_to = 'graph5_dailyAvgRevenue.png'  # 저장 경로
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
@@ -1172,8 +1172,8 @@ def rgroup_pu_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **con
 
 
 def merge_rgroup_rev_pu_ALL_table(gameidx: str, path_rgroup_rev_DOD:str, bucket, **context):
-    p1 = rgroup_rev_DOD_table_draw(gameidx, path_rgroup_rev_DOD, **context)
-    p2 = rgroup_pu_DOD_table_draw(gameidx, path_rgroup_rev_DOD, **context)
+    p1 = rgroup_rev_DOD_table_draw(gameidx, path_rgroup_rev_DOD, bucket, **context)
+    p2 = rgroup_pu_DOD_table_draw(gameidx, path_rgroup_rev_DOD, bucket, **context)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     blob1 = bucket.blob(p1)
@@ -1659,8 +1659,8 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
 
 #### 월별 R 그룹별 매출, PU 표 합치기
 def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, path_rgroup_rev_total:str, **context):
-    p1 = rgroup_rev_total_table_draw(gameidx, path_rgroup_rev_total, **context)
-    p2 = rgroup_pu_total_table_draw(gameidx, path_rgroup_rev_total, **context)
+    p1 = rgroup_rev_total_table_draw(gameidx, path_rgroup_rev_total, bucket, **context)
+    p2 = rgroup_pu_total_table_draw(gameidx, path_rgroup_rev_total, bucket, **context)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     blob1 = bucket.blob(p1)
