@@ -1240,8 +1240,8 @@ def merge_rgroup_rev_pu_ALL_table(gameidx: str, path_rgroup_rev_DOD:str, bucket,
 
 
 def merge_rgroup_rev_pu_table(gameidx:str, path_rgroup_rev_DOD:str, bucket, **context):
-    p1 = rgroup_rev_DOD_table_draw(gameidx, path_rgroup_rev_DOD, **context) # 첫 번째 이미지
-    p2 = rgroup_pu_DOD_table_draw(gameidx, path_rgroup_rev_DOD, **context)   # 두 번째 이미지
+    p1 = rgroup_rev_DOD_table_draw(gameidx, path_rgroup_rev_DOD, bucket, **context) # 첫 번째 이미지
+    p2 = rgroup_pu_DOD_table_draw(gameidx, path_rgroup_rev_DOD, bucket, **context)   # 두 번째 이미지
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     print(f"📥 GCS에서 이미지 다운로드 중...")
