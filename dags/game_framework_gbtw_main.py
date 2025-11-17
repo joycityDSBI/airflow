@@ -448,6 +448,7 @@ with DAG(
             print(f"🔴 {e}")
 
         try:
+            print(f"🔍 {gameidx}: {service_sub} iap_gem_ruby_upload_notion 시작 ")
             iap_gem_ruby_upload_notion(
                 gameidx=gameidx,
                 joyplegameid=joyplegameid,

@@ -3021,9 +3021,9 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage.png'
-        print(f"✓ GCS 이미지 다운로드 성공 : {gcs_path}")
+        print(f"✓ iap_gem_ruby_graph_draw GCS 이미지 다운로드 성공 : {gcs_path}")
     except Exception as e:
-        print(f"❌ GCS 다운로드 실패: {str(e)}")
+        print(f"❌ iap_gem_ruby_graph_draw GCS 다운로드 실패: {str(e)}")
         raise
 
 
