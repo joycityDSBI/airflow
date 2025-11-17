@@ -2706,7 +2706,9 @@ def rgroup_rev_top3_graph_draw(gameidx: str, path_rgroup_top3_rev:str, bucket, *
 
 def rgroup_rev_upload_notion(gameidx: str, path_rev_group_rev_pu, rev_group_rev_pu_path, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
@@ -2903,7 +2905,8 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
                                path_top3_items_by_category,path_weekly_iapcategory_rev,
                                service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, notion, bucket, headers_json, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
@@ -3316,7 +3319,8 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
 def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
                    path_iap_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, **context):
     
-    PAGE_INFO=context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
@@ -3448,7 +3452,8 @@ def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
 def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
                    path_gem_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, **context):
     
-    PAGE_INFO=context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
@@ -3579,7 +3584,8 @@ def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
 def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
                    path_ruby_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
@@ -3710,7 +3716,8 @@ def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRU
 def rgroup_top3_upload_notion(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
                    path_rgroup_top3_pu:str, path_rgroup_top3_rev:str, PROJECT_ID: str, LOCATION:str, bucket, notion, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
+    current_context = get_current_context()
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
         key='page_info'
     )
