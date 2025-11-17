@@ -1975,18 +1975,49 @@ def iap_gem_ruby_graph_draw(gameidx: str, path_iap_gem_ruby:str, bucket, **conte
     query_result4_salesByPackage = load_df_from_gcs(bucket, path_iap_gem_ruby)
     query_result4_salesByPackage_salesGraph = query_result4_salesByPackage.iloc[:, [0,2,3,4,5,6,7,8,9,10,11]]
 
-    # ⬇️ 가로폭 넓히기: width=20인치(원하는 만큼 키우세요), height=6인치
-    fig, ax = plt.subplots(figsize=(20, 6))
-
     x = query_result4_salesByPackage_salesGraph["logdate_kst"]
     y = query_result4_salesByPackage_salesGraph.iloc[:, 1:]
+
+    if x.dtype == 'object':
+        x = pd.to_datetime(x, errors='coerce')
+        print(f"✅ x 변환 후 type: {x.dtype}")
+    
+    # ✅ y축: 숫자 타입으로 변환
+    y = query_result4_salesByPackage_salesGraph.iloc[:, 1:].copy()
+    
+    for col in y.columns:
+        print(f"📝 {col} 변환 전: {y[col].dtype}, 샘플: {y[col].head().tolist()}")
+        
+        # 방법 1: to_numeric
+        y[col] = pd.to_numeric(y[col], errors='coerce')
+        
+        # 방법 2: 혹시 남은 것 처리
+        if y[col].dtype == 'object':
+            y[col] = y[col].astype(float, errors='ignore')
+        
+        # 방법 3: NaN을 0으로
+        y[col] = y[col].fillna(0)
+        
+        print(f"✅ {col} 변환 후: {y[col].dtype}, 샘플: {y[col].head().tolist()}")  
+
+
+    # ⬇️ 가로폭 넓히기: width=20인치(원하는 만큼 키우세요), height=6인치
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     # 누적 막대 bottom은 넘파이로 (리스트 + 시리즈 더하기 오류 방지)
     bottom = np.zeros(len(query_result4_salesByPackage_salesGraph), dtype=float)
 
     for col in y.columns:
-        ax.bar(x, y[col], bottom=bottom, label=col)
-        bottom += y[col].to_numpy()
+        y_array = y[col].to_numpy(dtype=np.float64)
+        
+        print(f"📝 {col} array type: {y_array.dtype}")
+        
+        ax.bar(x, y_array, bottom=bottom, label=col)
+        
+        print(f"   bottom type 업데이트 전: {bottom.dtype}, y_array type: {y_array.dtype}")
+        bottom = bottom + y_array
+        print(f"   bottom type 업데이트 후: {bottom.dtype}")
+    print(f"✅ 그래프 생성 완료")
 
     # y축 천단위
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{int(v):,}"))
@@ -2032,19 +2063,42 @@ def iap_gem_ruby_IAP_graph_draw(gameidx: str, path_iap_df:str, bucket, **context
     # ... (위 데이터 준비·폰트 부분 동일)
     query_result4_salesByPackage_IAP_salesGraph = query_result4_salesByPackage_IAP.iloc[:, (query_result4_salesByPackage_IAP.columns != 'month') & (query_result4_salesByPackage_IAP.columns != 'week')]
 
+    x = query_result4_salesByPackage_IAP_salesGraph["logdate_kst"]
+    y = query_result4_salesByPackage_IAP_salesGraph.iloc[:, 1:]
+
+    for col in y.columns:
+        print(f"📝 {col} 변환 전: {y[col].dtype}, 샘플: {y[col].head().tolist()}")
+        
+        # 방법 1: to_numeric
+        y[col] = pd.to_numeric(y[col], errors='coerce')
+        
+        # 방법 2: 혹시 남은 것 처리
+        if y[col].dtype == 'object':
+            y[col] = y[col].astype(float, errors='ignore')
+        
+        # 방법 3: NaN을 0으로
+        y[col] = y[col].fillna(0)
+        
+        print(f"✅ {col} 변환 후: {y[col].dtype}, 샘플: {y[col].head().tolist()}")  
+
 
     # ⬇️ 가로폭 넓히기: width=20인치(원하는 만큼 키우세요), height=6인치
     fig, ax = plt.subplots(figsize=(20, 6))
-
-    x = query_result4_salesByPackage_IAP_salesGraph["logdate_kst"]
-    y = query_result4_salesByPackage_IAP_salesGraph.iloc[:, 1:]
 
     # 누적 막대 bottom은 넘파이로 (리스트 + 시리즈 더하기 오류 방지)
     bottom = np.zeros(len(query_result4_salesByPackage_IAP_salesGraph), dtype=float)
 
     for col in y.columns:
-        ax.bar(x, y[col], bottom=bottom, label=col)
-        bottom += y[col].to_numpy()
+        y_array = y[col].to_numpy(dtype=np.float64)
+        
+        print(f"📝 {col} array type: {y_array.dtype}")
+        
+        ax.bar(x, y_array, bottom=bottom, label=col)
+        
+        print(f"   bottom type 업데이트 전: {bottom.dtype}, y_array type: {y_array.dtype}")
+        bottom = bottom + y_array
+        print(f"   bottom type 업데이트 후: {bottom.dtype}")
+    print(f"✅ 그래프 생성 완료")
 
     # y축 천단위
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{int(v):,}"))
@@ -2087,18 +2141,43 @@ def iap_gem_ruby_GEM_graph_draw(gameidx: str, path_gem_df:str, bucket, **context
     query_result4_salesByPackage_GEM = load_df_from_gcs(bucket, path_gem_df)
     query_result4_salesByPackage_GEM_salesGraph = query_result4_salesByPackage_GEM.iloc[:, (query_result4_salesByPackage_GEM.columns != 'month') & (query_result4_salesByPackage_GEM.columns != 'week')]
 
-    # ⬇️ 가로폭 넓히기: width=20인치(원하는 만큼 키우세요), height=6인치
-    fig, ax = plt.subplots(figsize=(20, 6))
-
     x = query_result4_salesByPackage_GEM_salesGraph["logdate_kst"]
     y = query_result4_salesByPackage_GEM_salesGraph.iloc[:, 1:]
+
+    for col in y.columns:
+        print(f"📝 {col} 변환 전: {y[col].dtype}, 샘플: {y[col].head().tolist()}")
+        
+        # 방법 1: to_numeric
+        y[col] = pd.to_numeric(y[col], errors='coerce')
+        
+        # 방법 2: 혹시 남은 것 처리
+        if y[col].dtype == 'object':
+            y[col] = y[col].astype(float, errors='ignore')
+        
+        # 방법 3: NaN을 0으로
+        y[col] = y[col].fillna(0)
+        
+        print(f"✅ {col} 변환 후: {y[col].dtype}, 샘플: {y[col].head().tolist()}")  
+
+
+    # ⬇️ 가로폭 넓히기: width=20인치(원하는 만큼 키우세요), height=6인치
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     # 누적 막대 bottom은 넘파이로 (리스트 + 시리즈 더하기 오류 방지)
     bottom = np.zeros(len(query_result4_salesByPackage_GEM_salesGraph), dtype=float)
 
     for col in y.columns:
-        ax.bar(x, y[col], bottom=bottom, label=col)
-        bottom += y[col].to_numpy()
+        y_array = y[col].to_numpy(dtype=np.float64)
+        
+        print(f"📝 {col} array type: {y_array.dtype}")
+        
+        ax.bar(x, y_array, bottom=bottom, label=col)
+        
+        print(f"   bottom type 업데이트 전: {bottom.dtype}, y_array type: {y_array.dtype}")
+        bottom = bottom + y_array
+        print(f"   bottom type 업데이트 후: {bottom.dtype}")
+    print(f"✅ 그래프 생성 완료")
+
 
     # y축 천단위
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{int(v):,}"))
@@ -2142,18 +2221,42 @@ def iap_gem_ruby_RUBY_graph_draw(gameidx: str, path_ruby_df:str, bucket, **conte
     query_result4_salesByPackage_RUBY = load_df_from_gcs(bucket, path_ruby_df)
     query_result4_salesByPackage_RUBY_salesGraph = query_result4_salesByPackage_RUBY.iloc[:, (query_result4_salesByPackage_RUBY.columns != 'month') & (query_result4_salesByPackage_RUBY.columns != 'week')]
 
-    # ⬇️ 가로폭 넓히기: width=20인치(원하는 만큼 키우세요), height=6인치
-    fig, ax = plt.subplots(figsize=(20, 6))
-
     x = query_result4_salesByPackage_RUBY_salesGraph["logdate_kst"]
     y = query_result4_salesByPackage_RUBY_salesGraph.iloc[:, 1:]
+
+    for col in y.columns:
+        print(f"📝 {col} 변환 전: {y[col].dtype}, 샘플: {y[col].head().tolist()}")
+        
+        # 방법 1: to_numeric
+        y[col] = pd.to_numeric(y[col], errors='coerce')
+        
+        # 방법 2: 혹시 남은 것 처리
+        if y[col].dtype == 'object':
+            y[col] = y[col].astype(float, errors='ignore')
+        
+        # 방법 3: NaN을 0으로
+        y[col] = y[col].fillna(0)
+        
+        print(f"✅ {col} 변환 후: {y[col].dtype}, 샘플: {y[col].head().tolist()}")  
+
+
+    # ⬇️ 가로폭 넓히기: width=20인치(원하는 만큼 키우세요), height=6인치
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     # 누적 막대 bottom은 넘파이로 (리스트 + 시리즈 더하기 오류 방지)
     bottom = np.zeros(len(query_result4_salesByPackage_RUBY_salesGraph), dtype=float)
 
     for col in y.columns:
-        ax.bar(x, y[col], bottom=bottom, label=col)
-        bottom += y[col].to_numpy()
+        y_array = y[col].to_numpy(dtype=np.float64)
+        
+        print(f"📝 {col} array type: {y_array.dtype}")
+        
+        ax.bar(x, y_array, bottom=bottom, label=col)
+        
+        print(f"   bottom type 업데이트 전: {bottom.dtype}, y_array type: {y_array.dtype}")
+        bottom = bottom + y_array
+        print(f"   bottom type 업데이트 후: {bottom.dtype}")
+    print(f"✅ 그래프 생성 완료")
 
     # y축 천단위
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{int(v):,}"))
