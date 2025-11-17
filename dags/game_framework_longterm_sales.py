@@ -1480,23 +1480,37 @@ def rgroup_rev_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, 
 
 def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, **context):
 
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_total)
 
     df = query_result5_monthlyRgroupRevenue.iloc[:, [0,8,9,10,11,12,14,15,13]]
 
-    df = df.rename(
-        columns = {"month" : "month",
-                "R0_rev" : "R0",
-                "R1_rev" : "R1",
-                "R2_rev" : "R2",
-                "R3_rev" : "R3",
-                "R4_rev" : "R4",
-                "ALL_rev" : "총합",
-                }
-        )
+    rename_dict = {}
+    for old_col in df.columns:
+        if 'R0_rev' in str(old_col) or old_col == df.columns[1]:
+            rename_dict[old_col] = 'R0'
+        elif 'R1_rev' in str(old_col):
+            rename_dict[old_col] = 'R1'
+        elif 'R2_rev' in str(old_col):
+            rename_dict[old_col] = 'R2'
+        elif 'R3_rev' in str(old_col):
+            rename_dict[old_col] = 'R3'
+        elif 'R4_rev' in str(old_col):
+            rename_dict[old_col] = 'R4'
+        elif 'nonPU' in str(old_col):
+            rename_dict[old_col] = 'nonPU'
+        elif 'PU' in str(old_col) and 'nonPU' not in str(old_col):
+            rename_dict[old_col] = 'PU'
+        elif 'ALL_rev' in str(old_col) or '총' in str(old_col):
+            rename_dict[old_col] = '총합'
+        elif old_col == df.columns[0]:
+            rename_dict[old_col] = 'month'
+    
+    print(f"✅ 컬럼명 변경 매핑: {rename_dict}")
+    
+    df = df.rename(columns=rename_dict)
+    
+    print(f"✅ 변경 후 컬럼: {df.columns.tolist()}")
+    print(f"📊 데이터:\n{df.head()}")
 
     def render_table_image(
         df: pd.DataFrame,
@@ -1518,8 +1532,21 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
         - 3-color scale conditional formatting per numeric column
         - Auto-fit column widths by content length
         """
-        # 0) 컬럼 순서 보장
-        cols = ["month", "R0", "R1", "R2", "R3", "R4", "nonPU", "PU", "총합"]
+        # ✅ 동적으로 컬럼 구성
+        cols = [c for c in df.columns if c in ["month", "R0", "R1", "R2", "R3", "R4", "nonPU", "PU", "총합"]]
+        
+        # ✅ 없는 컬럼 확인
+        missing_cols = set(["month", "R0", "R1", "R2", "R3", "R4", "nonPU", "PU", "총합"]) - set(df.columns)
+        if missing_cols:
+            print(f"⚠️ 없는 컬럼: {missing_cols}")
+        
+        print(f"📝 사용할 컬럼: {cols}")
+        
+        if len(cols) == 0:
+            print(f"❌ 사용할 컬럼이 없음")
+            print(f"   df 컬럼: {df.columns.tolist()}")
+            return None
+        
         df = df.loc[:, cols].copy()
 
         # 1) 폰트 설정 (설치되어 있어야 함. 없으면 기본 폰트로 폴백됨)
