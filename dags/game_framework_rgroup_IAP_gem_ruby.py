@@ -1718,6 +1718,17 @@ def rgroup_rev_draw(gameidx: str, gcs_path:str, bucket, **context):
     x = query_result4_RgroupSales2_salesGraph["logdatekst"]
     y = query_result4_RgroupSales2_salesGraph.iloc[:, 1:]
 
+        # ✅ x축: 날짜 타입으로 변환
+    if x.dtype == 'object':
+        x = pd.to_datetime(x, errors='coerce')
+        print(f"✅ x 타입 변환: {x.dtype}")
+    
+    # ✅ y축: 숫자 타입으로 변환
+    for col in y.columns:
+        if y[col].dtype == 'object':
+            y[col] = pd.to_numeric(y[col], errors='coerce')
+            print(f"✅ {col} 타입 변환: {y[col].dtype}")
+
     # 누적 막대 bottom은 넘파이로 (리스트 + 시리즈 더하기 오류 방지)
     bottom = np.zeros(len(query_result4_RgroupSales2_salesGraph), dtype=float)
 
