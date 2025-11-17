@@ -2356,7 +2356,13 @@ def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
     ax.grid(axis="y", linestyle="--", alpha=0.7)
 
     # 제목 (카테고리명 반영)
-    _, _, CategoryListUp_Top3 = category_for_bigquery_sql(service_sub=service_sub)
+    _, _, CategoryListUp_Top3 = category_for_bigquery_sql(service_sub=service_sub,
+                                                        path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+                                                        genai_client=genai_client,
+                                                        MODEL_NAME=MODEL_NAME,
+                                                        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                                                        bucket=bucket,
+                                                        **context)
 
     title_cat = str(CategoryListUp_Top3[0]).strip().strip("'\"`’‘") if CategoryListUp_Top3 else "" # CategoryListUp_Top3[] 부분 수정
     ax.set_title(f"{title_cat} 일자별 {'상위'+str(top_n)+'개 ' if top_n else ''}상품 매출")
@@ -2450,7 +2456,13 @@ def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
     ax.grid(axis="y", linestyle="--", alpha=0.7)
 
     # 제목 (카테고리명 반영)
-    _, _, CategoryListUp_Top3 = category_for_bigquery_sql(service_sub=service_sub)
+    _, _, CategoryListUp_Top3 = category_for_bigquery_sql(service_sub=service_sub,
+                                                        path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+                                                        genai_client=genai_client,
+                                                        MODEL_NAME=MODEL_NAME,
+                                                        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                                                        bucket=bucket,
+                                                        **context)
 
     title_cat = str(CategoryListUp_Top3[0]).strip().strip("'\"`’‘") if CategoryListUp_Top3 else "" # CategoryListUp_Top3[] 부분 수정
     ax.set_title(f"{title_cat} 일자별 {'상위'+str(top_n)+'개 ' if top_n else ''}상품 매출")
@@ -2545,7 +2557,13 @@ def top3_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
     ax.grid(axis="y", linestyle="--", alpha=0.7)
 
     # 제목 (카테고리명 반영)
-    _, _, CategoryListUp_Top3 = category_for_bigquery_sql(service_sub=service_sub)
+    _, _, CategoryListUp_Top3 = category_for_bigquery_sql(service_sub=service_sub,
+                                                        path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+                                                        genai_client=genai_client,
+                                                        MODEL_NAME=MODEL_NAME,
+                                                        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                                                        bucket=bucket,
+                                                        **context)
 
     title_cat = str(CategoryListUp_Top3[0]).strip().strip("'\"`’‘") if CategoryListUp_Top3 else "" # CategoryListUp_Top3[] 부분 수정
     ax.set_title(f"{title_cat} 일자별 {'상위'+str(top_n)+'개 ' if top_n else ''}상품 매출")

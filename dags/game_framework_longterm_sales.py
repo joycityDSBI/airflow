@@ -57,7 +57,7 @@ LOCATION = "us-central1"
 
 
 ### 월별 일 평균 매출
-def monthly_day_average_rev(joyplegameid:int, gameidx:str, databaseschema:str, **context):
+def monthly_day_average_rev(joyplegameid:int, gameidx:str, bucket, **context):
     query = f"""
     select month
     , cast(sum(pricekrw) as int64) as `총매출`
@@ -85,7 +85,7 @@ def monthly_day_average_rev(joyplegameid:int, gameidx:str, databaseschema:str, *
     return saved_path
 
 ######### 월별 일 평균 매출 - 제미나이 코멘트 생성
-def monthly_day_average_rev_gemini(joyplegameid: int, service_sub: str, path_monthly_day_average_rev:str, **context):
+def monthly_day_average_rev_gemini(service_sub: str, path_monthly_day_average_rev:str, MODEL_NAME:str, bucket, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -136,7 +136,7 @@ def monthly_day_average_rev_gemini(joyplegameid: int, service_sub: str, path_mon
 
 
 ###### 과금그룹별 매출
-def rgroup_rev_DOD(joyplegameid:int, gameidx:str, databaseschema:str, **context):
+def rgroup_rev_DOD(joyplegameid:int, gameidx:str, bucket, **context):
     query = f"""
     with sales_raw as ( ## 6208778
     select *
@@ -227,7 +227,7 @@ def rgroup_rev_DOD(joyplegameid:int, gameidx:str, databaseschema:str, **context)
     return saved_path
 
 ####### 과금그룹별 총 매출
-def rgroup_rev_total(joyplegameid:int, gameidx:str, databaseschema:str, **context):
+def rgroup_rev_total(joyplegameid:int, gameidx:str, bucket, **context):
     query = f"""
 
     with sales_raw as ( ## 6208778
@@ -318,7 +318,7 @@ def rgroup_rev_total(joyplegameid:int, gameidx:str, databaseschema:str, **contex
 
 
 ####### 과금그룹별 총 매출 - 제미나이 코멘트 생성
-def rgroup_rev_total_gemini(joyplegameid: int, service_sub: str, path_rgroup_rev_DOD:str, **context):
+def rgroup_rev_total_gemini(service_sub: str, path_rgroup_rev_DOD:str, MODEL_NAME:str, bucket, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -381,7 +381,7 @@ def rgroup_rev_total_gemini(joyplegameid: int, service_sub: str, path_rgroup_rev
     return response5_monthlyRgroup.text
 
 ## 가입연도별 매출
-def rev_cohort_year(joyplegameid:int, gameidx:str, databaseschema:str, **context):
+def rev_cohort_year(joyplegameid:int, gameidx:str, bucket, **context):
     query = f"""
     with sales_raw as (
     select *
@@ -477,17 +477,12 @@ def rev_cohort_year(joyplegameid:int, gameidx:str, databaseschema:str, **context
     return path_regyearRevenue, path_regyearRevenue_pv2
 
 
-def rev_cohort_year_gemini(joyplegameid: int, service_sub: str, path_rev_cohort_year:str, **context):
+def rev_cohort_year_gemini(service_sub: str, path_rev_cohort_year:str, MODEL_NAME:str, bucket, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     pv2 = load_df_from_gcs(bucket, path_rev_cohort_year)
-
-    pv2 = context['task_instance'].xcom_pull(
-        task_ids = 'rev_cohort_year',
-        key='rev_cohort_year'
-    )
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
@@ -534,11 +529,12 @@ def rev_cohort_year_gemini(joyplegameid: int, service_sub: str, path_rev_cohort_
     return response5_regyearRevenue.text
 
 
-def monthly_day_average_rev_table_draw(gameidx:str, **context):
-    df = context['task_instance'].xcom_pull(
-        task_ids = 'monthly_day_average_rev',
-        key='monthly_day_average_rev'
-    )
+def monthly_day_average_rev_table_draw(gameidx:str, path_monthly_day_average_rev, bucket, **context):
+
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    df = load_df_from_gcs(bucket, path_monthly_day_average_rev)
 
     def render_table_image(
         df: pd.DataFrame,
@@ -707,12 +703,12 @@ def monthly_day_average_rev_table_draw(gameidx:str, **context):
 
 
 ### 일 평균 매출 그래프 그리기
-def monthly_day_average_rev_graph_draw(gameidx:str, **context):
+def monthly_day_average_rev_graph_draw(gameidx:str, path_monthly_day_average_rev:str, bucket, **context):
 
-    query_result5_dailyAvgRevenue = context['task_instance'].xcom_pull(
-        task_ids = 'monthly_day_average_rev',
-        key='monthly_day_average_rev'
-    )
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    query_result5_dailyAvgRevenue = load_df_from_gcs(bucket, path_monthly_day_average_rev)
 
     sns.lineplot(x= query_result5_dailyAvgRevenue.columns[0],
              y=query_result5_dailyAvgRevenue.columns[3],
@@ -761,7 +757,7 @@ def monthly_day_average_rev_graph_draw(gameidx:str, **context):
     return f'{gameidx}/{file_path5_dailyAvgRevenueLine}'
 
 
-def monthly_day_average_merge_graph(gameidx:str, **context):
+def monthly_day_average_merge_graph(gameidx:str, bucket, **context):
     # 1) 파일 경로
     p1 = monthly_day_average_rev_table_draw(gameidx, **context)   # 첫 번째 이미지
     p2 = monthly_day_average_rev_graph_draw(gameidx, **context)   # 두 번째 이미지
@@ -804,11 +800,12 @@ def monthly_day_average_merge_graph(gameidx:str, **context):
 
 
 #### 월별 R 그룹별 매출 동기간 표
-def rgroup_rev_DOD_table_draw(gameidx:str, **context):
-    query_result5_monthlyRgroupRevenue = context['task_instance'].xcom_pull(
-        task_ids = 'rgroup_rev_DOD',
-        key='rgroup_rev_DOD'
-    )
+def rgroup_rev_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **context):
+
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_DOD)
 
     df = query_result5_monthlyRgroupRevenue.iloc[:, [0,1,2,3,4,5,7]]
     
