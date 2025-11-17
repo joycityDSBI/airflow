@@ -950,15 +950,15 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
             f"datascience_division_service_sub" : {service_sub}}
     
 
-    CategoryListUp_SQL, case_when_str, _, _ = iapcategory_rev_df_gemini(service_sub, 
-                                                                        genai_client, 
-                                                                        MODEL_NAME, 
-                                                                        SYSTEM_INSTRUCTION, 
-                                                                        path_weekly_iapcategory_rev,
-                                                                        bucket, 
-                                                                        PROJECT_ID, 
-                                                                        LOCATION)
-
+    CategoryListUp_SQL, case_when_str, _, _ = iapcategory_rev_df_gemini(service_sub=service_sub, 
+                                                                        genai_client=genai_client, 
+                                                                        MODEL_NAME=MODEL_NAME, 
+                                                                        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
+                                                                        path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+                                                                        bucket=bucket, 
+                                                                        PROJECT_ID=PROJECT_ID, 
+                                                                        LOCATION=LOCATION,
+                                                                        **context)
     query = f"""
     with sales_data as (
     select `일자`
