@@ -88,7 +88,7 @@ def rev_group_rev_pu(joyplegameid: int, gameidx: str, bigquery_client, bucket, *
     order by 1
     """
 
-    query_result =query_run_method(game_sub='4_detail_sales', bigquery_client=bigquery_client, query=query)
+    query_result =query_run_method(service_sub='4_detail_sales', bigquery_client=bigquery_client, query=query)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
         
