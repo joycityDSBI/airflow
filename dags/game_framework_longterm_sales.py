@@ -57,7 +57,7 @@ LOCATION = "us-central1"
 
 
 ### 월별 일 평균 매출
-def monthly_day_average_rev(joyplegameid:int, gameidx:str, bucket, **context):
+def monthly_day_average_rev(joyplegameid:int, gameidx:str, bigquery_client, bucket, **context):
     query = f"""
     select month
     , cast(sum(pricekrw) as int64) as `총매출`
@@ -76,7 +76,7 @@ def monthly_day_average_rev(joyplegameid:int, gameidx:str, bucket, **context):
     order by 1
     """
 
-    query_result =query_run_method('5_logterm_sales', query)
+    query_result =query_run_method('5_logterm_sales', bigquery_client, query)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
         
@@ -133,7 +133,7 @@ def monthly_day_average_rev_gemini(service_sub: str, path_monthly_day_average_re
 
 
 ###### 과금그룹별 매출
-def rgroup_rev_DOD(joyplegameid:int, gameidx:str, bucket, **context):
+def rgroup_rev_DOD(joyplegameid:int, gameidx:str, bigquery_client, bucket, **context):
     query = f"""
     with sales_raw as ( ## 6208778
     select *
@@ -214,7 +214,7 @@ def rgroup_rev_DOD(joyplegameid:int, gameidx:str, bucket, **context):
     order by month
     """
 
-    query_result =query_run_method('5_logterm_sales', query)
+    query_result =query_run_method('5_logterm_sales', bigquery_client, query)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
@@ -224,7 +224,7 @@ def rgroup_rev_DOD(joyplegameid:int, gameidx:str, bucket, **context):
     return saved_path
 
 ####### 과금그룹별 총 매출
-def rgroup_rev_total(joyplegameid:int, gameidx:str, bucket, **context):
+def rgroup_rev_total(joyplegameid:int, gameidx:str, bigquery_client, bucket, **context):
     query = f"""
 
     with sales_raw as ( ## 6208778
@@ -304,7 +304,7 @@ def rgroup_rev_total(joyplegameid:int, gameidx:str, bucket, **context):
     order by month
     """
 
-    query_result =query_run_method('5_logterm_sales', query)
+    query_result =query_run_method('5_logterm_sales', bigquery_client, query)
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
@@ -375,7 +375,7 @@ def rgroup_rev_total_gemini(service_sub: str, path_rgroup_rev_DOD:str, MODEL_NAM
     return response5_monthlyRgroup.text
 
 ## 가입연도별 매출
-def rev_cohort_year(joyplegameid:int, gameidx:str, bucket, **context):
+def rev_cohort_year(joyplegameid:int, gameidx:str, bigquery_client, bucket, **context):
     query = f"""
     with sales_raw as (
     select *
@@ -425,7 +425,7 @@ def rev_cohort_year(joyplegameid:int, gameidx:str, bucket, **context):
     */
     """
 
-    query_result= query_run_method('5_logterm_sales', query)
+    query_result= query_run_method('5_logterm_sales', bigquery_client, query)
 
     #################### 가입연도별 매출을 피벗형태로 전처리
     df = query_result.copy()
