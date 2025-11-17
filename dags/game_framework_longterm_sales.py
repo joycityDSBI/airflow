@@ -981,7 +981,7 @@ def rgroup_rev_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **co
 
         return f'{gameidx}/{out_path}'
     
-    gcs_path = render_table_image(df=df, gameidx=gameidx)
+    gcs_path = render_table_image(df=df)
     return gcs_path
 
 
@@ -1184,7 +1184,7 @@ def rgroup_pu_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **con
 
         return f'{gameidx}/{out_path}'
     
-    gcs_path = render_table_image(df=df, gameidx=gameidx)
+    gcs_path = render_table_image(df=df)
     return gcs_path
 
 
@@ -1474,7 +1474,7 @@ def rgroup_rev_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, 
 
         return f'{gameidx}/{out_path}'
     
-    gcs_path = render_table_image(df=df, gameidx=gameidx)
+    gcs_path = render_table_image(df=df)
     return gcs_path
 
 
@@ -1676,7 +1676,7 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
 
         return f'{gameidx}/{out_path}'
     
-    gcs_path = render_table_image(df=df, gameidx=gameidx)
+    gcs_path = render_table_image(df=df)
     return gcs_path
 
 
@@ -1903,7 +1903,7 @@ def cohort_rev_table_draw(gameidx:str, path_rev_cohort_year_pv2:str, bucket, **c
 
         return f'{gameidx}/{out_path}'
     
-    gcs_path = render_table_image(df=df, gameidx=gameidx)
+    gcs_path = render_table_image(df=df)
     return gcs_path
 
 
