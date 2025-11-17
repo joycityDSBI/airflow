@@ -58,6 +58,7 @@ from game_framework_daily import *
 from game_framework_inhouse import *
 from game_framework_global_ua import *
 from game_framework_rgroup_IAP_gem_ruby import *
+from game_framework_longterm_sales import *
 
 # Airflow function
 from airflow import DAG, Dataset
@@ -548,6 +549,94 @@ with DAG(
             print(f"🔴 {e}")
         
 
+    def longterm_sales_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, databaseschema: str, 
+                                                bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
+        print(f"📧 RUN 장기간 매출 데이터 게임 프레임워크 시작: {gameidx}")
+
+        path_monthly_day_average_rev = monthly_day_average_rev(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_monthly_day_average_rev, gameidx=gameidx, service_sub=service_sub, func_name="monthly_day_average_rev")
+
+        path_rgroup_rev_DOD = rgroup_rev_DOD(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_rgroup_rev_DOD, gameidx=gameidx, service_sub=service_sub, func_name="rgroup_rev_DOD")
+
+        path_rgroup_rev_total = rgroup_rev_total(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_rgroup_rev_total, gameidx=gameidx, service_sub=service_sub, func_name="rgroup_rev_total")
+
+        path_regyearRevenue, path_regyearRevenue_pv2 = rev_cohort_year(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_regyearRevenue, gameidx=gameidx, service_sub=service_sub, func_name="rev_cohort_year")
+
+        path_monthly_day_average_merge_graph = monthly_day_average_merge_graph(gameidx=gameidx, path_monthly_day_average_rev=path_monthly_day_average_rev, bucket=bucket)
+        if_else_length(path=path_monthly_day_average_merge_graph, gameidx=gameidx, service_sub=service_sub, func_name="monthly_day_average_merge_graph")
+
+        path_merge_rgroup_rev_pu_ALL_table = merge_rgroup_rev_pu_ALL_table(gameidx=gameidx, path_rgroup_rev_DOD=path_rgroup_rev_DOD, path_rgroup_rev_total=path_rgroup_rev_total, bucket=bucket)
+        if_else_length(path=path_merge_rgroup_rev_pu_ALL_table, gameidx=gameidx, service_sub=service_sub, func_name="merge_rgroup_rev_pu_ALL_table")
+
+        path_merge_rgroup_rev_pu_table = merge_rgroup_rev_pu_table(gameidx=gameidx, path_rgroup_rev_DOD=path_rgroup_rev_DOD, bucket=bucket)
+        if_else_length(path=path_merge_rgroup_rev_pu_table, gameidx=gameidx, service_sub=service_sub, func_name="merge_rgroup_rev_pu_table")
+
+        path_merge_rgroup_total_rev_pu_table = merge_rgroup_total_rev_pu_table(gameidx=gameidx, path_rgroup_rev_total=path_rgroup_rev_total, bucket=bucket)
+        if_else_length(path=path_merge_rgroup_total_rev_pu_table, gameidx=gameidx, service_sub=service_sub, func_name="merge_rgroup_total_rev_pu_table")
+
+        try:
+            print(f"🔍 {gameidx}: {service_sub} longterm_rev_upload_notion 시작 ")
+            longterm_rev_upload_notion(
+                gameidx=gameidx,
+                service_sub=service_sub,
+                path_rgroup_rev_total=path_rgroup_rev_total,
+                path_rgroup_rev_DOD=path_rgroup_rev_DOD,
+                NOTION_TOKEN=NOTION_TOKEN,
+                NOTION_VERSION=NOTION_VERSION,
+                MODEL_NAME=MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                notion=notion,
+                bucket=bucket,
+                headers_json=headers_json
+                )
+            print(f"✅ {gameidx}: {service_sub} longterm_rev_upload_notion 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} longterm_rev_upload_notion 실패 ")
+            print(f"🔴 {e}")
+
+        try:
+            print(f"🔍 {gameidx}: {service_sub} longterm_rev_upload_notion 시작 ")
+            longterm_rev_upload_notion(
+                gameidx=gameidx,
+                service_sub=service_sub,
+                path_rgroup_rev_total=path_rgroup_rev_total,
+                path_rgroup_rev_DOD=path_rgroup_rev_DOD,
+                NOTION_TOKEN=NOTION_TOKEN,
+                NOTION_VERSION=NOTION_VERSION,
+                MODEL_NAME=MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                notion=notion,
+                bucket=bucket,
+                headers_json=headers_json
+                )
+            print(f"✅ {gameidx}: {service_sub} longterm_rev_upload_notion 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} longterm_rev_upload_notion 실패 ")
+            print(f"🔴 {e}")
+            
+        
+        try:
+            print(f"🔍 {gameidx}: {service_sub} cohort_rev_upload_notion 시작 ")
+            cohort_rev_upload_notion(
+                gameidx=gameidx,
+                service_sub=service_sub,
+                path_regyearRevenue=path_regyearRevenue,
+                path_regyearRevenue_pv2=path_regyearRevenue_pv2,
+                NOTION_TOKEN=NOTION_TOKEN,
+                NOTION_VERSION=NOTION_VERSION,
+                MODEL_NAME=MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                notion=notion,
+                bucket=bucket,
+                headers_json=headers_json
+                )
+            print(f"✅ {gameidx}: {service_sub} cohort_rev_upload_notion 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} cohort_rev_upload_notion 실패 ")
+            print(f"🔴 {e}")
 
 
 
@@ -621,13 +710,32 @@ with DAG(
     #     dag=dag,
     # )
 
-    rgroup_iapgemruby_gameframework_run = PythonOperator(
-        task_id='rgroup_iapgemruby_data_game_framework',
-        python_callable=rgroup_iapgemruby_data_game_framework,
+    # rgroup_iapgemruby_gameframework_run = PythonOperator(
+    #     task_id='rgroup_iapgemruby_data_game_framework',
+    #     python_callable=rgroup_iapgemruby_data_game_framework,
+    #     op_kwargs={
+    #         'joyplegameid':joyplegameid,
+    #         'gameidx':gameidx,
+    #         'service_sub':str(service_sub[3]),
+    #         'databaseschema':databaseschema,
+    #         'bigquery_client':bigquery_client,
+    #         'MODEL_NAME': MODEL_NAME,
+    #         'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+    #         'bucket': bucket,
+    #         'headers_json': headers_json,
+    #         'genai_client': genai_client,
+    #         'notion':notion
+    #     },
+    #     dag=dag,
+    # )
+
+    longterm_sales_data_game_framework_run = PythonOperator(
+        task_id='longterm_sales_data_game_framework',
+        python_callable=longterm_sales_data_game_framework,
         op_kwargs={
             'joyplegameid':joyplegameid,
             'gameidx':gameidx,
-            'service_sub':str(service_sub[3]),
+            'service_sub':str(service_sub[4]),
             'databaseschema':databaseschema,
             'bigquery_client':bigquery_client,
             'MODEL_NAME': MODEL_NAME,
@@ -639,7 +747,8 @@ with DAG(
         },
         dag=dag,
     )
+        
 
 
-create_gameframework_notion_page >> rgroup_iapgemruby_gameframework_run
+create_gameframework_notion_page >> longterm_sales_data_game_framework_run
 

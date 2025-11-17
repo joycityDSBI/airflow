@@ -85,7 +85,7 @@ def monthly_day_average_rev(joyplegameid:int, gameidx:str, bucket, **context):
     return saved_path
 
 ######### 월별 일 평균 매출 - 제미나이 코멘트 생성
-def monthly_day_average_rev_gemini(service_sub: str, path_monthly_day_average_rev:str, MODEL_NAME:str, bucket, **context):
+def monthly_day_average_rev_gemini(service_sub: str, path_monthly_day_average_rev:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -121,10 +121,7 @@ def monthly_day_average_rev_gemini(service_sub: str, path_monthly_day_average_re
     """
     ,
     config=types.GenerateContentConfig(
-            system_instruction=[
-                ""
-
-            ],
+            system_instruction=SYSTEM_INSTRUCTION,
             # tools=[RAG],
             temperature=0.5
             ,labels=LABELS
@@ -318,7 +315,7 @@ def rgroup_rev_total(joyplegameid:int, gameidx:str, bucket, **context):
 
 
 ####### 과금그룹별 총 매출 - 제미나이 코멘트 생성
-def rgroup_rev_total_gemini(service_sub: str, path_rgroup_rev_DOD:str, MODEL_NAME:str, bucket, **context):
+def rgroup_rev_total_gemini(service_sub: str, path_rgroup_rev_DOD:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -367,10 +364,7 @@ def rgroup_rev_total_gemini(service_sub: str, path_rgroup_rev_DOD:str, MODEL_NAM
     """
     ,
     config=types.GenerateContentConfig(
-            system_instruction=[
-                ""
-
-            ],
+            system_instruction=SYSTEM_INSTRUCTION,
             # tools=[RAG],
             temperature=0.5
             ,labels=LABELS
@@ -477,12 +471,12 @@ def rev_cohort_year(joyplegameid:int, gameidx:str, bucket, **context):
     return path_regyearRevenue, path_regyearRevenue_pv2
 
 
-def rev_cohort_year_gemini(service_sub: str, path_rev_cohort_year:str, MODEL_NAME:str, bucket, **context):
+def rev_cohort_year_gemini(service_sub: str, path_regyearRevenue_pv2:str, MODEL_NAME:str, SYSTEMN_INSTRUCTION:list, bucket, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
-    pv2 = load_df_from_gcs(bucket, path_rev_cohort_year)
+    path_regyearRevenue_pv2 = load_df_from_gcs(bucket, path_regyearRevenue_pv2)
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
@@ -510,15 +504,13 @@ def rev_cohort_year_gemini(service_sub: str, path_rev_cohort_year:str, MODEL_NAM
 
 
     <월별 R그룹별 매출과 PU>
-    {pv2}
+    {path_regyearRevenue_pv2}
 
 
     """
     ,
     config=types.GenerateContentConfig(
-            system_instruction=[
-                ""
-            ],
+            system_instruction=SYSTEMN_INSTRUCTION,
             # tools=[RAG],
             temperature=0.5
             ,labels=LABELS
@@ -530,9 +522,6 @@ def rev_cohort_year_gemini(service_sub: str, path_rev_cohort_year:str, MODEL_NAM
 
 
 def monthly_day_average_rev_table_draw(gameidx:str, path_monthly_day_average_rev, bucket, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     df = load_df_from_gcs(bucket, path_monthly_day_average_rev)
 
@@ -705,9 +694,6 @@ def monthly_day_average_rev_table_draw(gameidx:str, path_monthly_day_average_rev
 ### 일 평균 매출 그래프 그리기
 def monthly_day_average_rev_graph_draw(gameidx:str, path_monthly_day_average_rev:str, bucket, **context):
 
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     query_result5_dailyAvgRevenue = load_df_from_gcs(bucket, path_monthly_day_average_rev)
 
     sns.lineplot(x= query_result5_dailyAvgRevenue.columns[0],
@@ -757,10 +743,10 @@ def monthly_day_average_rev_graph_draw(gameidx:str, path_monthly_day_average_rev
     return f'{gameidx}/{file_path5_dailyAvgRevenueLine}'
 
 
-def monthly_day_average_merge_graph(gameidx:str, bucket, **context):
+def monthly_day_average_merge_graph(gameidx:str, path_monthly_day_average_rev:str, bucket, **context):
     # 1) 파일 경로
-    p1 = monthly_day_average_rev_table_draw(gameidx, **context)   # 첫 번째 이미지
-    p2 = monthly_day_average_rev_graph_draw(gameidx, **context)   # 두 번째 이미지
+    p1 = monthly_day_average_rev_table_draw(gameidx, path_monthly_day_average_rev, **context)   # 첫 번째 이미지
+    p2 = monthly_day_average_rev_graph_draw(gameidx, path_monthly_day_average_rev,**context)   # 두 번째 이미지
     save_to = 'graph5_dailyAvgRevenue.png'  # 저장 경로
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
@@ -801,9 +787,6 @@ def monthly_day_average_merge_graph(gameidx:str, bucket, **context):
 
 #### 월별 R 그룹별 매출 동기간 표
 def rgroup_rev_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_DOD)
     df = query_result5_monthlyRgroupRevenue.iloc[:, [0,1,2,3,4,5,7]]
@@ -989,10 +972,8 @@ def rgroup_rev_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **co
 #### 월별 R 그룹별 PU 수 동기간 표
 def rgroup_pu_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **context):
 
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_DOD)
+
     df = query_result5_monthlyRgroupRevenue.iloc[:, [0,8,9,10,11,12,14,15,13]]
 
     df = df.rename(
@@ -1190,9 +1171,9 @@ def rgroup_pu_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **con
     return gcs_path
 
 
-def merge_rgroup_rev_pu_ALL_table(gameidx: str, bucket, **context):
-    p1 = rgroup_rev_DOD_table_draw(gameidx, **context)
-    p2 = rgroup_pu_DOD_table_draw(gameidx, **context)
+def merge_rgroup_rev_pu_ALL_table(gameidx: str, path_rgroup_rev_DOD:str, bucket, **context):
+    p1 = rgroup_rev_DOD_table_draw(gameidx, path_rgroup_rev_DOD, **context)
+    p2 = rgroup_pu_DOD_table_draw(gameidx, path_rgroup_rev_DOD, **context)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     blob1 = bucket.blob(p1)
@@ -1238,9 +1219,9 @@ def merge_rgroup_rev_pu_ALL_table(gameidx: str, bucket, **context):
     return gcs_path
 
 
-def merge_rgroup_rev_pu_table(gameidx:str, bucket, **context):
-    p1 = rgroup_rev_DOD_table_draw(gameidx, **context) # 첫 번째 이미지
-    p2 = rgroup_pu_DOD_table_draw(gameidx, **context)   # 두 번째 이미지
+def merge_rgroup_rev_pu_table(gameidx:str, path_rgroup_rev_DOD:str, bucket, **context):
+    p1 = rgroup_rev_DOD_table_draw(gameidx, path_rgroup_rev_DOD, **context) # 첫 번째 이미지
+    p2 = rgroup_pu_DOD_table_draw(gameidx, path_rgroup_rev_DOD, **context)   # 두 번째 이미지
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     blob1 = bucket.blob(p1)
@@ -1292,9 +1273,6 @@ def merge_rgroup_rev_pu_table(gameidx:str, bucket, **context):
 
 #### 월별 R그룹 매출 전체기간 표
 def rgroup_rev_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_total)
 
@@ -1680,9 +1658,9 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
 
 
 #### 월별 R 그룹별 매출, PU 표 합치기
-def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, **context):
-    p1 = rgroup_rev_total_table_draw(gameidx, **context)
-    p2 = rgroup_pu_total_table_draw(gameidx, **context)
+def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, path_rgroup_rev_total:str, **context):
+    p1 = rgroup_rev_total_table_draw(gameidx, path_rgroup_rev_total, **context)
+    p2 = rgroup_pu_total_table_draw(gameidx, path_rgroup_rev_total, **context)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     blob1 = bucket.blob(p1)
@@ -1732,9 +1710,6 @@ def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, **context):
 ######### 가입연도별 매출 표
 
 def cohort_rev_table_draw(gameidx:str, path_rev_cohort_year_pv2:str, bucket, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     df = load_df_from_gcs(bucket, path_rev_cohort_year_pv2)
     
@@ -1907,8 +1882,9 @@ def cohort_rev_table_draw(gameidx:str, path_rev_cohort_year_pv2:str, bucket, **c
 
 
 ########### 장기적 매출 현황 업로드 to 노션
-def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, 
+def longterm_rev_upload_notion(gameidx:str, service_sub:str, 
                                path_monthly_day_average_rev:str, 
+                               MODEL_NAME:str, SYSTEM_INSTRUCTION:list,
                                NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json,**context):
 
     current_context = get_current_context()
@@ -1947,7 +1923,7 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str,
     # 공통 헤더
     headers_json = headers_json
     try:
-        gcs_path = f'{gameidx}/filePath5_dailyAvgRevenue.png'
+        gcs_path = monthly_day_average_merge_graph(gameidx, path_monthly_day_average_rev, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'filePath5_dailyAvgRevenue.png'
@@ -2023,7 +1999,9 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str,
         batch_size=100,
     )
 
-    blocks = md_to_notion_blocks(monthly_day_average_rev_gemini(joyplegameid, service_sub, **context))
+    blocks = md_to_notion_blocks(monthly_day_average_rev_gemini(service_sub=service_sub, 
+                                                               path_monthly_day_average_rev=path_monthly_day_average_rev,
+                                                               MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, **context))
 
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
@@ -2032,9 +2010,11 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str,
 
 
 ########### 월별 R그룹별 매출 PU 수
-def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, 
+def longterm_rev_upload_notion(gameidx:str, service_sub:str, 
                                path_rgroup_rev_total:str, path_rgroup_rev_DOD:str,
-                               NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json, **context):
+                               NOTION_TOKEN:str, NOTION_VERSION:str, 
+                               MODEL_NAME:str, SYSTEM_INSTRUCTION:list,
+                               notion, bucket, headers_json, **context):
 
     current_context = get_current_context()
     
@@ -2074,7 +2054,7 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str,
     # 공통 헤더
     headers_json = headers_json
     try:
-        gcs_path = f'{gameidx}/filePath5_monthlyRgroupHap.png'
+        gcs_path = merge_rgroup_rev_pu_table(gameidx, path_rgroup_rev_DOD, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'filePath5_monthlyRgroupHap.png'
@@ -2175,7 +2155,9 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str,
     )
 
     ## 프롬프트
-    blocks = md_to_notion_blocks(rgroup_rev_total_gemini(joyplegameid, service_sub, **context))
+    blocks = md_to_notion_blocks(rgroup_rev_total_gemini(service_sub=service_sub, 
+                                                        path_rgroup_rev_DOD=path_rgroup_rev_DOD,
+                                                        MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, **context))
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
         children=blocks
@@ -2185,10 +2167,15 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str,
 
 
 ############## 가입연도 매출 데이터 
-def cohort_rev_upload_notion(joyplegameid:int, gameidx:str, service_sub:str, **context):
+def cohort_rev_upload_notion(gameidx:str, service_sub:str, 
+                               path_regyearRevenue:str, path_regyearRevenue_pv2:str,
+                               MODEL_NAME:str, SYSTEM_INSTRUCTION:list,
+                               NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+    current_context = get_current_context()
+    
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -2213,7 +2200,7 @@ def cohort_rev_upload_notion(joyplegameid:int, gameidx:str, service_sub:str, **c
     }
 
     try:
-        gcs_path = f'{gameidx}/file_path5_regyearRevenue.png'
+        gcs_path = cohort_rev_table_draw(gameidx, path_regyearRevenue, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'file_path5_regyearRevenue.png'
@@ -2279,10 +2266,7 @@ def cohort_rev_upload_notion(joyplegameid:int, gameidx:str, service_sub:str, **c
         raise
 
 
-    query_result5_regyearRevenue = context['task_instance'].xcom_pull(
-        task_ids = 'rev_cohort_year',
-        key='rev_cohort_year_original'
-    )
+    query_result5_regyearRevenue = load_df_from_gcs(bucket, path_regyearRevenue)
 
     resp = df_to_notion_table_under_toggle(
         notion=notion,
@@ -2293,7 +2277,12 @@ def cohort_rev_upload_notion(joyplegameid:int, gameidx:str, service_sub:str, **c
         batch_size=100,
     )
 
-    blocks = md_to_notion_blocks(rev_cohort_year_gemini(joyplegameid, service_sub, **context))
+    blocks = md_to_notion_blocks(rev_cohort_year_gemini(service_sub=service_sub, 
+                                                        path_regyearRevenue_pv2=path_regyearRevenue_pv2, 
+                                                        MODEL_NAME=MODEL_NAME, 
+                                                        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
+                                                        bucket=bucket, 
+                                                        **context))
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
         children=blocks
