@@ -471,7 +471,7 @@ def rev_cohort_year(joyplegameid:int, gameidx:str, bigquery_client, bucket, **co
     return path_regyearRevenue, path_regyearRevenue_pv2
 
 
-def rev_cohort_year_gemini(service_sub: str, path_regyearRevenue_pv2:str, MODEL_NAME:str, SYSTEMN_INSTRUCTION:list, bucket, **context):
+def rev_cohort_year_gemini(service_sub: str, path_regyearRevenue_pv2:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -510,7 +510,7 @@ def rev_cohort_year_gemini(service_sub: str, path_regyearRevenue_pv2:str, MODEL_
     """
     ,
     config=types.GenerateContentConfig(
-            system_instruction=SYSTEMN_INSTRUCTION,
+            system_instruction=SYSTEM_INSTRUCTION,
             # tools=[RAG],
             temperature=0.5
             ,labels=LABELS
@@ -2063,7 +2063,7 @@ def longterm_rev_upload_notion(gameidx:str, service_sub:str,
 
 
 ########### 월별 R그룹별 매출 PU 수
-def longterm_rev_upload_notion(gameidx:str, service_sub:str, 
+def monthly_rgroup_upload_notion(gameidx:str, service_sub:str, 
                                path_rgroup_rev_total:str, path_rgroup_rev_DOD:str,
                                NOTION_TOKEN:str, NOTION_VERSION:str, 
                                MODEL_NAME:str, SYSTEM_INSTRUCTION:list,
