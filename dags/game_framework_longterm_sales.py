@@ -806,7 +806,6 @@ def rgroup_rev_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **co
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_DOD)
-
     df = query_result5_monthlyRgroupRevenue.iloc[:, [0,1,2,3,4,5,7]]
     
     df = df.rename(
@@ -988,11 +987,12 @@ def rgroup_rev_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **co
 
 
 #### 월별 R 그룹별 PU 수 동기간 표
-def rgroup_pu_DOD_table_draw(gameidx:str, **context):
-    query_result5_monthlyRgroupRevenue = context['task_instance'].xcom_pull(
-        task_ids = 'rgroup_rev_DOD',
-        key='rgroup_rev_DOD'
-    )
+def rgroup_pu_DOD_table_draw(gameidx:str, path_rgroup_rev_DOD:str, bucket, **context):
+
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_DOD)
     df = query_result5_monthlyRgroupRevenue.iloc[:, [0,8,9,10,11,12,14,15,13]]
 
     df = df.rename(
@@ -1190,7 +1190,7 @@ def rgroup_pu_DOD_table_draw(gameidx:str, **context):
     return gcs_path
 
 
-def merge_rgroup_rev_pu_ALL_table(joyplegameid: int, gameidx: str, **context):
+def merge_rgroup_rev_pu_ALL_table(gameidx: str, bucket, **context):
     p1 = rgroup_rev_DOD_table_draw(gameidx, **context)
     p2 = rgroup_pu_DOD_table_draw(gameidx, **context)
 
@@ -1238,7 +1238,7 @@ def merge_rgroup_rev_pu_ALL_table(joyplegameid: int, gameidx: str, **context):
     return gcs_path
 
 
-def merge_rgroup_rev_pu_table(gameidx:str, **context):
+def merge_rgroup_rev_pu_table(gameidx:str, bucket, **context):
     p1 = rgroup_rev_DOD_table_draw(gameidx, **context) # 첫 번째 이미지
     p2 = rgroup_pu_DOD_table_draw(gameidx, **context)   # 두 번째 이미지
 
@@ -1291,11 +1291,12 @@ def merge_rgroup_rev_pu_table(gameidx:str, **context):
 
 
 #### 월별 R그룹 매출 전체기간 표
-def rgroup_rev_total_table_draw(gameidx:str, **context):
-    query_result5_monthlyRgroupRevenue = context['task_instance'].xcom_pull(
-        task_ids = 'rgroup_rev_total',
-        key='rgroup_rev_total'
-    )
+def rgroup_rev_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, **context):
+
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_total)
 
     df = query_result5_monthlyRgroupRevenue.iloc[:, [0,1,2,3,4,5,7]]
 
@@ -1476,11 +1477,12 @@ def rgroup_rev_total_table_draw(gameidx:str, **context):
     return gcs_path
 
 
-def rgroup_pu_total_table_draw(gameidx:str, **context):
-    query_result5_monthlyRgroupRevenue = context['task_instance'].xcom_pull(
-        task_ids = 'rgroup_rev_total',
-        key='rgroup_rev_total'
-    )
+def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, **context):
+
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_total)
 
     df = query_result5_monthlyRgroupRevenue.iloc[:, [0,8,9,10,11,12,14,15,13]]
 
@@ -1678,7 +1680,7 @@ def rgroup_pu_total_table_draw(gameidx:str, **context):
 
 
 #### 월별 R 그룹별 매출, PU 표 합치기
-def merge_rgroup_total_rev_pu_table(joyplegameid: int, gameidx: str, **context):
+def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, **context):
     p1 = rgroup_rev_total_table_draw(gameidx, **context)
     p2 = rgroup_pu_total_table_draw(gameidx, **context)
 
@@ -1729,12 +1731,13 @@ def merge_rgroup_total_rev_pu_table(joyplegameid: int, gameidx: str, **context):
 
 ######### 가입연도별 매출 표
 
-def cohort_rev_table_draw(gameidx:str, **context):
-    df = context['task_instance'].xcom_pull(
-        task_ids = 'rev_cohort_year',
-        key='rev_cohort_year'
-    )
+def cohort_rev_table_draw(gameidx:str, path_rev_cohort_year_pv2:str, bucket, **context):
 
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    df = load_df_from_gcs(bucket, path_rev_cohort_year_pv2)
+    
     def render_table_image(
         df: pd.DataFrame,
         out_path: str = "graph5_regyearRevenue.png",
@@ -1899,12 +1902,19 @@ def cohort_rev_table_draw(gameidx:str, **context):
 
         return f'{gameidx}/{out_path}'
     
+    gcs_path = render_table_image(df=df, gameidx=gameidx)
+    return gcs_path
+
 
 ########### 장기적 매출 현황 업로드 to 노션
-def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, **context):
+def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, 
+                               path_monthly_day_average_rev:str, 
+                               NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json,**context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+    current_context = get_current_context()
+    
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -1935,12 +1945,7 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, 
     )
 
     # 공통 헤더
-    headers_json = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
-    }
-
+    headers_json = headers_json
     try:
         gcs_path = f'{gameidx}/filePath5_dailyAvgRevenue.png'
         blob = bucket.blob(gcs_path)
@@ -2007,10 +2012,7 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, 
         print(f"❌ 예기치 않은 에러: {str(e)}")
         raise
 
-    query_result5_dailyAvgRevenue = context['task_instance'].xcom_pull(
-        task_ids = 'monthly_day_average_rev',
-        key='monthly_day_average_rev'
-    )
+    query_result5_dailyAvgRevenue = load_df_from_gcs(bucket, path_monthly_day_average_rev)
 
     resp = df_to_notion_table_under_toggle(
         notion=notion,
@@ -2030,10 +2032,14 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, 
 
 
 ########### 월별 R그룹별 매출 PU 수
-def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, **context):
+def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, 
+                               path_rgroup_rev_total:str, path_rgroup_rev_DOD:str,
+                               NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+    current_context = get_current_context()
+    
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -2066,12 +2072,7 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, 
 
     
     # 공통 헤더
-    headers_json = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
-    }
-
+    headers_json = headers_json
     try:
         gcs_path = f'{gameidx}/filePath5_monthlyRgroupHap.png'
         blob = bucket.blob(gcs_path)
@@ -2138,16 +2139,8 @@ def longterm_rev_upload_notion(joyplegameid: int, gameidx:str, service_sub:str, 
         print(f"❌ 예기치 않은 에러: {str(e)}")
         raise
 
-
-    query_result5_monthlyRgroupRevenueALL = context['task_instance'].xcom_pull(
-        task_ids = 'rgroup_rev_total',
-        key='rgroup_rev_total'
-    )
-
-    query_result5_monthlyRgroupRevenue = context['task_instance'].xcom_pull(
-        task_ids = 'rgroup_rev_DOD',
-        key='rgroup_rev_DOD'
-    )
+    query_result5_monthlyRgroupRevenueALL = load_df_from_gcs(bucket, path_rgroup_rev_total)
+    query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_DOD)
 
 
     resp = df_to_notion_table_under_toggle(

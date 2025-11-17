@@ -3940,7 +3940,7 @@ def rgroup_top3_upload_notion(gameidx: str, service_sub:str, MODEL_NAME:str, SYS
 
     ### 파일 업로드 객체 
     try:
-        gcs_path = f'{gameidx}/graph4_thisWeekRevTop3.png'
+        gcs_path = rgroup_rev_top3_graph_draw(gameidx, path_rgroup_top3_rev, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_thisWeekRevTop3.png'
@@ -4006,15 +4006,8 @@ def rgroup_top3_upload_notion(gameidx: str, service_sub:str, MODEL_NAME:str, SYS
         raise
 
 
-    query_result4_thisWeekPUTop3 = context['task_instance'].xcom_pull(
-        task_ids = 'rgroup_top3_rev',
-        key='rgroup_top3_rev'
-    )
-
-    query_result4_thisWeekSalesTop3 = context['task_instance'].xcom_pull(
-        task_ids = 'rgroup_top3_rev',
-        key='rgroup_top3_rev'
-    )
+    query_result4_thisWeekPUTop3 = load_df_from_gcs(bucket=bucket, path=path_rgroup_top3_pu)
+    query_result4_thisWeekSalesTop3 = load_df_from_gcs(bucket=bucket, path=path_rgroup_top3_rev)
 
     resp = df_to_notion_table_under_toggle(
         notion=notion,
