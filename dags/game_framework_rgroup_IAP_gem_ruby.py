@@ -2709,7 +2709,7 @@ def rgroup_rev_upload_notion(gameidx: str, path_rev_group_rev_pu, rev_group_rev_
     current_context = get_current_context()
 
     PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -2907,7 +2907,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
 
     current_context = get_current_context()
     PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -3321,7 +3321,7 @@ def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
     
     current_context = get_current_context()
     PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -3454,7 +3454,7 @@ def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
     
     current_context = get_current_context()
     PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -3586,7 +3586,7 @@ def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRU
 
     current_context = get_current_context()
     PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -3718,7 +3718,7 @@ def rgroup_top3_upload_notion(gameidx: str, service_sub:str, MODEL_NAME:str, SYS
 
     current_context = get_current_context()
     PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
