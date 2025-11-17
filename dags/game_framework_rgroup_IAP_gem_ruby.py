@@ -2778,10 +2778,10 @@ def rgroup_rev_upload_notion(gameidx: str, path_rev_group_rev_pu, rev_group_rev_
 
 
 
-def iap_gem_ruby_upload_notion(gameidx: str, 
+def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: str,
                                path_iapgemruby, path_iapgemruby_history, 
                                path_top3_items_by_category,path_weekly_iapcategory_rev,
-                               service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
+                               service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, notion, bucket, headers_json, **context):
 
     PAGE_INFO=context['task_instance'].xcom_pull(
         task_ids = 'make_gameframework_notion_page',
@@ -2789,7 +2789,7 @@ def iap_gem_ruby_upload_notion(gameidx: str,
     )
 
     try:
-        gcs_path = f'{gameidx}/graph4_salesByPackage.png'
+        gcs_path = iap_gem_ruby_graph_draw(gameidx, path_iap_gem_ruby=path_iapgemruby, bucket=bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage.png'
@@ -2958,7 +2958,7 @@ def iap_gem_ruby_upload_notion(gameidx: str,
 
 ## 상품카테고리별 매출 1위 그래프 삽입
     try:
-        gcs_path = f'{gameidx}/graph4_salesByPackage_Category1.png'
+        gcs_path = top1_graph_draw(joyplegameid, gameidx, databaseschema, service_sub, bigquery_client, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_Category1.png'
@@ -3036,7 +3036,7 @@ def iap_gem_ruby_upload_notion(gameidx: str,
 
     ## 상품카테고리별 매출 2위 그래프 삽입
     try:
-        gcs_path = f'{gameidx}/graph4_salesByPackage_Category2.png'
+        gcs_path = top2_graph_draw(joyplegameid, gameidx, databaseschema, service_sub, bigquery_client, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_Category2.png'
@@ -3110,7 +3110,7 @@ def iap_gem_ruby_upload_notion(gameidx: str,
 
     ## 상품카테고리별 매출 3위 그래프 삽입
     try:
-        gcs_path = f'{gameidx}/graph4_salesByPackage_Category3.png'
+        gcs_path = top3_graph_draw(joyplegameid, gameidx, databaseschema, service_sub, bigquery_client, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_Category3.png'
@@ -3192,6 +3192,7 @@ def iap_gem_ruby_upload_notion(gameidx: str,
     return True
 
 
+
 def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
                    path_iap_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, **context):
     
@@ -3222,7 +3223,7 @@ def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
     headers_json = headers_json
 
     try:
-        gcs_path = f'{gameidx}/graph4_salesByPackage_IAP.png'
+        gcs_path = iap_gem_ruby_IAP_graph_draw(gameidx, path_iap_df, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_IAP.png'
@@ -3353,7 +3354,7 @@ def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
     # 공통 헤더
     headers_json = headers_json
     try:
-        gcs_path = f'{gameidx}/graph4_salesByPackage_GEM.png'
+        gcs_path = iap_gem_ruby_GEM_graph_draw(gameidx, path_gem_df, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_GEM.png'
@@ -3485,7 +3486,7 @@ def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRU
     headers_json = headers_json
 
     try:
-        gcs_path = f'{gameidx}/graph4_salesByPackage_RUBY.png'
+        gcs_path = iap_gem_ruby_RUBY_graph_draw(gameidx, path_ruby_df, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_RUBY.png'
@@ -3610,7 +3611,7 @@ def rgroup_top3_upload_notion(gameidx: str, service_sub:str, MODEL_NAME:str, SYS
     # 공통 헤더
     headers_json = headers_json
     try:
-        gcs_path = f'{gameidx}/graph4_thisWeekPUTop3.png'
+        gcs_path = rgroup_pu_top3_graph_draw(gameidx, path_rgroup_top3_pu, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_thisWeekPUTop3.png'

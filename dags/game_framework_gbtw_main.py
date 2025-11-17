@@ -265,8 +265,9 @@ with DAG(
                 NOTION_TOKEN=NOTION_TOKEN,
                 NOTION_VERSION=NOTION_VERSION,
             )
+            print(f"✅ {gameidx}: {service_sub} inhouse_revenue_data_upload_to_notion 완료")
         except Exception as e:
-            print(f"❌ {gameidx}: {service_sub} daily_revenue_data_upload_to_notion 실패 ")
+            print(f"❌ {gameidx}: {service_sub} inhouse_revenue_data_upload_to_notion 실패 ")
             print(f"🔴 {e}")
 
 
@@ -307,6 +308,7 @@ with DAG(
                 NOTION_TOKEN=NOTION_TOKEN,
                 NOTION_VERSION=NOTION_VERSION,
             )
+            print(f"✅ {gameidx}: {service_sub} country_data_upload_to_notion 완료")
         except Exception as e:
             print(f"❌ {gameidx}: {service_sub} country_data_upload_to_notion 실패 ")
             print(f"🔴 {e}")
@@ -326,6 +328,7 @@ with DAG(
                 NOTION_TOKEN=NOTION_TOKEN,
                 NOTION_VERSION=NOTION_VERSION,
             )
+            print(f"✅ {gameidx}: {service_sub} os_data_upload_to_notion 완료")
         except Exception as e:
             print(f"❌ {gameidx}: {service_sub} os_data_upload_to_notion 실패 ")
             print(f"🔴 {e}")  
@@ -356,16 +359,186 @@ with DAG(
                 NOTION_TOKEN=NOTION_TOKEN,
                 NOTION_VERSION=NOTION_VERSION
             )
+            print(f"✅ {gameidx}: {service_sub} country_group_data_upload_to_notion 완료")
         except Exception as e:
             print(f"❌ {gameidx}: {service_sub} country_group_data_upload_to_notion 실패 ")
             print(f"🔴 {e}") 
 
 
     ##### R Group, IAP, GEM, RUBY 프레임 워크
-    # def rgroup_iapgemruby_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
-    #     print(f"📧 RUN R Group, IAP, GEM, RUBY 데이터 게임 프로엠워크 시작: {gameidx}")
+    def rgroup_iapgemruby_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, databaseschema: str, 
+                                              bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
+        print(f"📧 RUN R Group, IAP, GEM, RUBY 데이터 게임 프로엠워크 시작: {gameidx}")
 
-    #     st1 = rev_group_rev_pu()
+        path_rev_group_rev_pu = rev_group_rev_pu(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_rev_group_rev_pu, gameidx=gameidx, service_sub=service_sub, func_name="rev_group_rev_pu")
+
+        path_iap_gem_ruby = iap_gem_ruby(joyplegameid=joyplegameid, gameidx=gameidx, databaseschema=databaseschema, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_iap_gem_ruby, gameidx=gameidx, service_sub=service_sub, func_name="iap_gem_ruby")
+
+        path_iap_gem_ruby_history = iap_gem_ruby_history(gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_iap_gem_ruby_history, gameidx=gameidx, service_sub=service_sub, func_name="iap_gem_ruby_history")
+
+        path_iap_df = iap_df(gameidx=gameidx, databaseschema=databaseschema, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_iap_df, gameidx=gameidx, service_sub=service_sub, func_name="iap_df")
+
+        path_gem_df = gem_df(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_gem_df, gameidx=gameidx, service_sub=service_sub, func_name="gem_df")
+
+        path_ruby_df = ruby_df(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_ruby_df, gameidx=gameidx, service_sub=service_sub, func_name="ruby_df")
+        
+        path_weekly_iapcategory_rev, path_weekly_iapcategory_rev_cols = weekly_iapcategory_rev(joyplegameid=joyplegameid, gameidx=gameidx, databaseschema=databaseschema, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_weekly_iapcategory_rev, gameidx=gameidx, service_sub=service_sub, func_name="weekly_iapcategory_rev")
+
+        path_top3_items_by_category = top3_items_by_category(joyplegameid=joyplegameid, 
+                                                             gameidx=gameidx,
+                                                             service_sub=service_sub,
+                                                             databaseschema=databaseschema,
+                                                             genai_client=genai_client,
+                                                             MODEL_NAME=MODEL_NAME,
+                                                             SYSTEM_INSTRUCTION= SYSTEM_INSTRUCTION,
+                                                             path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+                                                             path_weekly_iapcategory_rev_cols = path_weekly_iapcategory_rev_cols,
+                                                             bigquery_client=bigquery_client, 
+                                                             bucket=bucket,
+                                                             PROJECT_ID=PROJECT_ID,
+                                                             LOCATION=LOCATION)
+        if_else_length(path=path_top3_items_by_category, gameidx=gameidx, service_sub=service_sub, func_name="top3_items_by_category")
+
+        path_rgroup_top3_pu = rgroup_top3_pu(joyplegameid=joyplegameid, gameidx=gameidx, databaseschema=databaseschema, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_rgroup_top3_pu, gameidx=gameidx, service_sub=service_sub, func_name="rgroup_top3_pu")
+
+        path_rgroup_top3_rev = rgroup_top3_rev(joyplegameid=joyplegameid, gameidx=gameidx, databaseschema=databaseschema, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_rgroup_top3_rev, gameidx=gameidx, service_sub=service_sub, func_name="rgroup_top3_rev")
+
+        path_top3_items_rev = top3_items_rev(joyplegameid=joyplegameid, gameidx=gameidx, databaseschema=databaseschema, service_sub=service_sub, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_top3_items_rev, gameidx=gameidx, service_sub=service_sub, func_name="top3_items_rev")
+
+        path_merge_rgroup_graph = merge_rgroup_graph(gameidx=gameidx, path_group_rev_pu=path_rev_group_rev_pu,bucket=bucket)
+        if_else_length(path=path_merge_rgroup_graph, gameidx=gameidx, service_sub=service_sub, func_name="merge_rgroup_graph")
+
+        try:
+            rgroup_rev_upload_notion(
+                gameidx=gameidx,
+                path_rev_group_rev_pu=path_rev_group_rev_pu,
+                rev_group_top3_pu=path_rgroup_top3_pu,
+                service_sub=service_sub,
+                genai_client=genai_client,
+                MODEL_NAME = MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                notion=notion,
+                bucket=bucket,
+                headers_json=headers_json
+                )
+            print(f"✅ {gameidx}: {service_sub} rgroup_rev_upload_notion 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} rgroup_rev_upload_notion 실패 ")
+            print(f"🔴 {e}")
+
+        try:
+            iap_gem_ruby_upload_notion(
+                gameidx=gameidx,
+                joyplegameid=joyplegameid,
+                databaseschema=databaseschema,
+                path_iapgemruby=path_iap_gem_ruby,
+                path_iapgemruby_history=path_iap_gem_ruby_history,
+                path_top3_items_by_category=path_top3_items_by_category,
+                path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+                service_sub=service_sub,
+                genai_client=genai_client,
+                MODEL_NAME = MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                bigquery_client=bigquery_client,
+                notion=notion,
+                bucket=bucket,
+                headers_json=headers_json
+                )
+            print(f"✅ {gameidx}: {service_sub} iap_gem_ruby_upload_notion 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} iap_gem_ruby_upload_notion 실패 ")
+            print(f"🔴 {e}")
+
+        try:
+            iap_toggle_add(
+                gameidx=gameidx,
+                service_sub=service_sub,
+                MODEL_NAME=MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                path_iap_df=path_iap_df,
+                path_iapgemruby_history=path_iap_gem_ruby_history,
+                PROJECT_ID=PROJECT_ID,
+                LOCATION=LOCATION,
+                bucket=bucket,
+                notion=notion
+            )
+            print(f"✅ {gameidx}: {service_sub} iap_toggle_add 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} iap_toggle_add 실패 ")
+            print(f"🔴 {e}")
+        
+        try:
+            gem_toggle_add(
+                gameidx=gameidx,
+                service_sub=service_sub,
+                MODEL_NAME=MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                path_gem_df=path_gem_df,
+                path_iapgemruby_history=path_iap_gem_ruby_history,
+                PROJECT_ID=PROJECT_ID,
+                LOCATION=LOCATION,
+                bucket=bucket,
+                notion=notion
+                )
+            print(f"✅ {gameidx}: {service_sub} gem_toggle_add 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} gem_toggle_add 실패 ")
+            print(f"🔴 {e}")
+
+        try:
+            ruby_toggle_add(
+                gameidx=gameidx,
+                service_sub=service_sub,
+                MODEL_NAME=MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                path_ruby_df=path_ruby_df,
+                path_iapgemruby_history=path_iap_gem_ruby_history,
+                PROJECT_ID=PROJECT_ID,
+                LOCATION=LOCATION,
+                bucket=bucket,
+                notion=notion
+                )
+            print(f"✅ {gameidx}: {service_sub} ruby_toggle_add 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} ruby_toggle_add 실패 ")
+            print(f"🔴 {e}")
+        
+        try:
+            rgroup_top3_upload_notion(
+                gameidx=gameidx,
+                service_sub=service_sub,
+                MODEL_NAME=MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                path_rgroup_top3_pu=path_rgroup_top3_pu,
+                path_rgroup_top3_rev=path_rgroup_top3_rev,
+                PROJECT_ID=PROJECT_ID,
+                LOCATION=LOCATION,
+                bucket=bucket,
+                notion=notion
+                )
+            print(f"✅ {gameidx}: {service_sub} rgroup_pu_top3_upload_notion 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} rgroup_pu_top3_upload_notion 실패 ")
+            print(f"🔴 {e}")
+        
+
+
+
+
+
+
+
+
 
 
 
