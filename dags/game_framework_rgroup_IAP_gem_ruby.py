@@ -1805,71 +1805,118 @@ def rgroup_rev_draw(gameidx: str, gcs_path:str, bucket, **context):
         traceback.print_exc()
         raise
 
-def rgroup_pu_draw(gameidx: str, path_rgroup_pu_rev:str, bucket, **context):
+def rgroup_pu_draw(gameidx: str, path_rgroup_pu_rev: str, bucket, **context):
     
-    query_result4_RgroupSales =load_df_from_gcs(bucket, path_rgroup_pu_rev)
-
-    ## 해당 데이터프레임에는 매출, PU 둘다 있어서, 매출까지만 필터링
-    query_result4_RgroupSales2_puGraph = query_result4_RgroupSales.iloc[:, [0,10,11,12,13,14,15,16]]
-
-    ##
-    query_result4_RgroupSales2_puGraph = query_result4_RgroupSales2_puGraph.rename(
-        columns = {"R0_PU" : "R0",
-                "R1_PU" : "R1",
-                "R2_PU" : "R2",
-                "R3_PU" : "R3",
-                "R4_PU" : "R4",
-                "전월 무과금_PU" : "전월 무과금",
-                "당월가입자_PU" : "당월가입자"}
-    )
-
-    # ⬇️ 가로폭 넓히기: width=20인치(원하는 만큼 키우세요), height=6인치
-    fig, ax = plt.subplots(figsize=(12, 6))
-
-    x = query_result4_RgroupSales2_puGraph["logdatekst"]
-    y = query_result4_RgroupSales2_puGraph.iloc[:, 1:]
-
-    # 누적 막대 bottom은 넘파이로 (리스트 + 시리즈 더하기 오류 방지)
-    bottom = np.zeros(len(query_result4_RgroupSales2_puGraph), dtype=float)
-
-    for col in y.columns:
-        ax.bar(x, y[col], bottom=bottom, label=col)
-        bottom += y[col].to_numpy()
-
-    # y축 천단위
-    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{int(v):,}"))
-
-    # 여백 제거
-    ax.margins(x=0)
-
-    # x축 매일
-    ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-
-    # x축 라벨/눈금
-    ax.set_title(" (R그룹별 PU 수 ")
-    ax.tick_params(axis='x', labelsize=9, pad=2)
-    plt.xticks(rotation=90)
-
-    # 범례를 밖으로, 잘림 방지
-    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
-
-    ax.grid(axis="y", linestyle="--", alpha=0.7)
-
-    fig.tight_layout()
-    file_path4_RgroupSales_puGraph = "graph4_RgroupSales_puGraph.png"
-
-    # ⬇️ 잘림 방지용 bbox_inches
-    fig.savefig(file_path4_RgroupSales_puGraph, dpi=160, bbox_inches='tight')
-    plt.close(fig)
-
-    blob = bucket.blob(f'{gameidx}/{file_path4_RgroupSales_puGraph}')
-    blob.upload_from_filename(file_path4_RgroupSales_puGraph)
-
-    # 메모리에 올라간 이미지 파일 삭제
-    os.remove(file_path4_RgroupSales_puGraph)
-
-    return f'{gameidx}/{file_path4_RgroupSales_puGraph}'
+    try:
+        print(f"📊 rgroup_pu_draw 시작")
+        
+        # ✅ 데이터 로드
+        query_result4_RgroupSales = load_df_from_gcs(bucket, path_rgroup_pu_rev)
+        
+        query_result4_RgroupSales2_puGraph = query_result4_RgroupSales.iloc[:, [0, 10, 11, 12, 13, 14, 15, 16]].copy()
+        print(f"📊 필터링 후 데이터:\n{query_result4_RgroupSales2_puGraph.head()}")
+        
+        # ✅ 컬럼명 변경
+        query_result4_RgroupSales2_puGraph = query_result4_RgroupSales2_puGraph.rename(
+            columns={
+                "R0_PU": "R0",
+                "R1_PU": "R1",
+                "R2_PU": "R2",
+                "R3_PU": "R3",
+                "R4_PU": "R4",
+                "전월 무과금_PU": "전월 무과금",
+                "당월가입자_PU": "당월가입자"
+            }
+        )
+        
+        # ✅ x축: 날짜 타입으로 변환
+        x = query_result4_RgroupSales2_puGraph["logdatekst"]
+        print(f"📝 x 원본 type: {x.dtype}")
+        print(f"📝 x 샘플: {x.head()}")
+        
+        if x.dtype == 'object':
+            x = pd.to_datetime(x, errors='coerce')
+            print(f"✅ x 변환 후 type: {x.dtype}")
+        
+        # ✅ y축: 숫자 타입으로 변환
+        y = query_result4_RgroupSales2_puGraph.iloc[:, 1:].copy()
+        
+        for col in y.columns:
+            print(f"📝 {col} 변환 전: {y[col].dtype}, 샘플: {y[col].head().tolist()}")
+            
+            # 방법 1: to_numeric
+            y[col] = pd.to_numeric(y[col], errors='coerce')
+            
+            # 방법 2: 혹시 남은 것 처리
+            if y[col].dtype == 'object':
+                y[col] = y[col].astype(float, errors='ignore')
+            
+            # 방법 3: NaN을 0으로
+            y[col] = y[col].fillna(0)
+            
+            print(f"✅ {col} 변환 후: {y[col].dtype}, 샘플: {y[col].head().tolist()}")
+        
+        print(f"✅ y 최종 dtypes:\n{y.dtypes}")
+        
+        # ✅ 그래프 그리기
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        # ✅ bottom을 float64로 명시
+        bottom = np.zeros(len(query_result4_RgroupSales2_puGraph), dtype=np.float64)
+        
+        for col in y.columns:
+            y_array = y[col].to_numpy(dtype=np.float64)
+            
+            print(f"📝 {col} array type: {y_array.dtype}")
+            
+            ax.bar(x, y_array, bottom=bottom, label=col)
+            
+            print(f"   bottom type 업데이트 전: {bottom.dtype}, y_array type: {y_array.dtype}")
+            bottom = bottom + y_array
+            print(f"   bottom type 업데이트 후: {bottom.dtype}")
+        
+        print(f"✅ 그래프 생성 완료")
+        
+        # ✅ 그래프 설정
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{int(v):,}"))
+        ax.margins(x=0)
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+        
+        # ✅ 제목 수정
+        ax.set_title("R그룹별 PU", fontsize=14, fontweight='bold')  # ✅ "매출" → "PU"
+        ax.tick_params(axis='x', labelsize=9, pad=2)
+        plt.xticks(rotation=45, ha='right')
+        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+        ax.grid(axis="y", linestyle="--", alpha=0.7)
+        
+        fig.tight_layout()
+        
+        # ✅ 파일 저장
+        file_path = "graph4_RgroupSales_puGraph.png"
+        plt.savefig(file_path, dpi=160, bbox_inches='tight')
+        plt.close()
+        
+        print(f"✅ 파일 저장: {file_path}")
+        
+        # ✅ GCS 업로드
+        gcs_path_output = f'{gameidx}/{file_path}'
+        blob = bucket.blob(gcs_path_output)
+        blob.upload_from_filename(file_path)
+        
+        print(f"✅ GCS 업로드: {gcs_path_output}")
+        
+        # ✅ 파일 삭제
+        os.remove(file_path)
+        
+        print(f"✅ rgroup_pu_draw 완료")
+        return gcs_path_output
+        
+    except Exception as e:
+        print(f"❌ rgroup_pu_draw 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 
 def merge_rgroup_graph(gameidx: str, path_group_rev_pu:str, bucket, **context):
