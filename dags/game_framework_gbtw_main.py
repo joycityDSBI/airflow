@@ -579,7 +579,7 @@ with DAG(
 
         try:
             print(f"🔍 {gameidx}: {service_sub} longterm_rev_upload_notion 시작 ")
-            longterm_rev_upload_notion(
+            monthly_rgroup_upload_notion(
                 gameidx=gameidx,
                 service_sub=service_sub,
                 path_rgroup_rev_total=path_rgroup_rev_total,
@@ -602,8 +602,7 @@ with DAG(
             longterm_rev_upload_notion(
                 gameidx=gameidx,
                 service_sub=service_sub,
-                path_rgroup_rev_total=path_rgroup_rev_total,
-                path_rgroup_rev_DOD=path_rgroup_rev_DOD,
+                path_monthly_day_average_rev=path_monthly_day_average_rev,
                 NOTION_TOKEN=NOTION_TOKEN,
                 NOTION_VERSION=NOTION_VERSION,
                 MODEL_NAME=MODEL_NAME,
