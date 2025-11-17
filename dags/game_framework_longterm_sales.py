@@ -751,8 +751,17 @@ def monthly_day_average_merge_graph(gameidx:str, path_monthly_day_average_rev:st
     save_to = 'graph5_dailyAvgRevenue.png'  # 저장 경로
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
-    im1 = Image.open(p1).convert("RGBA")
-    im2 = Image.open(p2).convert("RGBA")
+    print(f"📥 GCS에서 이미지 다운로드 중...")
+    blob1 = bucket.blob(p1)
+    blob2 = bucket.blob(p2)
+
+    print(f"📥 blob1 다운로드 중 ...")
+    im1 = blob1.download_as_bytes()
+    im2 = blob2.download_as_bytes()
+
+    print(f"🖼️ Image 객체 생성 중...")
+    im1 = Image.open(BytesIO(im1))
+    im2 = Image.open(BytesIO(im2))
 
     # ---- [옵션 A] 원본 크기 유지 + 세로 패딩으로 높이 맞추기 (권장: 왜곡 없음) ----
     target_h = max(im1.height, im2.height)
@@ -1177,14 +1186,17 @@ def merge_rgroup_rev_pu_ALL_table(gameidx: str, path_rgroup_rev_DOD:str, bucket,
     p2 = rgroup_pu_DOD_table_draw(gameidx, path_rgroup_rev_DOD, bucket, **context)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
+    print(f"📥 GCS에서 이미지 다운로드 중...")
     blob1 = bucket.blob(p1)
     blob2 = bucket.blob(p2)
 
+    print(f"📥 blob1 다운로드 중 ...")
     im1 = blob1.download_as_bytes()
     im2 = blob2.download_as_bytes()
 
-    im1 = Image.open(BytesIO(im1)).convert("RGBA")
-    im2 = Image.open(BytesIO(im2)).convert("RGBA")
+    print(f"🖼️ Image 객체 생성 중...")
+    im1 = Image.open(BytesIO(im1))
+    im2 = Image.open(BytesIO(im2))
 
     target_h = max(im1.height, im2.height)
 
@@ -1225,14 +1237,17 @@ def merge_rgroup_rev_pu_table(gameidx:str, path_rgroup_rev_DOD:str, bucket, **co
     p2 = rgroup_pu_DOD_table_draw(gameidx, path_rgroup_rev_DOD, **context)   # 두 번째 이미지
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
+    print(f"📥 GCS에서 이미지 다운로드 중...")
     blob1 = bucket.blob(p1)
     blob2 = bucket.blob(p2)
 
+    print(f"📥 blob1 다운로드 중 ...")
     im1 = blob1.download_as_bytes()
     im2 = blob2.download_as_bytes()
 
-    im1 = Image.open(BytesIO(im1)).convert("RGBA")
-    im2 = Image.open(BytesIO(im2)).convert("RGBA") 
+    print(f"🖼️ Image 객체 생성 중...")
+    im1 = Image.open(BytesIO(im1))
+    im2 = Image.open(BytesIO(im2))
 
     # ---- [옵션 A] 원본 크기 유지 + 세로 패딩으로 높이 맞추기 (권장: 왜곡 없음) ----
     target_h = max(im1.height, im2.height)
@@ -1664,14 +1679,17 @@ def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, path_rgroup_rev_total:
     p2 = rgroup_pu_total_table_draw(gameidx, path_rgroup_rev_total, bucket, **context)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
+    print(f"📥 GCS에서 이미지 다운로드 중...")
     blob1 = bucket.blob(p1)
     blob2 = bucket.blob(p2)
 
+    print(f"📥 blob1 다운로드 중 ...")
     im1 = blob1.download_as_bytes()
     im2 = blob2.download_as_bytes()
 
-    im1 = Image.open(BytesIO(im1)).convert("RGBA")
-    im2 = Image.open(BytesIO(im2)).convert("RGBA")
+    print(f"🖼️ Image 객체 생성 중...")
+    im1 = Image.open(BytesIO(im1))
+    im2 = Image.open(BytesIO(im2))
 
     # ---- [옵션 A] 원본 크기 유지 + 세로 패딩으로 높이 맞추기 (권장: 왜곡 없음) ----
     target_h = max(im1.height, im2.height)
