@@ -391,6 +391,8 @@ with DAG(
         path_weekly_iapcategory_rev, path_weekly_iapcategory_rev_cols = weekly_iapcategory_rev(joyplegameid=joyplegameid, gameidx=gameidx, databaseschema=databaseschema, bigquery_client=bigquery_client, bucket=bucket)
         if_else_length(path=path_weekly_iapcategory_rev, gameidx=gameidx, service_sub=service_sub, func_name="weekly_iapcategory_rev")
 
+        print(f"📝 service_sub type: {type(service_sub)}")
+        print(f"📝 service_sub value: {service_sub}")
         path_top3_items_by_category = top3_items_by_category(joyplegameid=joyplegameid, 
                                                              gameidx=gameidx,
                                                              service_sub=service_sub,
@@ -611,7 +613,7 @@ with DAG(
         op_kwargs={
             'joyplegameid':joyplegameid,
             'gameidx':gameidx,
-            'service_sub':service_sub[3],
+            'service_sub':str(service_sub[3]),
             'databaseschema':databaseschema,
             'bigquery_client':bigquery_client,
             'MODEL_NAME': MODEL_NAME,
