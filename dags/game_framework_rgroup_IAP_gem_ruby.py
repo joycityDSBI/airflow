@@ -950,7 +950,8 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
             f"datascience_division_service_sub" : {service_sub}}
     
 
-    CategoryListUp_SQL, case_when_str, _, _ = iapcategory_rev_df_gemini(service_sub=service_sub, 
+    print(f"top3 items by category 에서 타입 : ", type(service_sub))
+    CategoryListUp_SQL, case_when_str, _, _ = iapcategory_rev_df_gemini(service_sub=str(service_sub), 
                                                                         genai_client=genai_client, 
                                                                         MODEL_NAME=MODEL_NAME, 
                                                                         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
