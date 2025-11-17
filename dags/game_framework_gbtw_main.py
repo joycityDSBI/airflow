@@ -433,7 +433,7 @@ with DAG(
             rgroup_rev_upload_notion(
                 gameidx=gameidx,
                 path_rev_group_rev_pu=path_rev_group_rev_pu,
-                rev_group_top3_pu=path_rgroup_top3_pu,
+                rev_group_rev_pu_path=path_rev_group_rev_pu,
                 service_sub=service_sub,
                 genai_client=genai_client,
                 MODEL_NAME = MODEL_NAME,
