@@ -3119,6 +3119,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
         path_top3_items_by_category=path_top3_items_by_category,
         path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+        path_iapgemruby_history=path_iapgemruby_history,
         bucket=bucket,
         PROJECT_ID=PROJECT_ID,
         LOCATION=LOCATION,
