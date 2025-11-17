@@ -1063,7 +1063,8 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
 
     """
 
-    query_result=query_run_method('4_detail_sales', bigquery_client, query)
+    print("top3 items by category 쿼리문 : ", query)
+    query_result=query_run_method(service_sub, bigquery_client, query)
     query_result['매출'] = query_result['매출'].map(lambda x: f"{int(x)}")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
