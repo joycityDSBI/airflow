@@ -587,13 +587,32 @@ with DAG(
     #     dag=dag,
     # )
 
-    global_ua_gameframework_run = PythonOperator(
-        task_id='global_ua_data_game_framework',
-        python_callable=global_ua_data_game_framework,
+    # global_ua_gameframework_run = PythonOperator(
+    #     task_id='global_ua_data_game_framework',
+    #     python_callable=global_ua_data_game_framework,
+    #     op_kwargs={
+    #         'joyplegameid':joyplegameid,
+    #         'gameidx':gameidx,
+    #         'service_sub':service_sub[2],
+    #         'bigquery_client':bigquery_client,
+    #         'MODEL_NAME': MODEL_NAME,
+    #         'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+    #         'bucket': bucket,
+    #         'headers_json': headers_json,
+    #         'genai_client': genai_client,
+    #         'notion':notion
+    #     },
+    #     dag=dag,
+    # )
+
+    rgroup_iapgemruby_gameframework_run = PythonOperator(
+        task_id='rgroup_iapgemruby_data_game_framework',
+        python_callable=rgroup_iapgemruby_data_game_framework,
         op_kwargs={
             'joyplegameid':joyplegameid,
             'gameidx':gameidx,
-            'service_sub':service_sub[2],
+            'service_sub':service_sub[3],
+            'databaseschema':databaseschema,
             'bigquery_client':bigquery_client,
             'MODEL_NAME': MODEL_NAME,
             'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
@@ -606,5 +625,5 @@ with DAG(
     )
 
 
-create_gameframework_notion_page >> global_ua_gameframework_run
+create_gameframework_notion_page >> rgroup_iapgemruby_gameframework_run
 
