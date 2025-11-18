@@ -496,9 +496,41 @@ def load_df_from_gcs(bucket, path: str) -> pd.DataFrame:
         raise
 
 
+
+def save_text_to_gcs(text: str, bucket, path: str) -> str:
+    """
+    텍스트를 GCS에 저장
+    
+    Args:
+        text: 저장할 텍스트 문자열
+        bucket: GCS bucket 객체
+        path: GCS 경로 (e.g., 'data/gemini_response_20251118.md')
+    
+    Returns:
+        GCS 파일 경로
+    """
+    try:
+        # GCS에 텍스트 업로드
+        blob = bucket.blob(path)
+        blob.upload_from_string(
+            text,
+            content_type='text/plain; charset=utf-8'
+        )
+        
+        gcs_path = f"gs://{bucket.name}/{path}"
+        print(f"✅ GCS 저장 완료: {gcs_path}")
+        print(f"   파일 크기: {len(text)} characters")
+        return path
+        
+    except Exception as e:
+        print(f"❌ GCS 저장 실패: {e}")
+        raise
+
+
+
 def load_text_from_gcs(bucket, path: str) -> str:
     """
-    GCS에서 텍스트 파일 로드
+    GCS에서 텍스트 파일 로드 (Parquet이 아님!)
     
     Args:
         bucket: GCS bucket 객체
@@ -509,14 +541,16 @@ def load_text_from_gcs(bucket, path: str) -> str:
     """
     try:
         blob = bucket.blob(path)
-         # 파일 존재 여부 확인
+        
+        # 파일 존재 여부 확인
         if not blob.exists():
             raise FileNotFoundError(f"파일을 찾을 수 없습니다: gs://{bucket.name}/{path}")
         
-        # 텍스트 파일 다운로드
+        # ✅ 텍스트로 다운로드 (Parquet이 아님!)
         text_content = blob.download_as_text(encoding='utf-8')
         
-        print(f"✅ GCS 텍스트 로드 완료: gs://{bucket.name}/{path}, size: {len(text_content)} characters")
+        print(f"✅ GCS 텍스트 로드 완료: gs://{bucket.name}/{path}")
+        print(f"   파일 크기: {len(text_content)} characters")
         return text_content
         
     except Exception as e:
