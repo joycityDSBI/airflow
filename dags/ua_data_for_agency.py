@@ -158,7 +158,7 @@ def generate_all_projects_reports(**context):
             df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
             blob_name = f"all_reports/{project_name}_{today}.csv"
             blob = bucket.blob(blob_name)
-            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8")
+            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8-sig")
             print(f"✓ GCS 업로드 완료: {blob.name}")
             
             expiration = timedelta(hours=24)
@@ -297,7 +297,7 @@ def generate_agency_reports(**context):
             # GCS에 업로드
             blob_name = f"agency_reports/{pr_name}_{agency_name}_{today}.csv"
             blob = bucket.blob(blob_name)
-            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8")
+            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8-sig")
 
             print(f"✓ GCS 업로드 완료: {blob.name}")
             
@@ -487,11 +487,11 @@ def send_status_email(**context):
     # 이메일 제목 및 본문 작성
     subject = "✅ UA 데이터 배치 작업 완료"
     body = f"""
-UA 데이터 배치 작업이 완료되었습니다.
+    UA 데이터 배치 작업이 완료되었습니다.
 
-실행 시간: {execution_date}
+    실행 시간: {execution_date}
 
-이 이메일은 Airflow 자동 배치 작업에서 발송되었습니다.
+    이 이메일은 Airflow 자동 배치 작업에서 발송되었습니다.
     """
     
     # 이메일 발송
