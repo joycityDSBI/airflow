@@ -85,7 +85,7 @@ with DAG(
     dag_id='game_framework_gbtw_main',
     default_args=default_args,
     description='Databricks 데이터를 Notion DB에 동기화하는 DAG',
-    schedule= '0 23 * * *',
+    schedule= '30 20 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['notion', 'sync', 'databricks'],
