@@ -319,6 +319,7 @@ def get_message_details(**context):
     auth_regenerate_counts = []
     errors = []
     error_types = []
+    feedback_ratings = []
     
     total_rows = len(df_target)
     print(f"🔄 메시지 상세 정보 수집 시작: {total_rows} rows")
@@ -342,6 +343,7 @@ def get_message_details(**context):
             auth_regenerate_counts.append(None)
             errors.append(None)
             error_types.append(None)
+            feedback_ratings.append(None)
             continue
         
         url = f"https://{config['instance']}/api/2.0/genie/spaces/{space_id}/conversations/{conversation_id}/messages/{message_id}"
@@ -381,14 +383,15 @@ def get_message_details(**context):
                 # error 처리
                 error = data.get("error", {}).get("error")
                 error_type = data.get("error", {}).get("error_type")
+                feedback_rating = row.get("feedback_rating", {}).get("rating")
 
                 
             else:
-                content, query, description, statement_id, row_count, status, question, auth_regenerate_count, error, error_type = None, None, None, None, None, None, None, None, None, None
+                content, query, description, statement_id, row_count, status, question, auth_regenerate_count, error, error_type, feedback_rating = None, None, None, None, None, None, None, None, None, None, None
                 
         except Exception as e:
             print(f"❌ 예외 발생 ({idx}행): {e}")
-            content, query, description, statement_id, row_count, status, question, auth_regenerate_count, error, error_type = None, None, None, None, None, None, None, None, None, None
+            content, query, description, statement_id, row_count, status, question, auth_regenerate_count, error, error_type, feedback_rating = None, None, None, None, None, None, None, None, None, None, None
         
         contents.append(content)
         queries.append(query)
@@ -400,6 +403,7 @@ def get_message_details(**context):
         auth_regenerate_counts.append(auth_regenerate_count)
         errors.append(error)
         error_types.append(error_type)
+        feedback_ratings.append(feedback_rating)
     
     # 데이터 추가
     df_target['content'] = contents
@@ -412,8 +416,10 @@ def get_message_details(**context):
     df_target['auth_regenerate_count'] = auth_regenerate_counts
     df_target['error'] = errors
     df_target['error_type'] = error_types
+    df_target['feedback_rating'] = feedback_ratings
     
     print(f"✅ 메시지 상세 정보 수집 완료: {len(df_target)} rows")
+    print("✅ df_target 데이터 head 3 : ", df_target.head(3))
     
     context['ti'].xcom_push(key='df_target', value=df_target.to_json(orient='split', date_format='iso'))
     
@@ -437,7 +443,7 @@ def merge_query_history(**context):
     df_target = pd.read_json(StringIO(json_data), orient='split')
         
     print(f"📊 df_target 컬럼: {df_target.columns.tolist()}")
-    print(f"📊 df_target head:\n{df_target.head()}")
+    print(f"📊 df_target head:\n{df_target.head(3)}")
 
     if df_target.empty:
         print("⚠️ df_target이 비어있습니다. 작업을 중단합니다.")
@@ -487,6 +493,7 @@ def merge_query_history(**context):
         df_audit_enriched['message_response_duration_seconds'] = None
         
         print(f"✅ Query history 없이 진행: {len(df_audit_enriched)} rows")
+        print(f"📊 df_audit_enriched 컬럼: {df_audit_enriched.columns.tolist()}")
     else:
         # 컬럼 rename
         query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
