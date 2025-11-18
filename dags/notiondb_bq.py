@@ -32,7 +32,7 @@ SMTP_USER = get_var("SMTP_USER")
 SMTP_PASSWORD = get_var("SMTP_PASSWORD")
 EMAIL_FROM = get_var("EMAIL_FROM", SMTP_USER)
 
-
+print(f"📧 이메일 발송 설정: HOST={SMTP_HOST}, PORT={SMTP_PORT}, USER={SMTP_USER}, FROM={EMAIL_FROM}, TO={EMAIL_TO}, PW={SMTP_PASSWORD}")
 # ===== 유틸 함수 =====
 def extract_property(value):
     """Notion 속성값 추출"""
