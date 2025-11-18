@@ -59,6 +59,7 @@ from game_framework_inhouse import *
 from game_framework_global_ua import *
 from game_framework_rgroup_IAP_gem_ruby import *
 from game_framework_longterm_sales import *
+from game_framework_newuser_roas import *
 
 # Airflow function
 from airflow import DAG, Dataset
@@ -638,8 +639,65 @@ with DAG(
             print(f"🔴 {e}")
 
 
+    def newuser_roas_data_game_framework(joyplegameid:int, gameidx:str, service_sub:str, databaseschema: str, 
+                                                    bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
+        print(f"📧 RUN 장기간 매출 데이터 게임 프레임워크 시작: {gameidx}")
 
+        path_result6_monthlyROAS = result6_monthlyROAS(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_result6_monthlyROAS, gameidx=gameidx, service_sub=service_sub, func_name="result6_monthlyROAS")
 
+        path_result6_pLTV = result6_pLTV(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_result6_pLTV, gameidx=gameidx, service_sub=service_sub, func_name="result6_pLTV")
+
+        path_result6_return = result6_return(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_result6_return, gameidx=gameidx, service_sub=service_sub, func_name="result6_return")      
+
+        path_result6_BEP = result6_BEP(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_result6_BEP, gameidx=gameidx, service_sub=service_sub, func_name="result6_BEP")      
+
+        path_result6_roaskpi = result6_roaskpi(gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_result6_roaskpi, gameidx=gameidx, service_sub=service_sub, func_name="result6_roaskpi")
+
+        path_roas_kpi = roas_kpi(joyplegameid=joyplegameid, gameidx=gameidx, path_result6_roaskpi=path_result6_roaskpi, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=path_roas_kpi, gameidx=gameidx, service_sub=service_sub, func_name="roas_kpi")
+
+        path_roas_dataframe_preprocessing = roas_dataframe_preprocessing(gameidx=gameidx,
+                                                                         path_result6_monthlyROAS=path_result6_monthlyROAS,
+                                                                         path_result6_pLTV=path_result6_pLTV,
+                                                                         path_result6_return=path_result6_return,
+                                                                         path_result6_BEP=path_result6_BEP,
+                                                                         path_roas_kpi=path_roas_kpi,
+                                                                         bucket=bucket)
+        if_else_length(path=path_roas_dataframe_preprocessing, gameidx=gameidx, service_sub=service_sub, func_name="roas_dataframe_preprocessing")
+
+        path_roas_kpi_table_merge = roas_kpi_table_merge(gameidx=gameidx,
+                                                        path_roas_dataframe_preprocessing=path_roas_dataframe_preprocessing,
+                                                        path_result6_monthlyROAS=path_result6_monthlyROAS,
+                                                        path_roas_kpi=path_roas_kpi,
+                                                        bucket=bucket)
+        if_else_length(path=path_roas_kpi_table_merge, gameidx=gameidx, service_sub=service_sub, func_name="roas_kpi_table_merge")
+
+        try:
+            print(f"🔍 {gameidx}: {service_sub} retrieve_new_user_upload_notion 시작 ")
+            retrieve_new_user_upload_notion(
+                gameidx=gameidx,
+                service_sub=service_sub,
+                path_monthlyBEP_ROAS=path_result6_monthlyROAS,
+                path_roas_kpi=path_roas_kpi,
+                MODEL_NAME=MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                NOTION_TOKEN=NOTION_TOKEN,
+                NOTION_VERSION=NOTION_VERSION,
+                notion=notion,
+                bucket=bucket,
+                headers_json=headers_json
+                )
+            print(f"✅ {gameidx}: {service_sub} retrieve_new_user_upload_notion 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} retrieve_new_user_upload_notion 실패 ")
+            print(f"🔴 {e}")
+
+        
 
 
 
@@ -728,13 +786,32 @@ with DAG(
     #     dag=dag,
     # )
 
-    longterm_sales_data_game_framework_run = PythonOperator(
-        task_id='longterm_sales_data_game_framework',
-        python_callable=longterm_sales_data_game_framework,
+    # longterm_sales_data_game_framework_run = PythonOperator(
+    #     task_id='longterm_sales_data_game_framework',
+    #     python_callable=longterm_sales_data_game_framework,
+    #     op_kwargs={
+    #         'joyplegameid':joyplegameid,
+    #         'gameidx':gameidx,
+    #         'service_sub':str(service_sub[4]),
+    #         'databaseschema':databaseschema,
+    #         'bigquery_client':bigquery_client,
+    #         'MODEL_NAME': MODEL_NAME,
+    #         'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+    #         'bucket': bucket,
+    #         'headers_json': headers_json,
+    #         'genai_client': genai_client,
+    #         'notion':notion
+    #     },
+    #     dag=dag,
+    # )
+
+    newuser_roas_data_game_framework_run = PythonOperator(
+        task_id='newuser_roas_data_game_framework',
+        python_callable=newuser_roas_data_game_framework,
         op_kwargs={
             'joyplegameid':joyplegameid,
             'gameidx':gameidx,
-            'service_sub':str(service_sub[4]),
+            'service_sub':str(service_sub[5]),
             'databaseschema':databaseschema,
             'bigquery_client':bigquery_client,
             'MODEL_NAME': MODEL_NAME,
@@ -746,8 +823,9 @@ with DAG(
         },
         dag=dag,
     )
+
         
 
 
-create_gameframework_notion_page >> longterm_sales_data_game_framework_run
+create_gameframework_notion_page >> newuser_roas_data_game_framework_run
 

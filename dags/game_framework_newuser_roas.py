@@ -59,7 +59,7 @@ LOCATION = "us-central1"
 ## 신규 유저 회수 현황
 ## 6_newuser_roas
 
-def result6_monthlyROAS(joyplegameid:int, gameidx:str, bucket, **context):
+def result6_monthlyROAS(joyplegameid:int, gameidx:str, bigquery_client, bucket, **context):
     
     query= f"""
     WITH revraw AS(
@@ -344,7 +344,7 @@ def result6_monthlyROAS(joyplegameid:int, gameidx:str, bucket, **context):
     order by `가입월`
     """
 
-    query_result6_monthlyROAS =query_run_method('6_newuser_roas', query)
+    query_result6_monthlyROAS = query_run_method('6_newuser_roas', bigquery_client, query)
     query_result6_monthlyROAS['지표확정 최대기간'] = (
     query_result6_monthlyROAS['지표확정 최대기간'].astype(str).str.replace('_', '', regex=False)
     )
@@ -358,7 +358,7 @@ def result6_monthlyROAS(joyplegameid:int, gameidx:str, bucket, **context):
 
 
 
-def result6_pLTV(joyplegameid:int, gameidx:str, bucket, **context):
+def result6_pLTV(joyplegameid:int, gameidx:str, bigquery_client, bucket, **context):
 
     ## pLTV D360
     query = f"""
@@ -392,7 +392,7 @@ def result6_pLTV(joyplegameid:int, gameidx:str, bucket, **context):
     group by joyplegameid, format_date('%Y-%m',AuthAccountRegDateKST)
 
     """
-    query_result6_pLTV =query_run_method('6_newuser_roas', query)
+    query_result6_pLTV = query_run_method('6_newuser_roas', bigquery_client, query)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
@@ -404,7 +404,7 @@ def result6_pLTV(joyplegameid:int, gameidx:str, bucket, **context):
 
 
 ##### 복귀 유저 데이터
-def result6_return(joyplegameid:int, gameidx:str, bucket, **context):
+def result6_return(joyplegameid:int, gameidx:str, bigquery_client, bucket, **context):
 
     query = f"""
     with raw AS(
@@ -520,7 +520,7 @@ def result6_return(joyplegameid:int, gameidx:str, bucket, **context):
     on a.joyplegameid = b.joyplegameid
     """
 
-    query_result6_return =query_run_method('6_newuser_roas', query)
+    query_result6_return =query_run_method('6_newuser_roas', bigquery_client, query)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
@@ -532,7 +532,7 @@ def result6_return(joyplegameid:int, gameidx:str, bucket, **context):
 
 
 ### 수수료 적용 BEP 계산
-def result6_BEP(joyplegameid:int, gameidx:str, bucket, **context):
+def result6_BEP(joyplegameid:int, gameidx:str, bigquery_client, bucket, **context):
 
     query = f"""
     with raw AS(
@@ -598,7 +598,7 @@ def result6_BEP(joyplegameid:int, gameidx:str, bucket, **context):
     order by `가입월`
     """
 
-    query_result6_BEP =query_run_method('6_newuser_roas', query)
+    query_result6_BEP =query_run_method('6_newuser_roas', bigquery_client, query)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
@@ -609,7 +609,7 @@ def result6_BEP(joyplegameid:int, gameidx:str, bucket, **context):
 
 
 ### ROAS KPI
-def result6_roaskpi(gameidx:str, bucket, **context):
+def result6_roaskpi(gameidx:str, bigquery_client, bucket, **context):
 
     query = f"""
     select kpi_d1, kpi_d3, kpi_d7, kpi_d14, kpi_d30, kpi_d60, kpi_d90, kpi_d120, kpi_d150, kpi_d180, kpi_d210, kpi_d240, kpi_d270, kpi_d300, kpi_d330, kpi_d360
@@ -622,7 +622,7 @@ def result6_roaskpi(gameidx:str, bucket, **context):
 
     """
 
-    query_result6_roaskpi = query_run_method('6_newuser_roas', query)
+    query_result6_roaskpi = query_run_method('6_newuser_roas', bigquery_client, query)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
@@ -668,7 +668,6 @@ def roas_kpi(gameidx:str, path_result6_roaskpi:str, bucket, **context):
 
 ###
 def roas_dataframe_preprocessing(gameidx:str, path_result6_monthlyROAS:str, path_result6_pLTV:str, path_result6_return:str, path_result6_BEP:str, bucket, **context):
-
 
     query_result6_monthlyROAS = load_df_from_gcs(bucket, path_result6_monthlyROAS)
     query_result6_pLTV = load_df_from_gcs(bucket, path_result6_pLTV)
@@ -1110,20 +1109,144 @@ def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_res
     return gcs_path
 
 
+############# KPI 테이블 이미지 생성
+def kpi_table_draw(gameidx:str, path_roas_kpi:str, bucket, **context):
+
+    roas_kpi = load_df_from_gcs(bucket=bucket, path=path_roas_kpi)
+
+    nest_asyncio.apply()
+
+    df_numeric = roas_kpi.copy()
+    df_numeric = df_numeric.reset_index(drop=True)
+
+    # 1) ROAS % → 비율 변환
+    def to_ratio_series(s: pd.Series) -> pd.Series:
+        s_str = s.astype(str)
+        s_num = pd.to_numeric(s_str.str.replace('%', '', regex=False), errors='coerce')
+        return s_num / 100.0
+
+    for c in df_numeric.columns:
+        if c.startswith("ROAS "):
+            df_numeric[c] = to_ratio_series(df_numeric[c])
+
+    # 2) suffixes 추출
+    suffixes = []
+    for c in df_numeric.columns:
+        m = re.search(r'\b(D\d+)\b$', str(c))
+        if m and m.group(1) not in suffixes:
+            suffixes.append(m.group(1))
+    suffixes_tuple = tuple(suffixes)
+
+    # 3) Styler 기본 포맷
+    styled = (
+        df_numeric.style
+        .hide(axis="index")
+        .format({col: "{:.1%}" for col in df_numeric.columns if col.startswith("ROAS ")})
+        .set_table_attributes('style="table-layout:fixed; width:600px;"')
+    )
+
+    # 4) HTML 템플릿
+    html_template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h2 { margin: 0 0 10px 0; font-size: 18px; }
+            table { border-collapse: collapse; font-size: 12px; border: 1px solid black; }
+            th, td {
+                border: 1px solid black;
+                padding: 6px 8px;
+                text-align: center;
+                white-space: nowrap;
+            }
+            th { background-color: #f0f0f0; font-weight: bold; }
+        </style>
+    </head>
+    <body>
+        <h2>GBTW ROAS KPI (신규유저 기준)</h2>
+        {{ table | safe }}
+    </body>
+    </html>
+    """
+
+    # 5) Styler → HTML
+    soup = BeautifulSoup(styled.to_html(), "html.parser")
+    table = soup.find("table")
+
+    # 6) colgroup & width 적용
+    ncols = len(df_numeric.columns)
+    for cg in table.find_all("colgroup"):
+        cg.decompose()
+
+    colgroup = soup.new_tag("colgroup")
+    width_map = {col: (80 if col.startswith("ROAS ") else 110) for col in df_numeric.columns}
+    for col_name in df_numeric.columns:
+        col = soup.new_tag("col", style=f"width: {width_map[col_name]}px !important;")
+        colgroup.append(col)
+    table.insert(0, colgroup)
+
+    # 7) 헤더 줄바꿈 (ROAS → ROAS<br>…)
+    for th in table.find_all("th"):
+        text = th.get_text(strip=True)
+        if text.startswith("ROAS "):
+            th.string = ""
+            th.append(BeautifulSoup(text.replace("ROAS ", "ROAS<br>"), "html.parser"))
+
+    # 8) 최종 HTML 저장
+    rendered_html = Template(html_template).render(table=str(table))
+    html_path = "table6_ROAS_KPI.html"
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(rendered_html)
+
+    import tempfile
+    async def capture_html_to_image_async(html_path, gcs_bucket, gcs_path):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_image_path = os.path.join(temp_dir, "graph6_ROAS_KPI.png")
+            
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                page = await browser.new_page(viewport={"width": 600, "height": 160})
+                await page.goto("file://" + os.path.abspath(html_path))
+                await page.screenshot(path=temp_image_path, full_page=True)
+                await browser.close()
+            
+            print(f"✓ Screenshot captured")
+            
+            # GCS 업로드
+            client = storage.Client()
+            bucket = client.bucket(gcs_bucket)
+            blob = bucket.blob(gcs_path)
+            blob.upload_from_filename(temp_image_path, content_type='image/png')
+            
+            gcs_uri = f"gs://{gcs_bucket}/{gcs_path}"
+            print(f"✓ Uploaded to: {gcs_uri}")
+            
+            return gcs_uri
+
+    def capture_and_upload_task(html_path, gcs_bucket, gcs_path, **context):
+        """Airflow용 동기 래퍼 함수"""
+        result = asyncio.run(
+            capture_html_to_image_async(html_path, gcs_bucket, gcs_path)
+        )
+        
+        # XCom에 GCS 경로 저장
+        return result
+    
+    html_path = "table6_ROAS_KPI.html"
+    gcs_path = f'{gameidx}/graph6_ROAS_KPI.png' 
+
+    result = capture_and_upload_task(html_path, bucket, gcs_path, **context)
+
+    return gcs_path
 
 
 
+def roas_kpi_table_merge(gameidx:str, path_roas_dataframe_preprocessing:str, path_result6_monthlyROAS:str, path_roas_kpi:str, bucket, **context):
 
-
-
-
-
-
-
-def roas_kpi_table_merge(gameidx:str):
-
-    p1 = f'{gameidx}/graph6_monthlyROAS.png'
-    p2 = f'{gameidx}/graph6_ROAS_KPI.png'
+    p1 = roas_table_draw(gameidx, path_roas_dataframe_preprocessing, path_result6_monthlyROAS, bucket, **context)
+    p2 = kpi_table_draw(gameidx, path_roas_kpi, bucket, **context)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     blob1 = bucket.blob(p1)
@@ -1166,10 +1289,13 @@ def roas_kpi_table_merge(gameidx:str):
     return gcs_path
 
 
-def retrieve_new_user_upload_notion(gameidx:str, **context):
+def retrieve_new_user_upload_notion(gameidx:str, service_sub:str, path_monthlyBEP_ROAS:str, path_roas_kpi:str, 
+                                    MODEL_NAME:str, SYSTEM_INSTRUCTION:list, NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json, **context):
 
-    PAGE_INFO=context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page',
+    current_context = get_current_context()
+    
+    PAGE_INFO=current_context['task_instance'].xcom_pull(
+        task_ids = 'make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -1187,11 +1313,7 @@ def retrieve_new_user_upload_notion(gameidx:str, **context):
     )
 
     # 공통 헤더
-    headers_json = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
-    }
+    headers_json = headers_json
 
     try:
         gcs_path = f'{gameidx}/filePath6_monthlyROAS_KPI.png'
@@ -1259,11 +1381,8 @@ def retrieve_new_user_upload_notion(gameidx:str, **context):
         print(f"❌ 예기치 않은 에러: {str(e)}")
         raise
 
-
-    query6_monthlyROAS =context['task_instance'].xcom_pull(
-        task_ids='roas_dataframe_preprocessing',
-        key='monthlyBEP_ROAS'
-    )
+    print("■■■■■■■■■■■ monthlyBEP_ROAS 데이터프레임 가져오기 시작 ■■■■■■■■■■■")
+    query6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_monthlyBEP_ROAS)
 
     resp = df_to_notion_table_under_toggle(
         notion=notion,
@@ -1274,14 +1393,34 @@ def retrieve_new_user_upload_notion(gameidx:str, **context):
         batch_size=100,
     )
 
-    blocks = md_to_notion_blocks(result6_ROAS_gemini(**context), 1)
+    print("■■■■■■■■■■■ monthlyBEP_ROAS 데이터프레임 가져오기 완료 ■■■■■■■■■■■")
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+    text = result6_ROAS_gemini(service_sub=service_sub, 
+                               path_monthlyBEP_ROAS=path_monthlyBEP_ROAS,
+                               path_roas_kpi=path_roas_kpi,
+                               bucket=bucket,
+                               genai_client=genai_client,
+                               MODEL_NAME=MODEL_NAME,
+                               SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                               **context)
+    
+    blocks = md_to_notion_blocks(text, 1)
 
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
         children=blocks
     )
 
-    blocks = md_to_notion_blocks(monthlyLTVgrowth_gemini(**context))
+    text = monthlyLTVgrowth_gemini(service_sub=service_sub, 
+                               path_monthlyBEP_ROAS=path_monthlyBEP_ROAS,
+                               bucket=bucket,
+                               genai_client=genai_client,
+                               MODEL_NAME=MODEL_NAME,
+                               SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                               **context)
+    blocks = md_to_notion_blocks(text, 1)
 
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
