@@ -56,7 +56,7 @@ from game_framework_util import *
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
 
-def game_framework_summary_gemini(gameidx:str, service_sub:str, genai_client, bucket, text_path_list:list, **context):
+def game_framework_summary_gemini(gameidx:str, genai_client, bucket, text_path_list:list, **context):
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": "gameinsight_framework",
             "run_id": RUN_ID,
