@@ -59,7 +59,7 @@ LOCATION = "us-central1"
 ## 신규 유저 회수 현황
 ## 6_newuser_roas
 
-def result6_monthlyROAS(joyplegameid:int, gameidx:str, databaseschema:str, **context):
+def result6_monthlyROAS(joyplegameid:int, gameidx:str, bucket, **context):
     
     query= f"""
     WITH revraw AS(
@@ -349,11 +349,16 @@ def result6_monthlyROAS(joyplegameid:int, gameidx:str, databaseschema:str, **con
     query_result6_monthlyROAS['지표확정 최대기간'].astype(str).str.replace('_', '', regex=False)
     )
 
-    context['task_instance'].xcom_push(key='result6_monthlyROAS', value=query_result6_monthlyROAS)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result6_monthlyROAS, bucket, gcs_path)
 
-    return True
+    return saved_path
 
-def result6_pLTV(joyplegameid:int, gameidx:str, databaseschema:str, **context):
+
+
+def result6_pLTV(joyplegameid:int, gameidx:str, bucket, **context):
 
     ## pLTV D360
     query = f"""
@@ -389,12 +394,17 @@ def result6_pLTV(joyplegameid:int, gameidx:str, databaseschema:str, **context):
     """
     query_result6_pLTV =query_run_method('6_newuser_roas', query)
 
-    context['task_instance'].xcom_push(key='result6_pLTV', value=query_result6_pLTV)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result6_pLTV, bucket, gcs_path)
 
-    return True
+    return saved_path
+
+
 
 ##### 복귀 유저 데이터
-def result6_return(joyplegameid:int, gameidx:str, databaseschema:str, **context):
+def result6_return(joyplegameid:int, gameidx:str, bucket, **context):
 
     query = f"""
     with raw AS(
@@ -405,7 +415,7 @@ def result6_return(joyplegameid:int, gameidx:str, databaseschema:str, **context)
     , date_diff(logdatekst,AuthAccountLastAccessBeforeDateKST, day ) as daydiff_beforeaccess   -- authaccountlastaccessbeforedatekst : Access 기준으로 로깅
     , case when  date_diff(logdatekst,AuthAccountLastAccessBeforeDateKST, day )  >= 90 then 1 else 0  end as d90diff
     FROM `dataplatform-reporting.DataService.T_0317_0000_AuthAccountPerformance_V`
-    WHERE joyplegameid = 133
+    WHERE joyplegameid = {joyplegameid}
     and logdatekst >= '2023-01-01'
     and DaysFromRegisterDate >= 0 -- 가입일이 이후에 찍힌 case제외
     )
@@ -430,7 +440,6 @@ def result6_return(joyplegameid:int, gameidx:str, databaseschema:str, **context)
     from raw2
     where  AuthAccountRegDateKST  >= '2023-01-01'
     and AuthAccountRegDateKST <= DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
-
     group by joyplegameid,    format_date('%Y-%m',authaccountregdatekst)
     )
 
@@ -490,7 +499,7 @@ def result6_return(joyplegameid:int, gameidx:str, databaseschema:str, **context)
     where status = 'mature'
     and (
         -- (joyplegameid = 131 and regmonth not in ('2024-04','2024-05','2024-06')) or joyplegameid in (133,30001,30003)
-        joyplegameid = 133
+        joyplegameid = {joyplegameid}
         )
     )
     where rownum <= 6 -- 최근 6개월
@@ -513,12 +522,17 @@ def result6_return(joyplegameid:int, gameidx:str, databaseschema:str, **context)
 
     query_result6_return =query_run_method('6_newuser_roas', query)
 
-    context['task_instance'].xcom_push(key='result6_return', value=query_result6_return)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result6_return, bucket, gcs_path)
 
-    return True
+    return saved_path
+
+
 
 ### 수수료 적용 BEP 계산
-def result6_BEP(joyplegameid:int, gameidx:str, databaseschema:str, **context):
+def result6_BEP(joyplegameid:int, gameidx:str, bucket, **context):
 
     query = f"""
     with raw AS(
@@ -546,7 +560,7 @@ def result6_BEP(joyplegameid:int, gameidx:str, databaseschema:str, **context):
     select JoypleGameID, format_date('%Y-%m', authaccountregdatekst) as regmonth , t2.PGName, sum(t2.PGPriceKRW) as sales
     from  dataplatform-reporting.DataService.V_0317_0000_AuthAccountPerformance_V AS t1,
     UNNEST(t1.PaymentDetailArrayStruct) AS t2
-    where joyplegameid = 133
+    where joyplegameid = {joyplegameid}
     and authaccountregdatekst >= DATE_SUB(DATE(CONCAT(FORMAT_DATE('%Y-%m', DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)),'-01')), INTERVAL 24 MONTH)
     group by JoypleGameID, format_date('%Y-%m', authaccountregdatekst) , t2.PGName
     ) as a
@@ -586,20 +600,23 @@ def result6_BEP(joyplegameid:int, gameidx:str, databaseschema:str, **context):
 
     query_result6_BEP =query_run_method('6_newuser_roas', query)
 
-    context['task_instance'].xcom_push(key='result6_BEP', value=query_result6_BEP)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result6_BEP, bucket, gcs_path)
 
-    return True
+    return saved_path
 
 
 ### ROAS KPI
-def result6_roaskpi(joyplegameid:int, gameidx:str, databaseschema:str, **context):
+def result6_roaskpi(gameidx:str, bucket, **context):
 
     query = f"""
     select kpi_d1, kpi_d3, kpi_d7, kpi_d14, kpi_d30, kpi_d60, kpi_d90, kpi_d120, kpi_d150, kpi_d180, kpi_d210, kpi_d240, kpi_d270, kpi_d300, kpi_d330, kpi_d360
     from
     (select * ,row_number() OVER (partition by project ORDER BY updateDate desc ) AS row_
     from `data-science-division-216308.MetaData.roas_kpi`
-    where project='GBTW'
+    where project='{gameidx}'
     and operationStatus = '운영 중')
     where row_=1
 
@@ -607,17 +624,17 @@ def result6_roaskpi(joyplegameid:int, gameidx:str, databaseschema:str, **context
 
     query_result6_roaskpi = query_run_method('6_newuser_roas', query)
 
-    context['task_instance'].xcom_push(key='result6_roaskpi', value=query_result6_roaskpi)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result6_roaskpi, bucket, gcs_path)
 
-    return True
+    return saved_path
 
 
-def roas_kpi(joyplegameid:int, gameidx:str, databaseschema:str, **context):
+def roas_kpi(gameidx:str, path_result6_roaskpi:str, bucket, **context):
 
-    query_result6_roaskpi = context['task_instance'].xcom_pull(
-        task_ids = 'result6_roaskpi',
-        key='result6_roaskpi'
-    )
+    query_result6_roaskpi = load_df_from_gcs(bucket=bucket, path=path_result6_roaskpi)
 
     query_result6_roaskpi = query_result6_roaskpi * 100
     data = query_result6_roaskpi.rename(columns={
@@ -641,28 +658,22 @@ def roas_kpi(joyplegameid:int, gameidx:str, databaseschema:str, **context):
     # 데이터프레임 생성
     roas_kpi = pd.DataFrame(data)
 
-    context['task_instance'].xcom_push(key='roas_kpi', value=roas_kpi)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(roas_kpi, bucket, gcs_path)
 
-    return True
+    return saved_path
+
 
 ###
-def roas_dataframe_preprocessing(**context):
-    query_result6_monthlyROAS = context['task_instance'].xcom_pull(
-        task_ids = 'result6_monthlyROAS',
-        key='result6_monthlyROAS'
-    )
-    query_result6_pLTV = context['task_instance'].xcom_pull(
-        task_ids = 'result6_pLTV',
-        key='result6_pLTV'
-    )
-    query_result6_return = context['task_instance'].xcom_pull(
-        task_ids = 'result6_return',
-        key='result6_return'
-    )
-    query_result6_BEP = context['task_instance'].xcom_pull(
-        task_ids = 'result6_BEP',
-        key='result6_BEP'
-    )
+def roas_dataframe_preprocessing(gameidx:str, path_result6_monthlyROAS:str, path_result6_pLTV:str, path_result6_return:str, path_result6_BEP:str, bucket, **context):
+
+
+    query_result6_monthlyROAS = load_df_from_gcs(bucket, path_result6_monthlyROAS)
+    query_result6_pLTV = load_df_from_gcs(bucket, path_result6_pLTV)
+    query_result6_return = load_df_from_gcs(bucket, path_result6_return)
+    query_result6_BEP = load_df_from_gcs(bucket, path_result6_BEP)
 
     query6_monthlyROAS = pd.merge(query_result6_monthlyROAS, query_result6_pLTV[['가입월', '매출 D360 예측치']], on = ['가입월'], how = "left")
     query6_monthlyROAS = pd.merge(query6_monthlyROAS
@@ -724,14 +735,22 @@ def roas_dataframe_preprocessing(**context):
 
         query6_monthlyROAS[new_col] = query6_monthlyROAS[curr_col] / query6_monthlyROAS[prev_col]
 
-    context['task_instance'].xcom_push(key='monthlyBEP_ROAS', value=query6_monthlyROAS)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query6_monthlyROAS, bucket, gcs_path)
 
-    return True
+    return saved_path
 
 
 ########## ROAS 프롬프트
-def result6_ROAS_gemini(**context):
+def result6_ROAS_gemini(service_sub:str, path_monthlyBEP_ROAS:str, path_roas_kpi:str, bucket, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, **context):
 
+    RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
+    LABELS = {"datascience_division_service": 'gameinsight_framework',
+            "run_id": RUN_ID,
+            "datascience_division_service_sub" : service_sub}
+    
     # KST 타임존 정의 (UTC+9)
     kst = timezone(timedelta(hours=9))
 
@@ -744,15 +763,8 @@ def result6_ROAS_gemini(**context):
     #print("어제 날짜(KST):", yesterday_kst.date())
     #print("어제 연도:", year)
 
-    query6_monthlyROAS = context['task_instance'].xcom_pull(
-        task_ids = 'result6_BEP',
-        key='monthlyBEP_ROAS'
-    )
-
-    roas_kpi = context['task_instance'].xcom_pull(
-        task_ids = 'roas_kpi',
-        key='roas_kpi'
-    )
+    query6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_monthlyBEP_ROAS)
+    roas_kpi = load_df_from_gcs(bucket=bucket, path=path_roas_kpi)
 
     response6_monthlyROAS = genai_client.models.generate_content(
         model=MODEL_NAME,
@@ -790,13 +802,16 @@ def result6_ROAS_gemini(**context):
     return response6_monthlyROAS.text
 
 
-########## LTV 성장세 부분 프롬프트
-def monthlyLTVgrowth_gemini(**context):
 
-    query6_monthlyROAS = context['task_instance'].xcom_pull(
-        task_ids = 'result6_BEP',
-        key='monthlyBEP_ROAS'
-    )
+########## LTV 성장세 부분 프롬프트
+def monthlyLTVgrowth_gemini(service_sub:str, path_monthlyBEP_ROAS:str, bucket, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, **context):
+
+    RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
+    LABELS = {"datascience_division_service": 'gameinsight_framework',
+            "run_id": RUN_ID,
+            "datascience_division_service_sub" : service_sub}
+    
+    query6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_monthlyBEP_ROAS)
 
     response6_monthlyLTVgrowth = genai_client.models.generate_content(
     model=MODEL_NAME,
@@ -823,102 +838,35 @@ def monthlyLTVgrowth_gemini(**context):
 
 
 ### ROAS 현황 및 KPI 표 이미지 생성
+def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_result6_monthlyROAS:str, bucket, **context):
 
-#### growth 예측치 회색 음영 반영
-## 예측 기준 dn을 각 row(regmonth)별로 추론
-def infer_cohort_dn_map(df):
-    cohort_map = {}
-    for idx, row in df.iterrows():
-        regmonth = idx[1] if isinstance(idx, tuple) else row.get('가입월', None)
-        for col in df.columns:
-            if re.search(r"예측치$", col):
-                if pd.notna(row[col]):
-                    dn = int(re.findall(r'\d+', col)[0])
-                    # 예측치가 존재하는 가장 작은 dn 값을 기준으로 설정
-                    if regmonth not in cohort_map or dn < cohort_map[regmonth]:
-                        cohort_map[regmonth] = dn
-    return cohort_map
-
-## 컬럼 이름에서 dn 값 추출
-def extract_dn(col):
-    match = re.match(r'(ROAS|LTV 성장세) D(\d+)', col)
-    return int(match.group(2)) if match else None
-
-## 스타일 함수 정의 - mautred 되지 않은 구간 회색처리
-def highlight_based_on_dn(row):
-    regmonth = row['가입월']
-    cohort_dn = cohort_dn_map.get(regmonth, np.inf)
-
-    styles = []
-    for col in row.index:
-        clean_col = col.replace("<br>", " ").strip()
-
-        # 두 숫자가 있으면 마지막 숫자를 dn으로
-        match = re.findall(r'D(\d+)', clean_col)
-        dn_val = int(match[-1]) if match else None
-
-        if (
-            (clean_col.startswith('ROAS D') or clean_col.startswith('LTV 성장세'))
-            and dn_val is not None
-            and dn_val >= cohort_dn
-            and pd.notna(row[col])
-        ):
-            styles.append('background-color: lightgray')
-        else:
-            styles.append('')
-    return styles
-
-#### roas 달성 구간 빨간색 음영
-def highlight_roas_vs_bep(row):
-    styles = []
-    for col in row.index:
-        style = ""
-        try:
-            # 값 변환
-            if isinstance(row[col], str) and row[col].endswith('%'):
-                roas_val = float(row[col].replace('%', '')) / 100
-            elif isinstance(row[col], (int, float)):
-                roas_val = row[col]
-            else:
-                roas_val = None
-
-            # 기준 bep_base 비교
-            if col.startswith("ROAS D") and pd.notnull(row.get("기본<br>BEP")):
-                bep_val = row["기본<br>BEP"]
-                if pd.notnull(roas_val) and roas_val > bep_val:
-                    style = "background-color: #fbe4e6"
-
-            # d360 plus 비교 vs bep_commission
-            elif col == "복귀유저 포함<br>ROAS D360" and pd.notnull(row.get("수수료 적용후<br>BEP")):
-                bep_comm = row["수수료 적용후<br>BEP"]
-                if pd.notnull(roas_val) and roas_val > bep_comm:
-                    style = "background-color: #fbe4e6"
-
-        except Exception as e:
-            print(f"[DEBUG] {col} 처리 중 오류: {e}")
-            style = ""
-
-        styles.append(style)
-    return styles
-
-def roas_table_draw(**context):
-
-    query6_monthlyROAS = context['task_instance'].xcom_pull(
-        task_ids = 'result6_BEP',
-        key='monthlyBEP_ROAS'
-    )
-
-    query_result6_monthlyROAS = context['task_instance'].xcom_pull(
-        task_ids = 'result6_monthlyROAS',
-        key='result6_monthlyROAS'
-    )
+    query6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_roas_dataframe_preprocessing)
+    query_result6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_result6_monthlyROAS)
 
     df_numeric = query6_monthlyROAS.drop(columns=['데이터 완성 여부']).copy()
     df_numeric = df_numeric.reset_index(drop=True)
 
     nest_asyncio.apply()
 
+    def infer_cohort_dn_map(df):
+        cohort_map = {}
+        for idx, row in df.iterrows():
+            regmonth = idx[1] if isinstance(idx, tuple) else row.get('가입월', None)
+            for col in df.columns:
+                if re.search(r"예측치$", col):
+                    if pd.notna(row[col]):
+                        dn = int(re.findall(r'\d+', col)[0])
+                        # 예측치가 존재하는 가장 작은 dn 값을 기준으로 설정
+                        if regmonth not in cohort_map or dn < cohort_map[regmonth]:
+                            cohort_map[regmonth] = dn
+        return cohort_map
+    
     cohort_dn_map = infer_cohort_dn_map(query_result6_monthlyROAS)
+
+    ## 컬럼 이름에서 dn 값 추출
+    def extract_dn(col):
+        match = re.match(r'(ROAS|LTV 성장세) D(\d+)', col)
+        return int(match.group(2)) if match else None
 
     # dn_values는 <br> 없는 clean 컬럼명 기준으로 생성
     dn_values = {col: extract_dn(col) for col in query6_monthlyROAS.columns if col.startswith("ROAS D") or col.startswith("LTV 성장세 D")}
@@ -949,7 +897,65 @@ def roas_table_draw(**context):
     }
     df_numeric = df_numeric.rename(columns=custom_colnames)
 
+    ## 스타일 함수 정의 - mautred 되지 않은 구간 회색처리
+    def highlight_based_on_dn(row):
+        regmonth = row['가입월']
+        cohort_dn = cohort_dn_map.get(regmonth, np.inf)
+
+        styles = []
+        for col in row.index:
+            clean_col = col.replace("<br>", " ").strip()
+
+            # 두 숫자가 있으면 마지막 숫자를 dn으로
+            match = re.findall(r'D(\d+)', clean_col)
+            dn_val = int(match[-1]) if match else None
+
+            if (
+                (clean_col.startswith('ROAS D') or clean_col.startswith('LTV 성장세'))
+                and dn_val is not None
+                and dn_val >= cohort_dn
+                and pd.notna(row[col])
+            ):
+                styles.append('background-color: lightgray')
+            else:
+                styles.append('')
+        return styles
+
+    #### roas 달성 구간 빨간색 음영
+    def highlight_roas_vs_bep(row):
+        styles = []
+        for col in row.index:
+            style = ""
+            try:
+                # 값 변환
+                if isinstance(row[col], str) and row[col].endswith('%'):
+                    roas_val = float(row[col].replace('%', '')) / 100
+                elif isinstance(row[col], (int, float)):
+                    roas_val = row[col]
+                else:
+                    roas_val = None
+
+                # 기준 bep_base 비교
+                if col.startswith("ROAS D") and pd.notnull(row.get("기본<br>BEP")):
+                    bep_val = row["기본<br>BEP"]
+                    if pd.notnull(roas_val) and roas_val > bep_val:
+                        style = "background-color: #fbe4e6"
+
+                # d360 plus 비교 vs bep_commission
+                elif col == "복귀유저 포함<br>ROAS D360" and pd.notnull(row.get("수수료 적용후<br>BEP")):
+                    bep_comm = row["수수료 적용후<br>BEP"]
+                    if pd.notnull(roas_val) and roas_val > bep_comm:
+                        style = "background-color: #fbe4e6"
+
+            except Exception as e:
+                print(f"[DEBUG] {col} 처리 중 오류: {e}")
+                style = ""
+
+            styles.append(style)
+        return styles
+    
     #### ROAS 수치의 바 서식을 컬럼별이 아닌 전체 수치 기준으로 서식적용을 위한 파라미터값 설정
+
     roas_cols = [c for c in df_numeric.columns if c.startswith("ROAS D")] + ["복귀유저 포함<br>ROAS D360"]
 
     # 전체 최소/최대 구하기
@@ -964,7 +970,6 @@ def roas_table_draw(**context):
     growth_global_min = df_numeric[growth_cols].min().min()
     growth_global_max = df_numeric[growth_cols].max().max()
 
-    #### style 적용
     styled = (
         df_numeric.style
         .hide(axis="index")
@@ -992,117 +997,45 @@ def roas_table_draw(**context):
         # 강조 함수 적용
         .apply(highlight_based_on_dn, axis=1)
         .apply(highlight_roas_vs_bep, axis=1)
-        )
-    
-    return styled
+    )
 
-
-
-def roas_html_draw(gameidx: str, bucket_name: str, **context):
-    """
-    HTML 테이블을 이미지로 캡처하여 GCS에 저장
-    
-    Args:
-        gameidx: 게임 인덱스
-        bucket_name: GCS 버킷명
-        **context: Airflow 컨텍스트
-    
-    Returns:
-        GCS 경로 (예: "potc/graph6_monthlyROAS.png")
-    """
-    
-    logger.info("🎯 ROAS HTML 이미지 캡처 시작")
-    
-    try:
-        # Step 1: 테이블 데이터 생성
-        logger.info("📊 테이블 데이터 생성 중...")
-        styled = roas_table_draw(**context)
-        
-        # Step 2: HTML 생성
-        logger.info("🔨 HTML 생성 중...")
-        html_path = create_html_file(styled)
-        
-        # Step 3: HTML을 이미지로 캡처
-        logger.info("📸 이미지 캡처 중...")
-        image_bytes = asyncio.run(capture_html_to_image_async(html_path))
-        
-        # Step 4: GCS에 업로드
-        logger.info("📤 GCS 업로드 중...")
-        gcs_path = upload_image_to_gcs(
-            image_bytes=image_bytes,
-            gameidx=gameidx,
-            bucket_name=bucket_name,
-            filename="graph6_monthlyROAS.png"
-        )
-        
-        logger.info(f"✅ ROAS 이미지 저장 완료: {gcs_path}")
-        
-        # Step 5: 로컬 HTML 파일 정리
-        cleanup_local_files(html_path)
-        
-        return gcs_path
-        
-    except Exception as e:
-        logger.error(f"❌ ROAS 이미지 캡처 실패: {type(e).__name__} - {str(e)}", exc_info=True)
-        raise
-
-
-def create_html_file(styled_df) -> str:
-    """
-    스타일이 적용된 DataFrame을 HTML 파일로 생성
-    
-    Args:
-        styled_df: 스타일이 적용된 Pandas DataFrame
-    
-    Returns:
-        HTML 파일 경로
-    """
-    
+    # HTML 템플릿 정의
     html_template = """
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="utf-8">
         <style>
-            body { 
-                font-family: Arial, sans-serif; 
-                padding: 20px; 
-                margin: 0;
-            }
-            table { 
-                border-collapse: collapse; 
-                font-size: 13px; 
-                margin-top: 20px;
-            }
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            table { border-collapse: collapse; font-size: 13px; }
             th, td {
                 border: 1px solid #999;
                 padding: 6px 10px;
                 text-align: center;
             }
-            th { background-color: #f0f0f0; font-weight: bold; }
-            
-            /* 특정 컬럼별 스타일 */
-            th:nth-child(1), td:nth-child(1) { min-width: 50px; max-width: 60px; }
-            th:nth-child(2), td:nth-child(2) { min-width: 60px; max-width: 65px; white-space: normal; }
-            th:nth-child(3), td:nth-child(3) { min-width: 70px; max-width: 95px; }
-            th:nth-child(20), td:nth-child(20) { min-width: 80px; white-space: normal; }
-            th:nth-child(21), td:nth-child(21) { min-width: 75px; white-space: normal; }
-            th:nth-child(22), td:nth-child(22) { min-width: 85px; white-space: normal; }
-            th:nth-child(24), td:nth-child(24) { min-width: 80px; white-space: normal; }
-            th:nth-child(28), td:nth-child(28) { min-width: 55px; white-space: normal; }
-            th:nth-child(29), td:nth-child(29) { min-width: 55px; white-space: normal; }
-            th:nth-child(30), td:nth-child(30) { min-width: 55px; white-space: normal; }
-            th:nth-child(31), td:nth-child(31) { min-width: 60px; white-space: normal; }
-            th:nth-child(32), td:nth-child(32) { min-width: 70px; white-space: normal; }
-            th:nth-child(33), td:nth-child(33) { min-width: 70px; white-space: normal; }
-            th:nth-child(34), td:nth-child(34) { min-width: 70px; white-space: normal; }
-            th:nth-child(35), td:nth-child(35) { min-width: 70px; white-space: normal; }
-            th:nth-child(36), td:nth-child(36) { min-width: 70px; white-space: normal; }
-            th:nth-child(37), td:nth-child(37) { min-width: 70px; white-space: normal; }
-            th:nth-child(38), td:nth-child(38) { min-width: 70px; white-space: normal; }
-            th:nth-child(39), td:nth-child(39) { min-width: 70px; white-space: normal; }
-            
-            h2 { margin-top: 0; }
+            th { background-color: #f0f0f0; }
+
+            /* 특정 컬럼별 스타일 - 컬럼순서대로*/
+            th:nth-child(1), td:nth-child(1) { min-width: 50px; max-width: 60px; } /* 가입월 */
+            th:nth-child(2), td:nth-child(2) { min-width: 60px; max-width: 65px; white-space: normal; } /* 지표확정 최대기간 */
+            th:nth-child(3), td:nth-child(3) { min-width: 70px; max-width: 95px; } /* 마케팅 비용 */
+            th:nth-child(20), td:nth-child(20) { min-width: 80px; white-space: normal; } /* 복귀유저 포함 ROAS D360 */
+            th:nth-child(21), td:nth-child(21) { min-width: 75px; white-space: normal; } /* 복귀유저 ROAS D360 */
+            th:nth-child(22), td:nth-child(22) { min-width: 85px; white-space: normal; } /* 복귀유저 포함 ROAS D360 예측치 */
+            th:nth-child(24), td:nth-child(24) { min-width: 80px; white-space: normal; } /* 수수료 적용후 BEP */
+            th:nth-child(28), td:nth-child(28) { min-width: 55px; white-space: normal; } /* LTV 성장세 D14 D30 */
+            th:nth-child(29), td:nth-child(29) { min-width: 55px; white-space: normal; } /* LTV 성장세 D30 D60 */
+            th:nth-child(30), td:nth-child(30) { min-width: 55px; white-space: normal; } /* LTV 성장세 D60 D90 */
+            th:nth-child(31), td:nth-child(31) { min-width: 60px; white-space: normal; } /* LTV 성장세 D90 D120 */
+            th:nth-child(32), td:nth-child(32) { min-width: 70px; white-space: normal; } /* LTV 성장세 D120 D150 */
+            th:nth-child(33), td:nth-child(33) { min-width: 70px; white-space: normal; } /* LTV 성장세 D150 D180 */
+            th:nth-child(34), td:nth-child(34) { min-width: 70px; white-space: normal; } /* LTV 성장세 D180 D210 */
+            th:nth-child(35), td:nth-child(35) { min-width: 70px; white-space: normal; } /* LTV 성장세 D210 D240 */
+            th:nth-child(36), td:nth-child(36) { min-width: 70px; white-space: normal; } /* LTV 성장세 D240 D270 */
+            th:nth-child(37), td:nth-child(37) { min-width: 70px; white-space: normal; } /* LTV 성장세 D270 D300 */
+            th:nth-child(38), td:nth-child(38) { min-width: 70px; white-space: normal; } /* LTV 성장세 D300 D330 */
+            th:nth-child(39), td:nth-child(39) { min-width: 70px; white-space: normal; } /* LTV 성장세 D330 D360 */
+
         </style>
     </head>
     <body>
@@ -1111,246 +1044,80 @@ def create_html_file(styled_df) -> str:
     </body>
     </html>
     """
-    
-    try:
-        # 테이블을 HTML로 변환
-        table_html = styled_df.to_html()
-        
-        # 템플릿에 렌더링
-        rendered_html = Template(html_template).render(
-            game_name="GBTW",
-            table=table_html
-        )
-        
-        # HTML 파일 저장 (절대 경로 사용)
-        html_path = os.path.join("/tmp", "table6_monthlyROAS.html")
-        
-        with open(html_path, "w", encoding="utf-8") as f:
-            f.write(rendered_html)
-        
-        logger.info(f"✅ HTML 파일 생성: {html_path}")
-        return html_path
-        
-    except Exception as e:
-        logger.error(f"❌ HTML 파일 생성 실패: {type(e).__name__} - {str(e)}", exc_info=True)
-        raise
 
-
-async def capture_html_to_image_async(html_path: str) -> bytes:
-    """
-    HTML 파일을 이미지로 캡처 (비동기)
-    
-    Args:
-        html_path: HTML 파일 경로
-    
-    Returns:
-        이미지 바이트 데이터
-    """
-    
-    logger.info(f"🎬 Playwright 시작: {html_path}")
-    
-    try:
-        async with async_playwright() as p:
-            # ✅ 브라우저 실행
-            logger.info("🌐 브라우저 실행 중...")
-            browser = await p.chromium.launch(headless=True)
-            
-            # ✅ 페이지 생성
-            page = await browser.new_page(
-                viewport={"width": 1800, "height": 800}
-            )
-            
-            # ✅ HTML 파일 로드
-            file_url = f"file://{os.path.abspath(html_path)}"
-            logger.info(f"📄 HTML 로드: {file_url}")
-            await page.goto(file_url)
-            
-            # ✅ 페이지 렌더링 대기
-            await page.wait_for_load_state("networkidle")
-            logger.info("✅ 페이지 로딩 완료")
-            
-            # ✅ 이미지 캡처 (메모리에 직접)
-            logger.info("📸 스크린샷 캡처 중...")
-            screenshot_bytes = await page.screenshot(full_page=True)
-            
-            logger.info(f"✅ 스크린샷 완료 ({len(screenshot_bytes) / 1024:.1f} KB)")
-            
-            # ✅ 브라우저 종료
-            await browser.close()
-            logger.info("🔌 브라우저 종료")
-            
-            return screenshot_bytes
-            
-    except Exception as e:
-        logger.error(f"❌ HTML 캡처 실패: {type(e).__name__} - {str(e)}", exc_info=True)
-        raise
-
-
-def upload_image_to_gcs(
-    image_bytes: bytes,
-    gameidx: str,
-    bucket_name: str,
-    filename: str = "graph6_monthlyROAS.png"
-    ) -> str:
-    """
-    이미지 바이트를 GCS에 업로드
-    
-    Args:
-        image_bytes: 이미지 바이트 데이터
-        gameidx: 게임 인덱스
-        bucket_name: GCS 버킷명
-        filename: 저장할 파일명
-    
-    Returns:
-        GCS 경로 (예: "potc/graph6_monthlyROAS.png")
-    """
-    
-    try:
-        # GCS 클라이언트 초기화
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(bucket_name)
-        
-        # GCS 경로 설정
-        gcs_path = f"{gameidx}/{filename}"
-        blob = bucket.blob(gcs_path)
-        
-        logger.info(f"📤 GCS 업로드: gs://{bucket_name}/{gcs_path}")
-        
-        # 이미지 업로드
-        blob.upload_from_string(
-            image_bytes,
-            content_type='image/png'
-        )
-        
-        logger.info(f"✅ GCS 업로드 완료: {len(image_bytes) / 1024:.1f} KB")
-        
-        return gcs_path
-        
-    except Exception as e:
-        logger.error(f"❌ GCS 업로드 실패: {type(e).__name__} - {str(e)}", exc_info=True)
-        raise
-
-
-def cleanup_local_files(html_path: str) -> None:
-    """
-    로컬 임시 파일 정리
-    
-    Args:
-        html_path: 삭제할 HTML 파일 경로
-    """
-    
-    try:
-        if os.path.exists(html_path):
-            os.remove(html_path)
-            logger.info(f"🗑️ 로컬 파일 삭제: {html_path}")
-    except OSError as e:
-        logger.warning(f"⚠️ 파일 삭제 실패 (무시): {type(e).__name__} - {str(e)}")
-
-
-def kpi_table_draw(**context):
-
-    roas_kpi = context['task_instance'].xcom_pull(
-        task_ids = 'roas_kpi',
-        key='roas_kpi'
-    )
-
-    # kpi표
-    nest_asyncio.apply()
-
-    df_numeric = roas_kpi.copy()
-    df_numeric = df_numeric.reset_index(drop=True)
-
-    # 1) ROAS % → 비율 변환
-    def to_ratio_series(s: pd.Series) -> pd.Series:
-        s_str = s.astype(str)
-        s_num = pd.to_numeric(s_str.str.replace('%', '', regex=False), errors='coerce')
-        return s_num / 100.0
-
-    for c in df_numeric.columns:
-        if c.startswith("ROAS "):
-            df_numeric[c] = to_ratio_series(df_numeric[c])
-
-    # 2) suffixes 추출
-    suffixes = []
-    for c in df_numeric.columns:
-        m = re.search(r'\b(D\d+)\b$', str(c))
-        if m and m.group(1) not in suffixes:
-            suffixes.append(m.group(1))
-    suffixes_tuple = tuple(suffixes)
-
-    # 3) Styler 기본 포맷
-    styled = (
-        df_numeric.style
-        .hide(axis="index")
-        .format({col: "{:.1%}" for col in df_numeric.columns if col.startswith("ROAS ")})
-        .set_table_attributes('style="table-layout:fixed; width:600px;"')
-    )
-
-    # 4) HTML 템플릿
-    html_template = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            h2 { margin: 0 0 10px 0; font-size: 18px; }
-            table { border-collapse: collapse; font-size: 12px; border: 1px solid black; }
-            th, td {
-                border: 1px solid black;
-                padding: 6px 8px;
-                text-align: center;
-                white-space: nowrap;
-            }
-            th { background-color: #f0f0f0; font-weight: bold; }
-        </style>
-    </head>
-    <body>
-        <h2>GBTW ROAS KPI (신규유저 기준)</h2>
-        {{ table | safe }}
-    </body>
-    </html>
-    """
-
-    # 5) Styler → HTML
-    soup = BeautifulSoup(styled.to_html(), "html.parser")
-    table = soup.find("table")
-
-    # 6) colgroup & width 적용
-    ncols = len(df_numeric.columns)
-    for cg in table.find_all("colgroup"):
-        cg.decompose()
-
-    colgroup = soup.new_tag("colgroup")
-    width_map = {col: (80 if col.startswith("ROAS ") else 110) for col in df_numeric.columns}
-    for col_name in df_numeric.columns:
-        col = soup.new_tag("col", style=f"width: {width_map[col_name]}px !important;")
-        colgroup.append(col)
-    table.insert(0, colgroup)
-
-    # 7) 헤더 줄바꿈 (ROAS → ROAS<br>…)
-    for th in table.find_all("th"):
-        text = th.get_text(strip=True)
-        if text.startswith("ROAS "):
-            th.string = ""
-            th.append(BeautifulSoup(text.replace("ROAS ", "ROAS<br>"), "html.parser"))
-
-    # 8) 최종 HTML 저장
-    rendered_html = Template(html_template).render(table=str(table))
-    html_path = "table6_ROAS_KPI.html"
+    # html 저장
+    table_html = styled.to_html()
+    rendered_html = Template(html_template).render(table=table_html)
+    html_path = "table6_monthlyROAS.html"
     with open(html_path, "w", encoding="utf-8") as f:
-        f.write(rendered_html)
+            f.write(rendered_html)
 
-    # 9) 스크린샷 캡처
-    async def capture_html_to_image():
+    # 이미지 캡처 비동기 함수
+    async def capture_html_to_image(html_path, output_image_path):
         async with async_playwright() as p:
+            # 브라우저 열기
             browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page(viewport={"width": 600, "height": 160})
+            page = await browser.new_page(viewport={"width": 1800, "height": 800})
+
+            # HTML 파일 로드
             await page.goto("file://" + os.path.abspath(html_path))
-            await page.screenshot(path="graph6_ROAS_KPI.png", full_page=True)
+
+            # 이미지 캡처
+            await page.screenshot(path=output_image_path, full_page=True)
+
+            # 브라우저 닫기
             await browser.close()
 
-    asyncio.get_event_loop().run_until_complete(capture_html_to_image())
+    def capture_image_task(html_path, gcs_bucket, gcs_path, project_id=None):
+        """이미지를 캡처하고 GCS에 업로드"""
+        import tempfile
+
+        # 임시 디렉토리에서 작업
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_image_path = os.path.join(temp_dir, 'screenshot.png')
+            
+            # 1. 임시 파일에 이미지 캡처
+            print(f"Capturing HTML to image: {html_path}")
+            asyncio.run(capture_html_to_image(html_path, temp_image_path))
+            print(f"Image saved temporarily to: {temp_image_path}")
+            
+            # 2. 파일이 제대로 생성되었는지 확인
+            if not os.path.exists(temp_image_path):
+                raise FileNotFoundError(f"Screenshot file not created: {temp_image_path}")
+            
+            file_size = os.path.getsize(temp_image_path)
+            print(f"File size: {file_size} bytes")
+            
+            # 3. GCS에 업로드
+            print(f"Uploading to GCS: gs://{gcs_bucket}/{gcs_path}")
+            client = storage.Client(project=project_id)
+            bucket = client.bucket(gcs_bucket)
+            blob = bucket.blob(gcs_path)
+            blob.upload_from_filename(temp_image_path, content_type='image/png')
+            
+            gcs_uri = f"gs://{gcs_bucket}/{gcs_path}"
+            print(f"Image successfully uploaded to: {gcs_uri}")
+            
+            return True
+
+    html_path = "table6_monthlyROAS.html"  # HTML 파일 경로
+    output_image_path = "graph6_monthlyROAS.png"  # 저장될 이미지 경로
+    gcs_path = f'{gameidx}/graph6_monthlyROAS.png'  # GCS에 저장될 경로
+
+    #함수 호출 
+    capture_image_task(html_path, output_image_path, gcs_path, project_id=PROJECT_ID)
+
+    return gcs_path
+
+
+
+
+
+
+
+
+
+
 
 
 def roas_kpi_table_merge(gameidx:str):
