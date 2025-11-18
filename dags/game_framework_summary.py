@@ -4,7 +4,6 @@ from google.cloud import bigquery
 from google import genai
 from google.genai import types
 from google.cloud import storage
-from dags.game_framework_gbtw_main import MODEL_NAME
 import vertexai
 from google.genai import Client
 from google.genai.types import GenerateContentConfig, Retrieval, Tool, VertexRagStore
@@ -52,6 +51,8 @@ from zoneinfo import ZoneInfo  # Python 3.9 이상
 from pathlib import Path
 from airflow.sdk import get_current_context
 from game_framework_util import *
+
+
 
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
