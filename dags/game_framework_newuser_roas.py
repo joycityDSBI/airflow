@@ -742,7 +742,7 @@ def roas_dataframe_preprocessing(gameidx:str, path_result6_monthlyROAS:str, path
 
 
 ########## ROAS 프롬프트
-def result6_ROAS_gemini(service_sub:str, path_monthlyBEP_ROAS:str, path_roas_kpi:str, bucket, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, **context):
+def result6_ROAS_gemini(gameidx:str, service_sub:str, path_monthlyBEP_ROAS:str, path_roas_kpi:str, bucket, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, **context):
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
@@ -784,9 +784,6 @@ def result6_ROAS_gemini(service_sub:str, path_monthlyBEP_ROAS:str, path_roas_kpi
     <ROAS KPI>
     {roas_kpi}
 
-
-
-
     """,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_INSTRUCTION
@@ -796,6 +793,16 @@ def result6_ROAS_gemini(service_sub:str, path_monthlyBEP_ROAS:str, path_roas_kpi
             # max_output_tokens=2048
         )
     )
+
+    # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
+    gcs_response_path = f"{gameidx}/response6_monthlyROAS.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response6_monthlyROAS.text,
+        content_type='text/markdown; charset=utf-8'
+    )
+    
     
     return response6_monthlyROAS.text
 
@@ -1397,7 +1404,7 @@ def retrieve_new_user_upload_notion(gameidx:str, service_sub:str, path_monthlyBE
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
-    text = result6_ROAS_gemini(service_sub=service_sub, 
+    text = result6_ROAS_gemini(gameidx=gameidx, service_sub=service_sub, 
                                path_monthlyBEP_ROAS=path_monthlyBEP_ROAS,
                                path_roas_kpi=path_roas_kpi,
                                bucket=bucket,

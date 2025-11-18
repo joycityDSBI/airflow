@@ -299,6 +299,7 @@ def daily_revenue_gemini(gameidx: str, service_sub: str, genai_client, MODEL_NAM
     )
 
     # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
     gcs_response_path = f"{gameidx}/response1_salesComment.text"
     blob = bucket.blob(gcs_response_path)
     blob.upload_from_string(

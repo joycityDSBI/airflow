@@ -98,7 +98,7 @@ def rev_group_rev_pu(joyplegameid: int, gameidx: str, bigquery_client, bucket, *
     return saved_path
 
 
-def rev_group_rev_pu_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, rev_group_rev_pu_path, bucket, PROJECT_ID, LOCATION, **context):
+def rev_group_rev_pu_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, rev_group_rev_pu_path, bucket, PROJECT_ID, LOCATION, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -149,6 +149,15 @@ def rev_group_rev_pu_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_I
             temperature=0.5
             ,labels=LABELS
         )
+    )
+
+    # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
+    gcs_response_path = f"{gameidx}/response4_RgroupSales.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response4_RgroupSales.text,
+        content_type='text/markdown; charset=utf-8'
     )
 
     # 코멘트 출력
@@ -277,7 +286,7 @@ def iap_gem_ruby_history(gameidx: str, bigquery_client, bucket, **context):
     return saved_path
 
 
-def iap_gem_ruby_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_iapgemruby, path_iapgemruby_history, bucket, PROJECT_ID, LOCATION, **context):
+def iap_gem_ruby_gemini(gameidx:str,service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_iapgemruby, path_iapgemruby_history, bucket, PROJECT_ID, LOCATION, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -342,6 +351,15 @@ def iap_gem_ruby_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTR
             temperature=0.5
             ,labels=LABELS
         )
+    )
+
+    # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
+    gcs_response_path = f"{gameidx}/response4_salesByPackage.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response4_salesByPackage.text,
+        content_type='text/markdown; charset=utf-8'
     )
 
     # 코멘트 출력
@@ -1083,7 +1101,7 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
 
 
 
-def top3_items_by_category_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, 
+def top3_items_by_category_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, 
                                   path_top3_items_by_category, path_weekly_iapcategory_rev, path_iapgemruby_history,
                                   bucket, PROJECT_ID, LOCATION, **context):
 
@@ -1175,6 +1193,15 @@ def top3_items_by_category_gemini(service_sub: str, genai_client, MODEL_NAME, SY
         ,labels=LABELS
         # max_output_tokens=2048
         )
+    )
+
+    # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
+    gcs_response_path = f"{gameidx}/response4_WeeklySales_Report.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response4_WeeklySales_Report.text,
+        content_type='text/markdown; charset=utf-8'
     )
 
     return response4_WeeklySales_Report.text
@@ -2973,7 +3000,8 @@ def rgroup_rev_upload_notion(gameidx: str, path_rev_group_rev_pu, rev_group_rev_
     ########### (3) 제미나이 해석
     print("■ 제미나이 해석 시작 ■")
 
-    blocks = md_to_notion_blocks(rev_group_rev_pu_gemini(service_sub,
+    blocks = md_to_notion_blocks(rev_group_rev_pu_gemini(gameidx,
+                                                         service_sub,
                                                          genai_client,
                                                          MODEL_NAME,
                                                          SYSTEM_INSTRUCTION,
@@ -3126,6 +3154,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
     
     print("■■■■■■■■ IAP 젬/루비 사용내역 제미나이 해석 시작 ■■■■■■")
     blocks = md_to_notion_blocks(iap_gem_ruby_gemini(
+        gameidx=gameidx,
         service_sub=service_sub,
         genai_client=genai_client,
         MODEL_NAME=MODEL_NAME,
@@ -3144,6 +3173,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
     # 프롬프트 결과 중간에 그래프 삽입을 위한 결과 텍스트 5분할
     print("■■■■■■■■ IAP 젬/루비 사용내역 - 상품카테고리별 매출 제미나이 해석 시작 ■■■■■■")
     text = top3_items_by_category_gemini(
+        gameidx=gameidx,
         service_sub=service_sub,
         genai_client=genai_client,
         MODEL_NAME=MODEL_NAME,

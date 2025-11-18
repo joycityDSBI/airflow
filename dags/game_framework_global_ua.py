@@ -162,7 +162,7 @@ def cohort_by_country_cost(joyplegameid: int, gameidx: str, bigquery_client, buc
 
 ## 국가별 rev, cost 프롬프트
 ### 4> 일자별 매출에 대한 제미나이 코멘트
-def cohort_by_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
+def cohort_by_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
     
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -213,8 +213,17 @@ def cohort_by_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCT
             temperature=0.5,
             labels=LABELS
         )
-
     )
+
+    # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
+    gcs_response_path = f"{gameidx}/response3_revAndCostByCountry.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response3_revAndCostByCountry.text,
+        content_type='text/markdown; charset=utf-8'
+    )
+
     # 코멘트 출력
     return response3_revAndCostByCountry.text
 
@@ -307,7 +316,7 @@ def os_cost(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context)
 ### 4> 일자별 매출에 대한 제미나이 코멘트
 
 #client = genai.Client(api_key="AIzaSyAVv2B6DM6w9jd1MxiP3PbzAEMkl97SCGY")
-def os_by_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
+def os_by_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
     
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -350,6 +359,16 @@ def os_by_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:
         )
 
     )
+
+    # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
+    gcs_response_path = f"{gameidx}/response3_revAndCostByOs.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response3_revAndCostByOs.text,
+        content_type='text/markdown; charset=utf-8'
+    )
+
     # 코멘트 출력
     return response3_revAndCostByOs.text
 
@@ -929,6 +948,7 @@ def country_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_cli
     ########### (3) 제미나이 해석
 
     text = cohort_by_gemini(
+        gameidx=gameidx,
         service_sub=service_sub,
         genai_client=genai_client,
         MODEL_NAME = MODEL_NAME,
@@ -1068,6 +1088,7 @@ def os_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, 
     ## os별 cost, rev 코멘트
     ########### (3) 제미나이 해석
     gemini_text = os_by_gemini(
+        gameidx=gameidx,
         service_sub=service_sub, 
         genai_client=genai_client, 
         MODEL_NAME=MODEL_NAME, 

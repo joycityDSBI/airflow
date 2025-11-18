@@ -138,7 +138,7 @@ def inhouse_sales_before24_query(joyplegameid: int, gameidx: str, bigquery_clien
 
 
 ## 제미나이 프롬프트 
-def inhouses_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
+def inhouses_revenue_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
     
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -179,14 +179,21 @@ def inhouses_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_I
         model=MODEL_NAME,
         contents=prompt_2,
         config=types.GenerateContentConfig(
-
-            # 영어로 작성하는 것이 잘 이해할 수 있음.
             system_instruction=SYSTEM_INSTRUCTION,
             #tools=[rag_retrieval_tool_test],
             temperature=0.5,
             labels=LABELS
             # max_output_tokens=2048
         )
+    )
+
+    # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
+    gcs_response_path = f"{gameidx}/response2_selfPaymentSales.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response2_selfPaymentSales.text,
+        content_type='text/markdown; charset=utf-8'
     )
 
     return response2_selfPaymentSales.text
@@ -524,7 +531,7 @@ def inhouse_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, g
 
     ## (4) 제미나이 해석
     print(f"1️⃣ GEMINI 문의 처리 시작")
-    gemini_text = inhouses_revenue_gemini(service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, st1, st2, bucket, PROJECT_ID=PROJECT_ID, LOCATION=LOCATION)
+    gemini_text = inhouses_revenue_gemini(gameidx, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, st1, st2, bucket, PROJECT_ID=PROJECT_ID, LOCATION=LOCATION)
     blocks = md_to_notion_blocks(gemini_text)
 
     notion.blocks.children.append(

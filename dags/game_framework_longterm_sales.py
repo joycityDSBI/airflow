@@ -85,7 +85,7 @@ def monthly_day_average_rev(joyplegameid:int, gameidx:str, bigquery_client, buck
     return saved_path
 
 ######### 월별 일 평균 매출 - 제미나이 코멘트 생성
-def monthly_day_average_rev_gemini(service_sub: str, path_monthly_day_average_rev:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
+def monthly_day_average_rev_gemini(gameidx:str, service_sub: str, path_monthly_day_average_rev:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -126,6 +126,15 @@ def monthly_day_average_rev_gemini(service_sub: str, path_monthly_day_average_re
             temperature=0.5
             ,labels=LABELS
         )
+    )
+
+    # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
+    gcs_response_path = f"{gameidx}/response5_dailyAvgRevenue.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response5_dailyAvgRevenue.text,
+        content_type='text/markdown; charset=utf-8'
     )
 
     # 코멘트 출력
@@ -315,7 +324,7 @@ def rgroup_rev_total(joyplegameid:int, gameidx:str, bigquery_client, bucket, **c
 
 
 ####### 과금그룹별 총 매출 - 제미나이 코멘트 생성
-def rgroup_rev_total_gemini(service_sub: str, path_rgroup_rev_DOD:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
+def rgroup_rev_total_gemini(gameidx:str, service_sub: str, path_rgroup_rev_DOD:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -369,6 +378,15 @@ def rgroup_rev_total_gemini(service_sub: str, path_rgroup_rev_DOD:str, MODEL_NAM
             temperature=0.5
             ,labels=LABELS
         )
+    )
+
+    # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
+    gcs_response_path = f"{gameidx}/response5_monthlyRgroup.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response5_monthlyRgroup.text,
+        content_type='text/markdown; charset=utf-8'
     )
 
     # 코멘트 출력
@@ -471,7 +489,7 @@ def rev_cohort_year(joyplegameid:int, gameidx:str, bigquery_client, bucket, **co
     return path_regyearRevenue, path_regyearRevenue_pv2
 
 
-def rev_cohort_year_gemini(service_sub: str, path_regyearRevenue_pv2:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
+def rev_cohort_year_gemini(gameidx:str, service_sub: str, path_regyearRevenue_pv2:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
 
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -515,6 +533,15 @@ def rev_cohort_year_gemini(service_sub: str, path_regyearRevenue_pv2:str, MODEL_
             temperature=0.5
             ,labels=LABELS
         )
+    )
+
+    # GCS에 업로드
+    print("📤 GCS에 제미나이 코멘트 업로드 중...")
+    gcs_response_path = f"{gameidx}/response5_regyearRevenue.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response5_regyearRevenue.text,
+        content_type='text/markdown; charset=utf-8'
     )
 
     # 코멘트 출력
@@ -2052,7 +2079,7 @@ def longterm_rev_upload_notion(gameidx:str, service_sub:str,
         batch_size=100,
     )
 
-    text = monthly_day_average_rev_gemini(service_sub=service_sub, 
+    text = monthly_day_average_rev_gemini(gameidx=gameidx, service_sub=service_sub, 
                                           path_monthly_day_average_rev=path_monthly_day_average_rev,
                                           MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, **context)
     blocks = md_to_notion_blocks(text)
@@ -2209,7 +2236,7 @@ def monthly_rgroup_upload_notion(gameidx:str, service_sub:str,
     )
 
     ## 프롬프트
-    text = rgroup_rev_total_gemini(service_sub=service_sub, path_rgroup_rev_DOD=path_rgroup_rev_DOD, 
+    text = rgroup_rev_total_gemini(gameidx=gameidx, service_sub=service_sub, path_rgroup_rev_DOD=path_rgroup_rev_DOD, 
                                    MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, **context)
     blocks = md_to_notion_blocks(text)
     notion.blocks.children.append(
@@ -2331,7 +2358,7 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
         batch_size=100,
     )
 
-    blocks = md_to_notion_blocks(rev_cohort_year_gemini(service_sub=service_sub, 
+    blocks = md_to_notion_blocks(rev_cohort_year_gemini(gameidx=gameidx, service_sub=service_sub,        
                                                         path_regyearRevenue_pv2=path_regyearRevenue_pv2, 
                                                         MODEL_NAME=MODEL_NAME, 
                                                         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 

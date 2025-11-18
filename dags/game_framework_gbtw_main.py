@@ -60,6 +60,7 @@ from game_framework_global_ua import *
 from game_framework_rgroup_IAP_gem_ruby import *
 from game_framework_longterm_sales import *
 from game_framework_newuser_roas import *
+from game_framework_summary import *
 
 # Airflow function
 from airflow import DAG, Dataset
@@ -172,7 +173,19 @@ with DAG(
 
 
     ## summary 데이터 추출 변수 값
-
+    text_path_list = [
+        'response1_salesComment.text',
+        'response2_selfPaymentSales.text',
+        'response3_revAndCostByCountry.text',
+        'response3_revAndCostByOs.text',
+        'response4_RgroupSales.text',
+        'response4_salesByPackage.text',
+        'response4_WeeklySales_Report.text',
+        'response5_dailyAvgRevenue.text',
+        'response5_monthlyRgroup.text',
+        'response5_regyearRevenue.text',
+        'response6_monthlyROAS.text'
+    ]
 
 
 
@@ -706,17 +719,23 @@ with DAG(
             print(f"❌ {gameidx}: {service_sub} retrieve_new_user_upload_notion 실패 ")
             print(f"🔴 {e}")
 
-        
-    # def game_framework_summary(joyplegameid:int, gameidx:str, service_sub:str, databaseschema: str, 
-    #                                                     bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
-    #     print(f"📧 RUN 게임 프레임워크 SUMMARY 시작: {gameidx}")
 
+    def game_framework_summary(gameidx:str, service_sub:str, notion, genai_client, bucket, text_path_list:list): 
+        print(f"📧 RUN 게임 프레임워크 SUMMARY 시작: {gameidx}")
 
-
-
-
-
-
+        try:
+            print(f"🔍 {gameidx}: {service_sub} game_framework_summary_upload_notion 시작 ")
+            game_framework_summary_upload_notion(
+                gameidx=gameidx,
+                service_sub=service_sub,
+                genai_client=genai_client,
+                bucket=bucket,
+                text_path_list=text_path_list,
+                notion=notion
+            )
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} game_framework_summary_upload_notion 실패 ")
+            print(f"🔴 {e}")
 
 
 
@@ -840,8 +859,22 @@ with DAG(
     #     dag=dag,
     # )
 
+    game_framework_summary_run = PythonOperator(
+        task_id='game_framework_summary',
+        python_callable=game_framework_summary,
+        op_kwargs={
+            'gameidx':gameidx,
+            'service_sub':str(service_sub[6]),
+            'notion':notion,
+            'genai_client': genai_client,
+            'bucket': bucket,
+            'text_path_list':text_path_list
+        },
+        dag=dag,
+    )
+
         
 
 
-create_gameframework_notion_page >> daily_gameframework_run
+create_gameframework_notion_page >> daily_gameframework_run >> game_framework_summary_run
 
