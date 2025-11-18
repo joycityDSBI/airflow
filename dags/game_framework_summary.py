@@ -68,7 +68,7 @@ def game_framework_summary_gemini(gameidx:str, genai_client, bucket, text_path_l
     for text_path in text_path_list:
         text_list = text_path.split("/")
         print(f"📥 GCS에서 프롬프트 텍스트 불러오는 중...: {text_list[0]}")
-        prompt_text = load_df_from_gcs(bucket=bucket, path=f"{gameidx}/{text_list[0]}")
+        prompt_text = load_text_from_gcs(bucket=bucket, path=f"{gameidx}/{text_list[0]}")
         summary_list.append(prompt_text)
     print("✅ 프롬프트 텍스트 불러오기 완료.")
 

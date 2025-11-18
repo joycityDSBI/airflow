@@ -496,6 +496,33 @@ def load_df_from_gcs(bucket, path: str) -> pd.DataFrame:
         raise
 
 
+def load_text_from_gcs(bucket, path: str) -> str:
+    """
+    GCS에서 텍스트 파일 로드
+    
+    Args:
+        bucket: GCS bucket 객체
+        path: GCS 경로
+    
+    Returns:
+        로드된 텍스트 문자열
+    """
+    try:
+        blob = bucket.blob(path)
+         # 파일 존재 여부 확인
+        if not blob.exists():
+            raise FileNotFoundError(f"파일을 찾을 수 없습니다: gs://{bucket.name}/{path}")
+        
+        # 텍스트 파일 다운로드
+        text_content = blob.download_as_text(encoding='utf-8')
+        
+        print(f"✅ GCS 텍스트 로드 완료: gs://{bucket.name}/{path}, size: {len(text_content)} characters")
+        return text_content
+        
+    except Exception as e:
+        print(f"❌ GCS 로드 실패: {e}")
+        raise
+
 
 
 ################################ 메인 함수 처리 ################################

@@ -174,17 +174,17 @@ with DAG(
 
     ## summary 데이터 추출 변수 값
     text_path_list = [
-        'response1_salesComment.text',
-        'response2_selfPaymentSales.text',
-        'response3_revAndCostByCountry.text',
-        'response3_revAndCostByOs.text',
-        'response4_RgroupSales.text',
-        'response4_salesByPackage.text',
-        'response4_WeeklySales_Report.text',
-        'response5_dailyAvgRevenue.text',
-        'response5_monthlyRgroup.text',
-        'response5_regyearRevenue.text',
-        'response6_monthlyROAS.text'
+        'response1_salesComment.text'
+        # , 'response2_selfPaymentSales.text',
+        # 'response3_revAndCostByCountry.text',
+        # 'response3_revAndCostByOs.text',
+        # 'response4_RgroupSales.text',
+        # 'response4_salesByPackage.text',
+        # 'response4_WeeklySales_Report.text',
+        # 'response5_dailyAvgRevenue.text',
+        # 'response5_monthlyRgroup.text',
+        # 'response5_regyearRevenue.text',
+        # 'response6_monthlyROAS.text'
     ]
 
 
