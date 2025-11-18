@@ -178,13 +178,13 @@ with DAG(
         , 'response2_selfPaymentSales.text'
         , 'response3_revAndCostByCountry.text'
         , 'response3_revAndCostByOs.text'
-        # , 'response4_RgroupSales.text'
-        # , 'response4_salesByPackage.text'
-        # , 'response4_WeeklySales_Report.text'
-        # , 'response5_dailyAvgRevenue.text'
-        # , 'response5_monthlyRgroup.text'
-        # , 'response5_regyearRevenue.text'
-        # , 'response6_monthlyROAS.text'
+        , 'response4_RgroupSales.text'
+        , 'response4_salesByPackage.text'
+        , 'response4_WeeklySales_Report.text'
+        , 'response5_dailyAvgRevenue.text'
+        , 'response5_monthlyRgroup.text'
+        , 'response5_regyearRevenue.text'
+        , 'response6_monthlyROAS.text'
     ]
 
 
@@ -803,62 +803,62 @@ with DAG(
         dag=dag,
     )
 
-    # rgroup_iapgemruby_gameframework_run = PythonOperator(
-    #     task_id='rgroup_iapgemruby_data_game_framework',
-    #     python_callable=rgroup_iapgemruby_data_game_framework,
-    #     op_kwargs={
-    #         'joyplegameid':joyplegameid,
-    #         'gameidx':gameidx,
-    #         'service_sub':str(service_sub[3]),
-    #         'databaseschema':databaseschema,
-    #         'bigquery_client':bigquery_client,
-    #         'MODEL_NAME': MODEL_NAME,
-    #         'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
-    #         'bucket': bucket,
-    #         'headers_json': headers_json,
-    #         'genai_client': genai_client,
-    #         'notion':notion
-    #     },
-    #     dag=dag,
-    # )
+    rgroup_iapgemruby_gameframework_run = PythonOperator(
+        task_id='rgroup_iapgemruby_data_game_framework',
+        python_callable=rgroup_iapgemruby_data_game_framework,
+        op_kwargs={
+            'joyplegameid':joyplegameid,
+            'gameidx':gameidx,
+            'service_sub':str(service_sub[3]),
+            'databaseschema':databaseschema,
+            'bigquery_client':bigquery_client,
+            'MODEL_NAME': MODEL_NAME,
+            'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+            'bucket': bucket,
+            'headers_json': headers_json,
+            'genai_client': genai_client,
+            'notion':notion
+        },
+        dag=dag,
+    )
 
-    # longterm_sales_data_game_framework_run = PythonOperator(
-    #     task_id='longterm_sales_data_game_framework',
-    #     python_callable=longterm_sales_data_game_framework,
-    #     op_kwargs={
-    #         'joyplegameid':joyplegameid,
-    #         'gameidx':gameidx,
-    #         'service_sub':str(service_sub[4]),
-    #         'databaseschema':databaseschema,
-    #         'bigquery_client':bigquery_client,
-    #         'MODEL_NAME': MODEL_NAME,
-    #         'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
-    #         'bucket': bucket,
-    #         'headers_json': headers_json,
-    #         'genai_client': genai_client,
-    #         'notion':notion
-    #     },
-    #     dag=dag,
-    # )
+    longterm_sales_data_game_framework_run = PythonOperator(
+        task_id='longterm_sales_data_game_framework',
+        python_callable=longterm_sales_data_game_framework,
+        op_kwargs={
+            'joyplegameid':joyplegameid,
+            'gameidx':gameidx,
+            'service_sub':str(service_sub[4]),
+            'databaseschema':databaseschema,
+            'bigquery_client':bigquery_client,
+            'MODEL_NAME': MODEL_NAME,
+            'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+            'bucket': bucket,
+            'headers_json': headers_json,
+            'genai_client': genai_client,
+            'notion':notion
+        },
+        dag=dag,
+    )
 
-    # newuser_roas_data_game_framework_run = PythonOperator(
-    #     task_id='newuser_roas_data_game_framework',
-    #     python_callable=newuser_roas_data_game_framework,
-    #     op_kwargs={
-    #         'joyplegameid':joyplegameid,
-    #         'gameidx':gameidx,
-    #         'service_sub':str(service_sub[5]),
-    #         'databaseschema':databaseschema,
-    #         'bigquery_client':bigquery_client,
-    #         'MODEL_NAME': MODEL_NAME,
-    #         'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
-    #         'bucket': bucket,
-    #         'headers_json': headers_json,
-    #         'genai_client': genai_client,
-    #         'notion':notion
-    #     },
-    #     dag=dag,
-    # )
+    newuser_roas_data_game_framework_run = PythonOperator(
+        task_id='newuser_roas_data_game_framework',
+        python_callable=newuser_roas_data_game_framework,
+        op_kwargs={
+            'joyplegameid':joyplegameid,
+            'gameidx':gameidx,
+            'service_sub':str(service_sub[5]),
+            'databaseschema':databaseschema,
+            'bigquery_client':bigquery_client,
+            'MODEL_NAME': MODEL_NAME,
+            'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+            'bucket': bucket,
+            'headers_json': headers_json,
+            'genai_client': genai_client,
+            'notion':notion
+        },
+        dag=dag,
+    )
 
     game_framework_summary_run = PythonOperator(
         task_id='game_framework_summary',
@@ -878,5 +878,6 @@ with DAG(
         
 
 
-create_gameframework_notion_page >> daily_gameframework_run >> inhouse_gameframework_run >> global_ua_gameframework_run >> game_framework_summary_run
+create_gameframework_notion_page >> daily_gameframework_run >> inhouse_gameframework_run 
+global_ua_gameframework_run >> rgroup_iapgemruby_gameframework_run >> longterm_sales_data_game_framework_run >> newuser_roas_data_game_framework_run >> game_framework_summary_run
 
