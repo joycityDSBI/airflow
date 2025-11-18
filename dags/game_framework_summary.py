@@ -74,6 +74,9 @@ def game_framework_summary_gemini(gameidx:str, genai_client, bucket, text_path_l
 
 
     print("🤖 제미나이 요약 생성 중...")
+    from google.genai import Client
+    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+    
     response_summary = genai_client.models.generate_content(
     model=MODEL_NAME,
     contents = f"""
