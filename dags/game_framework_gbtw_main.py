@@ -47,7 +47,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from adjustText import adjust_text
 from airflow.models import Variable
-from airflow.operators.python import get_current_context
+from airflow.sdk import get_current_context
 from zoneinfo import ZoneInfo  # Python 3.9 이상
 from pathlib import Path
 import io

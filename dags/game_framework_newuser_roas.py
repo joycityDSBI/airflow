@@ -1104,7 +1104,7 @@ def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_res
     gcs_path = f'{gameidx}/graph6_monthlyROAS.png'  # GCS에 저장될 경로
 
     #함수 호출 
-    capture_image_task(html_path, output_image_path, gcs_path, project_id=PROJECT_ID)
+    capture_image_task(html_path=html_path, gcs_bucket=bucket, gcs_path=gcs_path, project_id=PROJECT_ID)
 
     return gcs_path
 
