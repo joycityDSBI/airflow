@@ -720,7 +720,7 @@ with DAG(
             print(f"🔴 {e}")
 
 
-    def game_framework_summary(gameidx:str, service_sub:str, notion, genai_client, bucket, text_path_list:list): 
+    def game_framework_summary(gameidx:str, service_sub:str, notion, genai_client, bucket, text_path_list:list, MODEL_NAME:str): 
         print(f"📧 RUN 게임 프레임워크 SUMMARY 시작: {gameidx}")
 
         try:
@@ -731,7 +731,8 @@ with DAG(
                 genai_client=genai_client,
                 bucket=bucket,
                 text_path_list=text_path_list,
-                notion=notion
+                notion=notion,
+                MODEL_NAME=MODEL_NAME
             )
         except Exception as e:
             print(f"❌ {gameidx}: {service_sub} game_framework_summary_upload_notion 실패 ")
@@ -868,7 +869,8 @@ with DAG(
             'notion':notion,
             'genai_client': genai_client,
             'bucket': bucket,
-            'text_path_list':text_path_list
+            'text_path_list':text_path_list,
+            'MODEL_NAME': MODEL_NAME
         },
         dag=dag,
     )

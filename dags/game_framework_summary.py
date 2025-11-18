@@ -57,7 +57,7 @@ from game_framework_util import *
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
 
-def game_framework_summary_gemini(gameidx:str, genai_client, bucket, text_path_list:list, **context):
+def game_framework_summary_gemini(gameidx:str, genai_client, bucket, text_path_list:list, MODEL_NAME:str, **context):
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": "gameinsight_framework",
             "run_id": RUN_ID,
@@ -104,7 +104,7 @@ def game_framework_summary_gemini(gameidx:str, genai_client, bucket, text_path_l
     return response_summary.text
 
 
-def game_framework_summary_upload_notion(gameidx:str, service_sub:str, genai_client, bucket, text_path_list:list, notion: Client, **context):
+def game_framework_summary_upload_notion(gameidx:str, service_sub:str, genai_client, bucket, text_path_list:list, notion: Client, MODEL_NAME:str, **context):
 
     current_context = get_current_context()
     
@@ -128,7 +128,7 @@ def game_framework_summary_upload_notion(gameidx:str, service_sub:str, genai_cli
 
     ## 요약 내용
     print('📝 GEMINI 요약 내용 생성 중...')
-    text = game_framework_summary_gemini(gameidx=gameidx, service_sub=service_sub, genai_client=genai_client, bucket=bucket, text_path_list=text_path_list, **context)
+    text = game_framework_summary_gemini(gameidx=gameidx, service_sub=service_sub, genai_client=genai_client, bucket=bucket, text_path_list=text_path_list, MODEL_NAME=MODEL_NAME, **context)
     print('📝 GEMINI 요약 내용 생성 완료!!!!')
     blocks = md_to_notion_blocks(text)
 
