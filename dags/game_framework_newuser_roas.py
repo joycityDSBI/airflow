@@ -1315,10 +1315,10 @@ def retrieve_new_user_upload_notion(gameidx:str, service_sub:str, path_monthlyBE
     headers_json = headers_json
 
     try:
-        gcs_path = f'{gameidx}/filePath6_monthlyROAS_KPI.png'
+        gcs_path = f'{gameidx}/graph6_monthlyROAS_and_KPI.png'
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
-        filename = 'filePath6_monthlyROAS_KPI.png'
+        filename = 'graph6_monthlyROAS_and_KPI.png'
         print(f"✓ GCS 이미지 다운로드 성공 : {gcs_path}")
     except Exception as e:
         print(f"❌ GCS 다운로드 실패: {str(e)}")
