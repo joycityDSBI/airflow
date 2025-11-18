@@ -312,6 +312,13 @@ def get_message_details(**context):
     contents = []
     queries = []
     statement_ids = []
+    row_counts = []
+    statuses = []
+    descriptions = []
+    questions = []
+    auth_regenerate_counts = []
+    errors = []
+    error_types = []
     
     total_rows = len(df_target)
     print(f"🔄 메시지 상세 정보 수집 시작: {total_rows} rows")
@@ -328,6 +335,13 @@ def get_message_details(**context):
             contents.append(None)
             queries.append(None)
             statement_ids.append(None)
+            row_counts.append(None)
+            statuses.append(None)
+            descriptions.append(None)
+            questions.append(None)
+            auth_regenerate_counts.append(None)
+            errors.append(None)
+            error_types.append(None)
             continue
         
         url = f"https://{config['instance']}/api/2.0/genie/spaces/{space_id}/conversations/{conversation_id}/messages/{message_id}"
@@ -344,31 +358,60 @@ def get_message_details(**context):
                 else:
                     content = str(content_raw) if content_raw is not None else None
                 
-                # Query 처리
+                # Query, description, question 처리
                 attachments = data.get("attachments", [])
                 if attachments and isinstance(attachments, list):
                     query = attachments[0].get("query", {}).get("query", None)
+                    description = attachments[0].get("query", {}).get("description", None)
+                    question = attachments[0].get("suggested_questions", {}).get("questions", None)
+
                 else:
                     query = None
                 
                 # Statement ID 처리
                 statement_id = data.get("query_result", {}).get("statement_id")
+
+                # row_count 처리
+                row_count = data.get("query_result", {}).get("row_count")
+
+                # status, auth_regenerate_count 처리
+                status = data.get("status")
+                auth_regenerate_count = data.get("auth_regenerate_count")
+
+                # error 처리
+                error = data.get("error", {}).get("error")
+                error_type = data.get("error", {}).get("error_type")
+
                 
             else:
-                content, query, statement_id = None, None, None
+                content, query, description, statement_id, row_count, status, question, auth_regenerate_count, error, error_type = None, None, None, None, None, None, None, None, None, None
                 
         except Exception as e:
             print(f"❌ 예외 발생 ({idx}행): {e}")
-            content, query, statement_id = None, None, None
+            content, query, description, statement_id, row_count, status, question, auth_regenerate_count, error, error_type = None, None, None, None, None, None, None, None, None, None
         
         contents.append(content)
         queries.append(query)
         statement_ids.append(statement_id)
+        row_counts.append(row_count)
+        statuses.append(status)
+        descriptions.append(description)
+        questions.append(question)
+        auth_regenerate_counts.append(auth_regenerate_count)
+        errors.append(error)
+        error_types.append(error_type)
     
     # 데이터 추가
     df_target['content'] = contents
     df_target['query'] = queries
     df_target['statement_id'] = statement_ids
+    df_target['row_count'] = row_counts
+    df_target['status'] = statuses
+    df_target['description'] = descriptions
+    df_target['question'] = questions
+    df_target['auth_regenerate_count'] = auth_regenerate_counts
+    df_target['error'] = errors
+    df_target['error_type'] = error_types
     
     print(f"✅ 메시지 상세 정보 수집 완료: {len(df_target)} rows")
     
