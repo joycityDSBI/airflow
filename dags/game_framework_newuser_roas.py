@@ -1281,9 +1281,10 @@ def roas_kpi_table_merge(gameidx:str, path_roas_dataframe_preprocessing:str, pat
     output_buffer.seek(0)
 
     # GCS 경로
-    gcs_path = f'{gameidx}/graph1_dailySales_monthlySales.png'
+    gcs_path = f'{gameidx}/graph6_monthlyROAS_and_KPI.png'
     blob = bucket.blob(gcs_path)
     blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
+    print(f"✓✓✓✓✓ GCS에 최종 이미지 업로드 완료: {gcs_path}")
 
     return gcs_path
 
