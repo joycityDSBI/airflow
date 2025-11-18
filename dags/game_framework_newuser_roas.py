@@ -1427,3 +1427,5 @@ def retrieve_new_user_upload_notion(gameidx:str, service_sub:str, path_monthlyBE
         children=blocks
     )
 
+    print("■■■■■■■■■■■ NOTION 업로드 완료 ■■■■■■■■■■■")
+    return True

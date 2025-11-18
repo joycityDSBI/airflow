@@ -170,6 +170,13 @@ with DAG(
     ]
     databaseschema='GW'
 
+
+    ## summary 데이터 추출 변수 값
+
+
+
+
+
     ## 에러 출력 함수 
     def if_else_length(path: str, gameidx: str, service_sub: str, func_name: str):
         if len(path) > 0:
@@ -700,6 +707,13 @@ with DAG(
             print(f"🔴 {e}")
 
         
+    # def game_framework_summary(joyplegameid:int, gameidx:str, service_sub:str, databaseschema: str, 
+    #                                                     bigquery_client, notion, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client, bucket, headers_json): 
+    #     print(f"📧 RUN 게임 프레임워크 SUMMARY 시작: {gameidx}")
+
+
+
+
 
 
 
@@ -715,23 +729,23 @@ with DAG(
     )
 
 
-    # daily_gameframework_run = PythonOperator(
-    #     task_id='datily_data_game_framework',
-    #     python_callable=daily_data_game_framework,
-    #     op_kwargs={
-    #         'joyplegameid':joyplegameid,
-    #         'gameidx':gameidx,
-    #         'service_sub':service_sub[0],
-    #         'bigquery_client':bigquery_client,
-    #         'MODEL_NAME': MODEL_NAME,
-    #         'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
-    #         'bucket': bucket,
-    #         'headers_json': headers_json,
-    #         'genai_client': genai_client,
-    #         'notion':notion
-    #     },
-    #     dag=dag,
-    # )
+    daily_gameframework_run = PythonOperator(
+        task_id='datily_data_game_framework',
+        python_callable=daily_data_game_framework,
+        op_kwargs={
+            'joyplegameid':joyplegameid,
+            'gameidx':gameidx,
+            'service_sub':service_sub[0],
+            'bigquery_client':bigquery_client,
+            'MODEL_NAME': MODEL_NAME,
+            'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+            'bucket': bucket,
+            'headers_json': headers_json,
+            'genai_client': genai_client,
+            'notion':notion
+        },
+        dag=dag,
+    )
 
     # inhouse_gameframework_run = PythonOperator(
     #     task_id='inhouse_data_game_framework',
@@ -807,27 +821,27 @@ with DAG(
     #     dag=dag,
     # )
 
-    newuser_roas_data_game_framework_run = PythonOperator(
-        task_id='newuser_roas_data_game_framework',
-        python_callable=newuser_roas_data_game_framework,
-        op_kwargs={
-            'joyplegameid':joyplegameid,
-            'gameidx':gameidx,
-            'service_sub':str(service_sub[5]),
-            'databaseschema':databaseschema,
-            'bigquery_client':bigquery_client,
-            'MODEL_NAME': MODEL_NAME,
-            'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
-            'bucket': bucket,
-            'headers_json': headers_json,
-            'genai_client': genai_client,
-            'notion':notion
-        },
-        dag=dag,
-    )
+    # newuser_roas_data_game_framework_run = PythonOperator(
+    #     task_id='newuser_roas_data_game_framework',
+    #     python_callable=newuser_roas_data_game_framework,
+    #     op_kwargs={
+    #         'joyplegameid':joyplegameid,
+    #         'gameidx':gameidx,
+    #         'service_sub':str(service_sub[5]),
+    #         'databaseschema':databaseschema,
+    #         'bigquery_client':bigquery_client,
+    #         'MODEL_NAME': MODEL_NAME,
+    #         'SYSTEM_INSTRUCTION': SYSTEM_INSTRUCTION,
+    #         'bucket': bucket,
+    #         'headers_json': headers_json,
+    #         'genai_client': genai_client,
+    #         'notion':notion
+    #     },
+    #     dag=dag,
+    # )
 
         
 
 
-create_gameframework_notion_page >> newuser_roas_data_game_framework_run
+create_gameframework_notion_page >> daily_gameframework_run
 

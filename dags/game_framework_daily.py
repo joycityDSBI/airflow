@@ -258,7 +258,7 @@ def merge_daily_revenue(path_daily_revenue:str, path_daily_revenue_yoy:str, buck
 
 ## 프롬프트 
 ### 4> 일자별 매출에 대한 제미나이 코멘트
-def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
+def daily_revenue_gemini(gameidx: str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
     
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
@@ -297,6 +297,15 @@ def daily_revenue_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INST
         )
 
     )
+
+    # GCS에 업로드
+    gcs_response_path = f"{gameidx}/response1_salesComment.text"
+    blob = bucket.blob(gcs_response_path)
+    blob.upload_from_string(
+        response1_salesComment.text,
+        content_type='text/markdown; charset=utf-8'
+    )
+
     # 코멘트 출력
     return response1_salesComment.text
 
@@ -650,7 +659,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     )
 
     print(f"1️⃣ GEMINI 문의 처리 시작")
-    response1_salesComment = daily_revenue_gemini(service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, st1, st2, bucket, PROJECT_ID=PROJECT_ID, LOCATION=LOCATION)
+    response1_salesComment = daily_revenue_gemini(gameidx, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, st1, st2, bucket, PROJECT_ID=PROJECT_ID, LOCATION=LOCATION)
 
     ## 제미나이
     blocks = md_to_notion_blocks(response1_salesComment)
