@@ -33,6 +33,7 @@ from io import BytesIO
 from typing import List, Tuple
 from matplotlib import rcParams
 from matplotlib.patches import Rectangle
+import warnings
 
 # 전처리 관련 패키지
 import numpy as np
@@ -558,6 +559,17 @@ def load_text_from_gcs(bucket, path: str) -> str:
         raise
 
 
+
+def setup_korean_font():
+    """한글 폰트 설정 함수"""
+    warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
+    
+    plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP', 'DejaVu Sans', 'Noto Sans']
+    plt.rcParams['font.size'] = 10
+    plt.rcParams['axes.unicode_minus'] = False
+    plt.rcParams['lines.linewidth'] = 1.5
+    
+    print("✓ Matplotlib 한글 폰트 설정 완료")
 
 ################################ 메인 함수 처리 ################################
 

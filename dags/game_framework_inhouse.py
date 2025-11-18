@@ -57,6 +57,9 @@ PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
 
 
+## 한글 폰트 설정
+setup_korean_font()
+
 # 2. 자체결제 매출
 def inhouse_sales_query(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     query = f"""

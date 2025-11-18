@@ -55,6 +55,9 @@ from game_framework_util import *
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
 
+## 한글 폰트 설정
+setup_korean_font()
+
 
 ### 월별 일 평균 매출
 def monthly_day_average_rev(joyplegameid:int, gameidx:str, bigquery_client, bucket, **context):

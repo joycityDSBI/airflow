@@ -56,6 +56,8 @@ from game_framework_util import *
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
 
+## 한글 폰트 설정
+setup_korean_font()
 
 ## 이번달 가입 유저의 국가별 매출
 def cohort_by_country_revenue(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):

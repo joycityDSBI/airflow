@@ -56,6 +56,9 @@ from game_framework_util import *
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
 
+## 한글 폰트 설정
+setup_korean_font()
+
 
 def rev_group_rev_pu(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
     query = f"""

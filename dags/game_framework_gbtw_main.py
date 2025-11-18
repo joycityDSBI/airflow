@@ -68,7 +68,8 @@ from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 
 
-
+## 한글 폰트 설정
+setup_korean_font()
 
 # DAG 기본 설정
 default_args = {
