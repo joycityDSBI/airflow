@@ -47,7 +47,6 @@ import json
 from datetime import datetime, timezone, timedelta
 from adjustText import adjust_text
 from airflow.models import Variable
-from airflow.operators.python import get_current_context
 from zoneinfo import ZoneInfo  # Python 3.9 이상
 from pathlib import Path
 from airflow.sdk import get_current_context
@@ -837,7 +836,7 @@ def monthlyLTVgrowth_gemini(service_sub:str, path_monthlyBEP_ROAS:str, bucket, g
 
 
 ### ROAS 현황 및 KPI 표 이미지 생성
-def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_result6_monthlyROAS:str, bucket, **context):
+def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_result6_monthlyROAS:str, bucket, gcs_bucket:str, **context):
 
     query6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_roas_dataframe_preprocessing)
     query_result6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_result6_monthlyROAS)
@@ -1104,13 +1103,13 @@ def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_res
     gcs_path = f'{gameidx}/graph6_monthlyROAS.png'  # GCS에 저장될 경로
 
     #함수 호출 
-    capture_image_task(html_path=html_path, gcs_bucket=bucket, gcs_path=gcs_path, project_id=PROJECT_ID)
+    capture_image_task(html_path=html_path, gcs_bucket=gcs_bucket, gcs_path=gcs_path, project_id=PROJECT_ID)
 
     return gcs_path
 
 
 ############# KPI 테이블 이미지 생성
-def kpi_table_draw(gameidx:str, path_roas_kpi:str, bucket, **context):
+def kpi_table_draw(gameidx:str, path_roas_kpi:str, bucket, gcs_bucket:str, **context):
 
     roas_kpi = load_df_from_gcs(bucket=bucket, path=path_roas_kpi)
 
@@ -1237,16 +1236,16 @@ def kpi_table_draw(gameidx:str, path_roas_kpi:str, bucket, **context):
     html_path = "table6_ROAS_KPI.html"
     gcs_path = f'{gameidx}/graph6_ROAS_KPI.png' 
 
-    result = capture_and_upload_task(html_path, bucket, gcs_path, **context)
+    result = capture_and_upload_task(html_path, gcs_bucket, gcs_path, **context)
 
     return gcs_path
 
 
 
-def roas_kpi_table_merge(gameidx:str, path_roas_dataframe_preprocessing:str, path_result6_monthlyROAS:str, path_roas_kpi:str, bucket, **context):
+def roas_kpi_table_merge(gameidx:str, path_roas_dataframe_preprocessing:str, path_result6_monthlyROAS:str, path_roas_kpi:str, bucket, gcs_bucket:str, **context):
 
-    p1 = roas_table_draw(gameidx, path_roas_dataframe_preprocessing, path_result6_monthlyROAS, bucket, **context)
-    p2 = kpi_table_draw(gameidx, path_roas_kpi, bucket, **context)
+    p1 = roas_table_draw(gameidx, path_roas_dataframe_preprocessing, path_result6_monthlyROAS, bucket, gcs_bucket, **context)
+    p2 = kpi_table_draw(gameidx, path_roas_kpi, bucket, gcs_bucket, **context)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     blob1 = bucket.blob(p1)

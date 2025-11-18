@@ -137,6 +137,7 @@ with DAG(
 
     gcs_client = storage.Client.from_service_account_info(cred_dict)
     bucket = gcs_client.bucket('game-framework1')
+    gcs_bucket = 'game-framework1'
 
 
     #### 제미나이 시스템 인스트럭션 
@@ -674,7 +675,8 @@ with DAG(
                                                         path_roas_dataframe_preprocessing=path_roas_dataframe_preprocessing,
                                                         path_result6_monthlyROAS=path_result6_monthlyROAS,
                                                         path_roas_kpi=path_roas_kpi,
-                                                        bucket=bucket)
+                                                        bucket=bucket,
+                                                        gcs_bucket=gcs_bucket)
         if_else_length(path=path_roas_kpi_table_merge, gameidx=gameidx, service_sub=service_sub, func_name="roas_kpi_table_merge")
 
         try:
