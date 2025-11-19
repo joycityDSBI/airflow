@@ -135,7 +135,7 @@ def build_properties_payload(row_data: dict) -> dict:
                 continue
 
         # 📌 2. question 배열 처리 (새로 추가)
-        elif key == "question":
+        elif key in ["question"]:
             # value가 array/list인지 확인
             if isinstance(value, (list, tuple, pd.Series)):
                 # 배열을 문자열로 변환
@@ -145,9 +145,9 @@ def build_properties_payload(row_data: dict) -> dict:
                     if pd.notna(item):  # None/NaN 제외
                         question_list.append(str(item).strip())
                 
-                # 배열의 요소들을 세미콜론으로 연결
+ 
                 question_str = "; ".join(question_list) if question_list else ""
-                
+                print(f"&&&&&&Question_str: {question_str}")
                 if question_str:
                     # 2000자 제한 확인
                     if len(question_str) > 2000:
@@ -234,7 +234,7 @@ def extract_data(**context):
                 status,
                 description,
                 question,
-                auth_regenerate_count,
+                auto_regenerate_count,
                 error,
                 error_type,
                 feedback_rating
