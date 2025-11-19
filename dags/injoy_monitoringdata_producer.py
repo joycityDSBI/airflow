@@ -497,7 +497,10 @@ def merge_query_history(**context):
     else:
         # 컬럼 rename
         query_df_renamed = query_df.rename(columns={"executed_by": "user_email"})
-   
+
+        df_target['statement_id'] = df_target['statement_id'].astype(str)
+        query_df_renamed['statement_id'] = query_df_renamed['statement_id'].astype(str)
+        
         # 병합
         df_audit_enriched = df_target.merge(
             query_df_renamed[[
