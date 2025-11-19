@@ -86,7 +86,7 @@ def build_properties_payload(row_data: dict) -> dict:
 
     for key, value in row_data.items():
         # 📌 1. 먼저 array/list 타입 확인
-        if isinstance(value, (list, tuple, np.ndarray, pd.Series)):
+        if isinstance(value, (list, tuple, pd.Series)):
             # 빈 배열이면 continue
             if len(value) == 0:
                 continue
