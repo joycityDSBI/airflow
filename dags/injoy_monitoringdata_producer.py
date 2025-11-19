@@ -358,10 +358,8 @@ def get_message_details(**context):
                 print(f"⚠️ content 내용 : {content_raw}")
                 if isinstance(content_raw, str):
                     content = content_raw.replace("\n", " ")
-                    print(f"⚠️ content 내용 : {content}")
                 else:
                     content = str(content_raw) if content_raw is not None else None
-                    print(f"⚠️ content 내용 : {content}")
                 # Query, description, question 처리
                 attachments = data.get("attachments", [])
                 if attachments and isinstance(attachments, list):
@@ -394,7 +392,7 @@ def get_message_details(**context):
                 error_info = data.get("error", {})
                 if error_info and isinstance(error_info, dict):
                     error = error_info.get("error")
-                    error_type = error_info.get("error_type")
+                    error_type = error_info.get("type")
                 else:
                     error = None
                     error_type = None
@@ -428,13 +426,13 @@ def get_message_details(**context):
     df_target['query'] = queries
     df_target['statement_id'] = statement_ids
     df_target['row_count'] = row_counts
-    df_target['status'] = statuses
+    df_target['status'] = statuses ## select type
     df_target['description'] = descriptions
     df_target['question'] = questions
     df_target['auth_regenerate_count'] = auth_regenerate_counts
     df_target['error'] = errors
-    df_target['error_type'] = error_types
-    df_target['feedback_rating'] = feedback_ratings
+    df_target['error_type'] = error_types ## select type
+    df_target['feedback_rating'] = feedback_ratings ## select type
     
     print(f"✅ 메시지 상세 정보 수집 완료: {len(df_target)} rows")
     print("✅ df_target 데이터 head 3 : ", df_target.head(3))
