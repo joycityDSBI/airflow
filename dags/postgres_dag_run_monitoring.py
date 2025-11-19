@@ -22,7 +22,7 @@ dag = DAG(
     dag_id='postgres_dag_run_monitoring',
     default_args=default_args,
     description='airflow Postgres DAG Run 모니터링 및 이메일 보고',
-    schedule='0 0 * * *',  # 매일 아침 9시 실행
+    schedule='20 0 * * *',  # 매일 아침 9시 20분 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'postgres', 'monitoring'],
@@ -85,7 +85,6 @@ def query_dag_stats_and_send_email():
 
 def send_email_via_smtp(subject, html_content, recipients):
     """SMTP를 통한 이메일 발송"""
-    from airflow.models import Variable
     
     # Airflow Variables에서 SMTP 설정 가져오기
     smtp_host = get_var('SMTP_HOST', default='smtp.gmail.com')
