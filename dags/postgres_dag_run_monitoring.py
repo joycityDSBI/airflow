@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 default_args = {
     'owner': 'airflow',
     'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retry_delay': timedelta(seconds=15),
 }
 
 dag = DAG(
