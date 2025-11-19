@@ -359,7 +359,7 @@ def get_message_details(**context):
                     content = content_raw.replace("\n", " ")
                 else:
                     content = str(content_raw) if content_raw is not None else None
-                
+                    print(f"⚠️ content 내용 : {content}")
                 # Query, description, question 처리
                 attachments = data.get("attachments", [])
                 if attachments and isinstance(attachments, list):
@@ -500,7 +500,7 @@ def merge_query_history(**context):
 
         df_target['statement_id'] = df_target['statement_id'].astype(str)
         query_df_renamed['statement_id'] = query_df_renamed['statement_id'].astype(str)
-        
+
         # 병합
         df_audit_enriched = df_target.merge(
             query_df_renamed[[
