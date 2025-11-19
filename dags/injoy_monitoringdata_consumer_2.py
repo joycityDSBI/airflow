@@ -137,7 +137,7 @@ def build_properties_payload(row_data: dict) -> dict:
         # 📌 2. question 배열 처리 (새로 추가)
         elif key == "question":
             # value가 array/list인지 확인
-            if isinstance(value, (list, tuple, np.ndarray, pd.Series)):
+            if isinstance(value, (list, tuple, pd.Series)):
                 # 배열을 문자열로 변환
                 question_list = []
                 
