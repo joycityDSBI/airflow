@@ -16,10 +16,10 @@ default_args = {
 }
 
 dag = DAG(
-    'dag_run_stats_email',
+    dag_id='postgres_dag_run_monitoring',
     default_args=default_args,
     description='DAG run statistics query and email',
-    schedule='30 0 * * *',  # 매일 자정 30분에 실행
+    schedule='10 0 * * *',  # 매일 자정 30분에 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
 )
