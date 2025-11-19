@@ -373,19 +373,35 @@ def get_message_details(**context):
                     query = None
                 
                 # Statement ID 처리
-                statement_id = data.get("query_result", {}).get("statement_id")
+                query_result = data.get("query_result")
+                if query_result and isinstance(query_result, dict):
+                    statement_id = data.get("query_result", {}).get("statement_id")
+                    row_count = data.get("query_result", {}).get("row_count")
+                else:
+                    statement_id = None
+                    row_count = None
 
-                # row_count 처리
-                row_count = data.get("query_result", {}).get("row_count")
+                if isinstance(data.get("status"), str):
+                    status = data.get("status")
+                else:
+                    status = None
 
-                # status, auth_regenerate_count 처리
-                status = data.get("status")
-                auth_regenerate_count = data.get("auth_regenerate_count")
+                if isinstance(data.get("auth_regenerate_count"), int):
+                    auth_regenerate_count = data.get("auth_regenerate_count")
+                else:
+                    auth_regenerate_count = None
 
-                # error 처리
-                error = data.get("error", {}).get("error")
-                error_type = data.get("error", {}).get("error_type")
-                feedback_rating = row.get("feedback_rating", {}).get("rating")
+                error_info = data.get("error", {})
+                if error_info and isinstance(error_info, dict):
+                    error = error_info.get("error")
+                    error_type = error_info.get("error_type")
+                else:
+                    error = None
+                    error_type = None
+
+                feedback_info = data.get("feedback", {})
+                if feedback_info and isinstance(feedback_info, dict):
+                    feedback_rating = feedback_info.get("rating")
 
                 
             else:
