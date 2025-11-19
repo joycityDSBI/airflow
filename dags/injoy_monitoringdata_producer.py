@@ -355,8 +355,10 @@ def get_message_details(**context):
                 
                 # Content 처리
                 content_raw = data.get("content")
+                print(f"⚠️ content 내용 : {content_raw}")
                 if isinstance(content_raw, str):
                     content = content_raw.replace("\n", " ")
+                    print(f"⚠️ content 내용 : {content}")
                 else:
                     content = str(content_raw) if content_raw is not None else None
                     print(f"⚠️ content 내용 : {content}")
