@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 import logging
 from sqlalchemy import create_engine
 from airflow.models import Variable
+import os
 
 logger = logging.getLogger(__name__)
 
