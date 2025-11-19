@@ -316,7 +316,7 @@ def get_message_details(**context):
     statuses = []
     descriptions = []
     questions = []
-    auth_regenerate_counts = []
+    auto_regenerate_counts = []
     errors = []
     error_types = []
     feedback_ratings = []
@@ -340,7 +340,7 @@ def get_message_details(**context):
             statuses.append(None)
             descriptions.append(None)
             questions.append(None)
-            auth_regenerate_counts.append(None)
+            auto_regenerate_counts.append(None)
             errors.append(None)
             error_types.append(None)
             feedback_ratings.append(None)
@@ -369,6 +369,8 @@ def get_message_details(**context):
 
                 else:
                     query = None
+                    description = None
+                    question = None
                 
                 # Statement ID 처리
                 query_result = data.get("query_result")
@@ -384,10 +386,10 @@ def get_message_details(**context):
                 else:
                     status = None
 
-                if isinstance(data.get("auth_regenerate_count"), int):
-                    auth_regenerate_count = data.get("auth_regenerate_count")
+                if isinstance(data.get("auto_regenerate_count"), int):
+                    auto_regenerate_count = data.get("auto_regenerate_count")
                 else:
-                    auth_regenerate_count = None
+                    auto_regenerate_count = None
 
                 error_info = data.get("error", {})
                 if error_info and isinstance(error_info, dict):
@@ -404,11 +406,11 @@ def get_message_details(**context):
                     feedback_rating = None
                 
             else:
-                content, query, description, statement_id, row_count, status, question, auth_regenerate_count, error, error_type, feedback_rating = None, None, None, None, None, None, None, None, None, None, None
+                content, query, description, statement_id, row_count, status, question, auto_regenerate_count, error, error_type, feedback_rating = None, None, None, None, None, None, None, None, None, None, None
                 
         except Exception as e:
             print(f"❌ 예외 발생 ({idx}행): {e}")
-            content, query, description, statement_id, row_count, status, question, auth_regenerate_count, error, error_type, feedback_rating = None, None, None, None, None, None, None, None, None, None, None
+            content, query, description, statement_id, row_count, status, question, auto_regenerate_count, error, error_type, feedback_rating = None, None, None, None, None, None, None, None, None, None, None
         
         contents.append(content)
         queries.append(query)
@@ -417,7 +419,7 @@ def get_message_details(**context):
         statuses.append(status)
         descriptions.append(description)
         questions.append(question)
-        auth_regenerate_counts.append(auth_regenerate_count)
+        auto_regenerate_counts.append(auto_regenerate_count)
         errors.append(error)
         error_types.append(error_type)
         feedback_ratings.append(feedback_rating)
@@ -430,7 +432,7 @@ def get_message_details(**context):
     df_target['status'] = statuses ## select type
     df_target['description'] = descriptions
     df_target['question'] = questions
-    df_target['auth_regenerate_count'] = auth_regenerate_counts
+    df_target['auto_regenerate_count'] = auto_regenerate_count
     df_target['error'] = errors
     df_target['error_type'] = error_types ## select type
     df_target['feedback_rating'] = feedback_ratings ## select type
