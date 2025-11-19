@@ -19,7 +19,7 @@ dag = DAG(
     'dag_run_stats_email',
     default_args=default_args,
     description='DAG run statistics query and email',
-    schedule_interval='@daily',
+    schedule='10 0 * * *',  # 매일 오전 12시 10분 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
 )
