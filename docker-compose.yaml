@@ -76,6 +76,12 @@ x-airflow-common:
     # rate limiting 비활성화 (개발 환경)
     AIRFLOW__API__MAXIMUM_PAGE_LIMIT: 100
 
+    SMTP_HOST: smtp.gmail.com
+    SMTP_PORT: 587
+    SMTP_USER: ds_bi@joycity.com
+    SMTP_PASSWORD: dhxlacxtjquhdqfn
+    EMAIL_FROM: ds_bi@joycity.com
+
     # yamllint disable rule:line-length
     # Use simple http server on scheduler for health checks
     # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
