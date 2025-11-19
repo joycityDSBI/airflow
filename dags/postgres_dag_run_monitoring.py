@@ -6,58 +6,20 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import logging
-from sqlalchemy import create_engine
-from airflow.models import Variable
-import os
 
 logger = logging.getLogger(__name__)
-
-
-def get_var(key: str, default: str = None) -> str:
-    """환경 변수 → Airflow Variable 순서로 조회
-    
-    Args:
-        key: 변수 이름
-        default: 기본값 (없으면 None)
-    
-    Returns:
-        환경 변수 값 또는 Airflow Variable 값
-    """
-    # 1단계: 환경 변수 확인
-    env_value = os.environ.get(key)
-    if env_value:
-        print(f"✓ 환경 변수에서 {key} 로드됨")
-        return env_value
-    
-    # 2단계: Airflow Variable 확인
-    try:
-        var_value = Variable.get(key, default_var=None)
-        if var_value:
-            print(f"✓ Airflow Variable에서 {key} 로드됨")
-            return var_value
-    except Exception as e:
-        print(f"⚠️  Variable.get({key}) 오류: {str(e)}")
-    
-    # 3단계: 기본값 반환
-    if default is not None:
-        print(f"ℹ️  기본값으로 {key} 설정됨")
-        return default
-    
-    raise ValueError(f"필수 설정 {key}을(를) 찾을 수 없습니다. "
-                     f"환경 변수 또는 Airflow Variable에서 설정하세요.")
-
 
 default_args = {
     'owner': 'airflow',
     'retries': 1,
-    'retry_delay': timedelta(seconds=15),
+    'retry_delay': timedelta(minutes=5),
 }
 
 dag = DAG(
-    dag_id='postgres_dag_run_monitoring',
+    'dag_run_stats_email',
     default_args=default_args,
     description='DAG run statistics query and email',
-    schedule='10 0 * * *',  # 매일 자정 30분에 실행
+    schedule_interval='@daily',
     start_date=datetime(2025, 1, 1),
     catchup=False,
 )
@@ -65,23 +27,28 @@ dag = DAG(
 def query_dag_stats_and_send_email():
     """PostgreSQL에서 DAG 통계를 조회하고 이메일로 발송"""
     try:
-        
+        from sqlalchemy import create_engine, text
+        from airflow.models import Variable
         
         # PostgreSQL 연결 문자열
-        # Docker 같은 네트워크에서 'postgres'로 접근
-        db_host = get_var('DB_HOST', 'postgres')
-        db_port = int(get_var('DB_PORT', '5432'))
-        db_user = get_var('DB_USER', 'airflow')
-        db_password = get_var('DB_PASSWORD', 'airflow')
-        db_name = get_var('DB_NAME', 'airflow')
+        db_host = Variable.get('DB_HOST', default='postgres')
+        db_port = Variable.get('DB_PORT', default='5432')
+        db_user = Variable.get('DB_USER', default='airflow')
+        db_password = Variable.get('DB_PASSWORD', default='airflow')
+        db_name = Variable.get('DB_NAME', default='airflow')
         
         db_conn_string = f'postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
         
         logger.info(f"PostgreSQL 연결 시도: {db_host}:{db_port}/{db_name}")
         engine = create_engine(db_conn_string)
         
-        # DAG 실행 통계 조회
-        sql = """
+        # 연결 테스트
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            logger.info("✓ PostgreSQL 연결 성공")
+        
+        # DAG 실행 통계 조회 쿼리
+        sql_query = """
         SELECT 
             dag_id, 
             state, 
@@ -102,15 +69,24 @@ def query_dag_stats_and_send_email():
             AND dag_id NOT LIKE '%sync%'
             GROUP BY dag_id, state
         ) AS ts
-        ORDER BY dag_id DESC
+        ORDER BY minutes_diff DESC
         """
         
         logger.info("쿼리 실행 중...")
-        df = pd.read_sql(sql, engine)
-        logger.info(f"조회 결과: {len(df)}개 행")
-        print("\n=== DAG Run Statistics ===")
-        print(df)
-        print("=" * 40 + "\n")
+        
+        # SQLAlchemy 2.x 호환성: text() 래퍼 사용
+        with engine.connect() as conn:
+            result = conn.execute(text(sql_query))
+            rows = result.fetchall()
+            columns = result.keys()
+            df = pd.DataFrame(rows, columns=columns)
+        
+        logger.info(f"✓ 조회 결과: {len(df)}개 행")
+        print("\n" + "="*60)
+        print("DAG Run Statistics")
+        print("="*60)
+        print(df.to_string(index=False))
+        print("="*60 + "\n")
         
         if len(df) == 0:
             logger.warning("조회 결과가 없습니다")
@@ -124,44 +100,73 @@ def query_dag_stats_and_send_email():
         <html>
             <head>
                 <style>
-                    body {{ font-family: Arial, sans-serif; }}
-                    table {{ border-collapse: collapse; margin-top: 10px; }}
-                    th, td {{ padding: 8px; text-align: left; border: 1px solid #ddd; }}
-                    th {{ background-color: #4CAF50; color: white; }}
-                    tr:nth-child(even) {{ background-color: #f2f2f2; }}
+                    body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; }}
+                    table {{ border-collapse: collapse; margin-top: 15px; width: 100%; }}
+                    th, td {{ padding: 12px; text-align: left; border: 1px solid #ddd; }}
+                    th {{ background-color: #2196F3; color: white; font-weight: bold; }}
+                    tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                    tr:hover {{ background-color: #f0f0f0; }}
+                    .header {{ color: #333; border-bottom: 3px solid #2196F3; margin-bottom: 20px; }}
+                    .info-row {{ margin: 10px 0; }}
+                    .footer {{ margin-top: 30px; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 15px; }}
                 </style>
             </head>
             <body>
-                <h2>DAG Run Statistics Report</h2>
-                <p><strong>실행 일시:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-                <p><strong>조회 기준:</strong> 오늘 scheduled run 중 'sync' 제외</p>
+                <div class="header">
+                    <h2>📊 Airflow DAG Run Statistics Report</h2>
+                </div>
+                
+                <div class="info-row">
+                    <strong>📅 실행 일시:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                </div>
+                <div class="info-row">
+                    <strong>🔍 조회 기준:</strong> 오늘 scheduled run 중 'sync' 제외
+                </div>
+                
+                <h3>📈 실행 결과</h3>
                 {html_table}
-                <br>
-                <p>총 <strong>{len(df)}</strong>개의 DAG 실행 결과입니다.</p>
+                
+                <div class="footer">
+                    <p>✓ 총 <strong>{len(df)}</strong>개의 DAG 실행 결과</p>
+                    <p>컬럼 설명:</p>
+                    <ul>
+                        <li><strong>dag_id:</strong> DAG 이름</li>
+                        <li><strong>state:</strong> 실행 상태 (success, failed, running 등)</li>
+                        <li><strong>start_date:</strong> 실행 시작 시간</li>
+                        <li><strong>minutes_diff:</strong> 실행 소요 시간 (분)</li>
+                        <li><strong>job_cnt:</strong> 실행 횟수</li>
+                    </ul>
+                    <p style="margin-top: 20px; color: #999;">
+                        이 메일은 Airflow에서 자동으로 생성되었습니다.
+                    </p>
+                </div>
             </body>
         </html>
         """
         
         # SMTP 설정
-        smtp_host = get_var('SMTP_HOST', 'smtp.gmail.com')
-        smtp_port = int(get_var('SMTP_PORT', '587'))
-        sender_email = get_var('SENDER_EMAIL')
-        sender_password = get_var('SENDER_PASSWORD')
-        recipients_str = get_var('RECIPIENTS', 'fc748c69.joycity.com@kr.teams.ms')
+        smtp_host = Variable.get('SMTP_HOST', default='smtp.gmail.com')
+        smtp_port = int(Variable.get('SMTP_PORT', default='587'))
+        sender_email = Variable.get('SENDER_EMAIL')
+        sender_password = Variable.get('SENDER_PASSWORD')
+        recipients_str = Variable.get('RECIPIENTS', default='')
         
         if not sender_email or not sender_password:
-            logger.warning("SMTP 설정이 incomplete합니다. 이메일을 발송하지 않습니다.")
+            logger.warning("SMTP 설정이 incomplete합니다.")
+            logger.warning(f"SENDER_EMAIL: {bool(sender_email)}, SENDER_PASSWORD: {bool(sender_password)}")
+            logger.info("이메일을 발송하지 않고 데이터만 반환합니다.")
             return df.to_json()
         
         recipients = [r.strip() for r in recipients_str.split(',') if r.strip()]
         
         if not recipients:
-            logger.warning("수신자가 지정되지 않았습니다.")
+            logger.warning("수신자가 지정되지 않았습니다. RECIPIENTS 변수를 확인하세요.")
+            logger.info("이메일을 발송하지 않고 데이터만 반환합니다.")
             return df.to_json()
         
         # 이메일 구성
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = '[Airflow] DAG Run Statistics Report'
+        msg['Subject'] = '[Airflow] DAG Run Statistics Report - ' + datetime.now().strftime('%Y-%m-%d')
         msg['From'] = sender_email
         msg['To'] = ', '.join(recipients)
         
@@ -171,16 +176,25 @@ def query_dag_stats_and_send_email():
         
         # SMTP 발송
         logger.info(f"이메일 발송 시작: {recipients}")
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.starttls()
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, recipients, msg.as_string())
+        try:
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                server.login(sender_email, sender_password)
+                server.sendmail(sender_email, recipients, msg.as_string())
+            
+            logger.info(f"✓ 이메일 발송 성공: {recipients}")
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"❌ SMTP 인증 실패: {str(e)}")
+            logger.error("SENDER_EMAIL과 SENDER_PASSWORD를 확인하세요")
+            raise
+        except smtplib.SMTPException as e:
+            logger.error(f"❌ SMTP 오류: {str(e)}")
+            raise
         
-        logger.info(f"이메일 발송 성공: {recipients}")
         return df.to_json()
         
     except Exception as e:
-        logger.error(f"에러 발생: {str(e)}", exc_info=True)
+        logger.error(f"❌ 에러 발생: {str(e)}", exc_info=True)
         raise
 
 # Task 정의
