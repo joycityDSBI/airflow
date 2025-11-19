@@ -82,19 +82,27 @@ def query_dag_stats_and_send_email():
         
         # DAG 실행 통계 조회
         sql = """
-        select dag_id, state, start_date,
-        ROUND(EXTRACT(EPOCH from (end_date - start_date)) / 60, 2) as minutes_diff,
-        cnt as job_cnt
-        from
+        SELECT 
+            dag_id, 
+            state, 
+            start_date,
+            ROUND(EXTRACT(EPOCH FROM (end_date - start_date)) / 60, 2) AS minutes_diff,
+            cnt AS job_cnt
+        FROM
         (
-            select dag_id, state, min(start_date) as start_date, max(end_date) as end_date, count(1) as cnt
-            from dag_run
-            where logical_date >= CURRENT_DATE
-            and run_type = 'scheduled'
-            and dag_id not like '%sync%'
-            group by 1, 2
-        ) TS
-        order by minutes_diff desc
+            SELECT 
+                dag_id, 
+                state, 
+                MIN(start_date) AS start_date, 
+                MAX(end_date) AS end_date, 
+                COUNT(1) AS cnt
+            FROM dag_run
+            WHERE logical_date >= CURRENT_DATE
+            AND run_type = 'scheduled'
+            AND dag_id NOT LIKE '%sync%'
+            GROUP BY dag_id, state
+        ) AS ts
+        ORDER BY dag_id DESC
         """
         
         df = pd.read_sql(sql, engine)
