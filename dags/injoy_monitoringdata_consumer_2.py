@@ -85,8 +85,15 @@ def build_properties_payload(row_data: dict) -> dict:
     properties = {}
 
     for key, value in row_data.items():
-        if pd.isna(value):
-            continue
+        # 📌 1. 먼저 array/list 타입 확인
+        if isinstance(value, (list, tuple, np.ndarray, pd.Series)):
+            # 빈 배열이면 continue
+            if len(value) == 0:
+                continue
+        else:
+            # 일반 값은 pd.isna() 사용
+            if pd.isna(value):
+                continue
 
         if key == "사용자 질의":
             content = str(value or "")
@@ -126,6 +133,34 @@ def build_properties_payload(row_data: dict) -> dict:
                 properties[key] = {"number": int_value}
             except (ValueError, TypeError):
                 continue
+
+        # 📌 2. question 배열 처리 (새로 추가)
+        elif key == "question":
+            # value가 array/list인지 확인
+            if isinstance(value, (list, tuple, np.ndarray, pd.Series)):
+                # 배열을 문자열로 변환
+                question_list = []
+                
+                for item in value:
+                    if pd.notna(item):  # None/NaN 제외
+                        question_list.append(str(item).strip())
+                
+                # 배열의 요소들을 세미콜론으로 연결
+                question_str = "; ".join(question_list) if question_list else ""
+                
+                if question_str:
+                    # 2000자 제한 확인
+                    if len(question_str) > 2000:
+                        question_str = question_str[:2000]
+                    
+                    properties[key] = {"rich_text": [{"text": {"content": question_str}}]}
+            else:
+                # value가 배열이 아닌 경우 (단일 문자열)
+                content = str(value or "")
+                if content:
+                    properties[key] = {"rich_text": [{"text": {"content": content}}]}
+            
+            continue  # 다음 반복으로
 
         else:
             properties[key] = {"rich_text": [{"text": {"content": str(value or "")}}]}
