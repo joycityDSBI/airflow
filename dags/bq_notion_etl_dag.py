@@ -199,41 +199,53 @@ def extract_bq_metadata(**context):
 def sync_to_notion(**context):
     """Notion 동기화"""
     start_ts = time.time()
+    logging.info("=" * 70)
     logging.info("🧠 Notion 동기화 시작")
+    logging.info("=" * 70)
     
     try:
         ti = context['ti']
-        metadata_records = ti.xcom_pull(task_ids='extract_metadata', key='metadata_df')
+        
+        # XCom에서 데이터 가져오기
+        logging.info("📌 Step 1: XCom에서 메타데이터 읽기")
+        metadata_records = ti.xcom_pull(
+            task_ids='extract_metadata',
+            key='metadata_df'
+        )
         
         if not metadata_records:
-            raise ValueError("메타데이터가 비어있습니다")
+            raise ValueError("XCom에서 메타데이터를 찾을 수 없습니다")
         
+        logging.info(f"  ✅ 데이터 로드: {len(metadata_records)} records")
+        
+        # DataFrame 변환
+        logging.info("📌 Step 2: DataFrame 변환")
         df = pd.DataFrame(metadata_records)
-        logging.info(f"📦 DataFrame 로드: {len(df)} rows")
+        logging.info(f"  ✅ 변환 완료: {len(df)} rows × {len(df.columns)} cols")
+        logging.info(f"  컬럼: {df.columns.tolist()}")
         
-        # Notion 동기화
-        update_notion_databases(df)
-        
-        # 해시 업데이트 (안전하게)
-        current_hash = ti.xcom_pull(task_ids='detect_metadata_change', key='current_hash')
-        if current_hash:
-            try:
-                Variable.set(METADATA_HASH_VAR, current_hash)
-                logging.info(f"💾 해시 업데이트 완료: {current_hash[:16]}...")
-            except Exception as e:
-                logging.error(f"⚠️ 해시 업데이트 실패: {e}")
+        # Notion 업데이트 (여기서 예외가 발생할 수 있음)
+        logging.info("📌 Step 3: update_notion_databases 호출")
+        result = update_notion_databases(df)  # 📌 이제 예외를 throw할 것!
+        logging.info(f"  ✅ Notion 업데이트 완료: {result}")
         
         took = time.time() - start_ts
-        logging.info(f"🎉 Notion 동기화 완료 (⏱️ {took:.1f}s)")
-        
-        # 결과 저장
         ti.xcom_push(key='success', value=True)
         ti.xcom_push(key='duration', value=round(took, 2))
         
+        logging.info("=" * 70)
+        logging.info(f"✅ Notion 동기화 완료 (⏱️ {took:.1f}s)")
+        logging.info("=" * 70)
+        
     except Exception as e:
+        logging.error("=" * 70)
         logging.exception(f"🔥 Notion 동기화 실패: {e}")
+        logging.error("=" * 70)
+        
         context['ti'].xcom_push(key='success', value=False)
         context['ti'].xcom_push(key='error', value=str(e))
+        
+        # 📌 에러를 raise하면 DAG에서 감지 가능!
         raise
 
 
