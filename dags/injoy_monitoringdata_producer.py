@@ -400,7 +400,8 @@ def get_message_details(**context):
                 feedback_info = data.get("feedback", {})
                 if feedback_info and isinstance(feedback_info, dict):
                     feedback_rating = feedback_info.get("rating")
-
+                else:
+                    feedback_rating = None
                 
             else:
                 content, query, description, statement_id, row_count, status, question, auth_regenerate_count, error, error_type, feedback_rating = None, None, None, None, None, None, None, None, None, None, None
