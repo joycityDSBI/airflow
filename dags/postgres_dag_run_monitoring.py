@@ -89,7 +89,7 @@ def query_dag_stats_and_send_email():
         SELECT 
             dag_id, 
             state, 
-            start_date,
+            start_date AT TIME ZONE 'Asia/Seoul' AS start_date,
             ROUND(EXTRACT(EPOCH FROM (end_date - start_date)) / 60, 2) AS minutes_diff,
             cnt AS job_cnt
         FROM
@@ -101,7 +101,7 @@ def query_dag_stats_and_send_email():
                 MAX(end_date) AS end_date, 
                 COUNT(1) AS cnt
             FROM dag_run
-            WHERE logical_date >= CURRENT_DATE
+            WHERE logical_date >= CURRENT_DATE AT TIME ZONE 'Asia/Seoul'
             AND run_type = 'scheduled'
             AND dag_id NOT LIKE '%sync%'
             GROUP BY dag_id, state
