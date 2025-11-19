@@ -117,6 +117,16 @@ def build_properties_payload(row_data: dict) -> dict:
             else:
                 properties[key] = {"rich_text": [{"text": {"content": content}}]}
 
+        elif key in ["status", "error_type", "feedback_rating"]:
+            properties[key] = {"select": {"name": str(value or "")}}
+
+        elif key in ['row_count', 'auth_regenerate_count']:
+            try:
+                int_value = int(value)
+                properties[key] = {"number": int_value}
+            except (ValueError, TypeError):
+                continue
+
         else:
             properties[key] = {"rich_text": [{"text": {"content": str(value or "")}}]}
             
