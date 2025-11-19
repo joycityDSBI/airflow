@@ -8,6 +8,8 @@ from email.mime.text import MIMEText
 import logging
 import os
 from airflow.models import Variable
+from sqlalchemy import create_engine, text
+
 
 
 logger = logging.getLogger(__name__)
@@ -64,8 +66,6 @@ def get_var(key: str, default: str = None) -> str:
 def query_dag_stats_and_send_email():
     """PostgreSQL에서 DAG 통계를 조회하고 이메일로 발송"""
     try:
-        from sqlalchemy import create_engine, text
-        from airflow.models import Variable
         
         # PostgreSQL 연결 문자열
         db_host = get_var('DB_HOST', 'postgres')
@@ -184,9 +184,9 @@ def query_dag_stats_and_send_email():
         # SMTP 설정
         smtp_host = get_var('SMTP_HOST', 'smtp.gmail.com')
         smtp_port = int(get_var('SMTP_PORT', '587'))
-        sender_email = get_var('SENDER_EMAIL')
-        sender_password = get_var('SENDER_PASSWORD')
-        recipients_str = get_var('RECIPIENTS', '')
+        sender_email = get_var('SENDER_EMAIL', 'ds_bi@joycity.com')
+        sender_password = get_var('SMTP_PASSWORD')
+        recipients_str = get_var('RECIPIENTS', 'fc748c69.joycity.com@kr.teams.ms')
 
         if not sender_email or not sender_password:
             logger.warning("SMTP 설정이 incomplete합니다.")
