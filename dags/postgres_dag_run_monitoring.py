@@ -6,6 +6,9 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import logging
+import os
+from airflow.models import Variable
+
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +187,7 @@ def query_dag_stats_and_send_email():
         sender_email = get_var('SENDER_EMAIL')
         sender_password = get_var('SENDER_PASSWORD')
         recipients_str = get_var('RECIPIENTS', '')
-        
+
         if not sender_email or not sender_password:
             logger.warning("SMTP 설정이 incomplete합니다.")
             logger.warning(f"SENDER_EMAIL: {bool(sender_email)}, SENDER_PASSWORD: {bool(sender_password)}")
