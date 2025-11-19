@@ -184,7 +184,15 @@ def extract_data(**context):
                 message_id,
                 query,
                 message_response_duration_seconds,
-                event_time_kst as event_time_kst
+                event_time_kst as event_time_kst,
+                row_count,
+                status,
+                description,
+                question,
+                auth_regenerate_count,
+                error,
+                error_type,
+                feedback_rating
             FROM 
                 datahub.injoy_ops_schema.injoy_monitoring_data
             ORDER BY conversation_id, event_time_kst
@@ -302,12 +310,18 @@ def load_to_notion(**context):
         space_id_rt = props.get('스페이스id', {}).get('rich_text', [])
         convo_id_rt = props.get('대화id', {}).get('rich_text', [])
         msg_id_rt = props.get('메시지id', {}).get('rich_text', [])
+        status_rt = props.get('status', {}).get('rich_text', [])
+        error_type_rt = props.get('error_type', {}).get('rich_text', [])
+        feedback_rating_rt = props.get('feedback_rating', {}).get('rich_text', [])
         
         row_values = {
             '사용자': user_rt[0].get('plain_text', '') if user_rt else '',
             '스페이스id': space_id_rt[0].get('plain_text', '') if space_id_rt else '',
             '대화id': convo_id_rt[0].get('plain_text', '') if convo_id_rt else '',
-            '메시지id': msg_id_rt[0].get('plain_text', '') if msg_id_rt else ''
+            '메시지id': msg_id_rt[0].get('plain_text', '') if msg_id_rt else '',
+            'status': status_rt[0].get('select', '') if status_rt else '',
+            'error_type': error_type_rt[0].get('select', '') if error_type_rt else '',
+            'feedback_rating': feedback_rating_rt[0].get('select', '') if feedback_rating_rt else ''
         }
 
         key = generate_row_key(row_values)
