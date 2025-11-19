@@ -24,6 +24,40 @@ dag = DAG(
     catchup=False,
 )
 
+def get_var(key: str, default: str = None) -> str:
+    """환경 변수 → Airflow Variable 순서로 조회
+    
+    Args:
+        key: 변수 이름
+        default: 기본값 (없으면 None)
+    
+    Returns:
+        환경 변수 값 또는 Airflow Variable 값
+    """
+    # 1단계: 환경 변수 확인
+    env_value = os.environ.get(key)
+    if env_value:
+        print(f"✓ 환경 변수에서 {key} 로드됨")
+        return env_value
+    
+    # 2단계: Airflow Variable 확인
+    try:
+        var_value = Variable.get(key, default_var=None)
+        if var_value:
+            print(f"✓ Airflow Variable에서 {key} 로드됨")
+            return var_value
+    except Exception as e:
+        print(f"⚠️  Variable.get({key}) 오류: {str(e)}")
+    
+    # 3단계: 기본값 반환
+    if default is not None:
+        print(f"ℹ️  기본값으로 {key} 설정됨")
+        return default
+    
+    raise ValueError(f"필수 설정 {key}을(를) 찾을 수 없습니다. "
+                     f"환경 변수 또는 Airflow Variable에서 설정하세요.")
+
+
 def query_dag_stats_and_send_email():
     """PostgreSQL에서 DAG 통계를 조회하고 이메일로 발송"""
     try:
@@ -31,11 +65,11 @@ def query_dag_stats_and_send_email():
         from airflow.models import Variable
         
         # PostgreSQL 연결 문자열
-        db_host = Variable.get('DB_HOST', default='postgres')
-        db_port = Variable.get('DB_PORT', default='5432')
-        db_user = Variable.get('DB_USER', default='airflow')
-        db_password = Variable.get('DB_PASSWORD', default='airflow')
-        db_name = Variable.get('DB_NAME', default='airflow')
+        db_host = get_var('DB_HOST', 'postgres')
+        db_port = int(get_var('DB_PORT', '5432'))
+        db_user = get_var('DB_USER', 'airflow')
+        db_password = get_var('DB_PASSWORD', 'airflow')
+        db_name = get_var('DB_NAME', 'airflow')
         
         db_conn_string = f'postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
         
@@ -145,11 +179,11 @@ def query_dag_stats_and_send_email():
         """
         
         # SMTP 설정
-        smtp_host = Variable.get('SMTP_HOST', default='smtp.gmail.com')
-        smtp_port = int(Variable.get('SMTP_PORT', default='587'))
-        sender_email = Variable.get('SENDER_EMAIL')
-        sender_password = Variable.get('SENDER_PASSWORD')
-        recipients_str = Variable.get('RECIPIENTS', default='')
+        smtp_host = get_var('SMTP_HOST', 'smtp.gmail.com')
+        smtp_port = int(get_var('SMTP_PORT', '587'))
+        sender_email = get_var('SENDER_EMAIL')
+        sender_password = get_var('SENDER_PASSWORD')
+        recipients_str = get_var('RECIPIENTS', '')
         
         if not sender_email or not sender_password:
             logger.warning("SMTP 설정이 incomplete합니다.")
