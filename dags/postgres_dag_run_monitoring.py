@@ -105,9 +105,12 @@ def query_dag_stats_and_send_email():
         ORDER BY dag_id DESC
         """
         
+        logger.info("쿼리 실행 중...")
         df = pd.read_sql(sql, engine)
         logger.info(f"조회 결과: {len(df)}개 행")
+        print("\n=== DAG Run Statistics ===")
         print(df)
+        print("=" * 40 + "\n")
         
         if len(df) == 0:
             logger.warning("조회 결과가 없습니다")
