@@ -2332,8 +2332,13 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
     }
 
     try:
-        gcs_path = cohort_rev_table_draw(gameidx, path_regyearRevenue_pv2, bucket, **context)
-        blob = bucket.blob(gcs_path)
+        if isinstance(bucket, str):
+            client = storage.Client()
+            bucket_obj = client.bucket(bucket)
+        else:
+            bucket_obj = bucket
+        gcs_path = cohort_rev_table_draw(gameidx, path_regyearRevenue_pv2, bucket_obj, **context)
+        blob = bucket_obj.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph5_regyearRevenue.png'
         print(f"✓ GCS 이미지 다운로드 성공 : {gcs_path}")
