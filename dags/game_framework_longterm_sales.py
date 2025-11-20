@@ -1851,7 +1851,7 @@ def merge_merge_rgroup_total_rev_pu_ALL_table(gameidx: str, bucket,
 
 def cohort_rev_table_draw(gameidx:str, path_rev_cohort_year_pv2:str, bucket, **context):
 
-    _, df = load_df_from_gcs(bucket, path_rev_cohort_year_pv2)
+    df = load_df_from_gcs(bucket, path_rev_cohort_year_pv2)
     
     def render_table_image(
         df: pd.DataFrame,
@@ -2409,7 +2409,7 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
         raise
 
 
-    query_result5_regyearRevenue = load_df_from_gcs(bucket, path_regyearRevenue)
+    query_result5_regyearRevenue, _ = load_df_from_gcs(bucket, path_regyearRevenue)
 
     resp = df_to_notion_table_under_toggle(
         notion=notion,
