@@ -1251,7 +1251,8 @@ def country_group_df_draw(joyplegameid: int, gameidx: str, bigquery_client, buck
     
     gcs_paths = []
     grouped_dfs, _ = country_group_to_df(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket, **context)
-    grouped_dfs = grouped_dfs.sort_values(by="Sales", ascending=False)
+    grouped_dfs = {country: df.sort_values(by="Sales", ascending=False) 
+               for country, df in grouped_dfs.items()}
 
     # ✅ 모든 그룹별로 그래프 생성
     for country, df in grouped_dfs.items():
