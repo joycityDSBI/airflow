@@ -2191,7 +2191,7 @@ def monthly_rgroup_upload_notion(gameidx:str, service_sub:str,
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph5_monthlyRgroupHap.png'
-        print(f"✓ GCS 이미지 다운로드 성공 : {gcs_path}")
+        print(f"✓✓✓✓ GCS 이미지 다운로드 성공 : {gcs_path}")
     except Exception as e:
         print(f"❌ GCS 다운로드 실패: {str(e)}")
         raise
