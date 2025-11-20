@@ -2335,11 +2335,7 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
     )
 
     # 공통 헤더
-    headers_json = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Notion-Version": NOTION_VERSION,
-        "Content-Type": "application/json"
-    }
+    headers_json = headers_json
 
     try:
         if isinstance(bucket, str):
@@ -2426,12 +2422,15 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
         has_row_header=False
     )
 
-    blocks = md_to_notion_blocks(rev_cohort_year_gemini(gameidx=gameidx, 
-                                                        service_sub=service_sub,        
-                                                        path_regyearRevenue_pv2=path_regyearRevenue_pv2, 
-                                                        MODEL_NAME=MODEL_NAME, 
-                                                        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
-                                                        bucket=bucket_obj))
+    text = rev_cohort_year_gemini(gameidx=gameidx, 
+                                  service_sub=service_sub, 
+                                  path_regyearRevenue_pv2=path_regyearRevenue_pv2, 
+                                  MODEL_NAME=MODEL_NAME, 
+                                  SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
+                                  bucket=bucket_obj
+                                  )
+    
+    blocks = md_to_notion_blocks(text)
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
         children=blocks
