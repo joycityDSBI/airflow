@@ -2444,7 +2444,7 @@ def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
                             path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION,
                             bigquery_client, bucket, **context)
 
-    df = dfs.get("query_result4_salesByPackage_forCategoryGraph_1")
+    df = dfs.get("query_result4_salesByPackage_forCategoryGraph_2")
     df["일자"] = pd.to_datetime(df["일자"])
     df["매출"] = pd.to_numeric(df["매출"], errors="coerce").fillna(0).astype("int64")
 
@@ -2545,7 +2545,7 @@ def top3_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
                             path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION,
                             bigquery_client, bucket, **context)
 
-    df = dfs.get("query_result4_salesByPackage_forCategoryGraph_1")
+    df = dfs.get("query_result4_salesByPackage_forCategoryGraph_3")
     df["일자"] = pd.to_datetime(df["일자"])
     df["매출"] = pd.to_numeric(df["매출"], errors="coerce").fillna(0).astype("int64")
 
