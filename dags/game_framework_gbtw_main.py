@@ -603,7 +603,10 @@ with DAG(
         path_merge_rgroup_total_rev_pu_table = merge_rgroup_total_rev_pu_table(gameidx=gameidx, path_rgroup_rev_total=path_rgroup_rev_total, bucket=bucket)
         if_else_length(path=path_merge_rgroup_total_rev_pu_table, gameidx=gameidx, service_sub=service_sub, func_name="merge_rgroup_total_rev_pu_table")
 
-        path_merge_merge_rgroup_total_rev_pu_ALL_table = merge_merge_rgroup_total_rev_pu_ALL_table(gameidx, bucket, path_rgroup_rev_total, path_rgroup_rev_DOD)
+        path_merge_merge_rgroup_total_rev_pu_ALL_table = merge_merge_rgroup_total_rev_pu_ALL_table(gameidx=gameidx, 
+                                                                                                   bucket=bucket, 
+                                                                                                   path_merge_rgroup_rev_pu_table=path_merge_rgroup_rev_pu_table, 
+                                                                                                   path_merge_rgroup_total_rev_pu_table=path_merge_rgroup_total_rev_pu_table)
         if_else_length(path=path_merge_merge_rgroup_total_rev_pu_ALL_table, gameidx=gameidx, service_sub=service_sub, func_name="merge_merge_rgroup_total_rev_pu_ALL_table")
 
         try:
