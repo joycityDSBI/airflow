@@ -1314,7 +1314,14 @@ def merge_rgroup_rev_pu_table(gameidx:str, path_rgroup_rev_DOD:str, bucket, **co
 
     # GCS 경로
     gcs_path = f'{gameidx}/graph5_monthlyRgroup.png'
-    blob = bucket.blob(gcs_path)
+    
+    if isinstance(bucket, str):
+        client = storage.Client()
+        bucket_obj = client.bucket(bucket)
+    else:
+        bucket_obj = bucket
+    
+    blob = bucket_obj.blob(gcs_path)
     blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
     print(f"📤 GCS에 업로드 완료...merge_rgroup_rev_pu_table :::::::")
     return gcs_path
@@ -2420,8 +2427,7 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
                                                         path_regyearRevenue_pv2=path_regyearRevenue_pv2, 
                                                         MODEL_NAME=MODEL_NAME, 
                                                         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
-                                                        bucket=bucket, 
-                                                        **context))
+                                                        bucket=bucket_obj))
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
         children=blocks
