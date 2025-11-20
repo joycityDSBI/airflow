@@ -603,6 +603,9 @@ with DAG(
         path_merge_rgroup_total_rev_pu_table = merge_rgroup_total_rev_pu_table(gameidx=gameidx, path_rgroup_rev_total=path_rgroup_rev_total, bucket=bucket)
         if_else_length(path=path_merge_rgroup_total_rev_pu_table, gameidx=gameidx, service_sub=service_sub, func_name="merge_rgroup_total_rev_pu_table")
 
+        path_merge_merge_rgroup_total_rev_pu_ALL_table = merge_merge_rgroup_total_rev_pu_ALL_table(gameidx, bucket, path_rgroup_rev_total, path_rgroup_rev_DOD)
+        if_else_length(path=path_merge_merge_rgroup_total_rev_pu_ALL_table, gameidx=gameidx, service_sub=service_sub, func_name="merge_merge_rgroup_total_rev_pu_ALL_table")
+
         try:
             print(f"🔍 {gameidx}: {service_sub} longterm_rev_upload_notion 시작 ")
             longterm_rev_upload_notion(
@@ -629,6 +632,7 @@ with DAG(
                 service_sub=service_sub,
                 path_rgroup_rev_total=path_rgroup_rev_total,
                 path_rgroup_rev_DOD=path_rgroup_rev_DOD,
+                path_merge_merge_rgroup_total_rev_pu_ALL_table=path_merge_merge_rgroup_total_rev_pu_ALL_table,
                 NOTION_TOKEN=NOTION_TOKEN,
                 NOTION_VERSION=NOTION_VERSION,
                 MODEL_NAME=MODEL_NAME,

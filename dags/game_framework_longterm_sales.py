@@ -2151,6 +2151,7 @@ def longterm_rev_upload_notion(gameidx:str, service_sub:str,
 ########### 월별 R그룹별 매출 PU 수
 def monthly_rgroup_upload_notion(gameidx:str, service_sub:str, 
                                path_rgroup_rev_total:str, path_rgroup_rev_DOD:str,
+                               path_merge_merge_rgroup_total_rev_pu_ALL_table:str,
                                NOTION_TOKEN:str, NOTION_VERSION:str, 
                                MODEL_NAME:str, SYSTEM_INSTRUCTION:list,
                                notion, bucket, headers_json, **context):
@@ -2193,7 +2194,7 @@ def monthly_rgroup_upload_notion(gameidx:str, service_sub:str,
     # 공통 헤더
     headers_json = headers_json
     try:
-        gcs_path = merge_merge_rgroup_total_rev_pu_ALL_table(gameidx, bucket, path_rgroup_rev_total, path_rgroup_rev_DOD, **context)
+        gcs_path = path_merge_merge_rgroup_total_rev_pu_ALL_table
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph5_monthlyRgroupHap.png'
