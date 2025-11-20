@@ -709,6 +709,7 @@ with DAG(
                 service_sub=service_sub,
                 path_monthlyBEP_ROAS=path_result6_monthlyROAS,
                 path_roas_kpi=path_roas_kpi,
+                path_roas_dataframe_preprocessing=path_roas_dataframe_preprocessing,
                 MODEL_NAME=MODEL_NAME,
                 SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
                 NOTION_TOKEN=NOTION_TOKEN,
