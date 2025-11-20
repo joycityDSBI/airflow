@@ -2506,7 +2506,7 @@ def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
                                                         bucket=bucket,
                                                         **context)
 
-    title_cat = str(CategoryListUp_Top3[0]).strip().strip("'\"`’‘") if CategoryListUp_Top3 else "" # CategoryListUp_Top3[] 부분 수정
+    title_cat = str(CategoryListUp_Top3[1]).strip().strip("'\"`’‘") if CategoryListUp_Top3 else "" # CategoryListUp_Top3[] 부분 수정
     ax.set_title(f"{title_cat} 일자별 {'상위'+str(top_n)+'개 ' if top_n else ''}상품 매출")
 
     # 7) 범례 중복 제거 후 표시
@@ -2607,7 +2607,7 @@ def top3_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
                                                         bucket=bucket,
                                                         **context)
 
-    title_cat = str(CategoryListUp_Top3[0]).strip().strip("'\"`’‘") if CategoryListUp_Top3 else "" # CategoryListUp_Top3[] 부분 수정
+    title_cat = str(CategoryListUp_Top3[2]).strip().strip("'\"`’‘") if CategoryListUp_Top3 else "" # CategoryListUp_Top3[] 부분 수정
     ax.set_title(f"{title_cat} 일자별 {'상위'+str(top_n)+'개 ' if top_n else ''}상품 매출")
 
     # 7) 범례 중복 제거 후 표시
