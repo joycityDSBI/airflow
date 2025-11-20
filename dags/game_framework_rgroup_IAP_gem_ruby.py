@@ -238,7 +238,7 @@ def iap_gem_ruby(joyplegameid:int, gameidx: str, databaseschema: str, bigquery_c
 
     query_result = query_run_method('4_detail_sales', bigquery_client, query)
 
-    query_result4_salesByPackage = query_result4_salesByPackage.pivot_table(
+    query_result4_salesByPackage = query_result.pivot_table(
                             index=["week", "logdate_kst"],  # 두 컬럼 기준으로 인덱스 구성
                             columns="cat_package_grouped",
                             values="rev",
@@ -249,7 +249,7 @@ def iap_gem_ruby(joyplegameid:int, gameidx: str, databaseschema: str, bigquery_c
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
         
-    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
+    saved_path = save_df_to_gcs(query_result4_salesByPackage, bucket, gcs_path)
 
     return saved_path
 
