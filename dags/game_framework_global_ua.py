@@ -1185,6 +1185,8 @@ def country_group_to_df(joyplegameid:int, gameidx:str, bigquery_client, bucket, 
     saved_path = country_group_rev(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket, **context)
     query_result = load_df_from_gcs(bucket=bucket, path=saved_path)
 
+    query_result = query_result.sort_values(by="Sales", ascending=False)
+
     grouped_dfs = {
         country: group_df.pivot_table(
             index="LogDateKST",
@@ -1194,6 +1196,11 @@ def country_group_to_df(joyplegameid:int, gameidx:str, bigquery_client, bucket, 
             fill_value=0
         )
         for country, group_df in query_result.groupby("CountryGroup")
+    }
+
+    grouped_dfs = {
+    country: df[df.sum().sort_values(ascending=False).index]
+    for country, df in grouped_dfs.items()
     }
 
 
@@ -1251,8 +1258,6 @@ def country_group_df_draw(joyplegameid: int, gameidx: str, bigquery_client, buck
     
     gcs_paths = []
     grouped_dfs, _ = country_group_to_df(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket, **context)
-    grouped_dfs = {country: df.sort_values(by="Sales", ascending=False) 
-               for country, df in grouped_dfs.items()}
 
     # ✅ 모든 그룹별로 그래프 생성
     for country, df in grouped_dfs.items():
