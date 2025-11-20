@@ -3174,7 +3174,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         genai_client=genai_client,
         MODEL_NAME=MODEL_NAME,
         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
-        path_iapgemruby=path_iapgemruby,
+        path_iapgemruby=path_iap_gem_ruby,
         path_iapgemruby_history=path_iapgemruby_history,
         bucket=bucket,
         PROJECT_ID=PROJECT_ID,
