@@ -1795,9 +1795,11 @@ def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, path_rgroup_rev_total:
 
     return gcs_path
 
-def merge_merge_rgroup_total_rev_pu_ALL_table(gameidx: str, bucket, path_rgroup_rev_total:str, path_rgroup_rev_DOD:str, **context):
-    p1 = merge_rgroup_rev_pu_table(gameidx, path_rgroup_rev_DOD, bucket, **context)
-    p2 = merge_rgroup_total_rev_pu_table(gameidx, path_rgroup_rev_total, bucket, **context)
+def merge_merge_rgroup_total_rev_pu_ALL_table(gameidx: str, bucket, 
+                                              path_merge_rgroup_rev_pu_table:str, 
+                                              path_merge_rgroup_total_rev_pu_table:str, **context):
+    p1 = path_merge_rgroup_rev_pu_table
+    p2 = path_merge_rgroup_total_rev_pu_table
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     print(f"📥 GCS에서 이미지 다운로드 중...")
@@ -2424,7 +2426,8 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
         has_row_header=False
     )
 
-    blocks = md_to_notion_blocks(rev_cohort_year_gemini(gameidx=gameidx, service_sub=service_sub,        
+    blocks = md_to_notion_blocks(rev_cohort_year_gemini(gameidx=gameidx, 
+                                                        service_sub=service_sub,        
                                                         path_regyearRevenue_pv2=path_regyearRevenue_pv2, 
                                                         MODEL_NAME=MODEL_NAME, 
                                                         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
