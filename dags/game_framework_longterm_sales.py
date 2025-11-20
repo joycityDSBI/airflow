@@ -1273,15 +1273,15 @@ def merge_rgroup_rev_pu_table(gameidx:str, path_rgroup_rev_DOD:str, bucket, **co
     p2 = rgroup_pu_DOD_table_draw(gameidx, path_rgroup_rev_DOD, bucket, **context)   # 두 번째 이미지
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
-    print(f"📥 GCS에서 이미지 다운로드 중...")
+    print(f"📥 GCS에서 이미지 다운로드 중...merge_rgroup_rev_pu_table :::::::")
     blob1 = bucket.blob(p1)
     blob2 = bucket.blob(p2)
 
-    print(f"📥 blob1 다운로드 중 ...")
+    print(f"📥 blob1 다운로드 중 ...merge_rgroup_rev_pu_table :::::::")
     im1 = blob1.download_as_bytes()
     im2 = blob2.download_as_bytes()
 
-    print(f"🖼️ Image 객체 생성 중...")
+    print(f"🖼️ Image 객체 생성 중...merge_rgroup_rev_pu_table :::::::")
     im1 = Image.open(BytesIO(im1))
     im2 = Image.open(BytesIO(im2))
 
@@ -1316,7 +1316,7 @@ def merge_rgroup_rev_pu_table(gameidx:str, path_rgroup_rev_DOD:str, bucket, **co
     gcs_path = f'{gameidx}/graph5_monthlyRgroup.png'
     blob = bucket.blob(gcs_path)
     blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
-
+    print(f"📤 GCS에 업로드 완료...merge_rgroup_rev_pu_table :::::::")
     return gcs_path
 
 ###############################################################
@@ -1742,15 +1742,15 @@ def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, path_rgroup_rev_total:
     p2 = rgroup_pu_total_table_draw(gameidx, path_rgroup_rev_total, bucket, **context)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
-    print(f"📥 GCS에서 이미지 다운로드 중...")
+    print(f"📥 GCS에서 이미지 다운로드 중... merge_rgroup_total_rev_pu_table::::::")
     blob1 = bucket.blob(p1)
     blob2 = bucket.blob(p2)
 
-    print(f"📥 blob1 다운로드 중 ...")
+    print(f"📥 blob1 다운로드 중 ... merge_rgroup_total_rev_pu_table::::::")
     im1 = blob1.download_as_bytes()
     im2 = blob2.download_as_bytes()
 
-    print(f"🖼️ Image 객체 생성 중...")
+    print(f"🖼️ Image 객체 생성 중... merge_rgroup_total_rev_pu_table::::::")
     im1 = Image.open(BytesIO(im1))
     im2 = Image.open(BytesIO(im2))
 
@@ -1835,7 +1835,7 @@ def merge_merge_rgroup_total_rev_pu_ALL_table(gameidx: str, bucket, path_rgroup_
     gcs_path = f'{gameidx}/graph5_monthlyRgroupHap.png'
     blob = bucket.blob(gcs_path)
     blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
-
+    print(f"📤 GCS에 업로드 완료...merge_rgroup_total_rev_pu_table::::::")
     return gcs_path
 
 ######### 가입연도별 매출 표
