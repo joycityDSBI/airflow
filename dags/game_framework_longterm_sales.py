@@ -2409,7 +2409,7 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
         raise
 
 
-    query_result5_regyearRevenue, _ = load_df_from_gcs(bucket, path_regyearRevenue)
+    query_result5_regyearRevenue = load_df_from_gcs(bucket, path_regyearRevenue)
 
     resp = df_to_notion_table_under_toggle(
         notion=notion,
@@ -2427,7 +2427,7 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
                                   path_regyearRevenue_pv2=path_regyearRevenue_pv2, 
                                   MODEL_NAME=MODEL_NAME, 
                                   SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
-                                  bucket=bucket_obj
+                                  bucket=bucket
                                   )
     
     blocks = md_to_notion_blocks(text)
