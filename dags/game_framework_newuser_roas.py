@@ -746,7 +746,7 @@ def roas_dataframe_preprocessing(gameidx:str, path_result6_monthlyROAS:str, path
 
 
 ########## ROAS 프롬프트
-def result6_ROAS_gemini(gameidx:str, service_sub:str, path_monthlyBEP_ROAS:str, path_roas_kpi:str, bucket, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, **context):
+def result6_ROAS_gemini(gameidx:str, service_sub:str, path_roas_dataframe_preprocessing:str, path_roas_kpi:str, bucket, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, **context):
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
@@ -765,7 +765,7 @@ def result6_ROAS_gemini(gameidx:str, service_sub:str, path_monthlyBEP_ROAS:str, 
     #print("어제 날짜(KST):", yesterday_kst.date())
     #print("어제 연도:", year)
 
-    query6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_monthlyBEP_ROAS)
+    query6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_roas_dataframe_preprocessing)
     roas_kpi = load_df_from_gcs(bucket=bucket, path=path_roas_kpi)
 
     response6_monthlyROAS = genai_client.models.generate_content(
@@ -1300,7 +1300,7 @@ def roas_kpi_table_merge(gameidx:str, path_roas_dataframe_preprocessing:str, pat
     return gcs_path
 
 
-def retrieve_new_user_upload_notion(gameidx:str, service_sub:str, path_monthlyBEP_ROAS:str, path_roas_kpi:str, 
+def retrieve_new_user_upload_notion(gameidx:str, service_sub:str, path_monthlyBEP_ROAS:str, path_roas_kpi:str, path_roas_dataframe_preprocessing:str,
                                     MODEL_NAME:str, SYSTEM_INSTRUCTION:list, NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json, **context):
 
     current_context = get_current_context()
@@ -1409,7 +1409,7 @@ def retrieve_new_user_upload_notion(gameidx:str, service_sub:str, path_monthlyBE
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     text = result6_ROAS_gemini(gameidx=gameidx, service_sub=service_sub, 
-                               path_monthlyBEP_ROAS=path_monthlyBEP_ROAS,
+                               path_roas_dataframe_preprocessing=path_roas_dataframe_preprocessing,
                                path_roas_kpi=path_roas_kpi,
                                bucket=bucket,
                                genai_client=genai_client,
