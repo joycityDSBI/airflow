@@ -2015,7 +2015,7 @@ def merge_rgroup_graph(gameidx: str, path_group_rev_pu:str, bucket, **context):
 def iap_gem_ruby_graph_draw(gameidx: str, path_iap_gem_ruby:str, bucket, **context):
     
     query_result4_salesByPackage = load_df_from_gcs(bucket, path_iap_gem_ruby)
-    query_result4_salesByPackage_salesGraph = query_result4_salesByPackage.iloc[:, [0,2,3,4,5,6,7,8,9,10,11]]
+    query_result4_salesByPackage_salesGraph = query_result4_salesByPackage.iloc[:, (query_result4_salesByPackage.columns != 'week')]
 
     x = query_result4_salesByPackage_salesGraph["logdate_kst"]
     y = query_result4_salesByPackage_salesGraph.iloc[:, 1:]
@@ -3076,7 +3076,7 @@ def rgroup_rev_upload_notion(gameidx: str, path_rev_group_rev_pu, rev_group_rev_
 
 
 def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: str,
-                               path_iapgemruby, path_iapgemruby_history, 
+                               path_iap_gem_ruby, path_iapgemruby_history, 
                                path_top3_items_by_category,path_weekly_iapcategory_rev,
                                service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, notion, bucket, headers_json, **context):
 
@@ -3087,7 +3087,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
     )
 
     try:
-        gcs_path = iap_gem_ruby_graph_draw(gameidx, path_iap_gem_ruby=path_iapgemruby, bucket=bucket, **context)
+        gcs_path = iap_gem_ruby_graph_draw(gameidx, path_iap_gem_ruby=path_iap_gem_ruby, bucket=bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage.png'
@@ -3155,7 +3155,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         print(f"❌ 예기치 않은 에러: {str(e)}")
         raise
 
-    query_result4_salesByPackage = load_df_from_gcs(bucket, path_iapgemruby)
+    query_result4_salesByPackage = load_df_from_gcs(bucket, path_iap_gem_ruby)
 
     print("■■■■■■■■ IAP 젬/루비 사용내역 로데이터 Notion 업로드 시작 ■■■■■■")
     resp = df_to_notion_table_under_toggle(

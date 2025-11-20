@@ -480,7 +480,7 @@ with DAG(
                 gameidx=gameidx,
                 joyplegameid=joyplegameid,
                 databaseschema=databaseschema,
-                path_iapgemruby=path_iap_gem_ruby,
+                path_iap_gem_ruby=path_iap_gem_ruby,
                 path_iapgemruby_history=path_iap_gem_ruby_history,
                 path_top3_items_by_category=path_top3_items_by_category,
                 path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,

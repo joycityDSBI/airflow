@@ -1783,12 +1783,61 @@ def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, path_rgroup_rev_total:
     output_buffer.seek(0)
 
     # GCS 경로
-    gcs_path = f'{gameidx}/graph5_monthlyRgroupHap.png'
+    gcs_path = f'{gameidx}/graph5_monthlyRgroupALL.png'
     blob = bucket.blob(gcs_path)
     blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
 
     return gcs_path
 
+def merge_merge_rgroup_total_rev_pu_ALL_table(gameidx: str, bucket, path_rgroup_rev_total:str, path_rgroup_rev_DOD:str, **context):
+    p1 = merge_rgroup_rev_pu_table(gameidx, path_rgroup_rev_DOD, bucket, **context)
+    p2 = merge_rgroup_total_rev_pu_table(gameidx, path_rgroup_rev_total, bucket, **context)
+
+    # 2) 이미지 열기 (투명 보존 위해 RGBA)
+    print(f"📥 GCS에서 이미지 다운로드 중...")
+    blob1 = bucket.blob(p1)
+    blob2 = bucket.blob(p2)
+
+    print(f"📥 blob1 다운로드 중 ...")
+    im1 = blob1.download_as_bytes()
+    im2 = blob2.download_as_bytes()
+
+    print(f"🖼️ Image 객체 생성 중...")
+    im1 = Image.open(BytesIO(im1))
+    im2 = Image.open(BytesIO(im2))
+
+    target_h = max(im1.height, im2.height)
+
+    def pad_to_height(img, h, bg=(255, 255, 255, 0)):  # 투명 배경: 알파 0
+        if img.height == h:
+            return img
+        canvas = Image.new("RGBA", (img.width, h), bg)
+        # 가운데 정렬로 붙이기 (위에 맞추려면 y=0)
+        y = (h - img.height) // 2
+        canvas.paste(img, (0, y))
+        return canvas
+
+    im1_p = pad_to_height(im1, target_h)
+    im2_p = pad_to_height(im2, target_h)
+
+    gap = 0  # 이미지 사이 여백(px). 필요하면 20 등으로 변경
+    bg = (255, 255, 255, 0)  # 전체 배경(투명). 흰색 원하면 (255,255,255,255)
+
+    out = Image.new("RGBA", (im1_p.width + gap + im2_p.width, target_h), bg)
+    out.paste(im1_p, (0, 0), im1_p)
+    out.paste(im2_p, (im1_p.width + gap, 0), im2_p)
+
+    # 3) GCS에 저장
+    output_buffer = BytesIO()
+    out.save(output_buffer, format='PNG')
+    output_buffer.seek(0)
+
+    # GCS 경로
+    gcs_path = f'{gameidx}/graph5_monthlyRgroupHap.png'
+    blob = bucket.blob(gcs_path)
+    blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
+
+    return gcs_path
 
 ######### 가입연도별 매출 표
 
@@ -2138,10 +2187,10 @@ def monthly_rgroup_upload_notion(gameidx:str, service_sub:str,
     # 공통 헤더
     headers_json = headers_json
     try:
-        gcs_path = merge_rgroup_total_rev_pu_table(gameidx, bucket, path_rgroup_rev_total, **context)
+        gcs_path = merge_merge_rgroup_total_rev_pu_ALL_table(gameidx, bucket, path_rgroup_rev_total, path_rgroup_rev_DOD, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
-        filename = 'filePath5_monthlyRgroupHap.png'
+        filename = 'graph5_monthlyRgroupHap.png'
         print(f"✓ GCS 이미지 다운로드 성공 : {gcs_path}")
     except Exception as e:
         print(f"❌ GCS 다운로드 실패: {str(e)}")
@@ -2284,10 +2333,10 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
     }
 
     try:
-        gcs_path = cohort_rev_table_draw(gameidx, path_regyearRevenue, bucket, **context)
+        gcs_path = cohort_rev_table_draw(gameidx, path_regyearRevenue_pv2, bucket, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
-        filename = 'file_path5_regyearRevenue.png'
+        filename = 'graph5_regyearRevenue.png'
         print(f"✓ GCS 이미지 다운로드 성공 : {gcs_path}")
     except Exception as e:
         print(f"❌ GCS 다운로드 실패: {str(e)}")
