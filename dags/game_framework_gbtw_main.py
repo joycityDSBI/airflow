@@ -198,6 +198,8 @@ with DAG(
         else:
             print(f"❌ {gameidx}: {service_sub} {func_name} 실패")
 
+
+
     ## 페이지 생성 함수 //////////// task 함수
     def make_gameframework_notion_page_wraper(**context):
         try:
@@ -245,6 +247,7 @@ with DAG(
             daily_revenue_data_upload_to_notion(
                 st1=st1,
                 st2=st2,
+                st3=st3,
                 MOEDEL_NAME=MODEL_NAME,
                 gameidx=gameidx, 
                 service_sub=service_sub[0], 
@@ -602,6 +605,25 @@ with DAG(
 
         try:
             print(f"🔍 {gameidx}: {service_sub} longterm_rev_upload_notion 시작 ")
+            longterm_rev_upload_notion(
+                gameidx=gameidx,
+                service_sub=service_sub,
+                path_monthly_day_average_rev=path_monthly_day_average_rev,
+                NOTION_TOKEN=NOTION_TOKEN,
+                NOTION_VERSION=NOTION_VERSION,
+                MODEL_NAME=MODEL_NAME,
+                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
+                notion=notion,
+                bucket=bucket,
+                headers_json=headers_json
+                )
+            print(f"✅ {gameidx}: {service_sub} longterm_rev_upload_notion 완료")
+        except Exception as e:
+            print(f"❌ {gameidx}: {service_sub} longterm_rev_upload_notion 실패 ")
+            print(f"🔴 {e}")
+
+        try:
+            print(f"🔍 {gameidx}: {service_sub} longterm_rev_upload_notion 시작 ")
             monthly_rgroup_upload_notion(
                 gameidx=gameidx,
                 service_sub=service_sub,
@@ -620,26 +642,6 @@ with DAG(
             print(f"❌ {gameidx}: {service_sub} longterm_rev_upload_notion 실패 ")
             print(f"🔴 {e}")
 
-        try:
-            print(f"🔍 {gameidx}: {service_sub} longterm_rev_upload_notion 시작 ")
-            longterm_rev_upload_notion(
-                gameidx=gameidx,
-                service_sub=service_sub,
-                path_monthly_day_average_rev=path_monthly_day_average_rev,
-                NOTION_TOKEN=NOTION_TOKEN,
-                NOTION_VERSION=NOTION_VERSION,
-                MODEL_NAME=MODEL_NAME,
-                SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
-                notion=notion,
-                bucket=bucket,
-                headers_json=headers_json
-                )
-            print(f"✅ {gameidx}: {service_sub} longterm_rev_upload_notion 완료")
-        except Exception as e:
-            print(f"❌ {gameidx}: {service_sub} longterm_rev_upload_notion 실패 ")
-            print(f"🔴 {e}")
-            
-        
         try:
             print(f"🔍 {gameidx}: {service_sub} cohort_rev_upload_notion 시작 ")
             cohort_rev_upload_notion(

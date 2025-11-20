@@ -383,6 +383,7 @@ def os_by_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM
 def by_country_revenue_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
     
     query_result3_revByCountry = load_df_from_gcs(bucket, gcs_path)
+    query_result3_revByCountry = query_result3_revByCountry.sort_values(by="rev", ascending=False)
 
     sizes = query_result3_revByCountry["rev"].to_numpy()
     labels = query_result3_revByCountry["country"].to_numpy()
@@ -464,6 +465,7 @@ def by_country_revenue_graph_draw(gameidx: str, gcs_path:str, bucket, **context)
 def by_country_cost_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
     
     query_result3_costByCountry = load_df_from_gcs(bucket, gcs_path)
+    query_result3_costByCountry = query_result3_costByCountry.sort_values(by="cost", ascending=False)
 
     ### 국가별 Cost
     sizes = query_result3_costByCountry["cost"].to_numpy()

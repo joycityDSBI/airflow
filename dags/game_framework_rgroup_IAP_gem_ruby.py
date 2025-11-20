@@ -169,66 +169,82 @@ def rev_group_rev_pu_gemini(gameidx:str, service_sub: str, genai_client, MODEL_N
 
 def iap_gem_ruby(joyplegameid:int, gameidx: str, databaseschema: str, bigquery_client, bucket, **context):
     query = f"""
-    select logdate_kst,week
-    , cast(sum(if(cat_package2='전투기', sales_buygem, 0)) as int64) as `전투기`
-    , cast(sum(if(cat_package2='종합', sales_buygem, 0)) as int64) as `종합`
-    , cast(sum(if(cat_package2='자원', sales_buygem, 0)) as int64) as `자원`
-    , cast(sum(if(cat_package2='항공모함', sales_buygem, 0)) as int64) as `항공모함`
-    , cast(sum(if(cat_package2='영웅', sales_buygem, 0)) as int64) as `영웅`
-    , cast(sum(if(cat_package2='군함', sales_buygem, 0)) as int64) as `군함`
-    , cast(sum(if(cat_package2='배틀패스', sales_buygem, 0)) as int64) as `배틀패스`
-    , cast(sum(if(cat_package2='연구', sales_buygem, 0)) as int64) as `연구`
-    , cast(sum(if(cat_package2='장비', sales_buygem, 0)) as int64) as `장비`
-    , cast(sum(if(cat_package2 not in ('전투기','종합','자원','항공모함','영웅','군함','루비','배틀패스','연구','장비'), sales_buygem, null)) as int64) as `기타`
-    from
-    (
+    WITH base as (
     select *
-    , format_date('%Y-%m',  logdate_kst ) as month
+        , format_date('%Y-%m',  logdate_kst ) as month
     , concat(cast(cast(DATE_TRUNC(logdate_kst ,week(Wednesday)) as date) as string),' ~ ',
-                cast(date_add(cast(DATE_TRUNC(logdate_kst,week(Wednesday)) as date), interval 6 day) as string)) as week
-    , case when cat_shop = '배틀패스' then '배틀패스' else cat_package end as cat_package2
+                    cast(date_add(cast(DATE_TRUNC(logdate_kst,week(Wednesday)) as date), interval 6 day) as string)) as week
     from
     (
     ### IAP
-        (
-        select 'IAP' As idx, logdate_kst, datetime(logtime_kst) as logtime_kst, authaccountname
-        , package_name, cat_shop, cat_package, cast(package_kind as string) as package_kind
-        , pricekrw as sales_usegem, pricekrw as sales_buygem
-        from `data-science-division-216308.{databaseschema}.Sales_iap_hub`
-        where (cat_package not in ('젬','루비') or cat_package is null)
-        )
+    (select 'IAP' As idx, logdate_kst, datetime(logtime_kst) as logtime_kst, authaccountname
+    , package_name, cat_shop, cat_package, cast(package_kind as string) as package_kind
+    , pricekrw as sales_usegem, pricekrw as sales_buygem
+    from `data-science-division-216308.{databaseschema}.Sales_iap_hub`
+    where (cat_package not in ('젬','루비') or cat_package is null))
     union all
     ### GEM
-        (
-        select 'GEM' as idx, logdate_kst, datetime(logtime_kst) as logtime_kst, auth_account_name
-        , case when action_category_name = 'payment' then package_name else action_name end as package_name
-        , case when action_category_name = 'payment' then cat_shop else 'contents' end as cat_shop
-        , case when action_category_name = 'payment' then cat_package else 'contents' end as cat_package
-        , package_kind
-        , (usegem*(1500/40)) as sales_usegem, (buygem*(1500/40)) as sales_buygem
-        from `data-science-division-216308.gameInsightFramework.sales_goods`  where is_tester=0
-        and joyple_game_code = {joyplegameid}
-        and goods_name='gem' and add_or_spend = 'spend'
-        )
+    (select 'GEM' as idx, logdate_kst, datetime(logtime_kst) as logtime_kst, auth_account_name
+    , case when action_category_name = 'payment' then package_name else action_name end as package_name
+    , case when action_category_name = 'payment' then cat_shop else 'contents' end as cat_shop
+    , case when action_category_name = 'payment' then cat_package else 'contents' end as cat_package
+    , package_kind
+    , (usegem*(1500/40)) as sales_usegem, (buygem*(1500/40)) as sales_buygem
+    from `data-science-division-216308.gameInsightFramework.sales_goods`  where is_tester=0
+    and joyple_game_code = {joyplegameid}
+    and goods_name='gem' and add_or_spend = 'spend')
     union all
     ### RUBY
-        (
-        select 'RUBY' as idx, logdate_kst, datetime(logtime_kst) as logtime_kst, auth_account_name
-        , case when action_category_name = 'payment' then package_name else action_name end as package_name
-        , case when action_category_name = 'payment' then cat_shop else 'contents' end as cat_shop
-        , case when action_category_name = 'payment' then cat_package else 'contents' end as cat_package
-        , package_kind
-        , (usegem*(15000/999)) as sales_usegem, (buygem*(15000/999)) as sales_buygem
-        from `data-science-division-216308.gameInsightFramework.sales_goods`  where is_tester=0
-        and joyple_game_code = {joyplegameid}
-        and goods_name='ruby' and add_or_spend = 'spend')
-        )
+    (select 'RUBY' as idx, logdate_kst, datetime(logtime_kst) as logtime_kst, auth_account_name
+    , case when action_category_name = 'payment' then package_name else action_name end as package_name
+    , case when action_category_name = 'payment' then cat_shop else 'contents' end as cat_shop
+    , case when action_category_name = 'payment' then cat_package else 'contents' end as cat_package
+    , package_kind
+    , (usegem*(15000/999)) as sales_usegem, (buygem*(15000/999)) as sales_buygem
+    from `data-science-division-216308.gameInsightFramework.sales_goods`  where is_tester=0
+    and joyple_game_code = {joyplegameid}
+    and goods_name='ruby' and add_or_spend = 'spend')
+
     )
     where logdate_kst>= DATE_SUB(DATE_TRUNC(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH), INTERVAL 1 MONTH)
     and logdate_kst<=LAST_DAY(DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY), MONTH)
-    group by 1,2 order by 1
+    )
+
+    , daily AS (  -- 일자 x 상품군 매출
+    SELECT logdate_kst, cat_package, SUM(sales_buygem) AS rev
+    FROM base
+    GROUP BY 1,2
+    ),
+
+    top_cat AS (  -- 매출 top15 (동률 시 이름 오름차순으로 결정)
+    SELECT cat_package
+    FROM
+        (SELECT cat_package, sum(rev) AS peak_rev
+        FROM daily
+        GROUP BY 1)
+    ORDER BY peak_rev DESC, cat_package ASC
+    LIMIT 15
+    )
+
+    SELECT concat(cast(cast(DATE_TRUNC(d.logdate_kst ,week(Wednesday)) as date) as string),' ~ ',
+                    cast(date_add(cast(DATE_TRUNC(d.logdate_kst,week(Wednesday)) as date), interval 6 day) as string)) as week,
+        d.logdate_kst,
+        IF(d.cat_package IN (SELECT cat_package FROM top_cat), d.cat_package, '기타') AS cat_package_grouped,
+        SUM(d.rev) AS rev
+    FROM daily d
+    GROUP BY 1,2,3
+    ORDER BY 1,2,3
     """
+
     query_result = query_run_method('4_detail_sales', bigquery_client, query)
+
+    query_result4_salesByPackage = query_result4_salesByPackage.pivot_table(
+                            index=["week", "logdate_kst"],  # 두 컬럼 기준으로 인덱스 구성
+                            columns="cat_package_grouped",
+                            values="rev",
+                            aggfunc="sum",
+                            fill_value=0
+                            ).reset_index()
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
@@ -1076,7 +1092,6 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
     where cat_package2 in ({CategoryListUp_SQL})
         group by 1,2,3,4
         )
-    )
 
     select `일자`, `상품결제 재화`, `상품 카테고리`, `상품 이름`, sum(`매출`) as `매출`
     from sales_data

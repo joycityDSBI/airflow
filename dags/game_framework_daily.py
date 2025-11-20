@@ -260,13 +260,23 @@ def merge_daily_revenue(path_daily_revenue:str, path_daily_revenue_yoy:str, buck
 
 ## 프롬프트 
 ### 4> 일자별 매출에 대한 제미나이 코멘트
-def daily_revenue_gemini(gameidx: str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
+def daily_revenue_gemini(gameidx: str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, path_sales_goal, bucket, PROJECT_ID, LOCATION, **context):
     
     from google.genai import Client
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     query_result1_dailySales = load_df_from_gcs(bucket, path_daily_revenue)
     query_result1_monthlySales = load_df_from_gcs(bucket, path_monthly_revenue)
+    query_result1_salesGoal = load_df_from_gcs(bucket, path_sales_goal)
+
+    ## 일할 계산 수정 반영
+    val = query_result1_salesGoal.iat[0, 0]
+    s = query_result1_monthlySales.iloc[:, 2]
+    try:
+        idx = s.dropna().index[-1]                 # 마지막 non-null 라벨 인덱스
+        query_result1_monthlySales.loc[idx, query_result1_monthlySales.columns[2]] = val
+    except IndexError:
+        pass  # 모두 null인 경우
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
@@ -532,7 +542,7 @@ def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, 
     return gcs_path
 
 
-def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
+def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, st3, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
     current_context = get_current_context()
     
@@ -662,7 +672,7 @@ def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, gen
     )
 
     print(f"1️⃣ GEMINI 문의 처리 시작")
-    response1_salesComment = daily_revenue_gemini(gameidx, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, st1, st2, bucket, PROJECT_ID=PROJECT_ID, LOCATION=LOCATION)
+    response1_salesComment = daily_revenue_gemini(gameidx, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, st1, st2, st3, bucket, PROJECT_ID=PROJECT_ID, LOCATION=LOCATION)
 
     ## 제미나이
     blocks = md_to_notion_blocks(response1_salesComment)

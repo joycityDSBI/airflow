@@ -1794,7 +1794,7 @@ def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, path_rgroup_rev_total:
 
 def cohort_rev_table_draw(gameidx:str, path_rev_cohort_year_pv2:str, bucket, **context):
 
-    df = load_df_from_gcs(bucket, path_rev_cohort_year_pv2)
+    _, df = load_df_from_gcs(bucket, path_rev_cohort_year_pv2)
     
     def render_table_image(
         df: pd.DataFrame,
@@ -2138,7 +2138,7 @@ def monthly_rgroup_upload_notion(gameidx:str, service_sub:str,
     # 공통 헤더
     headers_json = headers_json
     try:
-        gcs_path = merge_rgroup_rev_pu_table(gameidx, path_rgroup_rev_DOD, bucket, **context)
+        gcs_path = merge_rgroup_total_rev_pu_table(gameidx, bucket, path_rgroup_rev_total, **context)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'filePath5_monthlyRgroupHap.png'
