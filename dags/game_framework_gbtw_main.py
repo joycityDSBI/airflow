@@ -881,6 +881,5 @@ with DAG(
 
         
 
-
-create_gameframework_notion_page >> daily_gameframework_run >> inhouse_gameframework_run >> global_ua_gameframework_run >> rgroup_iapgemruby_gameframework_run >> longterm_sales_data_game_framework_run >> newuser_roas_data_game_framework_run >> game_framework_summary_run
-
+#  daily_gameframework_run >> inhouse_gameframework_run >> global_ua_gameframework_run >> global_ua_gameframework_run >> rgroup_iapgemruby_gameframework_run >> 
+create_gameframework_notion_page >> longterm_sales_data_game_framework_run >> newuser_roas_data_game_framework_run >> game_framework_summary_run

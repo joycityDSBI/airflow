@@ -778,8 +778,7 @@ def monthly_day_average_merge_graph(gameidx:str, path_monthly_day_average_rev:st
     # 1) 파일 경로
     p1 = monthly_day_average_rev_table_draw(gameidx, path_monthly_day_average_rev, bucket, **context)   # 첫 번째 이미지
     p2 = monthly_day_average_rev_graph_draw(gameidx, path_monthly_day_average_rev, bucket, **context)   # 두 번째 이미지
-    save_to = 'graph5_dailyAvgRevenue.png'  # 저장 경로
-
+    
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     print(f"📥 GCS에서 이미지 다운로드 중...monthly_day_average_merge_graph")
     blob1 = bucket.blob(p1)
@@ -822,14 +821,14 @@ def monthly_day_average_merge_graph(gameidx:str, path_monthly_day_average_rev:st
     output_buffer.seek(0)
 
     # GCS 경로
-    gcs_path = f'{gameidx}/{save_to}'
+    gcs_path = f'{gameidx}/graph5_dailyAvgRevenue.png'
     blob = bucket.blob(gcs_path)
     blob.upload_from_string(output_buffer.getvalue(), content_type='image/png')
 
     # 메모리에 올라간 이미지 파일 삭제
     # os.remove(save_to)
 
-    return f'{gameidx}/{save_to}'
+    return gcs_path
 
 
 #### 월별 R 그룹별 매출 동기간 표
@@ -2408,6 +2407,8 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
         toggle_title="📊 로데이터 - 가입연도별 매출 ",
         max_first_batch_rows=90,
         batch_size=100,
+        has_column_header=True,
+        has_row_header=False
     )
 
     blocks = md_to_notion_blocks(rev_cohort_year_gemini(gameidx=gameidx, service_sub=service_sub,        
