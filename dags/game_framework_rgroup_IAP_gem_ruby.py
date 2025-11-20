@@ -1006,102 +1006,101 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
                                                                         LOCATION=LOCATION,
                                                                         **context)
     query = f"""
-    with sales_data as (
-    select `일자`
-    , case when rnum <= 3 then `상품결제 재화` else null end as `상품결제 재화`
-    ,`상품 카테고리`
-    , case when rnum <= 3 then `상품` else '그 외 상품들' end as `상품 이름`
-    , `매출`
-    from (
-    select logdate_kst as `일자`
-    , idx as `상품결제 재화`
-    , cat_package2 as `상품 카테고리`
-    , package_name as `상품`
-    , sum(sales_buygem) as `매출`
-    , row_number() over(partition by cat_package2, logdate_kst order by sum(sales_buygem) desc) as rnum
-    from(
-        select *
-        , format_date('%Y-%m',  logdate_kst ) as month
-        , concat(cast(cast(DATE_TRUNC(logdate_kst ,week(Wednesday)) as date) as string),' ~ ',
-                    cast(date_add(cast(DATE_TRUNC(logdate_kst,week(Wednesday)) as date), interval 6 day) as string)) as logweek
-        , case when cat_shop = '배틀패스' then '배틀패스'
-                when cat_package not in ({weekly_iapcategory_rev_cols}) then '기타'
-                        else cat_package end as cat_package2
-        from (
-            ### IAP - 괄호 추가!
-            (select 'IAP' As idx, logdate_kst, datetime(logtime_kst) as logtime_kst, authaccountname
-            , package_name, cat_shop, cat_package, cast(package_kind as string) as package_kind
-            , pricekrw as sales_usegem, pricekrw as sales_buygem
-            from `data-science-division-216308.GW.Sales_iap_hub`
-            where (cat_package not in ('젬','루비') or cat_package is null)
-                        and logdate_kst >= CASE
-                                    WHEN EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) = 4
-                                    THEN DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 7 DAY)
-                                    ELSE DATE_SUB(
-                                            CURRENT_DATE("Asia/Seoul"),
-                                            INTERVAL MOD(EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) - 4 + 7, 7) DAY
-                                            )
-                                    END
-                        AND logdate_kst <= DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 1 DAY))
+            with sales_data as (
+                select `일자`
+                    , case when rnum <= 3 then `상품결제 재화` else null end as `상품결제 재화`
+                    ,`상품 카테고리`
+                    , case when rnum <= 3 then `상품` else '그 외 상품들' end as `상품 이름`
+                    , `매출`
+                from (
+                    select logdate_kst as `일자`
+                    , idx as `상품결제 재화`
+                    , cat_package2 as `상품 카테고리`
+                    , package_name as `상품`
+                    , sum(sales_buygem) as `매출`
+                    , row_number() over(partition by cat_package2, logdate_kst order by sum(sales_buygem) desc) as rnum
+                    from(
+                        select *
+                        , format_date('%Y-%m',  logdate_kst ) as month
+                        , concat(cast(cast(DATE_TRUNC(logdate_kst ,week(Wednesday)) as date) as string),' ~ ',
+                                    cast(date_add(cast(DATE_TRUNC(logdate_kst,week(Wednesday)) as date), interval 6 day) as string)) as logweek
+                        , case when cat_shop = '배틀패스' then '배틀패스'
+                                when cat_package not in ({weekly_iapcategory_rev_cols}) then '기타'
+                                        else cat_package end as cat_package2
+                        from (
+                            (select 'IAP' As idx, logdate_kst, datetime(logtime_kst) as logtime_kst, authaccountname
+                            , package_name, cat_shop, cat_package, cast(package_kind as string) as package_kind
+                            , pricekrw as sales_usegem, pricekrw as sales_buygem
+                            from `data-science-division-216308.GW.Sales_iap_hub`
+                            where (cat_package not in ('젬','루비') or cat_package is null)
+                                        and logdate_kst >= CASE
+                                                    WHEN EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) = 4
+                                                    THEN DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 7 DAY)
+                                                    ELSE DATE_SUB(
+                                                            CURRENT_DATE("Asia/Seoul"),
+                                                            INTERVAL MOD(EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) - 4 + 7, 7) DAY
+                                                            )
+                                                    END
+                                        AND logdate_kst <= DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 1 DAY))
 
-            union all
+                            union all
 
-            (select 'GEM' as idx, logdate_kst, datetime(logtime_kst) as logtime_kst, auth_account_name
-            , case when action_category_name = 'payment' then package_name else action_name end as package_name
-            , case when action_category_name = 'payment' then cat_shop else 'contents' end as cat_shop
-            , case when action_category_name = 'payment' then cat_package else 'contents' end as cat_package
-            , package_kind
-            , (usegem*(1500/40)) as sales_usegem, (buygem*(1500/40)) as sales_buygem
-            from `data-science-division-216308.gameInsightFramework.sales_goods`  where is_tester=0
-            and joyple_game_code = {joyplegameid}
-            and goods_name='gem' and add_or_spend = 'spend'
-                        and logdate_kst >= CASE
-                                    WHEN EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) = 4
-                                    THEN DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 7 DAY)
-                                    ELSE DATE_SUB(
-                                            CURRENT_DATE("Asia/Seoul"),
-                                            INTERVAL MOD(EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) - 4 + 7, 7) DAY
-                                            )
-                                    END
-                        AND logdate_kst <= DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 1 DAY))
+                            (select 'GEM' as idx, logdate_kst, datetime(logtime_kst) as logtime_kst, auth_account_name
+                            , case when action_category_name = 'payment' then package_name else action_name end as package_name
+                            , case when action_category_name = 'payment' then cat_shop else 'contents' end as cat_shop
+                            , case when action_category_name = 'payment' then cat_package else 'contents' end as cat_package
+                            , package_kind
+                            , (usegem*(1500/40)) as sales_usegem, (buygem*(1500/40)) as sales_buygem
+                            from `data-science-division-216308.gameInsightFramework.sales_goods`  where is_tester=0
+                            and joyple_game_code = {joyplegameid}
+                            and goods_name='gem' and add_or_spend = 'spend'
+                                        and logdate_kst >= CASE
+                                                    WHEN EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) = 4
+                                                    THEN DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 7 DAY)
+                                                    ELSE DATE_SUB(
+                                                            CURRENT_DATE("Asia/Seoul"),
+                                                            INTERVAL MOD(EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) - 4 + 7, 7) DAY
+                                                            )
+                                                    END
+                                        AND logdate_kst <= DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 1 DAY))
 
-            union all
+                            union all
 
-            (select 'RUBY' as idx, logdate_kst, datetime(logtime_kst) as logtime_kst, auth_account_name
-            , case when action_category_name = 'payment' then package_name else action_name end as package_name
-            , case when action_category_name = 'payment' then cat_shop else 'contents' end as cat_shop
-            , case when action_category_name = 'payment' then cat_package else 'contents' end as cat_package
-            , package_kind
-            , (usegem*(15000/999)) as sales_usegem, (buygem*(15000/999)) as sales_buygem
-            from `data-science-division-216308.gameInsightFramework.sales_goods`  where is_tester=0
-            and joyple_game_code = {joyplegameid}
-            and goods_name='ruby' and add_or_spend = 'spend'
-                        and logdate_kst >= CASE
-                                    WHEN EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) = 4
-                                    THEN DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 7 DAY)
-                                    ELSE DATE_SUB(
-                                            CURRENT_DATE("Asia/Seoul"),
-                                            INTERVAL MOD(EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) - 4 + 7, 7) DAY
-                                            )
-                                    END
-                        AND logdate_kst <= DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 1 DAY))
-        )  # ← UNION ALL의 끝
-        )
-        where cat_package2 in ({CategoryListUp_SQL})
-        group by 1,2,3,4
-    )
-
-    select `일자`, `상품결제 재화`, `상품 카테고리`, `상품 이름`, sum(`매출`) as `매출`
-    from sales_data
-    where `상품 이름` != '그 외 상품들'
-    group by `일자`, `상품결제 재화`, `상품 카테고리`, `상품 이름`
-    order by `일자`,
-            CASE `상품 카테고리`
-            {case_when_str}
-            ELSE 99
-            END,
-            case when `상품 이름` = '그 외 상품들' then 1 else 0 end,
-            `매출` desc
+                            (select 'RUBY' as idx, logdate_kst, datetime(logtime_kst) as logtime_kst, auth_account_name
+                            , case when action_category_name = 'payment' then package_name else action_name end as package_name
+                            , case when action_category_name = 'payment' then cat_shop else 'contents' end as cat_shop
+                            , case when action_category_name = 'payment' then cat_package else 'contents' end as cat_package
+                            , package_kind
+                            , (usegem*(15000/999)) as sales_usegem, (buygem*(15000/999)) as sales_buygem
+                            from `data-science-division-216308.gameInsightFramework.sales_goods`  where is_tester=0
+                            and joyple_game_code = {joyplegameid}
+                            and goods_name='ruby' and add_or_spend = 'spend'
+                                        and logdate_kst >= CASE
+                                                    WHEN EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) = 4
+                                                    THEN DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 7 DAY)
+                                                    ELSE DATE_SUB(
+                                                            CURRENT_DATE("Asia/Seoul"),
+                                                            INTERVAL MOD(EXTRACT(DAYOFWEEK FROM CURRENT_DATE("Asia/Seoul")) - 4 + 7, 7) DAY
+                                                            )
+                                                    END
+                                        AND logdate_kst <= DATE_SUB(CURRENT_DATE("Asia/Seoul"), INTERVAL 1 DAY))
+                        )
+                    )
+                    where cat_package2 in ({CategoryListUp_SQL})
+                    group by 1,2,3,4
+                )
+            )  # ← 여기! with sales_data as ( 의 괄호 닫기
+            select `일자`, `상품결제 재화`, `상품 카테고리`, `상품 이름`, sum(`매출`) as `매출`
+            from sales_data
+            where `상품 이름` != '그 외 상품들'
+            group by `일자`, `상품결제 재화`, `상품 카테고리`, `상품 이름`
+            order by `일자`,
+                    CASE `상품 카테고리`
+                    {case_when_str}
+                    ELSE 99
+                    END,
+                    case when `상품 이름` = '그 외 상품들' then 1 else 0 end,
+                    `매출` desc
 
     """
 
