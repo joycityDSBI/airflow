@@ -623,7 +623,7 @@ with DAG(
             print(f"🔴 {e}")
 
         try:
-            print(f"🔍 {gameidx}: {service_sub} longterm_rev_upload_notion 시작 ")
+            print(f"🔍 {gameidx}: {service_sub} monthly_rgroup_upload_notion____ 시작 ")
             monthly_rgroup_upload_notion(
                 gameidx=gameidx,
                 service_sub=service_sub,
@@ -637,9 +637,9 @@ with DAG(
                 bucket=bucket,
                 headers_json=headers_json
                 )
-            print(f"✅ {gameidx}: {service_sub} longterm_rev_upload_notion 완료")
+            print(f"✅ {gameidx}: {service_sub} monthly_rgroup_upload_notion____ 완료")
         except Exception as e:
-            print(f"❌ {gameidx}: {service_sub} longterm_rev_upload_notion 실패 ")
+            print(f"❌ {gameidx}: {service_sub} monthly_rgroup_upload_notion____ 실패 ")
             print(f"🔴 {e}")
 
         try:
