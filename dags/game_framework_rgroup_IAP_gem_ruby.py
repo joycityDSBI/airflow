@@ -902,7 +902,7 @@ def weekly_iapcategory_rev(joyplegameid: int, gameidx: str, databaseschema:str, 
     def sq(c: str) -> str:
         return "'" + c.replace("'", "''") + "'"
 
-    # query_result4_salesByCategory_Cols = ", ".join(sq(c) for c in cols)
+    query_result4_salesByCategory_Cols = ", ".join(sq(c) for c in cols)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path_1 = f"{gameidx}/{timestamp}_1.parquet"
@@ -910,7 +910,7 @@ def weekly_iapcategory_rev(joyplegameid: int, gameidx: str, databaseschema:str, 
         
     saved_path_1 = save_df_to_gcs(query_result4_salesByCategory, bucket, gcs_path_1)
 
-    cols_df = pd.DataFrame({'columns': cols})
+    cols_df = pd.DataFrame({'columns': query_result4_salesByCategory_Cols})
     saved_path_2 = save_df_to_gcs(cols_df, bucket, gcs_path_2)
 
     return saved_path_1, saved_path_2
