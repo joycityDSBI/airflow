@@ -262,9 +262,6 @@ def extract_data(**context):
         print(f"✅ Databricks에서 총 {len(source_df)}개의 데이터를 조회했습니다.")
         email_list = source_df['user_email'].tolist()
         
-        for email in email_list:
-            print(f"💡 eeeeeee Email 리스트: {email}")
-
         
     except ImportError:
         print("❌ databricks-sql-connector 라이브러리가 설치되지 않았습니다.")
