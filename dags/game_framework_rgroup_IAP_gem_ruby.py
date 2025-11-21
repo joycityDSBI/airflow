@@ -902,7 +902,7 @@ def weekly_iapcategory_rev(joyplegameid: int, gameidx: str, databaseschema:str, 
     def sq(c: str) -> str:
         return "'" + c.replace("'", "''") + "'"
 
-    query_result4_salesByCategory_Cols = ", ".join(sq(c) for c in cols)
+    # query_result4_salesByCategory_Cols = ", ".join(sq(c) for c in cols)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path_1 = f"{gameidx}/{timestamp}_1.parquet"
@@ -2346,8 +2346,14 @@ def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
     dfs, _ = top3_items_rev(joyplegameid, gameidx, databaseschema, service_sub, 
                             path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION,
                             bigquery_client, bucket, **context)
+    
+    
+
+     # 1) 데이터 로드
 
     df = dfs.get("query_result4_salesByPackage_forCategoryGraph_1")
+    print(f"★★★★★★★★★★★★ top11111111_graph_draw 에서 데이터 : ", df)
+
     df["일자"] = pd.to_datetime(df["일자"])
     df["매출"] = pd.to_numeric(df["매출"], errors="coerce").fillna(0).astype("int64")
 
@@ -2448,6 +2454,8 @@ def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
                             bigquery_client, bucket, **context)
 
     df = dfs.get("query_result4_salesByPackage_forCategoryGraph_2")
+    print(f"★★★★★★★★★★★★ top222222_graph_draw 에서 데이터 : ", df)
+
     df["일자"] = pd.to_datetime(df["일자"])
     df["매출"] = pd.to_numeric(df["매출"], errors="coerce").fillna(0).astype("int64")
 
@@ -2549,6 +2557,8 @@ def top3_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
                             bigquery_client, bucket, **context)
 
     df = dfs.get("query_result4_salesByPackage_forCategoryGraph_3")
+    print(f"★★★★★★★★★★★★ top3333333_graph_draw 에서 데이터 : ", df)
+
     df["일자"] = pd.to_datetime(df["일자"])
     df["매출"] = pd.to_numeric(df["매출"], errors="coerce").fillna(0).astype("int64")
 
