@@ -238,7 +238,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='injoy_monitoringdata_producer',
+    dag_id='game_framework_gbtw_history',
     default_args=default_args,
     description='Process Databricks audit logs for aibiGenie',
     schedule='0 20 * * *',  # 매일 아침 9시 실행
