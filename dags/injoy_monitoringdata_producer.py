@@ -405,6 +405,8 @@ def get_message_details(**context):
                     feedback_rating = feedback_info.get("rating")
                 else:
                     feedback_rating = None
+
+                print(f"⚠️ questions 내용 : {questions}")
                 
             else:
                 content, query, description, statement_id, row_count, status, questions, auto_regenerate_count, error, error_type, feedback_rating = None, None, None, None, None, None, None, None, None, None, None
