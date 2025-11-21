@@ -1855,7 +1855,7 @@ def rgroup_pu_draw(gameidx: str, path_rgroup_pu_rev: str, bucket, **context):
         # ✅ 데이터 로드
         query_result4_RgroupSales = load_df_from_gcs(bucket, path_rgroup_pu_rev)
         
-        query_result4_RgroupSales2_puGraph = query_result4_RgroupSales.iloc[:, [0, 10, 11, 12, 13, 14, 15, 16]].copy()
+        query_result4_RgroupSales2_puGraph = query_result4_RgroupSales.iloc[:, [0, 10, 11, 12, 13, 14, 15, 16]]
         print(f"📊 필터링 후 데이터:\n{query_result4_RgroupSales2_puGraph.head()}")
         
         # ✅ 컬럼명 변경
@@ -2769,10 +2769,10 @@ def rgroup_rev_top3_graph_draw(gameidx: str, path_rgroup_top3_rev:str, bucket, *
                 "shop_category" : "상점 카테고리",
                 "package_category" : "상품 카테고리",
                 "price_sheet" : "상품 가격",
-                "PU" : "PU 수"}
+                "sales" : "매출"}
     )
     # 원하는 순서 지정
-    new_order = ["R그룹", "순위","상품명", "상점 카테고리", "상품 카테고리", "상품 가격", "PU 수"]
+    new_order = ["R그룹", "순위","상품명", "상점 카테고리", "상품 카테고리", "상품 가격", "매출"]
 
     # df 재정렬
     df = df[new_order]
@@ -2782,7 +2782,7 @@ def rgroup_rev_top3_graph_draw(gameidx: str, path_rgroup_top3_rev:str, bucket, *
         lambda x: f"{int(x):,}" if pd.notna(x) else x
     )
 
-    df["PU 수"] = df["PU 수"].map(lambda x: f"{int(x):,}")
+    df["매출"] = df["매출"].map(lambda x: f"{int(x):,}")
 
     # ---------- 폭 계산: 상품명 넓게, 정규화는 하되 상품명 가중치 크게 ----------
     cols = df.columns.tolist()

@@ -1496,7 +1496,7 @@ def rgroup_rev_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, 
                             text, ha="right", va="center", fontsize=5)
 
         # 헤더 바로 위에 제목 추가 (왼쪽정렬)
-        ax.text(0, -5, "월별 R그룹별 매출(동기간)",
+        ax.text(0, -5, "월별 R그룹별 매출(전체기간)",
                 ha="left", va="bottom", fontsize=8, fontweight="bold")
         # 10) 이미지 저장
         plt.savefig(out_path, bbox_inches="tight", pad_inches=0.2)
@@ -1724,7 +1724,7 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
                     ax.text(x + col_widths[j] - 8, y + row_h / 2,
                             text, ha="right", va="center", fontsize=5)
         # 헤더 바로 위에 제목 추가 (왼쪽정렬)
-        ax.text(0, -5, "월별 R그룹별 PU수(동기간)",
+        ax.text(0, -5, "월별 R그룹별 PU수(전체기간)",
                 ha="left", va="bottom", fontsize=8, fontweight="bold")
 
         # 10) 이미지 저장
@@ -1798,9 +1798,9 @@ def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, path_rgroup_rev_total:
 def merge_merge_rgroup_total_rev_pu_ALL_table(gameidx: str, bucket, 
                                               path_merge_rgroup_rev_pu_table:str, 
                                               path_merge_rgroup_total_rev_pu_table:str, **context):
-    p1 = path_merge_rgroup_rev_pu_table
-    p2 = path_merge_rgroup_total_rev_pu_table
-
+    p1 = path_merge_rgroup_total_rev_pu_table
+    p2 = path_merge_rgroup_rev_pu_table
+    
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     print(f"📥 GCS에서 이미지 다운로드 중...")
     blob1 = bucket.blob(p1)

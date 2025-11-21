@@ -8977,7 +8977,7 @@ def cohort_rev_upload_notion(joyplegameid:int, gameidx:str, service_sub:str, **c
 
 def result6_monthlyROAS(joyplegameid:int, gameidx:str, databaseschema:str, **context):
     
-    query= """
+    query= f"""
     WITH revraw AS(
     select JoypleGameID, Month
     , concat("D_",date_diff(date_sub(current_date('Asia/Seoul'), interval 1 day), date_sub(cast(concat(Month, '-01') as date), interval 1 day), day)) as matured_daydiff
@@ -9019,7 +9019,7 @@ def result6_monthlyROAS(joyplegameid:int, gameidx:str, databaseschema:str, **con
     CASE WHEN RegdateAuthAccountDateKST <= CAST(DATE_ADD(CURRENT_DATE('Asia/Seoul'), INTERVAL -331 DAY) AS Date)  THEN  IFNULL(sum(rev_D330),0) ELSE  null END as Sales_D330,
     CASE WHEN RegdateAuthAccountDateKST <= CAST(DATE_ADD(CURRENT_DATE('Asia/Seoul'), INTERVAL -361 DAY) AS Date)  THEN  IFNULL(sum(rev_D360),0) ELSE  null END as Sales_D360
     from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
-        where JoypleGameID = 133
+        where JoypleGameID = {joyplegameid}
         and RegdateAuthAccountDateKST >= DATE_SUB(DATE(CONCAT(FORMAT_DATE('%Y-%m', DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)),'-01')), INTERVAL 24 MONTH)
         and RegdateAuthAccountDateKST <= CAST(DATE_ADD(CURRENT_DATE('Asia/Seoul'), INTERVAL -8 DAY) AS Date)
     group by JoypleGameID, RegdateAuthAccountDateKST
@@ -9214,7 +9214,7 @@ def result6_monthlyROAS(joyplegameid:int, gameidx:str, databaseschema:str, **con
     select joyplegameid,  format_date('%Y-%m', cmpgndate) as month
     , sum(costcurrency) as cost, sum(costcurrencyuptdt) as cost_exclude_credit
     from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
-    where joyplegameid = 133
+    where joyplegameid = {joyplegameid}
     and cmpgndate >= DATE_SUB(DATE(CONCAT(FORMAT_DATE('%Y-%m', DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)),'-01')), INTERVAL 24 MONTH)
     and cmpgndate <= CAST(DATE_ADD(CURRENT_DATE('Asia/Seoul'), INTERVAL -8 DAY) AS Date)
     group by joyplegameid,  format_date('%Y-%m', cmpgndate)
@@ -9285,11 +9285,11 @@ def result6_pLTV(joyplegameid:int, gameidx:str, databaseschema:str, **context):
     FROM `data-science-division-216308.VU.Performance_pLTV`
     where authaccountregdatekst >= DATE_SUB(DATE(CONCAT(FORMAT_DATE('%Y-%m', DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)),'-01')), INTERVAL 24 MONTH)
     and authaccountregdatekst <= CAST(DATE_ADD(CURRENT_DATE('Asia/Seoul'), INTERVAL -8 DAY) AS Date)
-    and JoypleGameID = 133
+    and JoypleGameID = {joyplegameid}
     ) as a
     left join (select  *
     from `dataplatform-reporting.DataService.V_0316_0000_AuthAccountInfo_V`
-    where JoypleGameID = 133
+    where JoypleGameID = {joyplegameid}
     ) as b
     on a.authaccountname = b.authaccountname
     and a.joyplegameid = b.joyplegameid

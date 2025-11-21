@@ -286,7 +286,7 @@ def daily_revenue_gemini(gameidx: str, service_sub: str, genai_client, MODEL_NAM
     response1_salesComment = genai_client.models.generate_content(
     model=MODEL_NAME,
     contents = f"""
-    당월 매출은 일할계산시 {f"{int((query_result1_monthlySales.iat[0,0])):,}"}이고 목표는 {f"{int((query_result1_monthlySales.iat[0,1])):,}"}이야.
+    당월 매출은 일할계산시 {f"{int((query_result1_salesGoal.iat[0,0])):,}"}이고 목표는 {f"{int((query_result1_salesGoal.iat[0,1])):,}"}이야.
     당월 매출은 일할계산시 ~~이고 목표매출은 ~~ 으로, 목표대비 얼마 달성했다의 형식으로 답변해줘.
     그리고 추가로 일자별 매출에 대해 아주 간단히 코멘트를 해줘.
     ~습니다 체로 알려줘
