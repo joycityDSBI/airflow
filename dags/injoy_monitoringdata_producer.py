@@ -366,7 +366,10 @@ def get_message_details(**context):
                 if attachments and isinstance(attachments, list):
                     query = attachments[0].get("query", {}).get("query", None)
                     description = attachments[0].get("query", {}).get("description", None)
-                    questions = attachments[0].get("suggested_questions", {}).get("questions", None)
+                    if attachments[0].get("suggested_questions", {}).get("questions"):
+                        questions = attachments[0].get("suggested_questions", {}).get("questions", [])
+                    elif attachments[1].get("suggested_questions", {}).get("questions"):
+                        questions = attachments[1].get("suggested_questions", {}).get("questions", [])
 
                 else:
                     query = None

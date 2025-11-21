@@ -135,7 +135,7 @@ def build_properties_payload(row_data: dict) -> dict:
                 continue
 
         # 📌 2. question 배열 처리 (새로 추가)
-        elif key in ["question"]:
+        elif key in ["questions"]:
             # value가 array/list인지 확인
             if isinstance(value, (list, tuple, pd.Series)):
                 # 배열을 문자열로 변환
@@ -233,7 +233,7 @@ def extract_data(**context):
                 row_count,
                 status,
                 description,
-                question,
+                questions,
                 auto_regenerate_count,
                 error,
                 error_type,
