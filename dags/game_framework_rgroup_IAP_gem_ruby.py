@@ -910,7 +910,7 @@ def weekly_iapcategory_rev(joyplegameid: int, gameidx: str, databaseschema:str, 
         
     saved_path_1 = save_df_to_gcs(query_result4_salesByCategory, bucket, gcs_path_1)
 
-    cols_df = pd.DataFrame({'columns': query_result4_salesByCategory_Cols})
+    cols_df = pd.DataFrame({'columns': cols})
     saved_path_2 = save_df_to_gcs(cols_df, bucket, gcs_path_2)
 
     return saved_path_1, saved_path_2
