@@ -2759,9 +2759,9 @@ def rgroup_pu_top3_graph_draw(gameidx: str, path_rgroup_top3_pu:str, bucket, **c
 
 def rgroup_rev_top3_graph_draw(gameidx: str, path_rgroup_top3_rev:str, bucket, **context):
 
-    query_result4_thisWeekRevTop3 = load_df_from_gcs(bucket, path_rgroup_top3_rev)
+    query_result4_thisWeekSalesTop3 = load_df_from_gcs(bucket, path_rgroup_top3_rev)
 
-    df = query_result4_thisWeekRevTop3.iloc[:, [1,2,3,4,5,6,8]]
+    df = query_result4_thisWeekSalesTop3.iloc[:, [1,2,3,4,5,7,9]]
     df = df.rename(
         columns = {"rgroup_final" : "R그룹",
                 "pu_rank" : "순위",

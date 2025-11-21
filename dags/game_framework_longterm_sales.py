@@ -1520,30 +1520,19 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
 
     df = query_result5_monthlyRgroupRevenue.iloc[:, [0,8,9,10,11,12,14,15,13]]
 
-    rename_dict = {}
-    for old_col in df.columns:
-        if 'R0_rev' in str(old_col) or old_col == df.columns[1]:
-            rename_dict[old_col] = 'R0'
-        elif 'R1_rev' in str(old_col):
-            rename_dict[old_col] = 'R1'
-        elif 'R2_rev' in str(old_col):
-            rename_dict[old_col] = 'R2'
-        elif 'R3_rev' in str(old_col):
-            rename_dict[old_col] = 'R3'
-        elif 'R4_rev' in str(old_col):
-            rename_dict[old_col] = 'R4'
-        elif 'nonPU' in str(old_col):
-            rename_dict[old_col] = 'nonPU'
-        elif 'PU' in str(old_col) and 'nonPU' not in str(old_col):
-            rename_dict[old_col] = 'PU'
-        elif 'ALL_rev' in str(old_col) or '총' in str(old_col):
-            rename_dict[old_col] = '총합'
-        elif old_col == df.columns[0]:
-            rename_dict[old_col] = 'month'
-    
-    print(f"✅ 컬럼명 변경 매핑: {rename_dict}")
-    
-    df = df.rename(columns=rename_dict)
+    df = df.rename(
+    columns = {"month" : "month",
+               "R0_user" : "R0",
+               "R1_user" : "R1",
+               "R2_user" : "R2",
+               "R3_user" : "R3",
+               "R4_user" : "R4",
+               "nonPU_user" : "nonPU",
+               "PU" : "PU",
+               "ALL_user" : "총합",
+               }
+            )
+
     
     print(f"✅ 변경 후 컬럼: {df.columns.tolist()}")
     print(f"📊 데이터:\n{df.head()}")
@@ -1743,7 +1732,7 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
     return gcs_path
 
 
-#### 월별 R 그룹별 매출, PU 표 합치기
+#### 월별 R 그룹별 매출, PU 표 전체기간 합치기
 def merge_rgroup_total_rev_pu_table(gameidx: str, bucket, path_rgroup_rev_total:str, **context):
     p1 = rgroup_rev_total_table_draw(gameidx, path_rgroup_rev_total, bucket, **context)
     p2 = rgroup_pu_total_table_draw(gameidx, path_rgroup_rev_total, bucket, **context)
