@@ -1124,6 +1124,9 @@ def top3_items_by_category_gemini(gameidx:str, service_sub: str, genai_client, M
     genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
     query_result4_salesByPackage_ListedCategory = load_df_from_gcs(bucket, path_top3_items_by_category)
 
+
+    print(f"★★★★★★★★★★★★top3_items_by_category_gemini 에서 데이터 : ", query_result4_salesByPackage_ListedCategory.head(5))
+
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
     LABELS = {"datascience_division_service": 'gameinsight_framework',
             "run_id": RUN_ID,
@@ -3077,7 +3080,7 @@ def rgroup_rev_upload_notion(gameidx: str, path_rev_group_rev_pu, rev_group_rev_
 
 def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: str,
                                path_iap_gem_ruby, path_iapgemruby_history, 
-                               path_top3_items_by_category,path_weekly_iapcategory_rev,
+                               path_top3_items_by_category, path_weekly_iapcategory_rev,
                                service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, notion, bucket, headers_json, **context):
 
     current_context = get_current_context()
