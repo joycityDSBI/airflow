@@ -1531,7 +1531,7 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
                "PU" : "PU",
                "ALL_user" : "총합",
                }
-            )
+        )
 
     
     print(f"✅ 변경 후 컬럼: {df.columns.tolist()}")

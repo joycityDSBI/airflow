@@ -2763,13 +2763,13 @@ def rgroup_rev_top3_graph_draw(gameidx: str, path_rgroup_top3_rev:str, bucket, *
 
     df = query_result4_thisWeekSalesTop3.iloc[:, [1,2,3,4,5,7,9]]
     df = df.rename(
-        columns = {"rgroup_final" : "R그룹",
-                "pu_rank" : "순위",
-                "package_name" : "상품명",
-                "shop_category" : "상점 카테고리",
-                "package_category" : "상품 카테고리",
-                "price_sheet" : "상품 가격",
-                "sales" : "매출"}
+    columns = {"rgroup_final" : "R그룹",
+               "sales_rank" : "순위",
+               "package_name" : "상품명",
+               "shop_category" : "상점 카테고리",
+               "package_category" : "상품 카테고리",
+               "price_sheet" : "상품 가격",
+               "sales" : "매출"}
     )
     # 원하는 순서 지정
     new_order = ["R그룹", "순위","상품명", "상점 카테고리", "상품 카테고리", "상품 가격", "매출"]
