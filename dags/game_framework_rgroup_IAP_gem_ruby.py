@@ -2348,7 +2348,7 @@ def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
                             bigquery_client, bucket, **context)
     
     
-
+    print(f"★★★★★ DFSDFSDFS ★★★★★★★ : ", dfs)
      # 1) 데이터 로드
 
     df = dfs.get("query_result4_salesByPackage_forCategoryGraph_1")
