@@ -1736,6 +1736,11 @@ def top3_items_rev(joyplegameid:int, gameidx:str, databaseschema:str, service_su
             query_result[category_col] == c
         ].copy()
 
+    ## dfs 값을 gcs에 저장
+    for key, df in dfs.items():
+        gcs_path = f"{gameidx}/{key}.parquet"
+        save_df_to_gcs(df, bucket, gcs_path)
+        print(f"✅ 저장 완료: {gcs_path}")
     return dfs, saved_path
 
 
@@ -2343,15 +2348,7 @@ def iap_gem_ruby_RUBY_graph_draw(gameidx: str, path_ruby_df:str, bucket, **conte
 def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str,
                     path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, **context):
 
-    dfs, _ = top3_items_rev(joyplegameid, gameidx, databaseschema, service_sub, 
-                            path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION,
-                            bigquery_client, bucket, **context)
-    
-    
-    print(f"★★★★★ DFSDFSDFS ★★★★★★★ : ", dfs)
-     # 1) 데이터 로드
-
-    df = dfs.get("query_result4_salesByPackage_forCategoryGraph_1")
+    df =load_df_from_gcs(bucket, f"{gameidx}/query_result4_salesByPackage_forCategoryGraph_1.parquet")
     print(f"★★★★★★★★★★★★ top11111111_graph_draw 에서 데이터 : ", df)
 
     df["일자"] = pd.to_datetime(df["일자"])
@@ -2449,11 +2446,7 @@ def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
 def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str,
                     path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, **context):
 
-    dfs, _ = top3_items_rev(joyplegameid, gameidx, databaseschema, service_sub, 
-                            path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION,
-                            bigquery_client, bucket, **context)
-
-    df = dfs.get("query_result4_salesByPackage_forCategoryGraph_2")
+    df =load_df_from_gcs(bucket, f"{gameidx}/query_result4_salesByPackage_forCategoryGraph_2.parquet")
     print(f"★★★★★★★★★★★★ top222222_graph_draw 에서 데이터 : ", df)
 
     df["일자"] = pd.to_datetime(df["일자"])
@@ -2552,11 +2545,7 @@ def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
 def top3_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str,
                     path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, **context):
 
-    dfs, _ = top3_items_rev(joyplegameid, gameidx, databaseschema, service_sub, 
-                            path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION,
-                            bigquery_client, bucket, **context)
-
-    df = dfs.get("query_result4_salesByPackage_forCategoryGraph_3")
+    df =load_df_from_gcs(bucket, f"{gameidx}/query_result4_salesByPackage_forCategoryGraph_3.parquet")
     print(f"★★★★★★★★★★★★ top3333333_graph_draw 에서 데이터 : ", df)
 
     df["일자"] = pd.to_datetime(df["일자"])
