@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone as dt_timezone
+from io import StringIO
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.databricks.hooks.databricks import DatabricksHook
-from airflow.models import Variable
+from airflow.sdk.variables import Variable
 import pandas as pd
 import requests
 from airflow import Dataset
@@ -239,8 +240,9 @@ def enrich_with_groups(**context):
     ti = context['ti']
     
     # XCom에서 데이터 가져오기
-    df_audit = pd.read_json(ti.xcom_pull(task_ids='extract_audit_logs', key='df_audit'), orient='split')
-    df_user_groups = pd.read_json(ti.xcom_pull(task_ids='get_user_groups', key='df_user_groups'), orient='split')
+    
+    df_audit = pd.read_json(StringIO(ti.xcom_pull(task_ids='extract_audit_logs', key='df_audit')), orient='split')
+    df_user_groups = pd.read_json(StringIO(ti.xcom_pull(task_ids='get_user_groups', key='df_user_groups')), orient='split')
     
     # 병합
     df_audit_with_group = df_audit.merge(df_user_groups, on="user_id", how="left")
@@ -294,7 +296,7 @@ def get_message_details(**context):
     headers = {"Authorization": f"Bearer {config['token']}"}
     
     # 데이터 가져오기
-    df_audit_with_group = pd.read_json(ti.xcom_pull(task_ids='enrich_with_groups', key='df_audit_with_group'), orient='split')
+    df_audit_with_group = pd.read_json(StringIO(ti.xcom_pull(task_ids='enrich_with_groups', key='df_audit_with_group')), orient='split')
     space_id_to_name = ti.xcom_pull(task_ids='get_space_info', key='space_id_to_name')
     
     # 스페이스 이름 추가
@@ -456,8 +458,6 @@ def merge_query_history(**context):
     Task 6: Query history와 병합 및 최종 데이터 저장
     """
     from databricks import sql
-    import pandas as pd
-    from io import StringIO
     import numpy as np
     
     ti = context['ti']
