@@ -437,12 +437,19 @@ def daily_revenue_YOY_graph_draw(gameidx: str, path_daily_revenue_yoy: str, buck
     
 
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(x, y2, marker='o',
-            markersize=3, linewidth=1, # 마커 크기 작게
-            label=query_result1_monthlySales.columns[2])
-    ax.plot(x, y1, marker='o',
-            markersize=3, linewidth=1, # 마커 크기 작게
-            linestyle='--', label=query_result1_monthlySales.columns[1])  # 겹쳐서 표시
+    mask1 = x.notna() & y1.notna()
+    if mask1.sum() > 0:
+        ax.plot(x[mask1], y1[mask1], marker='o',
+                markersize=3, linewidth=1,
+                linestyle='--', label=query_result1_monthlySales.columns[1])
+        print(f"✅ y1 그래프: {mask1.sum()}개 데이터")
+
+    mask2 = x.notna() & y2.notna()
+    if mask2.sum() > 0:
+        ax.plot(x[mask2], y2[mask2], marker='o',
+                markersize=3, linewidth=1,
+                label=query_result1_monthlySales.columns[2])
+        print(f"✅ y2 그래프: {mask2.sum()}개 데이터")
 
     # 옵션
     plt.title("전년 동월대비 매출")
@@ -453,7 +460,15 @@ def daily_revenue_YOY_graph_draw(gameidx: str, path_daily_revenue_yoy: str, buck
     plt.gca().yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{int(x):,}"))
 
     # x축 눈금을 7개 단위로만 표시 (예: 1주일 간격)
-    plt.xticks(query_result1_monthlySales[query_result1_monthlySales.columns[0]][::1], rotation=45)
+    step = max(1, len(x) // 7)
+    x_valid = x.dropna()  # ✅ NaN 제거
+    
+    if len(x_valid) > 0:
+        # x 값의 실제 위치 찾기
+        tick_indices = np.arange(0, len(x), step)
+        tick_labels = [x.iloc[i] if i < len(x) and pd.notna(x.iloc[i]) else '' 
+                       for i in tick_indices]
+        plt.xticks(tick_indices, tick_labels, rotation=45)
 
     # 범례 표시 - 그래프랑 안겹치게
     plt.legend(
