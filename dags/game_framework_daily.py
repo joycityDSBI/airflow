@@ -509,7 +509,7 @@ def daily_revenue_YOY_graph_draw(gameidx: str, path_daily_revenue_yoy: str, buck
 
 
 
-# 1) 파일 경로
+# 1 파일 경로
 def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, bucket, **context):
     p1 = daily_revenue_graph_draw(gameidx, daily_revenue_path, bucket)
     print(f"✅ p1 경로: {p1}")
@@ -517,7 +517,7 @@ def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, 
     p2 = daily_revenue_YOY_graph_draw(gameidx, daily_revenue_yoy_path, bucket)
     print(f"✅ p2 경로: {p2}")
 
-    # 2) 이미지 열기 (투명 보존 위해 RGBA)
+    # 2 이미지 열기 (투명 보존 위해 RGBA)
     print(f"📥 GCS에서 이미지 다운로드 중...")
     blob1 = bucket.blob(p1)
     blob2 = bucket.blob(p2)
@@ -557,7 +557,7 @@ def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, 
     out.paste(im1_p, (0, 0), im1_p)
     out.paste(im2_p, (im1_p.width + gap, 0), im2_p)
 
-    # 3) GCS에 저장
+    # 3 GCS에 저장
     print(f"📤 GCS에 업로드 중...")
     output_buffer = BytesIO()
     out.save(output_buffer, format='PNG')
