@@ -3,7 +3,7 @@ from io import StringIO
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.databricks.hooks.databricks import DatabricksHook
-from airflow.sdk.variables import Variable
+from airflow.models import Variable
 import pandas as pd
 import requests
 from airflow import Dataset
