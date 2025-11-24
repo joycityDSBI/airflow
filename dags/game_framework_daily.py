@@ -329,8 +329,8 @@ def daily_revenue_graph_draw(gameidx: str, path_daily_revenue:str, bucket, **con
     df_daily = load_df_from_gcs(bucket, path_daily_revenue)
     
     x  = df_daily.iloc[:, 0]
-    y1 = pd.to_numeric(df_daily.iloc[:, 1], errors='coerce')
-    y2 = pd.to_numeric(df_daily.iloc[:, 2], errors='coerce')
+    y1 = pd.to_numeric(df_daily.iloc[:, 1], errors='coerce').dropna()
+    y2 = pd.to_numeric(df_daily.iloc[:, 2], errors='coerce').dropna()
 
     # # ✅ NaN 제거
     # mask = x.notna() & y1.notna() & y2.notna()
@@ -406,8 +406,8 @@ def daily_revenue_YOY_graph_draw(gameidx: str, path_daily_revenue_yoy: str, buck
     query_result1_monthlySales = load_df_from_gcs(bucket, path_daily_revenue_yoy)
 
     x  = query_result1_monthlySales.iloc[:, 0]
-    y1 = pd.to_numeric(query_result1_monthlySales.iloc[:, 1], errors='coerce')
-    y2 = pd.to_numeric(query_result1_monthlySales.iloc[:, 2], errors='coerce')
+    y1 = pd.to_numeric(query_result1_monthlySales.iloc[:, 1], errors='coerce').dropna()
+    y2 = pd.to_numeric(query_result1_monthlySales.iloc[:, 2], errors='coerce').dropna()
 
 
     # # ✅ NaN 제거
