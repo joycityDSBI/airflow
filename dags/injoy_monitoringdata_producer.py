@@ -438,7 +438,7 @@ def get_message_details(**context):
     df_target['status'] = statuses ## select type
     df_target['description'] = descriptions
     df_target['questions'] = questionss
-    df_target['auto_regenerate_count'] = auto_regenerate_count
+    df_target['auto_regenerate_count'] = auto_regenerate_counts
     df_target['error'] = errors
     df_target['error_type'] = error_types ## select type
     df_target['feedback_rating'] = feedback_ratings ## select type
