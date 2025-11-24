@@ -332,15 +332,15 @@ def daily_revenue_graph_draw(gameidx: str, path_daily_revenue:str, bucket, **con
     y1 = pd.to_numeric(df_daily.iloc[:, 1], errors='coerce')
     y2 = pd.to_numeric(df_daily.iloc[:, 2], errors='coerce')
 
-    # ✅ NaN 제거
-    mask = x.notna() & y1.notna() & y2.notna()
-    x = x[mask]
-    y1 = y1[mask]
-    y2 = y2[mask]
+    # # ✅ NaN 제거
+    # mask = x.notna() & y1.notna() & y2.notna()
+    # x = x[mask]
+    # y1 = y1[mask]
+    # y2 = y2[mask]
     
-    if len(x) == 0:
-        print(f"⚠️ 유효한 데이터가 없음")
-        return None
+    # if len(x) == 0:
+    #     print(f"⚠️ 유효한 데이터가 없음")
+    #     return None
     
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.plot(x, y2, marker='o',
@@ -410,15 +410,15 @@ def daily_revenue_YOY_graph_draw(gameidx: str, path_daily_revenue_yoy: str, buck
     y2 = pd.to_numeric(query_result1_monthlySales.iloc[:, 2], errors='coerce')
 
 
-    # ✅ NaN 제거
-    mask = x.notna() & y1.notna() & y2.notna()
-    x = x[mask]
-    y1 = y1[mask]
-    y2 = y2[mask]
+    # # ✅ NaN 제거
+    # mask = x.notna() & y1.notna() & y2.notna()
+    # x = x[mask]
+    # y1 = y1[mask]
+    # y2 = y2[mask]
     
-    if len(x) == 0:
-        print(f"⚠️ 유효한 데이터가 없음")
-        return None
+    # if len(x) == 0:
+    #     print(f"⚠️ 유효한 데이터가 없음")
+    #     return None
     
 
     fig, ax = plt.subplots(figsize=(10, 5))

@@ -267,3 +267,5 @@ with DAG(
 
 
     truncate_bq_task >> notion_to_bq_task
+
+    

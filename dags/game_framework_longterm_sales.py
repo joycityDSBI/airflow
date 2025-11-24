@@ -1559,19 +1559,6 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
         """
         # ✅ 동적으로 컬럼 구성
         cols = [c for c in df.columns if c in ["month", "R0", "R1", "R2", "R3", "R4", "nonPU", "PU", "총합"]]
-        
-        # ✅ 없는 컬럼 확인
-        missing_cols = set(["month", "R0", "R1", "R2", "R3", "R4", "nonPU", "PU", "총합"]) - set(df.columns)
-        if missing_cols:
-            print(f"⚠️ 없는 컬럼: {missing_cols}")
-        
-        print(f"📝 사용할 컬럼: {cols}")
-        
-        if len(cols) == 0:
-            print(f"❌ 사용할 컬럼이 없음")
-            print(f"   df 컬럼: {df.columns.tolist()}")
-            return None
-        
         df = df.loc[:, cols].copy()
 
         # 1) 폰트 설정 (설치되어 있어야 함. 없으면 기본 폰트로 폴백됨)
