@@ -147,7 +147,7 @@ def Daily_revenue_YOY_query(joyplegameid: int, gameidx:str, bigquery_client, buc
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
         
-    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
+    saved_path = save_df_to_gcs(s_total, bucket, gcs_path)
 
     return saved_path
 

@@ -234,8 +234,8 @@ with DAG(
         st2 = Daily_revenue_YOY_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
         if_else_length(path=st2, gameidx=gameidx, service_sub=service_sub, func_name="Daily_revenue_YOY_query")
 
-        # st3 = Daily_revenue_target_revenue_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
-        # if_else_length(path=st3, gameidx=gameidx, service_sub=service_sub, func_name="Daily_revenue_target_revenue_query")
+        st3 = Daily_revenue_target_revenue_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
+        if_else_length(path=st3, gameidx=gameidx, service_sub=service_sub, func_name="Daily_revenue_target_revenue_query")
         
         img_gcs_path = merge_daily_graph(gameidx=gameidx, daily_revenue_path=st1, daily_revenue_yoy_path=st2, bucket=bucket)
         if_else_length(path=img_gcs_path, gameidx=gameidx, service_sub=service_sub, func_name="merge_daily_graph")
