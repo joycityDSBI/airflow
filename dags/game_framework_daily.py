@@ -131,6 +131,23 @@ def Daily_revenue_YOY_query(joyplegameid: int, gameidx:str, bigquery_client, buc
     gcs_path = f"{gameidx}/{timestamp}.parquet"
         
     saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
+    target_rev_saved_path = Daily_revenue_target_revenue_query(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket, context=context)
+
+    s_total = load_df_from_gcs(bucket, saved_path)
+    val_total = load_df_from_gcs(bucket, target_rev_saved_path)
+
+    val = val_total.iat[0, 0]
+    s = s_total.iloc[:, 2]
+    try:
+        idx = s.dropna().index[-1]                 # 마지막 non-null 라벨 인덱스
+        s_total.loc[idx, s_total.columns[2]] = val
+    except IndexError:
+        pass  # 모두 null인 경우
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    gcs_path = f"{gameidx}/{timestamp}.parquet"
+        
+    saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
 
     return saved_path
 
@@ -217,45 +234,6 @@ def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery
     saved_path = save_df_to_gcs(query_result, bucket, gcs_path)
 
     return saved_path
-
-
-## 전년 대비 월 매출 추이 수정 - 당월은 일할계산 매출
-def merge_daily_revenue(path_daily_revenue:str, path_daily_revenue_yoy:str, bucket, **context):
-
-    try:
-        s_total = load_df_from_gcs(bucket, path_daily_revenue)
-        val_total = load_df_from_gcs(bucket, path_daily_revenue_yoy)
-
-        print("s total, val total head 값 3개")
-        print(s_total.head(3))
-        print(val_total.head(3))
-        # ✅ 값 추출
-        val = val_total.iat[0, 0]
-        s = s_total.iloc[:, 2]
-        
-        # ✅ 마지막 non-null 인덱스 찾기
-        non_null_mask = s.notna()
-        if non_null_mask.any():
-            idx = s[non_null_mask].index[-1]
-            
-            # ✅ 타입 변환 후 할당
-            try:
-                # 현재 컬럼의 dtype에 맞춰서 변환
-                val_converted = s_total[s_total.columns[2]].dtype.type(val)
-                s_total.loc[idx, s_total.columns[2]] = val_converted
-                print(f"✅ 병합 완료: idx={idx}, val={val}")
-            except:
-                # 실패시 그냥 할당
-                s_total.loc[idx, s_total.columns[2]] = val
-                print(f"✅ 병합 완료 (타입 변환 스킵)")
-        else:
-            print(f"⚠️ 모두 null - 병합 스킵")
-        
-        return s_total
-
-    except Exception as e:
-        print(f"❌ merge_daily_revenue 실패: {e}")
-        raise
 
 
 ## 프롬프트 
