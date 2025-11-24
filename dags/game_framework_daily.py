@@ -329,8 +329,8 @@ def daily_revenue_graph_draw(gameidx: str, path_daily_revenue:str, bucket, **con
     df_daily = load_df_from_gcs(bucket, path_daily_revenue)
     
     x  = df_daily.iloc[:, 0]
-    y1 = pd.to_numeric(df_daily.iloc[:, 1], errors='coerce').dropna()
-    y2 = pd.to_numeric(df_daily.iloc[:, 2], errors='coerce').dropna()
+    y1 = pd.to_numeric(df_daily.iloc[:, 1], errors='coerce')
+    y2 = pd.to_numeric(df_daily.iloc[:, 2], errors='coerce')
 
     # # ✅ NaN 제거
     # mask = x.notna() & y1.notna() & y2.notna()
@@ -343,23 +343,31 @@ def daily_revenue_graph_draw(gameidx: str, path_daily_revenue:str, bucket, **con
     #     return None
     
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(x, y2, marker='o',
-            markersize=3, linewidth=1, # 마커 크기 작게
-            label=df_daily.columns[2])
-    ax.plot(x, y1, marker='o',
-            markersize=3, linewidth=1, # 마커 크기 작게
-            linestyle='--', label=df_daily.columns[1])  # 겹쳐서 표시
+
+
+    mask1 = x.notna() & y1.notna()
+    if mask1.sum() > 0:
+        ax.plot(x[mask1], y1[mask1], marker='o',
+                markersize=3, linewidth=1,
+                linestyle='--', label=df_daily.columns[1])
+        print(f"✅ y1 그래프: {mask1.sum()}개 데이터")
+
+    mask2 = x.notna() & y2.notna()
+    if mask2.sum() > 0:
+        ax.plot(x[mask2], y2[mask2], marker='o',
+                markersize=3, linewidth=1,
+                label=df_daily.columns[2])
+        print(f"✅ y2 그래프: {mask2.sum()}개 데이터")
 
     # 옵션
     plt.title("일자별 매출")
-    #plt.xlabel(query_result1_dailySales.columns[0])   # 자동으로 컬럼명 표시 가능
-    #plt.ylabel(query_result1_dailySales.columns[1])
-
+    
     # y축 천 단위 구분 기호 넣기
     plt.gca().yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{int(x):,}"))
 
     # x축 눈금을 7개 단위로만 표시 (예: 1주일 간격)
-    plt.xticks(df_daily[df_daily.columns[0]][::2], rotation=45)
+    step = max(1, len(x) // 7)
+    plt.xticks(range(0, len(x), step), x.iloc[::step], rotation=45)
 
     # 범례 표시 - 그래프랑 안겹치게
     plt.legend(
@@ -406,8 +414,8 @@ def daily_revenue_YOY_graph_draw(gameidx: str, path_daily_revenue_yoy: str, buck
     query_result1_monthlySales = load_df_from_gcs(bucket, path_daily_revenue_yoy)
 
     x  = query_result1_monthlySales.iloc[:, 0]
-    y1 = pd.to_numeric(query_result1_monthlySales.iloc[:, 1], errors='coerce').dropna()
-    y2 = pd.to_numeric(query_result1_monthlySales.iloc[:, 2], errors='coerce').dropna()
+    y1 = pd.to_numeric(query_result1_monthlySales.iloc[:, 1], errors='coerce')
+    y2 = pd.to_numeric(query_result1_monthlySales.iloc[:, 2], errors='coerce')
 
 
     # # ✅ NaN 제거
