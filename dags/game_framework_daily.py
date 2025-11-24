@@ -367,7 +367,14 @@ def daily_revenue_graph_draw(gameidx: str, path_daily_revenue:str, bucket, **con
 
     # x축 눈금을 7개 단위로만 표시 (예: 1주일 간격)
     step = max(1, len(x) // 7)
-    plt.xticks(range(0, len(x), step), x.iloc[::step], rotation=45)
+    x_valid = x.dropna()  # ✅ NaN 제거
+    
+    if len(x_valid) > 0:
+        # x 값의 실제 위치 찾기
+        tick_indices = np.arange(0, len(x), step)
+        tick_labels = [x.iloc[i] if i < len(x) and pd.notna(x.iloc[i]) else '' 
+                       for i in tick_indices]
+        plt.xticks(tick_indices, tick_labels, rotation=45)
 
     # 범례 표시 - 그래프랑 안겹치게
     plt.legend(
