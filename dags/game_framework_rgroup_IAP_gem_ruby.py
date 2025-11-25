@@ -3250,31 +3250,38 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
     if current_block:
         blocks_raw.append(current_block)
 
-    # 이제 blocks_raw = [[헤더, 내용...], [헤더, 내용...], ...]
-
     # 최종 결과 저장
     blocks_bucket = {"blocks_1": [], "blocks_2": [], "blocks_3": [], "blocks_4": [], "blocks_5": []}
+    
+    # 현재 처리 중인 블록의 종류를 추적하는 변수 (1: 1위, 2: 2위, 3: 3위, 0: 기타)
+    current_rank_block = 0
 
-    found_first = False
     for block in blocks_raw:
         header = block[0]
-
-        # 매출 1위 전까지는 blocks_1
-        if not found_first:
-            if "(매출 1위)" in header:
-                found_first = True
-                blocks_bucket["blocks_2"] = block
-            else:
-                blocks_bucket["blocks_1"].extend(block)
-            continue
-
-        # 이후 매출 2위, 3위, 나머지 구분
+        
+        # 헤더를 기준으로 현재 블록의 종류를 결정
         if "(매출 2위)" in header:
-            blocks_bucket["blocks_3"] = block
+            current_rank_block = 1
+        elif "(매출 2위)" in header:
+            current_rank_block = 2
         elif "(매출 3위)" in header:
+            current_rank_block = 3
+        elif header.startswith("**"): # 다른 카테고리 헤더가 시작되면 기타 블록으로 초기화
+            current_rank_block = 0
+
+        # 결정된 종류에 따라 블록을 버킷에 추가
+        if current_rank_block == 1:
+            blocks_bucket["blocks_2"].extend(block)
+        elif current_rank_block == 2:
+            blocks_bucket["blocks_3"] = block
+        elif current_rank_block == 3:
             blocks_bucket["blocks_4"] = block
         else:
-            blocks_bucket["blocks_5"].extend(block)
+            # blocks_1은 첫 번째 헤더가 나오기 전의 모든 내용을 포함
+            if blocks_bucket["blocks_2"]: # 1위 블록이 이미 나왔다면 
+                blocks_bucket["blocks_5"].extend(block)
+            else:
+                blocks_bucket["blocks_1"].extend(block)
 
     for k, v in blocks_bucket.items():
         if isinstance(v, list):
