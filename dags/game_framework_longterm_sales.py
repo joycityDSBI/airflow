@@ -1557,8 +1557,9 @@ def rgroup_pu_total_table_draw(gameidx:str, path_rgroup_rev_total:str, bucket, *
         - 3-color scale conditional formatting per numeric column
         - Auto-fit column widths by content length
         """
-        # ✅ 동적으로 컬럼 구성
-        cols = [c for c in df.columns if c in ["month", "R0", "R1", "R2", "R3", "R4", "nonPU", "PU", "총합"]]
+        
+        desired_order = ["month", "R0", "R1", "R2", "R3", "R4", "nonPU", "PU", "총합"]
+        cols = [c for c in desired_order if c in df.columns]
         df = df.loc[:, cols].copy()
 
         # 1) 폰트 설정 (설치되어 있어야 함. 없으면 기본 폰트로 폴백됨)

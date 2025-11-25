@@ -1576,33 +1576,38 @@ def rgroup_top3_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRU
 
 
 def category_for_bigquery_sql(service_sub:str, path_weekly_iapcategory_rev:str, 
-                              genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bucket, **context):
+                              genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bucket, bigquery_client, **context):
 
-    _, _, _, response4_CategoryListUp = iapcategory_rev_df_gemini(service_sub, 
-                                                                        genai_client, 
-                                                                        MODEL_NAME, 
-                                                                        SYSTEM_INSTRUCTION, 
-                                                                        path_weekly_iapcategory_rev,
-                                                                        bucket, 
-                                                                        PROJECT_ID, 
-                                                                        LOCATION,
-                                                                        **context)
+    # Gemini에 의존하는 대신 GCS에서 데이터를 직접 읽어옵니다.
+    df = load_df_from_gcs(bucket, path_weekly_iapcategory_rev)
 
-    CategoryListUp = re.search(r"\(.*\)", response4_CategoryListUp.text)
-    if CategoryListUp:
-        # 문자열을 실제 tuple/list로 변환 (안전)
-        CategoryListUp_2 = eval(CategoryListUp.group(0))
+    # 'logdate_kst'와 '기타'를 제외한 매출 카테고리 컬럼만 선택합니다.
+    sales_cols = [col for col in df.columns if col not in ['logdate_kst', '기타']]
 
-        # 앞 3개만 추출
-        CategoryListUp_Top3 = list(CategoryListUp_2)[:3]
+    # 카테고리별 매출 합계를 계산합니다.
+    category_sales = df[sales_cols].sum().sort_values(ascending=False)
 
-        # SQL용 문자열로 변환: '배틀패스', '군함', '전투기'
-        CategoryListUp_SQL = ", ".join([f"'{c}'" for c in CategoryListUp_Top3])
+    # 매출 상위 3개 카테고리를 추출합니다.
+    top3_categories = category_sales.head(3).index.tolist()
 
-        # SQL ORDER BY용 CASE WHEN ... THEN ...
-        case_when_str = "\n".join(
-            [f"WHEN '{c}' THEN {i+1}" for i, c in enumerate(CategoryListUp_Top3)]
-        )
+    # Gemini가 생성한 카테고리 목록을 가져옵니다. (기존 로직 활용)
+    _, _, response4_salesByCategory, response4_CategoryListUp = iapcategory_rev_df_gemini(
+        service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, 
+        path_weekly_iapcategory_rev, bucket, PROJECT_ID, LOCATION, **context
+    )
+    
+    CategoryListUp_text = re.search(r"\(.*\)", response4_CategoryListUp.text)
+    gemini_categories = []
+    if CategoryListUp_text:
+        gemini_categories = eval(CategoryListUp_text.group(0))
+
+    # 매출 상위 3개 + Gemini가 언급한 카테고리를 합쳐서 중복을 제거합니다.
+    # 순서는 매출 상위 3개를 우선으로 합니다.
+    CategoryListUp_Top3 = sorted(list(set(top3_categories + list(gemini_categories))), key=lambda x: top3_categories.index(x) if x in top3_categories else 99)
+
+    CategoryListUp_SQL = ", ".join([f"'{c}'" for c in CategoryListUp_Top3])
+    case_when_str = "\n".join([f"WHEN '{c}' THEN {i+1}" for i, c in enumerate(CategoryListUp_Top3)])
+
     return CategoryListUp_SQL, case_when_str, CategoryListUp_Top3
 
 
@@ -1616,6 +1621,7 @@ def top3_items_rev(joyplegameid:int, gameidx:str, databaseschema:str, service_su
                                                                     MODEL_NAME=MODEL_NAME,
                                                                     SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
                                                                     bucket=bucket,
+                                                                    bigquery_client=bigquery_client,
                                                                     **context)
 
     query = f"""
@@ -2428,6 +2434,7 @@ def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
                                                         MODEL_NAME=MODEL_NAME,
                                                         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
                                                         bucket=bucket,
+                                                        bigquery_client=bigquery_client,
                                                         **context)
 
     title_cat = str(CategoryListUp_Top3[0]).strip().strip("'\"`’‘") if CategoryListUp_Top3 else "" # CategoryListUp_Top3[] 부분 수정
@@ -2526,6 +2533,7 @@ def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
                                                         MODEL_NAME=MODEL_NAME,
                                                         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
                                                         bucket=bucket,
+                                                        bigquery_client=bigquery_client,
                                                         **context)
 
     title_cat = str(CategoryListUp_Top3[1]).strip().strip("'\"`’‘") if CategoryListUp_Top3 else "" # CategoryListUp_Top3[] 부분 수정
@@ -2625,6 +2633,7 @@ def top3_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
                                                         MODEL_NAME=MODEL_NAME,
                                                         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
                                                         bucket=bucket,
+                                                        bigquery_client=bigquery_client,
                                                         **context)
 
     title_cat = str(CategoryListUp_Top3[2]).strip().strip("'\"`’‘") if CategoryListUp_Top3 else "" # CategoryListUp_Top3[] 부분 수정
@@ -4111,4 +4120,3 @@ def rgroup_top3_upload_notion(gameidx: str, service_sub:str, MODEL_NAME:str, SYS
         block_id=PAGE_INFO['id'],
         children=blocks
     )
-
