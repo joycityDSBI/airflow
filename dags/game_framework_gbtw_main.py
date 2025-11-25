@@ -403,7 +403,7 @@ with DAG(
         path_iap_gem_ruby_history = iap_gem_ruby_history(gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)
         if_else_length(path=path_iap_gem_ruby_history, gameidx=gameidx, service_sub=service_sub, func_name="iap_gem_ruby_history")
 
-        path_iap_df = iap_df(gameidx=gameidx, databaseschema=databaseschema, bigquery_client=bigquery_client, bucket=bucket)
+        path_iap_df = iap_df(joyplegameid=joyplegameid, gameidx=gameidx, databaseschema=databaseschema, bigquery_client=bigquery_client, bucket=bucket)
         if_else_length(path=path_iap_df, gameidx=gameidx, service_sub=service_sub, func_name="iap_df")
 
         path_gem_df = gem_df(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket)

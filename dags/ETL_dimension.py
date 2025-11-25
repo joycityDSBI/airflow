@@ -68,8 +68,8 @@ with DAG(
         WHEN MATCHED THEN
         UPDATE SET
             T.os_name = COALESCE(S.os_name, T.os_name),
-            T.os_name_lower = COALESCE(S.os_name_lower, T.os_name_lower)
-            T.create_timestamp = COALESCE(CURRENT_TIMESTAMP(), T.create_timestamp)
+            T.os_name_lower = COALESCE(S.os_name_lower, T.os_name_lower),
+            T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
         WHEN NOT MATCHED THEN 
         INSERT (os_id, os_name, os_name_lower, create_timestamp)
         VALUES (S.os_id, null, null, CURRENT_TIMESTAMP())
@@ -211,10 +211,45 @@ with DAG(
         end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
         query = f"""
-        
+        MERGE `datahub-478802.datahub.dim_auth_method_id` T
+        USING (
+            SELECT
+                DISTINCT
+                auth_method_id, null as auth_type_id_KR, null as auth_type_id_EN
+            FROM `dataplatform-204306.CommonLog.Access`
+            where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+        ) S
+        on T.os_id = S.os_id
+        WHEN MATCHED THEN
+        UPDATE SET
+            T.auth_method_id = COALESCE(S.auth_method_id, T.auth_method_id),
+            T.auth_method_id_KR = COALESCE(S.auth_type_id_KR, T.auth_method_id_KR),
+            T.auth_method_id_EN = COALESCE(S.auth_type_id_EN, T.auth_method_id_EN),
+            T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
+        WHEN NOT MATCHED THEN 
+        INSERT (os_id, os_name, os_name_lower, create_timestamp)
+        VALUES (S.os_id, null, null, CURRENT_TIMESTAMP())
+        """
 
+        client.query(query)
+        print("✅ dim_AFC_campaign ETL 완료")
+        
+        return True
+    
+    def dim_exchange_rate():
+        
+        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+
+        query = f"""
+
+        SELECT 
+        from `dataplatform-204306.CommonLog.Access`
 
         """
+
 
 
         
