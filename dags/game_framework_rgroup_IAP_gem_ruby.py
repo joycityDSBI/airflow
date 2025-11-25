@@ -1753,19 +1753,23 @@ def top3_items_rev(joyplegameid:int, gameidx:str, databaseschema:str, service_su
     # 2) 순서대로 필터링해서 새 DF 생성
     category_col = "상품 카테고리"
 
-    dfs = {}  # 사전으로 보관: {"query_result4_salesByPackage_forGraph_1": df1, ...}
+    dfs = {}  # 데이터프레임 보관
+    gcs_paths = {} # GCS 경로 보관
     for i, c in enumerate(cats, start=1):
         key = f"query_result4_salesByPackage_forCategoryGraph_{i}"
         dfs[key] = query_result[
             query_result[category_col] == c
         ].copy()
 
-    ## dfs 값을 gcs에 저장
+    # dfs 값을 gcs에 저장하고 경로를 저장
     for key, df in dfs.items():
-        gcs_path = f"{gameidx}/{key}.parquet"
-        save_df_to_gcs(df, bucket, gcs_path)
-        print(f"✅ 저장 완료: {gcs_path}")
-    return dfs, saved_path
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        gcs_file_path = f"{gameidx}/{key}_{timestamp}.parquet"
+        save_df_to_gcs(df, bucket, gcs_file_path)
+        gcs_paths[key] = gcs_file_path # GCS 경로 저장
+        print(f"✅ 저장 완료: {gcs_file_path}")
+
+    return dfs, saved_path, gcs_paths
 
 
 def rgroup_rev_draw(gameidx: str, gcs_path:str, bucket, **context):
@@ -2370,11 +2374,12 @@ def iap_gem_ruby_RUBY_graph_draw(gameidx: str, path_ruby_df:str, bucket, **conte
 
 ### 1위
 def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str,
-                    path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, **context):
+                    path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, 
+                    path_top1_df: str, **context):
 
-    df =load_df_from_gcs(bucket, f"{gameidx}/query_result4_salesByPackage_forCategoryGraph_1.parquet")
+    df =load_df_from_gcs(bucket, path_top1_df)
     print(f"★★★★★★★★★★★★ top11111111_graph_draw 에서 데이터 : ", df)
-
+    
     df["일자"] = pd.to_datetime(df["일자"])
     df["매출"] = pd.to_numeric(df["매출"], errors="coerce").fillna(0).astype("int64")
 
@@ -2469,10 +2474,12 @@ def top1_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
 
 ### 2위
 def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str,
-                    path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, **context):
+                    path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket,
+                    path_top2_df: str, **context):
 
-    df =load_df_from_gcs(bucket, f"{gameidx}/query_result4_salesByPackage_forCategoryGraph_2.parquet")
+    df =load_df_from_gcs(bucket, path_top2_df)
     print(f"★★★★★★★★★★★★ top222222_graph_draw 에서 데이터 : ", df)
+    
 
     df["일자"] = pd.to_datetime(df["일자"])
     df["매출"] = pd.to_numeric(df["매출"], errors="coerce").fillna(0).astype("int64")
@@ -2569,11 +2576,11 @@ def top2_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, servic
 
 ### 3위
 def top3_graph_draw(joyplegameid: int, gameidx: str, databaseschema: str, service_sub: str,
-                    path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, **context):
+                    path_weekly_iapcategory_rev:str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket,
+                    path_top3_df: str, **context):
 
-    df =load_df_from_gcs(bucket, f"{gameidx}/query_result4_salesByPackage_forCategoryGraph_3.parquet")
+    df =load_df_from_gcs(bucket, path_top3_df)
     print(f"★★★★★★★★★★★★ top3333333_graph_draw 에서 데이터 : ", df)
-
     df["일자"] = pd.to_datetime(df["일자"])
     df["매출"] = pd.to_numeric(df["매출"], errors="coerce").fillna(0).astype("int64")
 
@@ -3106,7 +3113,7 @@ def rgroup_rev_upload_notion(gameidx: str, path_rev_group_rev_pu, rev_group_rev_
 
 def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: str,
                                path_iap_gem_ruby, path_iapgemruby_history, 
-                               path_top3_items_by_category, path_weekly_iapcategory_rev,
+                               path_top3_items_by_category, path_weekly_iapcategory_rev, gcs_paths_for_graphs:dict,
                                service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, notion, bucket, headers_json, **context):
 
     current_context = get_current_context()
@@ -3260,7 +3267,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         header = block[0]
         
         # 헤더를 기준으로 현재 블록의 종류를 결정
-        if "(매출 2위)" in header:
+        if "(매출 1위)" in header:
             current_rank_block = 1
         elif "(매출 2위)" in header:
             current_rank_block = 2
@@ -3272,7 +3279,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         # 결정된 종류에 따라 블록을 버킷에 추가
         if current_rank_block == 1:
             blocks_bucket["blocks_2"].extend(block)
-        elif current_rank_block == 2:
+        elif current_rank_block == 2: # 2위 블록은 extend가 아닌 할당
             blocks_bucket["blocks_3"] = block
         elif current_rank_block == 3:
             blocks_bucket["blocks_4"] = block
@@ -3287,18 +3294,19 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         if isinstance(v, list):
             blocks_bucket[k] = "\n".join(v)  # 리스트 → 문자열 변환
 
-    blocks = md_to_notion_blocks(blocks_bucket["blocks_1"], 1)
-
+    # --- 블록 1: 서두 ---
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
-        children=blocks
+        children=md_to_notion_blocks(blocks_bucket["blocks_1"], 1)
     )
 
-
-## 상품카테고리별 매출 1위 그래프 삽입
+    # --- 블록 2: 매출 1위 그래프 + 코멘트 ---
     try:
+        path_top1_df = gcs_paths_for_graphs.get("query_result4_salesByPackage_forCategoryGraph_1")
+        if not path_top1_df: raise ValueError("매출 1위 DF 경로를 찾을 수 없습니다.")
+
         gcs_path = top1_graph_draw(joyplegameid, gameidx, databaseschema, service_sub,
-                    path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket)
+                    path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, path_top1_df=path_top1_df)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_Category1.png'
@@ -3373,15 +3381,18 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         children=blocks
     )
 
-
-    ## 상품카테고리별 매출 2위 그래프 삽입
+    # --- 블록 3: 매출 2위 그래프 + 코멘트 ---
     try:
+        path_top2_df = gcs_paths_for_graphs.get("query_result4_salesByPackage_forCategoryGraph_2")
+        if not path_top2_df: raise ValueError("매출 2위 DF 경로를 찾을 수 없습니다.")
+
         gcs_path = top2_graph_draw(joyplegameid, gameidx, databaseschema, service_sub,
-                    path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket)
+                    path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, path_top2_df=path_top2_df)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_Category2.png'
         print(f"✓ GCS 이미지 다운로드 성공 : {gcs_path}")
+
     except Exception as e:
         print(f"❌ GCS 다운로드 실패: {str(e)}")
         raise
@@ -3449,10 +3460,13 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         children=blocks
     )
 
-    ## 상품카테고리별 매출 3위 그래프 삽입
+    # --- 블록 4: 매출 3위 그래프 + 코멘트 ---
     try:
+        path_top3_df = gcs_paths_for_graphs.get("query_result4_salesByPackage_forCategoryGraph_3")
+        if not path_top3_df: raise ValueError("매출 3위 DF 경로를 찾을 수 없습니다.")
+
         gcs_path = top3_graph_draw(joyplegameid, gameidx, databaseschema, service_sub,
-                    path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket)
+                    path_weekly_iapcategory_rev, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, bigquery_client, bucket, path_top3_df=path_top3_df)
         blob = bucket.blob(gcs_path)
         image_bytes = blob.download_as_bytes()
         filename = 'graph4_salesByPackage_Category3.png'
@@ -3524,13 +3538,12 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
         children=blocks
     )
 
-    blocks = md_to_notion_blocks(blocks_bucket["blocks_5"], 1)
-
-    notion.blocks.children.append(
-        block_id=PAGE_INFO['id'],
-        children=blocks
-    )
-
+    # --- 블록 5: 나머지 카테고리 코멘트 ---
+    if blocks_bucket["blocks_5"]:
+        notion.blocks.children.append(
+            block_id=PAGE_INFO['id'],
+            children=md_to_notion_blocks(blocks_bucket["blocks_5"], 1)
+        )
     return True
 
 

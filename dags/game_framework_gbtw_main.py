@@ -438,16 +438,19 @@ with DAG(
         path_rgroup_top3_rev = rgroup_top3_rev(joyplegameid=joyplegameid, gameidx=gameidx, databaseschema=databaseschema, bigquery_client=bigquery_client, bucket=bucket)
         if_else_length(path=path_rgroup_top3_rev, gameidx=gameidx, service_sub=service_sub, func_name="rgroup_top3_rev")
 
-        path_top3_items_rev = top3_items_rev(joyplegameid=joyplegameid, 
-                                             gameidx=gameidx, 
-                                             databaseschema=databaseschema, 
-                                             service_sub=service_sub, 
-                                             path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
-                                             genai_client=genai_client,
-                                             MODEL_NAME=MODEL_NAME,
-                                             SYSTEM_INSTRUCTION= SYSTEM_INSTRUCTION,
-                                             bigquery_client=bigquery_client, 
-                                             bucket=bucket)
+        # top3_items_rev 함수는 이제 3개의 값을 반환하므로, 모든 값을 각각의 변수에 할당합니다.
+        dfs_for_graphs, path_top3_items_rev, gcs_paths_for_graphs = top3_items_rev(
+            joyplegameid=joyplegameid, 
+            gameidx=gameidx, 
+            databaseschema=databaseschema, 
+            service_sub=service_sub, 
+            path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+            genai_client=genai_client,
+            MODEL_NAME=MODEL_NAME,
+            SYSTEM_INSTRUCTION= SYSTEM_INSTRUCTION,
+            bigquery_client=bigquery_client, 
+            bucket=bucket
+        )
         if_else_length(path=path_top3_items_rev, gameidx=gameidx, service_sub=service_sub, func_name="top3_items_rev")
 
         path_merge_rgroup_graph = merge_rgroup_graph(gameidx=gameidx, path_group_rev_pu=path_rev_group_rev_pu,bucket=bucket)
@@ -481,6 +484,7 @@ with DAG(
                 path_iapgemruby_history=path_iap_gem_ruby_history,
                 path_top3_items_by_category=path_top3_items_by_category,
                 path_weekly_iapcategory_rev=path_weekly_iapcategory_rev,
+                gcs_paths_for_graphs=gcs_paths_for_graphs, # 새로 추가된 gcs_paths를 전달합니다.
                 service_sub=service_sub,
                 genai_client=genai_client,
                 MODEL_NAME = MODEL_NAME,
@@ -887,4 +891,3 @@ with DAG(
 
 
 create_gameframework_notion_page >> daily_gameframework_run >> inhouse_gameframework_run >> global_ua_gameframework_run >> rgroup_iapgemruby_gameframework_run >> longterm_sales_data_game_framework_run >> newuser_roas_data_game_framework_run >> game_framework_summary_run
-
