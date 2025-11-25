@@ -197,6 +197,7 @@ with DAG(
         """
 
         client.query(truncate_query)
+        time.sleep(5)
         client.query(query)
         print("✅ dim_AFC_campaign ETL 완료")
         
