@@ -45,7 +45,9 @@ with DAG(
     tags=['ETL', 'dim', 'bigquery'],
 ) as dag:
     
+    # 빅쿼리 클라이언트 연결
     client = bigquery.Client()
+
 
     def etl_dim_os():
 
@@ -368,7 +370,8 @@ with DAG(
         print("✅ dim_game ETL 완료")
         
         return True
-    
+
+
     def etl_dim_google_campaign():
 
         # KST 00:00:00 ~ 23:59:59를 UTC로 변환
@@ -386,8 +389,8 @@ with DAG(
             SELECT REGEXP_REPLACE(a.cmpgn_id, '[^0-9]', '') AS CampaignID
                 , ARRAY_AGG(STRUCT(cmpgn_nm, a.uptdt_dt) ORDER BY a.cmpgn_dt DESC LIMIT 1)[OFFSET(0)] AS Info 
             FROM `dataplatform-bdts.mas.cost_campaign_rule_game` AS a
-            WHERE a.cmpgn_dt >= ('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            AND a.cmpgn_dt < ('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            WHERE a.cmpgn_dt >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            AND a.cmpgn_dt < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
             AND a.media_category LIKE '%Google%' 
             AND a.cmpgn_id IS NOT NULL 
             AND a.cmpgn_id NOT LIKE 'f%'
@@ -407,7 +410,8 @@ with DAG(
         print("✅ dim_google_campaign ETL 완료")
         
         return True
-    
+
+
     ### etl_dim_ip4_country_code 보다는 앞에서 처리 되어야 함
     def etl_dim_ip_range():
         truncate_query = f"""
@@ -425,6 +429,7 @@ with DAG(
         time.sleep(5)
         client.query(query)
         print("✅ dim_ip_range ETL 완료")
+
 
     ### etl_dim_ip4_country_code 보다는 앞에서 처리 되어야 함
     def etl_dim_ip_proxy():
@@ -445,5 +450,125 @@ with DAG(
         client.query(query)
         print("✅ dim_ip_proxy ETL 완료")
 
-    def etl_ip4_country_code():
+
+    def etl_dim_ip4_country_code():
+         # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+
+        query = f"""
+            MERGE `datahub-478802.datahub.dim_ip4_country_code` AS a
+            USING
+            (
+            SELECT a.IP as ip, IFNULL(c.CountryCode, b.CountryCode) AS country_code, UpdatedTimestamp AS create_timestamp
+            FROM (
+                SELECT a.IP
+                    , TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(a.IP)) WHEN 4 THEN CONCAT("::ffff:", a.IP) ELSE a.IP END)) AS HexIP
+                    , MAX(UpdatedTimestamp) AS UpdatedTimestamp
+                FROM (
+                SELECT a.ip, MAX(a.event_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.AppsflyerLog.LogsV2` AS a
+                WHERE a.event_name = 'install'
+                    AND a.event_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.event_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY a.ip  
+                UNION ALL
+                SELECT a.login_ip AS ip, MAX(a.idx) AS UpdatedTimestamp
+                FROM `dataplatform-204306.JoypleLog.user_login_log` AS a
+                WHERE a.idx >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.idx < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY a.login_ip
+                UNION ALL
+                SELECT a.ip, MAX(a.timestamp) AS UpdatedTimestamp
+                FROM `dataplatform-204306.JoypleLog.payment_log` AS a
+                WHERE a.timestamp >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.timestamp < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY a.ip
+                UNION ALL
+                SELECT a.ip, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Access` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY a.ip
+                UNION ALL
+                SELECT a.ip, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Payment` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY a.ip
+                UNION ALL
+                SELECT a.ip, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Funnel` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY a.ip
+                ) AS a
+                GROUP BY a.IP
+                , TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(a.IP)) WHEN 4 THEN CONCAT("::ffff:", a.IP) ELSE a.IP END))
+            ) AS a
+            INNER JOIN `datahub-478802.datahub.dim_ip_range` AS b ON a.HexIP BETWEEN b.start_ip AND b.end_ip
+            LEFT OUTER JOIN `datahub-478802.datahub.dim_proxy` AS c ON a.HexIP = TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(c.proxy_ip)) WHEN 4 THEN  CONCAT("::ffff:", c.proxy_ip) ELSE c.proxy_ip END)) 
+            ) AS b ON a.ip = b.ip
+            WHEN MATCHED THEN
+            UPDATE SET a.country_code = b.country_code, a.create_timestamp = GREATEST(a.create_timestamp, b.create_timestamp)
+            WHEN NOT MATCHED THEN
+            INSERT (ip, country_code, create_timestamp)
+            VALUES (b.ip, b.country_code, b.create_timestamp);
+            """
+        
+        client.query(query)
+        print("✅ dim_ip4_country_code ETL 완료")
+        
+        return True
+    
+
+    def etl_dim_joyple_game_code():
+         # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+
+        query = f"""
+        MERGE `datahub-478802.datahub.dim_joyple_game_code` AS a
+        USING
+        (
+            SELECT a.joyple_game_code
+                , MAX(UpdatedTimestamp) AS UpdatedTimestamp
+            FROM (
+            SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
+            FROM `dataplatform-204306.CommonLog.Access` AS a
+            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            GROUP BY a.joyple_game_code
+            UNION ALL
+            SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
+            FROM `dataplatform-204306.CommonLog.Payment` AS a
+            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            GROUP BY a.joyple_game_code
+            UNION ALL
+            SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
+            FROM `dataplatform-204306.CommonLog.Funnel` AS a
+            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            GROUP BY a.joyple_game_code
+            ) as a
+            GROUP BY a.joyple_game_code
+        ) as t
+        ON a.joyple_game_code = t.joyple_game_code
+        WHEN MATCHED THEN
+        UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
+        WHEN NOT MATCHED THEN
+        INSERT (joyple_game_code, game_code_name, game_name_KR, game_name_EN, IAA_use, create_timestamp, game_group_name)
+        VALUES (t.joyple_game_code, null, null, null, null, t.UpdatedTimestamp, null);
+        """
+        
+        client.query(query)
+        print("✅ dim_joyple_game_code ETL 완료")
+        
+        return True
+    
+
+    def etl_dim_market():
+        
+        
         
