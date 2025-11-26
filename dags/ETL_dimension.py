@@ -568,7 +568,94 @@ with DAG(
         return True
     
 
-    def etl_dim_market():
+    def etl_dim_market_id():
+
+        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+
+        query = f"""
+        MERGE `datahub-478802.datahub.dim_market_id` AS a
+        USING
+        (
+            SELECT a.market_id
+                , MAX(UpdatedTimestamp) AS UpdatedTimestamp
+            FROM (
+            SELECT a.market_id, MAX(a.log_time) AS UpdatedTimestamp
+            FROM `dataplatform-204306.CommonLog.Access` AS a
+            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            GROUP BY 1
+            UNION ALL
+            SELECT a.market_id, MAX(a.log_time) AS UpdatedTimestamp
+            FROM `dataplatform-204306.CommonLog.Payment` AS a
+            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            GROUP BY 1
+            UNION ALL
+            SELECT a.market_id, MAX(a.log_time) AS UpdatedTimestamp
+            FROM `dataplatform-204306.CommonLog.Funnel` AS a
+            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            GROUP BY 1
+            ) as a
+            GROUP BY 1
+        ) as t
+        ON a.market_id = t.market_id
+        WHEN MATCHED THEN
+        UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
+        WHEN NOT MATCHED THEN
+        INSERT (market_id)
+        VALUES (t.market_id);
+        """
         
+        client.query(query)
+        print("✅ dim_market_id ETL 완료")
         
+        return True
+    
+    def etl_dim_os_id():
+
+        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+
+        query = f"""
+        MERGE `datahub-478802.datahub.dim_os_id` AS a
+        USING
+        (
+            SELECT a.os_id
+                , MAX(UpdatedTimestamp) AS UpdatedTimestamp
+            FROM (
+            SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
+            FROM `dataplatform-204306.CommonLog.Access` AS a
+            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            GROUP BY 1
+            UNION ALL
+            SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
+            FROM `dataplatform-204306.CommonLog.Payment` AS a
+            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            GROUP BY 1
+            UNION ALL
+            SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
+            FROM `dataplatform-204306.CommonLog.Funnel` AS a
+            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            GROUP BY 1
+            ) as a
+            GROUP BY 1
+        ) as t
+        ON a.os_id = t.os_id
+        WHEN MATCHED THEN
+        UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
+        WHEN NOT MATCHED THEN
+        INSERT (os_id)
+        VALUES (t.os_id);
+        """
         
+        client.query(query)
+        print("✅ dim_os_id ETL 완료")
+        
+        return True
