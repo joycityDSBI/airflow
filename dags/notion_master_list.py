@@ -139,10 +139,11 @@ def parse_and_transform_data(**context):
     
     # DataFrame 생성 및 변환
     df = pd.DataFrame(parsed)
+    print(df.head(5))
     df.columns = df.columns.str.strip()
-    df = df[['Userkey', 'UserID', '구분']]
+    df = df[['UserKey', 'UserID', '구분']]
     df = df.assign(build='RESU').rename(
-        columns={'Userkey': 'userkey', 'UserID': 'charid', '구분': 'class'}
+        columns={'UserKey': 'userKey', 'UserID': 'charid', '구분': 'class'}
     )
     
     logging.info(f"✅ 데이터 변환 완료: {len(df)}개 행, {len(df.columns)}개 컬럼")
