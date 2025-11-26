@@ -659,3 +659,183 @@ with DAG(
         print("✅ dim_os_id ETL 완료")
         
         return True
+    
+
+    def etl_dim_package_kind():
+        
+        truncate_query = f"""
+        TRUNCATE TABLE `datahub-478802.datahub.dim_package_kind`
+        """
+
+        query = f"""
+        INSERT INTO `datahub-478802.datahub.dim_package_kind`
+        (UUID, joyple_game_code, package_kind, package_name_KR, package_name_JP, create_datetime)
+
+        SELECT UUID, joyple_game_code, package_kind
+        , max(package_name_KR) as package_name_KR, max(package_name_JP) as package_name_JP, max(create_datetime) as create_datetime
+        FROM 
+        (
+        SELECT 
+            CONCAT(CAST(159 AS STRING), "|", Package_Kind) AS UUID
+            , 159          AS joyple_game_code
+            , CAST(Package_Kind AS STRING) AS package_kind
+            , CAST(Package_Name AS STRING) AS package_name_KR
+            , null as package_name_JP
+            , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
+        FROM `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU`
+        WHERE Package_Kind IS NOT NULL 
+        AND Package_Name IS NOT NULL
+        UNION ALL
+        SELECT CONCAT(CAST(159 AS STRING), "|", Package_Kind) AS UUID
+            , 159             AS joyple_game_code
+            , CAST(Package_Kind AS STRING) AS package_kind
+            , null AS package_name_KR
+            , CAST(package_name_jp AS STRING) AS package_name_JP
+            , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
+        FROM `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP`
+        WHERE Package_Kind IS NOT NULL 
+        AND package_name_jp IS NOT NULL
+        ) TA
+        group by 1,2,3
+        
+        UNION ALL
+        
+        SELECT CONCAT(CAST(30001 AS STRING), "|", Package_Kind) AS UUID
+            , 30001        AS joyple_game_code
+            , CAST(Package_Kind AS STRING) AS package_kind
+            , CAST(Package_Name AS STRING) AS package_name_KR
+            , null as package_name_JP
+            , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
+        FROM `data-science-division-216308.PackageInfo.PackageInfo_WWM`
+        WHERE Package_Kind IS NOT NULL 
+        AND Package_Name IS NOT NULL
+        
+        UNION ALL
+        
+        SELECT CONCAT(CAST(30003 AS STRING), "|", Package_Kind) AS UUID
+            , 30003        AS joyple_game_code
+            , CAST(Package_Kind AS STRING) AS package_kind
+            , CAST(Package_Name AS STRING) AS package_name_KR
+            , null as package_name_JP
+            , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
+        FROM `data-science-division-216308.PackageInfo.PackageInfo_DS`
+        WHERE Package_Kind IS NOT NULL 
+        AND Package_Name IS NOT NULL
+        
+        UNION ALL
+        
+        SELECT CONCAT(CAST(131 AS STRING), "|", Package_Kind) AS UUID
+            , 131          AS joyple_game_code
+            , CAST(Package_Kind AS STRING) AS package_kind
+            , CAST(Package_Name AS STRING) AS package_name_KR
+            , null as package_name_JP
+            , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
+        FROM `data-science-division-216308.PackageInfo.PackageInfo_POTC`
+        WHERE Package_Kind IS NOT NULL 
+        AND Package_Name IS NOT NULL
+        
+        UNION ALL
+        
+        SELECT CONCAT(CAST(133 AS STRING), "|", PKind) AS UUID
+            , 133          AS joyple_game_code
+            , CAST(PKind AS STRING) AS package_kind
+            , CAST(PackageName AS STRING) AS package_name_KR
+            , null as package_name_JP
+            , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
+        FROM `data-science-division-216308.PackageInfo.GW_PackageInfo`
+        WHERE PKind IS NOT NULL 
+        AND PackageName IS NOT NULL
+        
+        UNION ALL
+        
+        SELECT CONCAT(CAST(155 AS STRING), "|", Package_Kind) AS UUID
+            , 155          AS joyple_game_code
+            , CAST(Package_Kind AS STRING) AS package_kind
+            , CAST(Package_Name AS STRING) AS package_name_KR
+            , null as package_name_JP
+            , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
+        FROM `data-science-division-216308.PackageInfo.PackageInfo_DRB`
+        WHERE Package_Kind IS NOT NULL 
+        AND Package_Name IS NOT NULL
+        
+        UNION ALL
+        
+        SELECT CONCAT(CAST(154 AS STRING), "|", Package_Kind) AS UUID
+            , 154          AS joyple_game_code
+            , CAST(Package_Kind AS STRING) AS package_kind
+            , CAST(Package_Name AS STRING) AS package_name_KR
+            , null as package_name_JP
+            , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
+        FROM `data-science-division-216308.PackageInfo.PackageInfo_C4`
+        WHERE Package_Kind IS NOT NULL 
+        AND Package_Name IS NOT NULL
+        
+        UNION ALL
+        
+        SELECT CONCAT(CAST(156 AS STRING), "|", Package_Kind) AS UUID
+            , 156          AS joyple_game_code
+            , CAST(Package_Kind AS STRING) AS package_kind
+            , CAST(Package_Name AS STRING) AS package_name_KR
+            , null as package_name_JP
+            , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
+        FROM `data-science-division-216308.PackageInfo.PackageInfo_JTWN`
+        WHERE Package_Kind IS NOT NULL 
+        AND Package_Name IS NOT NULL
+        
+        UNION ALL
+        
+        SELECT CONCAT(CAST(129 AS STRING), "|", Package_Kind) AS UUID
+            , 129          AS joyple_game_code
+            , CAST(Package_Kind AS STRING) AS package_kind
+            , CAST(Package_Name AS STRING) AS package_name_KR
+            , null as package_name_JP
+            , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
+        FROM `data-science-division-216308.PackageInfo.GNSS_PackageInfo`
+        WHERE Package_Kind IS NOT NULL 
+        AND Package_Name IS NOT NULL
+        """
+
+        client.query(truncate_query)
+        time.sleep(5)
+        client.query(query)
+        print("✅ dim_package_kind ETL 완료")
+
+    
+    def etl_dim_pg_id():
+
+        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+
+        query = f"""
+        MERGE `datahub-478802.datahub.dim_pg_id` AS target
+        USING
+        (
+        SELECT DISTINCT pg_id
+        FROM  `dataplatform-204306.CommonLog.Payment`
+        WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+        AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+        ) AS source ON target.pg_id = source.pg_id
+        WHEN NOT MATCHED BY target THEN
+        INSERT(pg_id, pg_name_KR, pg_name_EN, created_timestamp)
+        VALUES(
+            source.pg_id
+            , NULL
+            , NULL
+            , CURRENT_TIMESTAMP()
+        )
+        WHEN NOT MATCHED BY source AND target.pg_id >= 0 THEN
+        DELETE
+        """
+
+        client.query(query)
+        print("✅ dim_pg_id ETL 완료")
+
+############ Platform Device는 별도 ETL 작업 없음
+
+############ T_0265_0000_CostCampaignRulePreBook_V 값은 어디서 가져오는지 확인 필요
+
+
+############ special_pg 값도 없넹
+
+

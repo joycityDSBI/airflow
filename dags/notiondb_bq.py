@@ -260,17 +260,17 @@ with DAG(
         python_callable=transform_data
     )
     
-    prepare_email_task = PythonOperator(
-        task_id='prepare_email',
-        python_callable=prepare_email,
-        trigger_rule=TriggerRule.ALL_DONE
-    )
+    # prepare_email_task = PythonOperator(
+    #     task_id='prepare_email',
+    #     python_callable=prepare_email,
+    #     trigger_rule=TriggerRule.ALL_DONE
+    # )
     
-    send_email_task = PythonOperator(
-        task_id='send_email',
-        python_callable=send_email_via_smtp,
-    )
+    # send_email_task = PythonOperator(
+    #     task_id='send_email',
+    #     python_callable=send_email_via_smtp,
+    # )
     
     # Task 의존성: ETL 파이프라인 후 이메일 발송
     extract >> transform
-    [extract, transform] >> prepare_email_task >> send_email_task
+    # [extract, transform] >> prepare_email_task >> send_email_task

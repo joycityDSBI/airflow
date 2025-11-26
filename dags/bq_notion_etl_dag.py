@@ -349,12 +349,12 @@ with DAG(
         python_callable=sync_to_notion,
     )
     
-    # Task 4: 이메일 알림
-    send_email = PythonOperator(
-        task_id='send_email_notification',
-        python_callable=send_email_notification,
-        trigger_rule=TriggerRule.ALL_DONE,  # 성공/실패 모두 실행
-    )
+    # # Task 4: 이메일 알림
+    # send_email = PythonOperator(
+    #     task_id='send_email_notification',
+    #     python_callable=send_email_notification,
+    #     trigger_rule=TriggerRule.ALL_DONE,  # 성공/실패 모두 실행
+    # )
     
     # 의존성
-    detect_change >> extract_metadata >> sync_notion >> send_email
+    detect_change >> extract_metadata >> sync_notion ## >> send_email

@@ -701,13 +701,12 @@ with DAG(
     )
 
 
-
-    task_send_email = PythonOperator(
-        task_id='send_status_email',
-        python_callable=send_status_email,
-        trigger_rule='all_done',  # 이전 task 성공/실패 관계없이 항상 실행
-        dag=dag,
-    )
+    # task_send_email = PythonOperator(
+    #     task_id='send_status_email',
+    #     python_callable=send_status_email,
+    #     trigger_rule='all_done',  # 이전 task 성공/실패 관계없이 항상 실행
+    #     dag=dag,
+    # )
 
     # Task 정의
     bash_task = BashOperator(
@@ -727,6 +726,6 @@ with DAG(
         task_JYWN_standard_creative_list,
         task_BSTD_standard_creative_list,
         task_RESU_standard_creative_list 
-    ] >> task_all_standard_creative_list >> task_send_email >> bash_task
+    ] >> task_all_standard_creative_list >> bash_task
 
 

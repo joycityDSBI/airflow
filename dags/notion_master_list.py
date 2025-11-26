@@ -284,18 +284,18 @@ with DAG(
         python_callable=upload_to_bigquery,
     )
     
-    # Email Tasks
-    prepare_email_task = PythonOperator(
-        task_id='prepare_email',
-        python_callable=prepare_email,
-        trigger_rule=TriggerRule.ALL_DONE,
-    )
+    # # Email Tasks
+    # prepare_email_task = PythonOperator(
+    #     task_id='prepare_email',
+    #     python_callable=prepare_email,
+    #     trigger_rule=TriggerRule.ALL_DONE,
+    # )
     
-    send_email_task = PythonOperator(
-        task_id='send_email',
-        python_callable=send_email_via_smtp,
-    )
+    # send_email_task = PythonOperator(
+    #     task_id='send_email',
+    #     python_callable=send_email_via_smtp,
+    # )
     
     # Task 의존성
     query_task >> transform_task >> load_task
-    [query_task, transform_task, load_task] >> prepare_email_task >> send_email_task
+    # [query_task, transform_task, load_task] >> prepare_email_task >> send_email_task

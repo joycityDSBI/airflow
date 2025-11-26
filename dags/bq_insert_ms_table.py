@@ -913,11 +913,11 @@ with DAG(
         python_callable=Insert_performance_creatives,
     )
 
-    task_send_email = PythonOperator(
-        task_id='send_status_email',
-        python_callable=send_status_email,
-        trigger_rule='all_done',  # 이전 task 성공/실패 관계없이 항상 실행
-        dag=dag,
-    )
+    # task_send_email = PythonOperator(
+    #     task_id='send_status_email',
+    #     python_callable=send_status_email,
+    #     trigger_rule='all_done',  # 이전 task 성공/실패 관계없이 항상 실행
+    #     dag=dag,
+    # )
 
-    check_account >> check_dataset >> task_truncate_performance_creatives >> tast_insert_performance_creatives >> task_send_email
+    check_account >> check_dataset >> task_truncate_performance_creatives >> tast_insert_performance_creatives ## >> task_send_email

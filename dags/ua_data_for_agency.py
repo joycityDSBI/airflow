@@ -539,12 +539,12 @@ task_authorize_gcs = PythonOperator(
     dag=dag,
 )
 
-task_send_email = PythonOperator(
-    task_id='send_status_email',
-    python_callable=send_status_email,
-    trigger_rule='all_done',  # 이전 task 성공/실패 관계없이 항상 실행
-    dag=dag,
-)
+# task_send_email = PythonOperator(
+#     task_id='send_status_email',
+#     python_callable=send_status_email,
+#     trigger_rule='all_done',  # 이전 task 성공/실패 관계없이 항상 실행
+#     dag=dag,
+# )
 
 # Task 의존성
-task_all_projects >> task_agency_reports >> task_authorize_gcs >> task_send_email
+task_all_projects >> task_agency_reports >> task_authorize_gcs ##>> task_send_email
