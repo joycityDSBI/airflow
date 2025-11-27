@@ -2,6 +2,7 @@
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
+from airflow.models.baseoperator import chain
 
 import pandas as pd
 from google.cloud import bigquery
@@ -22,7 +23,10 @@ kst = pytz.timezone('Asia/Seoul')
 # target_date_kst를 datetime으로 변환
 target_date = datetime.combine(target_date_kst, datetime.min.time())  # 2025-11-24 00:00:00
 print(f"Target KST Date: {target_date_kst}")
+target_date = [target_date]
 
+## 날짜 직접 지정 (백필해야 할 때 처리)
+# target_date = []
 
 
 # DAG 기본 설정
@@ -49,47 +53,48 @@ with DAG(
     client = bigquery.Client()
 
 
-    def etl_dim_os():
+    def etl_dim_os(target_date:list):
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        for td in target_date:
+            target_date = td
 
-        # ETL 작업 수행
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_os` T
-        USING (
-            SELECT
-                DISTINCT
-                os_id, null as os_name, null as os_name_lower
-            FROM `dataplatform-204306.CommonLog.Access`
-            where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-        ) S
-        on T.os_id = S.os_id
-        WHEN MATCHED THEN
-        UPDATE SET
-            T.os_name = COALESCE(S.os_name, T.os_name),
-            T.os_name_lower = COALESCE(S.os_name_lower, T.os_name_lower),
-            T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
-        WHEN NOT MATCHED THEN 
-        INSERT (os_id, os_name, os_name_lower, create_timestamp)
-        VALUES (S.os_id, null, null, CURRENT_TIMESTAMP())
-        """
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
-        client.query(query)
+            # ETL 작업 수행
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_os` T
+            USING (
+                SELECT
+                    DISTINCT
+                    os_id, null as os_name, null as os_name_lower
+                FROM `dataplatform-204306.CommonLog.Access`
+                where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            ) S
+            on T.os_id = S.os_id
+            WHEN MATCHED THEN
+            UPDATE SET
+                T.os_name = COALESCE(S.os_name, T.os_name),
+                T.os_name_lower = COALESCE(S.os_name_lower, T.os_name_lower),
+                T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
+            WHEN NOT MATCHED THEN 
+            INSERT (os_id, os_name, os_name_lower, create_timestamp)
+            VALUES (S.os_id, null, null, CURRENT_TIMESTAMP())
+            """
+
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_os Batch 완료")
+        
         print("✅ dim_os ETL 완료")
         return True
     
 
     def etl_dim_AFC_campaign():
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
-
         truncate_query = f"""
-            TRUNCATE TABLE `datahub-478802.datahub.dim_AFC_campaign'
+        TRUNCATE TABLE `datahub-478802.datahub.dim_AFC_campaign'
         """
 
         query = f"""
@@ -206,167 +211,186 @@ with DAG(
         return True
     
 
-    def etl_dim_auth_type():
+    def etl_dim_auth_type(target_date:list):
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        for td in target_date:
+            target_date = td
 
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_auth_method_id` T
-        USING (
-            SELECT
-                DISTINCT
-                auth_method_id, null as auth_type_id_KR, null as auth_type_id_EN
-            FROM `dataplatform-204306.CommonLog.Access`
-            where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-        ) S
-        on T.os_id = S.os_id
-        WHEN MATCHED THEN
-        UPDATE SET
-            T.auth_method_id = COALESCE(S.auth_method_id, T.auth_method_id),
-            T.auth_method_id_KR = COALESCE(S.auth_type_id_KR, T.auth_method_id_KR),
-            T.auth_method_id_EN = COALESCE(S.auth_type_id_EN, T.auth_method_id_EN),
-            T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
-        WHEN NOT MATCHED THEN 
-        INSERT (os_id, os_name, os_name_lower, create_timestamp)
-        VALUES (S.os_id, null, null, CURRENT_TIMESTAMP())
-        """
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
-        client.query(query)
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_auth_method_id` T
+            USING (
+                SELECT
+                    DISTINCT
+                    auth_method_id, null as auth_type_id_KR, null as auth_type_id_EN
+                FROM `dataplatform-204306.CommonLog.Access`
+                where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            ) S
+            on T.os_id = S.os_id
+            WHEN MATCHED THEN
+            UPDATE SET
+                T.auth_method_id = COALESCE(S.auth_method_id, T.auth_method_id),
+                T.auth_method_id_KR = COALESCE(S.auth_type_id_KR, T.auth_method_id_KR),
+                T.auth_method_id_EN = COALESCE(S.auth_type_id_EN, T.auth_method_id_EN),
+                T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
+            WHEN NOT MATCHED THEN 
+            INSERT (os_id, os_name, os_name_lower, create_timestamp)
+            VALUES (S.os_id, null, null, CURRENT_TIMESTAMP())
+            """
+
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} _dim_auth_type Batch 완료")
+
         print("✅ dim_AFC_campaign ETL 완료")
         
         return True
     
     def etl_dim_exchange_rate():
         
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        for td in target_date:
+            target_date = td
+       
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_exchange_rate` T
-        USING (
-            WITH
-            -- 1. 오늘 날짜의 환율 정보를 가져옵니다.
-            today_exchange AS (
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_exchange_rate` T
+            USING (
+                WITH
+                -- 1. 오늘 날짜의 환율 정보를 가져옵니다.
+                today_exchange AS (
+                    SELECT
+                        DATE(D_P_StartDate, "Asia/Seoul") AS start_date,
+                        FromCurrencyCode AS currency_code,
+                        ARRAY_AGG(ExchangeRate ORDER BY BaseDate DESC LIMIT 1)[OFFSET(0)] AS exchange_rate
+                    FROM `dataplatform-204306.PublicInformation.Exchange`
+                    WHERE DATE(D_P_StartDate, "Asia/Seoul") = DATE('{start_utc.strftime("%Y-%m-%d")}')
+                    AND ToCurrencyCode = "KRW"
+                    GROUP BY 1, 2
+                ),
+                -- 2. 오늘 Payment 로그에 있는 모든 통화 코드를 가져옵니다.
+                all_currencies AS (
+                    SELECT DISTINCT currency_code
+                    FROM `dataplatform-204306.CommonLog.Payment`
+                    WHERE log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S")}')
+                    AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S")}')
+                ),
+                -- 3. 오늘 환율 정보가 없는 통화에 대해, 가장 최근의 환율을 가져옵니다.
+                latest_known_exchange AS (
+                    SELECT
+                        currency_code,
+                        ARRAY_AGG(exchange_rate ORDER BY start_date DESC LIMIT 1)[OFFSET(0)] AS exchange_rate
+                    FROM `datahub-478802.datahub.dim_exchange_rate`
+                    WHERE currency_code IN (SELECT currency_code FROM all_currencies)
+                    AND currency_code NOT IN (SELECT currency_code FROM today_exchange)
+                    GROUP BY currency_code
+                )
+                -- 4. 오늘 환율 정보와, 부족분을 채운 최근 환율 정보를 합칩니다.
                 SELECT
-                    DATE(D_P_StartDate, "Asia/Seoul") AS start_date,
-                    FromCurrencyCode AS currency_code,
-                    ARRAY_AGG(ExchangeRate ORDER BY BaseDate DESC LIMIT 1)[OFFSET(0)] AS exchange_rate
-                FROM `dataplatform-204306.PublicInformation.Exchange`
-                WHERE DATE(D_P_StartDate, "Asia/Seoul") = DATE('{start_utc.strftime("%Y-%m-%d")}')
-                  AND ToCurrencyCode = "KRW"
-                GROUP BY 1, 2
-            ),
-            -- 2. 오늘 Payment 로그에 있는 모든 통화 코드를 가져옵니다.
-            all_currencies AS (
-                SELECT DISTINCT currency_code
-                FROM `dataplatform-204306.CommonLog.Payment`
-                WHERE log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S")}')
-                  AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S")}')
-            ),
-            -- 3. 오늘 환율 정보가 없는 통화에 대해, 가장 최근의 환율을 가져옵니다.
-            latest_known_exchange AS (
-                SELECT
+                    DATE('{start_utc.strftime("%Y-%m-%d")}') AS start_date,
                     currency_code,
-                    ARRAY_AGG(exchange_rate ORDER BY start_date DESC LIMIT 1)[OFFSET(0)] AS exchange_rate
-                FROM `datahub-478802.datahub.dim_exchange_rate`
-                WHERE currency_code IN (SELECT currency_code FROM all_currencies)
-                  AND currency_code NOT IN (SELECT currency_code FROM today_exchange)
-                GROUP BY currency_code
-            )
-            -- 4. 오늘 환율 정보와, 부족분을 채운 최근 환율 정보를 합칩니다.
-            SELECT
-                DATE('{start_utc.strftime("%Y-%m-%d")}') AS start_date,
-                currency_code,
-                exchange_rate
-            FROM today_exchange
-            UNION ALL
-            SELECT
-                DATE('{start_utc.strftime("%Y-%m-%d")}') AS start_date,
-                currency_code,
-                exchange_rate
-            FROM latest_known_exchange
-        ) S
-        ON T.start_date = S.start_date AND T.currency_code = S.currency_code
-        WHEN MATCHED AND T.exchange_rate IS DISTINCT FROM S.exchange_rate THEN
-            UPDATE SET
-                T.exchange_rate = S.exchange_rate,
-                T.create_timestamp = CURRENT_TIMESTAMP()
-        WHEN NOT MATCHED BY TARGET THEN
-            INSERT (start_date, currency_code, exchange_rate, create_timestamp)
-            VALUES (S.start_date, S.currency_code, IF(S.currency_code = 'KRW', 1, S.exchange_rate), CURRENT_TIMESTAMP())
-        """
-        
-        client.query(query)
-        print("✅ dim_AFC_campaign ETL 완료")
+                    exchange_rate
+                FROM today_exchange
+                UNION ALL
+                SELECT
+                    DATE('{start_utc.strftime("%Y-%m-%d")}') AS start_date,
+                    currency_code,
+                    exchange_rate
+                FROM latest_known_exchange
+            ) S
+            ON T.start_date = S.start_date AND T.currency_code = S.currency_code
+            WHEN MATCHED AND T.exchange_rate IS DISTINCT FROM S.exchange_rate THEN
+                UPDATE SET
+                    T.exchange_rate = S.exchange_rate,
+                    T.create_timestamp = CURRENT_TIMESTAMP()
+            WHEN NOT MATCHED BY TARGET THEN
+                INSERT (start_date, currency_code, exchange_rate, create_timestamp)
+                VALUES (S.start_date, S.currency_code, IF(S.currency_code = 'KRW', 1, S.exchange_rate), CURRENT_TIMESTAMP())
+            """
+            
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_exchange_rate Batch 완료")
+
+        print("✅ dim_exchange_rate ETL 완료")
         
         return True
 
         
-    def etl_dim_game():
+    def etl_dim_game(target_date:list):
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        for td in target_date:
+            target_date = td
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_game_id` T
-        USING (
-            SELECT
-                DISTINCT
-                game_id, null as game_name
-            FROM `dataplatform-204306.CommonLog.Access`
-            where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-        ) S
-        on T.game_id = S.game_id
-        WHEN MATCHED THEN
-        UPDATE SET
-            T.game_id = COALESCE(S.game_id, T.game_id),
-            T.game_name = COALESCE(S.game_name, T.game_name),
-            T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
-        WHEN NOT MATCHED THEN 
-        INSERT (game_id, game_name, create_timestamp)
-        VALUES (S.game_id, null, CURRENT_TIMESTAMP())
-        """
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_game_id` T
+            USING (
+                SELECT
+                    DISTINCT
+                    game_id, null as game_name
+                FROM `dataplatform-204306.CommonLog.Access`
+                where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            ) S
+            on T.game_id = S.game_id
+            WHEN MATCHED THEN
+            UPDATE SET
+                T.game_id = COALESCE(S.game_id, T.game_id),
+                T.game_name = COALESCE(S.game_name, T.game_name),
+                T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
+            WHEN NOT MATCHED THEN 
+            INSERT (game_id, game_name, create_timestamp)
+            VALUES (S.game_id, null, CURRENT_TIMESTAMP())
+            """
 
-        client.query(query)
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_game Batch 완료")
+
         print("✅ dim_game ETL 완료")
         
         return True
     
 
-    def etl_dim_game_app_id():
+    def etl_dim_game_app_id(target_date:list):
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        for td in target_date:
+            target_date = td
 
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_app_id` T
-        USING (
-            select distinct app_id, joyple_game_code, market_id 
-            from dataplatform-204306.CommonLog.Access 
-            where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            and app_id is not null and joyple_game_code is not null and market_id is not null
-        ) S
-        on T.app_id = S.app_id
-        WHEN MATCHED THEN
-        UPDATE SET
-            T.app_id = COALESCE(S.app_id, T.app_id),
-            T.joyple_game_code = COALESCE(S.joyple_game_code, T.joyple_game_code),
-            T.market_id = COALESCE(S.market_id, T.market_id),
-            T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
-        WHEN NOT MATCHED THEN 
-        INSERT (app_id, joyple_game_code, market_id, create_timestamp)
-        VALUES (S.app_id, S.joyple_game_code, S.market_id, CURRENT_TIMESTAMP())
-        """
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
-        client.query(query)
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_app_id` T
+            USING (
+                select distinct app_id, joyple_game_code, market_id 
+                from dataplatform-204306.CommonLog.Access 
+                where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                and app_id is not null and joyple_game_code is not null and market_id is not null
+            ) S
+            on T.app_id = S.app_id
+            WHEN MATCHED THEN
+            UPDATE SET
+                T.app_id = COALESCE(S.app_id, T.app_id),
+                T.joyple_game_code = COALESCE(S.joyple_game_code, T.joyple_game_code),
+                T.market_id = COALESCE(S.market_id, T.market_id),
+                T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
+            WHEN NOT MATCHED THEN 
+            INSERT (app_id, joyple_game_code, market_id, create_timestamp)
+            VALUES (S.app_id, S.joyple_game_code, S.market_id, CURRENT_TIMESTAMP())
+            """
+
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_game Batch 완료")
+
         print("✅ dim_game ETL 완료")
         
         return True
@@ -374,39 +398,45 @@ with DAG(
 
     def etl_dim_google_campaign():
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        for td in target_date:
+            target_date = td    
 
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_google_campaign` AS target
-        USING
-        (
-        SELECT a.CampaignID    AS CampaignID
-            , a.Info.cmpgn_nm AS CampaignName
-            , a.Info.uptdt_dt AS UpdatedTimestamp
-        FROM (
-            SELECT REGEXP_REPLACE(a.cmpgn_id, '[^0-9]', '') AS CampaignID
-                , ARRAY_AGG(STRUCT(cmpgn_nm, a.uptdt_dt) ORDER BY a.cmpgn_dt DESC LIMIT 1)[OFFSET(0)] AS Info 
-            FROM `dataplatform-bdts.mas.cost_campaign_rule_game` AS a
-            WHERE a.cmpgn_dt >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            AND a.cmpgn_dt < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            AND a.media_category LIKE '%Google%' 
-            AND a.cmpgn_id IS NOT NULL 
-            AND a.cmpgn_id NOT LIKE 'f%'
-            GROUP BY REGEXP_REPLACE(a.cmpgn_id, '[^0-9]', '')
-        ) AS a 
-        ) AS source ON target.CampaignID = source.CampaignID AND target.CampaignName = source.CampaignName
-        WHEN NOT MATCHED BY target THEN
-        INSERT(Campaign_id, Campaign_name, create_timestamp)
-        VALUES(
-            source.CampaignID
-            , source.CampaignName
-            , CURRENT_TIMESTAMP()
-        )
-        """
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
-        client.query(query)
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_google_campaign` AS target
+            USING
+            (
+            SELECT a.CampaignID    AS CampaignID
+                , a.Info.cmpgn_nm AS CampaignName
+                , a.Info.uptdt_dt AS UpdatedTimestamp
+            FROM (
+                SELECT REGEXP_REPLACE(a.cmpgn_id, '[^0-9]', '') AS CampaignID
+                    , ARRAY_AGG(STRUCT(cmpgn_nm, a.uptdt_dt) ORDER BY a.cmpgn_dt DESC LIMIT 1)[OFFSET(0)] AS Info 
+                FROM `dataplatform-bdts.mas.cost_campaign_rule_game` AS a
+                WHERE a.cmpgn_dt >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.cmpgn_dt < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                AND a.media_category LIKE '%Google%' 
+                AND a.cmpgn_id IS NOT NULL 
+                AND a.cmpgn_id NOT LIKE 'f%'
+                GROUP BY REGEXP_REPLACE(a.cmpgn_id, '[^0-9]', '')
+            ) AS a 
+            ) AS source ON target.CampaignID = source.CampaignID AND target.CampaignName = source.CampaignName
+            WHEN NOT MATCHED BY target THEN
+            INSERT(Campaign_id, Campaign_name, create_timestamp)
+            VALUES(
+                source.CampaignID
+                , source.CampaignName
+                , CURRENT_TIMESTAMP()
+            )
+            """
+
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_google_campaign Batch 완료")
+
+
         print("✅ dim_google_campaign ETL 완료")
         
         return True
@@ -452,117 +482,127 @@ with DAG(
 
 
     def etl_dim_ip4_country_code():
-         # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
-
-        query = f"""
-            MERGE `datahub-478802.datahub.dim_ip4_country_code` AS a
-            USING
-            (
-            SELECT a.IP as ip, IFNULL(c.CountryCode, b.CountryCode) AS country_code, UpdatedTimestamp AS create_timestamp
-            FROM (
-                SELECT a.IP
-                    , TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(a.IP)) WHEN 4 THEN CONCAT("::ffff:", a.IP) ELSE a.IP END)) AS HexIP
-                    , MAX(UpdatedTimestamp) AS UpdatedTimestamp
-                FROM (
-                SELECT a.ip, MAX(a.event_time) AS UpdatedTimestamp
-                FROM `dataplatform-204306.AppsflyerLog.LogsV2` AS a
-                WHERE a.event_name = 'install'
-                    AND a.event_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                    AND a.event_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                GROUP BY a.ip  
-                UNION ALL
-                SELECT a.login_ip AS ip, MAX(a.idx) AS UpdatedTimestamp
-                FROM `dataplatform-204306.JoypleLog.user_login_log` AS a
-                WHERE a.idx >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                    AND a.idx < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                GROUP BY a.login_ip
-                UNION ALL
-                SELECT a.ip, MAX(a.timestamp) AS UpdatedTimestamp
-                FROM `dataplatform-204306.JoypleLog.payment_log` AS a
-                WHERE a.timestamp >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                    AND a.timestamp < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                GROUP BY a.ip
-                UNION ALL
-                SELECT a.ip, MAX(a.log_time) AS UpdatedTimestamp
-                FROM `dataplatform-204306.CommonLog.Access` AS a
-                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                GROUP BY a.ip
-                UNION ALL
-                SELECT a.ip, MAX(a.log_time) AS UpdatedTimestamp
-                FROM `dataplatform-204306.CommonLog.Payment` AS a
-                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                GROUP BY a.ip
-                UNION ALL
-                SELECT a.ip, MAX(a.log_time) AS UpdatedTimestamp
-                FROM `dataplatform-204306.CommonLog.Funnel` AS a
-                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                GROUP BY a.ip
-                ) AS a
-                GROUP BY a.IP
-                , TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(a.IP)) WHEN 4 THEN CONCAT("::ffff:", a.IP) ELSE a.IP END))
-            ) AS a
-            INNER JOIN `datahub-478802.datahub.dim_ip_range` AS b ON a.HexIP BETWEEN b.start_ip AND b.end_ip
-            LEFT OUTER JOIN `datahub-478802.datahub.dim_proxy` AS c ON a.HexIP = TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(c.proxy_ip)) WHEN 4 THEN  CONCAT("::ffff:", c.proxy_ip) ELSE c.proxy_ip END)) 
-            ) AS b ON a.ip = b.ip
-            WHEN MATCHED THEN
-            UPDATE SET a.country_code = b.country_code, a.create_timestamp = GREATEST(a.create_timestamp, b.create_timestamp)
-            WHEN NOT MATCHED THEN
-            INSERT (ip, country_code, create_timestamp)
-            VALUES (b.ip, b.country_code, b.create_timestamp);
-            """
         
-        client.query(query)
+        for td in target_date:
+            target_date = td
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+
+            query = f"""
+                MERGE `datahub-478802.datahub.dim_ip4_country_code` AS a
+                USING
+                (
+                SELECT a.IP as ip, IFNULL(c.CountryCode, b.CountryCode) AS country_code, UpdatedTimestamp AS create_timestamp
+                FROM (
+                    SELECT a.IP
+                        , TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(a.IP)) WHEN 4 THEN CONCAT("::ffff:", a.IP) ELSE a.IP END)) AS HexIP
+                        , MAX(UpdatedTimestamp) AS UpdatedTimestamp
+                    FROM (
+                    SELECT a.ip, MAX(a.event_time) AS UpdatedTimestamp
+                    FROM `dataplatform-204306.AppsflyerLog.LogsV2` AS a
+                    WHERE a.event_name = 'install'
+                        AND a.event_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                        AND a.event_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    GROUP BY a.ip  
+                    UNION ALL
+                    SELECT a.login_ip AS ip, MAX(a.idx) AS UpdatedTimestamp
+                    FROM `dataplatform-204306.JoypleLog.user_login_log` AS a
+                    WHERE a.idx >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                        AND a.idx < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    GROUP BY a.login_ip
+                    UNION ALL
+                    SELECT a.ip, MAX(a.timestamp) AS UpdatedTimestamp
+                    FROM `dataplatform-204306.JoypleLog.payment_log` AS a
+                    WHERE a.timestamp >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                        AND a.timestamp < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    GROUP BY a.ip
+                    UNION ALL
+                    SELECT a.ip, MAX(a.log_time) AS UpdatedTimestamp
+                    FROM `dataplatform-204306.CommonLog.Access` AS a
+                    WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                        AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    GROUP BY a.ip
+                    UNION ALL
+                    SELECT a.ip, MAX(a.log_time) AS UpdatedTimestamp
+                    FROM `dataplatform-204306.CommonLog.Payment` AS a
+                    WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                        AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    GROUP BY a.ip
+                    UNION ALL
+                    SELECT a.ip, MAX(a.log_time) AS UpdatedTimestamp
+                    FROM `dataplatform-204306.CommonLog.Funnel` AS a
+                    WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                        AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    GROUP BY a.ip
+                    ) AS a
+                    GROUP BY a.IP
+                    , TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(a.IP)) WHEN 4 THEN CONCAT("::ffff:", a.IP) ELSE a.IP END))
+                ) AS a
+                INNER JOIN `datahub-478802.datahub.dim_ip_range` AS b ON a.HexIP BETWEEN b.start_ip AND b.end_ip
+                LEFT OUTER JOIN `datahub-478802.datahub.dim_proxy` AS c ON a.HexIP = TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(c.proxy_ip)) WHEN 4 THEN  CONCAT("::ffff:", c.proxy_ip) ELSE c.proxy_ip END)) 
+                ) AS b ON a.ip = b.ip
+                WHEN MATCHED THEN
+                UPDATE SET a.country_code = b.country_code, a.create_timestamp = GREATEST(a.create_timestamp, b.create_timestamp)
+                WHEN NOT MATCHED THEN
+                INSERT (ip, country_code, create_timestamp)
+                VALUES (b.ip, b.country_code, b.create_timestamp);
+                """
+            
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_ip4_country_code Batch 완료")
+
         print("✅ dim_ip4_country_code ETL 완료")
         
         return True
     
 
     def etl_dim_joyple_game_code():
-         # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+         
+        for td in target_date:
+            target_date = td
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_joyple_game_code` AS a
-        USING
-        (
-            SELECT a.joyple_game_code
-                , MAX(UpdatedTimestamp) AS UpdatedTimestamp
-            FROM (
-            SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Access` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY a.joyple_game_code
-            UNION ALL
-            SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Payment` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY a.joyple_game_code
-            UNION ALL
-            SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Funnel` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY a.joyple_game_code
-            ) as a
-            GROUP BY a.joyple_game_code
-        ) as t
-        ON a.joyple_game_code = t.joyple_game_code
-        WHEN MATCHED THEN
-        UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
-        WHEN NOT MATCHED THEN
-        INSERT (joyple_game_code, game_code_name, game_name_KR, game_name_EN, IAA_use, create_timestamp, game_group_name)
-        VALUES (t.joyple_game_code, null, null, null, null, t.UpdatedTimestamp, null);
-        """
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_joyple_game_code` AS a
+            USING
+            (
+                SELECT a.joyple_game_code
+                    , MAX(UpdatedTimestamp) AS UpdatedTimestamp
+                FROM (
+                SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Access` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY a.joyple_game_code
+                UNION ALL
+                SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Payment` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY a.joyple_game_code
+                UNION ALL
+                SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Funnel` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY a.joyple_game_code
+                ) as a
+                GROUP BY a.joyple_game_code
+            ) as t
+            ON a.joyple_game_code = t.joyple_game_code
+            WHEN MATCHED THEN
+            UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
+            WHEN NOT MATCHED THEN
+            INSERT (joyple_game_code, game_code_name, game_name_KR, game_name_EN, IAA_use, create_timestamp, game_group_name)
+            VALUES (t.joyple_game_code, null, null, null, null, t.UpdatedTimestamp, null);
+            """
+            
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_joyple_game_code Batch 완료")
         
-        client.query(query)
         print("✅ dim_joyple_game_code ETL 완료")
         
         return True
@@ -570,92 +610,103 @@ with DAG(
 
     def etl_dim_market_id():
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        for td in target_date:
+            target_date = td
 
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_market_id` AS a
-        USING
-        (
-            SELECT a.market_id
-                , MAX(UpdatedTimestamp) AS UpdatedTimestamp
-            FROM (
-            SELECT a.market_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Access` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY 1
-            UNION ALL
-            SELECT a.market_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Payment` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY 1
-            UNION ALL
-            SELECT a.market_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Funnel` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY 1
-            ) as a
-            GROUP BY 1
-        ) as t
-        ON a.market_id = t.market_id
-        WHEN MATCHED THEN
-        UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
-        WHEN NOT MATCHED THEN
-        INSERT (market_id)
-        VALUES (t.market_id);
-        """
-        
-        client.query(query)
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_market_id` AS a
+            USING
+            (
+                SELECT a.market_id
+                    , MAX(UpdatedTimestamp) AS UpdatedTimestamp
+                FROM (
+                SELECT a.market_id, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Access` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY 1
+                UNION ALL
+                SELECT a.market_id, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Payment` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY 1
+                UNION ALL
+                SELECT a.market_id, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Funnel` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY 1
+                ) as a
+                GROUP BY 1
+            ) as t
+            ON a.market_id = t.market_id
+            WHEN MATCHED THEN
+            UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
+            WHEN NOT MATCHED THEN
+            INSERT (market_id)
+            VALUES (t.market_id);
+            """
+            
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_market_id Batch 완료")
+
         print("✅ dim_market_id ETL 완료")
         
         return True
     
     def etl_dim_os_id():
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        for td in target_date:
+            target_date = td
 
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_os_id` AS a
-        USING
-        (
-            SELECT a.os_id
-                , MAX(UpdatedTimestamp) AS UpdatedTimestamp
-            FROM (
-            SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Access` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY 1
-            UNION ALL
-            SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Payment` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY 1
-            UNION ALL
-            SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Funnel` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY 1
-            ) as a
-            GROUP BY 1
-        ) as t
-        ON a.os_id = t.os_id
-        WHEN MATCHED THEN
-        UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
-        WHEN NOT MATCHED THEN
-        INSERT (os_id)
-        VALUES (t.os_id);
-        """
-        
-        client.query(query)
+
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_os_id` AS a
+            USING
+            (
+                SELECT a.os_id
+                    , MAX(UpdatedTimestamp) AS UpdatedTimestamp
+                FROM (
+                SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Access` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY 1
+                UNION ALL
+                SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Payment` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY 1
+                UNION ALL
+                SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Funnel` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY 1
+                ) as a
+                GROUP BY 1
+            ) as t
+            ON a.os_id = t.os_id
+            WHEN MATCHED THEN
+            UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
+            WHEN NOT MATCHED THEN
+            INSERT (os_id)
+            VALUES (t.os_id);
+            """
+            
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_os_id Batch 완료")
+
         print("✅ dim_os_id ETL 완료")
         
         return True
@@ -803,39 +854,161 @@ with DAG(
     
     def etl_dim_pg_id():
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        for td in target_date:
+            target_date = td
 
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_pg_id` AS target
-        USING
-        (
-        SELECT DISTINCT pg_id
-        FROM  `dataplatform-204306.CommonLog.Payment`
-        WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-        AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-        ) AS source ON target.pg_id = source.pg_id
-        WHEN NOT MATCHED BY target THEN
-        INSERT(pg_id, pg_name_KR, pg_name_EN, created_timestamp)
-        VALUES(
-            source.pg_id
-            , NULL
-            , NULL
-            , CURRENT_TIMESTAMP()
-        )
-        WHEN NOT MATCHED BY source AND target.pg_id >= 0 THEN
-        DELETE
-        """
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
-        client.query(query)
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_pg_id` AS target
+            USING
+            (
+            SELECT DISTINCT pg_id
+            FROM  `dataplatform-204306.CommonLog.Payment`
+            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            ) AS source ON target.pg_id = source.pg_id
+            WHEN NOT MATCHED BY target THEN
+            INSERT(pg_id, pg_name_KR, pg_name_EN, created_timestamp)
+            VALUES(
+                source.pg_id
+                , NULL
+                , NULL
+                , CURRENT_TIMESTAMP()
+            )
+            WHEN NOT MATCHED BY source AND target.pg_id >= 0 THEN
+            DELETE
+            """
+
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_pg_id Batch 완료")
+
         print("✅ dim_pg_id ETL 완료")
 
 ############ Platform Device는 별도 ETL 작업 없음
 
-############ T_0265_0000_CostCampaignRulePreBook_V 값은 어디서 가져오는지 확인 필요
+############ T_0265_0000_CostCampaignRulePreBook_V 는 필요 시 직접 입력하는 형태 (DB insert 처리)
+
+############ special_pg 는 별도 ETL 작업 없음
+
+    etl_dim_os_task = PythonOperator(
+        task_id='etl_dim_os',
+        python_callable=etl_dim_os,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
+
+    etl_dim_AFC_campaign_task = PythonOperator(
+        task_id='etl_dim_AFC_campaign',
+        python_callable=etl_dim_AFC_campaign,
+        dag=dag,
+    )
+
+    etl_dim_auth_type_task = PythonOperator(
+        task_id='etl_dim_auth_type',
+        python_callable=etl_dim_auth_type,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
+
+    etl_dim_exchange_rate_task = PythonOperator(
+        task_id='etl_dim_exchange_rate',
+        python_callable=etl_dim_exchange_rate,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
+
+    etl_dim_game_task = PythonOperator(
+        task_id='etl_dim_game',
+        python_callable=etl_dim_game,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
+
+    etl_dim_game_app_id_task = PythonOperator(
+        task_id='etl_dim_game_app_id',
+        python_callable=etl_dim_game_app_id,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
+
+    etl_dim_google_campaign_task = PythonOperator(
+        task_id='etl_dim_google_campaign',
+        python_callable=etl_dim_google_campaign,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
+
+    etl_dim_ip_range_task = PythonOperator(
+        task_id='etl_dim_ip_range',
+        python_callable=etl_dim_ip_range,
+        dag=dag,
+    )
+
+    etl_dim_ip_proxy_task = PythonOperator(
+        task_id='etl_dim_ip_proxy',
+        python_callable=etl_dim_ip_proxy,
+        dag=dag,
+    )
+    
+    etl_dim_ip4_country_code_task = PythonOperator(
+        task_id='etl_dim_ip4_country_code',
+        python_callable=etl_dim_ip4_country_code,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
+
+    etl_dim_joyple_game_code_task = PythonOperator(
+        task_id='etl_dim_joyple_game_code',
+        python_callable=etl_dim_joyple_game_code,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
+
+    etl_dim_market_id_task = PythonOperator(
+        task_id='etl_dim_market_id',
+        python_callable=etl_dim_market_id,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
+
+    etl_dim_os_id_task = PythonOperator(
+        task_id='etl_dim_os_id',
+        python_callable=etl_dim_os_id,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
+
+    etl_dim_package_kind_task = PythonOperator(
+        task_id='etl_dim_package_kind',
+        python_callable=etl_dim_package_kind,
+        dag=dag,
+    )
+
+    etl_dim_pg_id_task = PythonOperator(
+        task_id='etl_dim_pg_id',
+        python_callable=etl_dim_pg_id,
+        op_kwargs = {target_date},
+        dag=dag,
+    )
 
 
-############ special_pg 값도 없넹
-
-
+chain(
+    etl_dim_os_task,
+    etl_dim_AFC_campaign_task,
+    etl_dim_auth_type_task,
+    etl_dim_exchange_rate_task,
+    etl_dim_game_task,
+    etl_dim_game_app_id_task,
+    etl_dim_google_campaign_task,
+    etl_dim_ip_range_task,
+    etl_dim_ip_proxy_task,
+    etl_dim_ip4_country_code_task,
+    etl_dim_joyple_game_code_task,
+    etl_dim_market_id_task,
+    etl_dim_os_id_task,
+    etl_dim_package_kind_task,
+    etl_dim_pg_id_task
+)
