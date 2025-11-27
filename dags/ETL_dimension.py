@@ -896,7 +896,7 @@ with DAG(
     etl_dim_os_task = PythonOperator(
         task_id='etl_dim_os',
         python_callable=etl_dim_os,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
@@ -909,35 +909,35 @@ with DAG(
     etl_dim_auth_type_task = PythonOperator(
         task_id='etl_dim_auth_type',
         python_callable=etl_dim_auth_type,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
     etl_dim_exchange_rate_task = PythonOperator(
         task_id='etl_dim_exchange_rate',
         python_callable=etl_dim_exchange_rate,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
     etl_dim_game_task = PythonOperator(
         task_id='etl_dim_game',
         python_callable=etl_dim_game,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
     etl_dim_game_app_id_task = PythonOperator(
         task_id='etl_dim_game_app_id',
         python_callable=etl_dim_game_app_id,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
     etl_dim_google_campaign_task = PythonOperator(
         task_id='etl_dim_google_campaign',
         python_callable=etl_dim_google_campaign,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
@@ -956,28 +956,28 @@ with DAG(
     etl_dim_ip4_country_code_task = PythonOperator(
         task_id='etl_dim_ip4_country_code',
         python_callable=etl_dim_ip4_country_code,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
     etl_dim_joyple_game_code_task = PythonOperator(
         task_id='etl_dim_joyple_game_code',
         python_callable=etl_dim_joyple_game_code,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
     etl_dim_market_id_task = PythonOperator(
         task_id='etl_dim_market_id',
         python_callable=etl_dim_market_id,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
     etl_dim_os_id_task = PythonOperator(
         task_id='etl_dim_os_id',
         python_callable=etl_dim_os_id,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
@@ -990,7 +990,7 @@ with DAG(
     etl_dim_pg_id_task = PythonOperator(
         task_id='etl_dim_pg_id',
         python_callable=etl_dim_pg_id,
-        op_kwargs = {target_date},
+        op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
