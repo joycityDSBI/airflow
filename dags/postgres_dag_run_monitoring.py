@@ -102,7 +102,7 @@ def query_dag_stats_and_send_email():
                 COUNT(1) AS cnt
             FROM dag_run
             WHERE logical_date + INTERVAL '9 hours' >= CURRENT_DATE
-            AND run_type = 'scheduled'
+            AND run_type in ('scheduled', 'asset_triggered')
             AND dag_id NOT LIKE '%sync%'
             GROUP BY dag_id, state
         ) AS ts

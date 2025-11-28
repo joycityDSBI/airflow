@@ -249,7 +249,7 @@ with DAG(
         
         return True
     
-    def etl_dim_exchange_rate():
+    def etl_dim_exchange_rate(target_date:list):
         
         for td in target_date:
             target_date = td
@@ -396,7 +396,7 @@ with DAG(
         return True
 
 
-    def etl_dim_google_campaign():
+    def etl_dim_google_campaign(target_date:list):
 
         for td in target_date:
             target_date = td    
@@ -481,7 +481,7 @@ with DAG(
         print("✅ dim_ip_proxy ETL 완료")
 
 
-    def etl_dim_ip4_country_code():
+    def etl_dim_ip4_country_code(target_date:list):
         
         for td in target_date:
             target_date = td
@@ -557,7 +557,7 @@ with DAG(
         return True
     
 
-    def etl_dim_joyple_game_code():
+    def etl_dim_joyple_game_code(target_date:list):
          
         for td in target_date:
             target_date = td
@@ -608,7 +608,7 @@ with DAG(
         return True
     
 
-    def etl_dim_market_id():
+    def etl_dim_market_id(target_date:list):
 
         for td in target_date:
             target_date = td
@@ -659,7 +659,7 @@ with DAG(
         
         return True
     
-    def etl_dim_os_id():
+    def etl_dim_os_id(target_date:list):
 
         for td in target_date:
             target_date = td
@@ -852,7 +852,7 @@ with DAG(
         print("✅ dim_package_kind ETL 완료")
 
     
-    def etl_dim_pg_id():
+    def etl_dim_pg_id(target_date:list):
 
         for td in target_date:
             target_date = td
