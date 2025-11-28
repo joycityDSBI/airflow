@@ -101,7 +101,7 @@ def query_dag_stats_and_send_email():
                 MAX(end_date) AS end_date, 
                 COUNT(1) AS cnt
             FROM dag_run
-            WHERE logical_date + INTERVAL '9 hours' >= CURRENT_DATE
+            WHERE start_date + INTERVAL '9 hours' >= CURRENT_DATE
             AND run_type in ('scheduled', 'asset_triggered')
             AND dag_id NOT LIKE '%sync%'
             GROUP BY dag_id, state
