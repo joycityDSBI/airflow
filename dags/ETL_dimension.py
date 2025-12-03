@@ -569,35 +569,35 @@ with DAG(
             MERGE `datahub-478802.datahub.dim_joyple_game_code` AS a
             USING
             (
-                SELECT a.joyple_game_code
+                SELECT a.joyple_game_code, a.game_id,
                     , MAX(UpdatedTimestamp) AS UpdatedTimestamp
                 FROM (
                 SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
                 FROM `dataplatform-204306.CommonLog.Access` AS a
                 WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
                     AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                GROUP BY a.joyple_game_code
+                GROUP BY a.joyple_game_code, a.game_id
                 UNION ALL
-                SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
+                SELECT a.joyple_game_code, a.game_id, MAX(a.log_time) AS UpdatedTimestamp
                 FROM `dataplatform-204306.CommonLog.Payment` AS a
                 WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
                     AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                GROUP BY a.joyple_game_code
+                GROUP BY a.joyple_game_code, a.game_id
                 UNION ALL
-                SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
+                SELECT a.joyple_game_code, a.game_id, MAX(a.log_time) AS UpdatedTimestamp
                 FROM `dataplatform-204306.CommonLog.Funnel` AS a
                 WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
                     AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                GROUP BY a.joyple_game_code
+                GROUP BY a.joyple_game_code, a.game_id
                 ) as a
-                GROUP BY a.joyple_game_code
+                GROUP BY a.joyple_game_code, a.game_id
             ) as t
             ON a.joyple_game_code = t.joyple_game_code
             WHEN MATCHED THEN
             UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
             WHEN NOT MATCHED THEN
-            INSERT (joyple_game_code, game_code_name, game_name_KR, game_name_EN, IAA_use, create_timestamp, game_group_name)
-            VALUES (t.joyple_game_code, null, null, null, null, t.UpdatedTimestamp, null);
+            INSERT (joyple_game_code, game_id, game_code_name, game_name_KR, game_name_EN, IAA_use, create_timestamp, game_group_name)
+            VALUES (t.joyple_game_code, game_id, null, null, null, null, t.UpdatedTimestamp, null);
             """
             
             client.query(query)
@@ -887,6 +887,56 @@ with DAG(
 
         print("✅ dim_pg_id ETL 완료")
 
+
+    def etl_dim_IAA_app_name(target_date:list):
+
+        for td in target_date:
+            target_date = td
+
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+
+            query=f"""
+            MERGE `datahub-478802.datahub.dim_IAA_app_name` AS target
+            USING
+            (
+            SELECT DISTINCT CASE WHEN APP.value IN ('ca-app-pub-9222823336006969~4823674397','ca-app-pub-9222823336006969~8860386047') THEN 'Heroball Z(Mojito)' 
+              WHEN APP.displayLabel IN ('HeroBall Z', 'Heroball Z') THEN 'HeroBall Z'
+              ELSE APP.displayLabel 
+              END AS app_name 
+            FROM `dataplatform-bdts.ads_admob.mediation_ads` 
+            WHERE date > DATE_SUB(td, INTERVAL 7 DAY)
+            AND APP.displayLabel != 'BLESS MOBILE'
+            AND AD_UNIT.displayLabel NOT IN ('DRB_MAX_AOS_RB', 'DRB_MAX_AOS_f50', 'DBR_MAX_AOS_f50') 
+
+            UNION ALL
+            
+            SELECT DISTINCT app AS app_name
+            FROM `dataplatform-bdts.ads_adx.adx_ads` 
+            WHERE date > DATE_SUB(td, INTERVAL 7 DAY)
+            
+            UNION ALL
+
+            SELECT DISTINCT max_ad_unit AS app_name
+            FROM `dataplatform-bdts.ads_applovin.max_revenue_responses`
+            WHERE day > DATE_SUB(td, INTERVAL 7 DAY)
+            ) AS source ON target.app_name = source.app_name 
+            WHEN NOT MATCHED BY target THEN
+            INSERT(joyple_game_code, app_name, is_use_yn)
+            VALUES(
+                null
+                , source.app_name
+                , 'N'
+            )
+            ;
+            """
+
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_IAA_app_name Batch 완료")
+
+        print("✅ dim_IAA_app_name ETL 완료")
+
 ############ Platform Device는 별도 ETL 작업 없음
 
 ############ T_0265_0000_CostCampaignRulePreBook_V 는 필요 시 직접 입력하는 형태 (DB insert 처리)
@@ -994,6 +1044,13 @@ with DAG(
         dag=dag,
     )
 
+    etl_dim_IAA_app_name_task = PythonOperator(
+        task_id='etl_dim_IAA_app_name',
+        python_callable=etl_dim_IAA_app_name,
+        op_kwargs = {'target_date': target_date},
+        dag=dag,
+    )
+
 
 chain(
     etl_dim_os_task,
@@ -1010,5 +1067,6 @@ chain(
     etl_dim_market_id_task,
     etl_dim_os_id_task,
     etl_dim_package_kind_task,
-    etl_dim_pg_id_task
+    etl_dim_pg_id_task,
+    etl_dim_IAA_app_name_task
 )

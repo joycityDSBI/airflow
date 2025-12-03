@@ -102,11 +102,11 @@ def query_dag_stats_and_send_email():
                 COUNT(1) AS cnt
             FROM dag_run
             WHERE start_date + INTERVAL '9 hours' >= CURRENT_DATE
-            AND run_type in ('scheduled', 'asset_triggered')
+            AND run_type not like '%manual%'
             AND dag_id NOT LIKE '%sync%'
             GROUP BY dag_id, state
         ) AS ts
-        ORDER BY minutes_diff DESC
+        ORDER BY minutes_diff desc
         """
         
         logger.info("쿼리 실행 중...")

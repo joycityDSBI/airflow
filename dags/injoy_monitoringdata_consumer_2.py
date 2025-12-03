@@ -151,7 +151,7 @@ def build_properties_payload(row_data: dict) -> dict:
                 if question_str:
                     # 2000자 제한 확인
                     if len(question_str) > 2000:
-                        question_str = question_str[:2000]
+                        question_str = question_str[:1999]
                     
                     properties[key] = {"rich_text": [{"text": {"content": question_str}}]}
             else:
@@ -161,6 +161,14 @@ def build_properties_payload(row_data: dict) -> dict:
                     properties[key] = {"rich_text": [{"text": {"content": content}}]}
             
             continue  # 다음 반복으로
+
+        elif key in ["error", "에러"]:
+            content = str(value or "")
+            if len(content) > 2000:
+                print(f"  -> ✨ '{key}'의 긴 텍스트({len(content)}자)를 잘라서 저장합니다.")
+                content = content[:2000]
+            
+            properties[key] = {"rich_text": [{"text": {"content": content}}]}
 
         else:
             properties[key] = {"rich_text": [{"text": {"content": str(value or "")}}]}
