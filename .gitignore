@@ -1,7 +1,16 @@
+# Python virtual environment
+venv/
+
+# Python cache
 __pycache__/
 *.pyc
-venv
+
+# Environment files & credentials
+.env
 .envcredentials.json
+
+# Logs
+*.log
+
+# Local scripts (not for repository)
 UA_data_to_Agency.py
-.env
-.env

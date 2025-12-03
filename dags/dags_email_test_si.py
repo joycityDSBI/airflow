@@ -41,5 +41,6 @@ with DAG(
     
     send_email_task = PythonOperator(
         task_id='send_email_task',
-        python_callable=send_email_func
+        python_callable=send_email_func,
+        dags=dag
     )
