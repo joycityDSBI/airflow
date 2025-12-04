@@ -36,9 +36,9 @@ default_args = {
 }
 
 with DAG(
-    dag_id='ETL_dimension',
+    dag_id='ETL_Fact_dimension',
     default_args=default_args,
-    description='dimension table ETL process to BigQuery',
+    description='payment table ETL process to BigQuery',
     schedule= '30 20 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,

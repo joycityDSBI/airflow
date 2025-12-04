@@ -36,13 +36,13 @@ default_args = {
 }
 
 with DAG(
-    dag_id='ETL_dimension',
+    dag_id='ETL_Fact_tracker',
     default_args=default_args,
-    description='dimension table ETL process to BigQuery',
+    description='tracker(Appsflyer) table ETL process to BigQuery',
     schedule= '30 20 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=['ETL', 'dim', 'bigquery'],
+    tags=['ETL', 'fact', 'bigquery'],
 ) as dag:
     
     # 빅쿼리 클라이언트 연결
@@ -209,7 +209,7 @@ with DAG(
         FROM `dataplatform-204306.AppsflyerLog.installs_report`
         WHERE event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
         ) AS a
-        LEFT JOIN `dataplatform-reporting.DataService.T_0260_0000_GoogleCampaign_V` AS b ON a.Campaign = b.CampaignID
+        LEFT JOIN `datahub-478802.datahub.dim_google_campaign` AS b ON a.Campaign = b.campaign_id
         """
 
         client.query(truncate_query)
@@ -1016,6 +1016,6 @@ with DAG(
         client.query(truncate_query)
         time.sleep(5)
         client.query(query)
-        
+
         print("✅ f_cost_campaign_rule ETL 완료")
 

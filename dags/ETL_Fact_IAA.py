@@ -36,13 +36,13 @@ default_args = {
 }
 
 with DAG(
-    dag_id='ETL_dimension',
+    dag_id='ETL_Fact_IAA',
     default_args=default_args,
-    description='dimension table ETL process to BigQuery',
+    description='IAA(In-App Advertising) table ETL process to BigQuery',
     schedule= '30 20 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=['ETL', 'dim', 'bigquery'],
+    tags=['ETL', 'fact', 'bigquery'],
 ) as dag:
     
 
@@ -304,9 +304,9 @@ with DAG(
             end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
             delete_query = f"""
-            INSERT INTO `datahub-478802`.datahub.f_IAA_auth_account_performance_joyple
-            (joyple_game_code, watch_datekey, watch_datetime, mediation_name, auth_account_name, auth_method_id, gam_sub_user_name, reg_datekey, reg_country_code,
-            os_iaa, log_id, ad_network_code, ad_code, ad_name, placement, reg_datediff, revenue_per_user_USD, revenue_per_user_KRW)
+            DELETE FROM `datahub-478802`.datahub.f_IAA_auth_account_performance_joyple
+            WHERE watch_datekey >= DATE('2025-11-18', "Asia/Seoul")
+            AND watch_datekey <  DATE('2025-11-26', "Asia/Seoul")
             """
 
             query = f"""

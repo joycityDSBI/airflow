@@ -211,7 +211,7 @@ with DAG(
         return True
     
 
-    def etl_dim_auth_type(target_date:list):
+    def etl_dim_auth_method_id(target_date:list):
 
         for td in target_date:
             target_date = td
@@ -230,7 +230,7 @@ with DAG(
                 where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
                 AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
             ) S
-            on T.os_id = S.os_id
+            on T.auth_method_id = S.auth_method_id
             WHEN MATCHED THEN
             UPDATE SET
                 T.auth_method_id = COALESCE(S.auth_method_id, T.auth_method_id),
@@ -238,8 +238,8 @@ with DAG(
                 T.auth_method_id_EN = COALESCE(S.auth_type_id_EN, T.auth_method_id_EN),
                 T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
             WHEN NOT MATCHED THEN 
-            INSERT (os_id, os_name, os_name_lower, create_timestamp)
-            VALUES (S.os_id, null, null, CURRENT_TIMESTAMP())
+            INSERT (auth_method_id, auth_method_id_KR, auth_method_id_EN, create_timestamp)
+            VALUES (S.auth_method_id, null, null, CURRENT_TIMESTAMP())
             """
 
             client.query(query)
@@ -321,7 +321,7 @@ with DAG(
         return True
 
         
-    def etl_dim_game(target_date:list):
+    def etl_dim_game_id(target_date:list):
 
         for td in target_date:
             target_date = td
@@ -358,7 +358,7 @@ with DAG(
         return True
     
 
-    def etl_dim_game_app_id(target_date:list):
+    def etl_dim_app_id(target_date:list):
 
         for td in target_date:
             target_date = td
@@ -956,9 +956,9 @@ with DAG(
         dag=dag,
     )
 
-    etl_dim_auth_type_task = PythonOperator(
-        task_id='etl_dim_auth_type',
-        python_callable=etl_dim_auth_type,
+    etl_dim_auth_method_id_task = PythonOperator(
+        task_id='etl_dim_auth_method_id',
+        python_callable=etl_dim_auth_method_id,
         op_kwargs = {'target_date': target_date},
         dag=dag,
     )
@@ -970,16 +970,16 @@ with DAG(
         dag=dag,
     )
 
-    etl_dim_game_task = PythonOperator(
-        task_id='etl_dim_game',
-        python_callable=etl_dim_game,
+    etl_dim_game_id_task = PythonOperator(
+        task_id='etl_dim_game_id',
+        python_callable=etl_dim_game_id,
         op_kwargs = {'target_date': target_date},
         dag=dag,
     )
 
-    etl_dim_game_app_id_task = PythonOperator(
-        task_id='etl_dim_game_app_id',
-        python_callable=etl_dim_game_app_id,
+    etl_dim_app_id_task = PythonOperator(
+        task_id='etl_dim_app_id',
+        python_callable=etl_dim_app_id,
         op_kwargs = {'target_date': target_date},
         dag=dag,
     )
@@ -1055,10 +1055,10 @@ with DAG(
 chain(
     etl_dim_os_task,
     etl_dim_AFC_campaign_task,
-    etl_dim_auth_type_task,
+    etl_dim_auth_method_id_task,
     etl_dim_exchange_rate_task,
-    etl_dim_game_task,
-    etl_dim_game_app_id_task,
+    etl_dim_game_id_task,
+    etl_dim_app_id_task,
     etl_dim_google_campaign_task,
     etl_dim_ip_range_task,
     etl_dim_ip_proxy_task,

@@ -36,18 +36,17 @@ default_args = {
 }
 
 with DAG(
-    dag_id='ETL_dimension',
+    dag_id='ETL_Fact_access',
     default_args=default_args,
-    description='dimension table ETL process to BigQuery',
+    description='Access table ETL process to BigQuery',
     schedule= '30 20 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=['ETL', 'dim', 'bigquery'],
+    tags=['ETL', 'fact', 'bigquery'],
 ) as dag:
     
     # 빅쿼리 클라이언트 연결
     client = bigquery.Client()
-
 
 
     def etl_f_common_register(target_date:list):
@@ -61,6 +60,9 @@ with DAG(
 
             # KST 00:00:00 ~ 23:59:59를 UTC로 변환
             query = f"""
+            MERGE `datahub-478802.datahub.f_common_register` AS target
+            USING
+            (
                 with TA as (
                 SELECT a.game_id                                                                                  AS GameID
                     , a.world_id                                                                                 AS WorldID
@@ -123,13 +125,13 @@ with DAG(
                     , play_seconds                                                                               AS PlaySeconds
                     , log_time                                                                                   AS LogTime
                 FROM `datahub-478802.datahub.pre_access_log_supplement`
-                WHERE CONCAT(CAST(JoypleGameID AS STRING), "|",  AuthMethodID , "|", AuthAccountName , "|", GameSubUserName)  NOT IN (
+                WHERE CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", game_sub_user_name)  NOT IN (
                     SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
                 )
                 )
                 , TB as (
                 SELECT 
-                            DATE(Info.LogTime, "Asia/Seoul") 			AS reg_date_key
+                            DATE(Info.LogTime, "Asia/Seoul") 			AS reg_datekey
                             , DATETIME(Info.LogTime, "Asia/Seoul")              AS reg_datetime
                             , Info.GameID               AS game_id
                             , Info.WorldID              AS world_id
@@ -184,25 +186,136 @@ with DAG(
                     LEFT OUTER JOIN datahub-478802.datahub.dim_ip4_country_code AS b
                     ON (a.Info.IP = b.ip)
                 )
+                , TC as (
+                SELECT TB.reg_datekey, TB.reg_datetime, TB.game_id, TB.world_id, TB.joyple_game_code, TB.auth_method_id,
+                CAST(TB.auth_account_name AS INTEGER) AS auth_account_name, TB.tracker_account_id, TB.tracker_type_id, TB.device_id, TB.country_code as reg_country_code,
+                TB.market_id, TB.os_id, TB.platform_device_type,
+                aa.app_id, aa.bundle_id, aa.country_code as install_country_code, aa.media_source, aa.media_source_cat, aa.is_organic, aa.agency, aa.campaign, aa.init_campaign,
+                aa.adset_name, aa.ad_name, aa.is_retargeting, aa.advertising_id, aa.idfa, aa.site_id, aa.channel, 
+                aa.CB1_media_source, aa.CB1_campaign, aa.CB2_media_source, aa.CB2_campaign, aa.CB3_media_source, aa.CB3_campaign,
+                aa.install_time, aa.event_time, aa.event_type, aa.install_datekey
+                FROM TB 
+                LEFT JOIN datahub-478802.datahub.f_tracker_install as aa
+                ON TB.tracker_account_id = aa.tracker_account_id AND TB.tracker_type_id = aa.tracker_type_id
+                )
+                
+                SELECT * FROM TC
+                
+				) AS source ON target.joyple_game_code = source.joyple_game_code AND CAST(target.auth_account_name AS STRING) = CAST(source.auth_account_name AS STRING)
+                WHEN MATCHED AND (target.campaign <> source.campaign OR target.media_source <> source.media_source)
+                			AND source.app_id IS NOT NULL THEN
+                UPDATE SET 
+                	target.app_id = source.app_id
+                	, target.bundle_id = source.bundle_id
+                	, target.install_country_code = source.install_country_code
+                	, target.media_source = source.media_source
+                	, target.media_source_cat = source.media_source_cat
+                	, target.is_organic = source.is_organic
+                	, target.agency = source.agency
+                	, target.campaign = source.campaign
+                	, target.init_campaign = source.init_campaign
+                	, target.adset_name = source.adset_name
+                	, target.ad_name = source.ad_name
+                	, target.is_retargeting = source.is_retargeting
+                	, target.advertising_id = source.advertising_id
+                	, target.idfa = source.idfa
+                	, target.site_id = source.site_id
+                	, target.channel = source.channel
+                	, target.CB1_media_source = source.CB1_media_source
+	                , target.CB1_campaign = source.CB1_campaign 
+	                , target.CB2_media_source = source.CB2_media_source
+	                , target.CB2_campaign = source.CB2_campaign
+	                , target.CB3_media_source = source.CB3_media_source
+	                , target.CB3_campaign = source.CB3_campaign
+	                , target.install_time = source.install_time
+	                , target.event_time = source.event_time
+	                , target.event_type = source.event_type 
+	                , target.install_datekey = source.install_datekey
 
-                MERGE `datahub-478802.datahub.f_common_register` AS target
-                USING
-                (
-                    SELECT reg_datekey, reg_datetime, game_id, world_id, joyple_game_code, auth_method_id, auth_account_name, 
-                    tracker_account_id, tracker_type_id, device_id, country_code, market_id, os_id, platform_device_type
-                    FROM TB
-                    WHERE reg_datetime >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                    AND reg_datetime < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                ) AS source ON target.joyple_game_code = source.joyple_game_code AND target.auth_account_name = source.auth_account_name
                 WHEN NOT MATCHED BY target THEN
                 INSERT(
-                    reg_datekey, reg_datetime, game_id, world_id, joyple_game_code, auth_method_id, auth_account_name, 
-                    tracker_account_id, tracker_type_id, device_id, country_code, market_id, os_id, platform_device_type
+	                reg_datekey, 
+	                reg_datetime, 
+                  game_id, 
+                  world_id, 
+                  joyple_game_code, 
+                  auth_method_id,
+	                auth_account_name, 
+	                tracker_account_id, 
+	                tracker_type_id, 
+	                device_id, 
+	                reg_country_code,
+	                market_id, 
+	                os_id, 
+	                platform_device_type,
+	                app_id, 
+	                bundle_id, 
+	                install_country_code, 
+	                media_source, 
+	                media_source_cat, 
+                  is_organic, 
+                  agency, 
+                  campaign, 
+                  init_campaign,
+	                adset_name, 
+	                ad_name, 
+	                is_retargeting, 
+	                advertising_id, 
+	                idfa, 
+	                site_id, 
+	                channel, 
+	                CB1_media_source, 
+	                CB1_campaign, 
+	                CB2_media_source, 
+	                CB2_campaign, 
+	                CB3_media_source, 
+	                CB3_campaign,
+	                install_time, 
+	                event_time, 
+	                event_type, 
+	                install_datekey
                     )
                 VALUES(
-                    source.reg_datekey, source.reg_datetime, source.game_id, source.world_id, source.joyple_game_code, 
-                    source.auth_method_id, source.auth_account_name, source.tracker_account_id, source.tracker_type_id, 
-                    source.device_id, source.country_code, source.market_id, source.os_id, source.platform_device_type
+                  source.reg_datekey, 
+	                source.reg_datetime, 
+                  source.game_id, 
+                  source.world_id, 
+                  source.joyple_game_code, 
+                  source.auth_method_id,
+	                source.auth_account_name, 
+	                source.tracker_account_id, 
+	                source.tracker_type_id, 
+	                source.device_id, 
+	                source.reg_country_code,
+	                source.market_id, 
+	                source.os_id, 
+	                source.platform_device_type,
+	                source.app_id, 
+	                source.bundle_id, 
+	                source.install_country_code, 
+	                source.media_source, 
+	                source.media_source_cat, 
+                  source.is_organic, 
+                  source.agency, 
+                  source.campaign, 
+                  source.init_campaign,
+	                source.adset_name, 
+	                source.ad_name, 
+	                source.is_retargeting, 
+	                source.advertising_id, 
+	                source.idfa, 
+	                source.site_id, 
+	                source.channel, 
+	                source.CB1_media_source, 
+	                source.CB1_campaign, 
+	                source.CB2_media_source, 
+	                source.CB2_campaign, 
+	                source.CB3_media_source, 
+	                source.CB3_campaign,
+	                source.install_time, 
+	                source.event_time, 
+	                source.event_type, 
+	                source.install_datekey
                     );
                 """
             
