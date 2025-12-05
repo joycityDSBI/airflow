@@ -110,6 +110,142 @@ if 'private_key' in credentials_info:
     print("✓ Private key 형식 수정 완료")
 print()
 
+# ============= Task 0: Bigquery 내 UA 데이터 생성 =============
+def generate_ua_data_in_bigquery(**context):
+    print("=" * 80)
+    print("Task 0: Bigquery 내 UA 데이터 생성 시작")
+    print("=" * 80)
+
+    bq_client = bigquery.Client.from_service_account_info(credentials_info)
+
+    query = """
+            with UA_perfo as (
+            select c.JoypleGameName as ProJect_name, a.JoypleGameID, a.RegdateAuthAccountDateKST, a.APPID,
+                a.MediaSource, a.CamPaign
+                , b.UptdtCampaign
+                , case when a.MediaSource in ('Unknown', 'NULL') then 'Unknown'                
+                        when a.campaign like '%Pirates of the Caribbean Android AU%' then 'UA'  ## 과거 POTC 캠페인 케이스는 여전히 하드 코딩을 해야함.
+                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'UA'  
+                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'UA'
+                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'UA'  
+                        when a.campaign = 'POTC_検索' then 'UA'
+                        when b.gcat is null and c.JoypleGameName ='POTC' then d.gcat ## 이와 같이 처리를 해도 gcat이 Null 값인 것은 있음. => Mas에 등록이안된 Case들 => 근본적인 해결책이 있을까 ..?
+                    else b.gcat
+                    end as gcat
+                , a.CountryCode, a.MarketName, a.OS, a.AdsetName, a.AdName, a.Agency, a.SiteID
+                , a.TrackerInstallCount, a.RU
+                , a.rev_d0, a.rev_d1, a.rev_d3, a.rev_d7, a.rev_d14, a.rev_d30, a.rev_d60
+                , a.rev_d90, a.rev_d120, a.rev_d150, a.rev_d180, a.rev_d210, a.rev_d240
+                , a.rev_d270, a.rev_d300, a.rev_d330, a.rev_d360, a.rev_d390, a.rev_d420, a.rev_d450
+                , a.rev_d480, a.rev_d510, a.rev_dcum
+                , rev_iaa_D0, rev_iaa_D1, rev_iaa_D3, rev_iaa_D7, rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90
+                , rev_iaa_D120, rev_iaa_D150, rev_iaa_D180, rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330
+                , rev_iaa_D360, rev_iaa_D390, rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum
+                , a.ru_d1, a.ru_d3, a.ru_d7, a.ru_d14, a.ru_d30, a.ru_d60, a.ru_d90
+                , a.ru_d120, a.ru_d150, a.ru_d180
+                , case  when a.campaign like '%Pirates of the Caribbean Android AU%' then 'ADNW'
+                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'ADNW'
+                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'ADNW'
+                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'ADNW'
+                        when a.campaign = 'POTC_検索' then 'ADNW' 
+                        when b.gcat is null and c.JoypleGameName ='POTC' then d.media_category 
+                        else b.mediacategory 
+                    end as mediacategory 
+                , b.productcategory, b.media, b.mediadetail
+                , case when b.optim  = 'NONE' and a.AdsetName like '%MAIA%' then 'MAIA'
+                        when b.optim  = 'NONE' and a.AdsetName like '%AEO%' then 'AEO'
+                        when b.optim  = 'NONE' and a.AdsetName like '%VO%' then 'VO'
+                    else b.optim end as optim 
+                , b.etccategory,  b.OSCAM, b.GEOCAM, datecam
+                , b.creativeno , b.device, b.settingtitle, b.landingtitle, b.adunit, b.mediation
+                , b.createyn, b.updateyn, b.ruleyn
+            from(select perfo.*, rev_iaa_D0, rev_iaa_D1, rev_iaa_D3, rev_iaa_D7, rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90
+                            , rev_iaa_D120, rev_iaa_D150, rev_iaa_D180, rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330
+                            , rev_iaa_D360, rev_iaa_D390, rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum
+                from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1` as perfo
+                left join `dataplatform-reporting.DataService.T_0422_0000_UAPerformanceInAppADRaw_V1` as inapp
+                on  perfo.JoypleGameID = inapp.JoypleGameID
+                and perfo.RegdateAuthAccountDateKST = inapp.RegdateAuthAccountDateKST
+                and perfo.AppID = inapp.AppID
+                and perfo.MediaSource = inapp.MediaSource
+                and perfo.Campaign = inapp.Campaign
+                and perfo.CountryCode = inapp.CountryCode
+                and perfo.MarketName = inapp.MarketName
+                and perfo.OS = inapp.OS
+                and perfo.AdsetName = inapp.AdsetName
+                and perfo.AdName = inapp.AdName
+                and perfo.Agency = inapp.Agency
+                and perfo.SiteID = inapp.SiteID 
+                ) as a
+            left join (select distinct *
+                    from `dataplatform-reporting.DataService.V_0261_0000_AFCampaignRule_V`) as b
+            on a.appID = b.appID and a.MediaSource = b.MediaSource and a.Campaign = b.initCampaign
+            left join `dataplatform-reporting.DataService.V_0200_0001_GameJoyple_V` as c
+            on a.joypleGameid = c.JoypleGameid
+            left join `data-science-division-216308.POTC.before_mas_campaign` as d
+            on a.campaign = d.campaign 
+            )
+
+            , final as (
+            select 
+            project_name
+            , JoypleGameID as joyple_game_code 
+            , RegdateAuthAccountDateKST as regdate_joyple_kst
+            , appid as app_id
+            , gcat
+            ,CASE WHEN mediasource = 'Organic' then 'Organic' 
+                when mediasource = 'Unknown' then 'Unknown' 
+                else mediacategory 
+            end as media_category
+            ,CASE WHEN mediasource = 'Organic' then 'Organic' 
+                when mediasource = 'Unknown' then 'Unknown' 
+                else media 
+            end as media
+            , mediasource as media_source
+            , mediadetail as media_detail
+            , productcategory as product_category
+            , etccategory as etc_category
+            , optim
+            , uptdtcampaign as campaign
+            , countrycode as geo
+            , geocam  as geo_cam
+            , marketname as market
+            , OS
+            , oscam as os_cam
+            , adsetname as fb_adset_name
+            , AdName as fb_adgroup_name
+            , siteid as af_siteid
+            , agency
+            , device
+            , settingtitle as setting_title
+            , landingtitle as landing_title
+            , adunit as ad_unit
+            , mediation as mediation
+            , TrackerInstallCount as install
+            , RU
+            , rev_D0, rev_D1,rev_D3,rev_D7,rev_D14,rev_D30,rev_D60,rev_D90,rev_D120,rev_D150,rev_D180,rev_D210,rev_D240,rev_D270,rev_D300,rev_D330,rev_D360,rev_D390,rev_D420,rev_D450,rev_D480,rev_D510,rev_Dcum
+            , rev_iaa_D0, rev_iaa_D1, rev_iaa_D3, rev_iaa_D7, rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90
+            , rev_iaa_D120, rev_iaa_D150, rev_iaa_D180, rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330
+            , rev_iaa_D360, rev_iaa_D390, rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum
+            , RU_D1,RU_D3,RU_D7,RU_D14,RU_D30,RU_D60,RU_D90
+            from UA_perfo
+            where RegdateAuthAccountDateKST >= date_add(current_date('Asia/Seoul'),interval -13 month)
+            and RegdateAuthAccountDateKST <= date_add(current_date('Asia/Seoul'),interval -1 day)
+            )
+
+
+            select *
+            from final
+            """
+    
+            
+    bq_client.query(query)
+    print("=" * 80)
+    print("✓ Bigquery 내 UA 데이터 생성 완료")
+    print("=" * 80)
+    
+
+
 # ============= Task 1: 전체 프로젝트 보고서 생성 및 업로드 =============
 def generate_all_projects_reports(**context):
     """전체 프로젝트 보고서 생성 및 GCS 업로드 (요약 결과를 한 번만 XCom에 푸시)"""
@@ -521,6 +657,13 @@ def send_status_email(**context):
 
 
 # ============= Airflow Tasks 정의 =============
+
+task_bigquery_projects = PythonOperator(
+    task_id='generate_ua_data_in_bigquery',
+    python_callable=generate_ua_data_in_bigquery,
+    dag=dag,
+)
+
 task_all_projects = PythonOperator(
     task_id='generate_all_projects_reports',
     python_callable=generate_all_projects_reports,
@@ -547,4 +690,4 @@ task_authorize_gcs = PythonOperator(
 # )
 
 # Task 의존성
-task_all_projects >> task_agency_reports >> task_authorize_gcs ##>> task_send_email
+task_bigquery_projects >> task_all_projects >> task_agency_reports >> task_authorize_gcs ##>> task_send_email
