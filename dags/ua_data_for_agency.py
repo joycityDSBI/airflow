@@ -124,6 +124,21 @@ def generate_ua_data_in_bigquery(**context):
             """
 
     query = """
+             
+            INSERT INTO `datacatalog-446301.UA_Service.ru_mailing_data`
+            (
+            project_name, joyple_game_code, regdate_joyple_kst, app_id, gcat, media_category, media, media_source,
+            media_detail, product_category, etc_category, optim, campaign, geo, geo_cam, market, Os, os_cam,
+            fb_adset_name, fb_adgroup_name, af_siteid, agency, device, setting_title, landing_title, ad_unit,
+            mediation, install, RU, rev_D0, rev_D1, rev_D3, rev_D7, rev_D14, rev_D30, rev_D60, rev_D90,
+            rev_D120, rev_D150, rev_D180, rev_D210, rev_D240, rev_D270, rev_D300, rev_D330, rev_D360, rev_D390,
+            rev_D420, rev_D450, rev_D480, rev_D510, rev_Dcum, rev_iaa_D0, rev_iaa_D1, rev_iaa_D3, rev_iaa_D7,
+            rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90, rev_iaa_D120, rev_iaa_D150, rev_iaa_D180,
+            rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330, rev_iaa_D360, rev_iaa_D390,
+            rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum, RU_D1, RU_D3, RU_D7, RU_D14,
+            RU_D30, RU_D60, RU_D90
+            )
+
             with UA_perfo as (
             select c.JoypleGameName as ProJect_name, a.JoypleGameID, a.RegdateAuthAccountDateKST, a.APPID,
                 a.MediaSource, a.CamPaign
@@ -238,19 +253,6 @@ def generate_ua_data_in_bigquery(**context):
             and RegdateAuthAccountDateKST <= date_add(current_date('Asia/Seoul'),interval -1 day)
             )
 
-            INSERT INTO `datacatalog-446301.UA_Service.ru_mailing_data`
-            (
-            project_name, joyple_game_code, regdate_joyple_kst, app_id, gcat, media_category, media, media_source,
-            media_detail, product_category, etc_category, optim, campaign, geo, geo_cam, market, Os, os_cam,
-            fb_adset_name, fb_adgroup_name, af_siteid, agency, device, setting_title, landing_title, ad_unit,
-            mediation, install, RU, rev_D0, rev_D1, rev_D3, rev_D7, rev_D14, rev_D30, rev_D60, rev_D90,
-            rev_D120, rev_D150, rev_D180, rev_D210, rev_D240, rev_D270, rev_D300, rev_D330, rev_D360, rev_D390,
-            rev_D420, rev_D450, rev_D480, rev_D510, rev_Dcum, rev_iaa_D0, rev_iaa_D1, rev_iaa_D3, rev_iaa_D7,
-            rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90, rev_iaa_D120, rev_iaa_D150, rev_iaa_D180,
-            rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330, rev_iaa_D360, rev_iaa_D390,
-            rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum, RU_D1, RU_D3, RU_D7, RU_D14,
-            RU_D30, RU_D60, RU_D90
-            )
             select project_name, joyple_game_code, regdate_joyple_kst, app_id, gcat, media_category, media, media_source,
             media_detail, product_category, etc_category, optim, campaign, geo, geo_cam, market, Os, os_cam,
             fb_adset_name, fb_adgroup_name, af_siteid, agency, device, setting_title, landing_title, ad_unit,
