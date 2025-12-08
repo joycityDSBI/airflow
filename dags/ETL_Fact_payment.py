@@ -153,10 +153,33 @@ with DAG(
 
         query = f"""
         INSERT INTO `datahub-478802.datahub.pre_payment_info_fix`
-        (log_type, joyple_game_code, order_id, market_id, pg_id, platform_device_type, product_code, product_name, 
-        currency_code, price, log_timestamp, update_timestamp)
-        SELECT LogType, JoypleGameID, OrderID, MarketID, PGID, PlatformDeviceType, ProductCode, ProductName,
-        CurrencyCode, Price, LogTimestamp, UpdatedTimestamp
+        (
+        log_type, 
+        joyple_game_code, 
+        order_id, 
+        market_id, 
+        pg_id, 
+        platform_device_type, 
+        product_code, 
+        product_name, 
+        currency_code, 
+        price, 
+        log_timestamp, 
+        update_timestamp
+        )
+        SELECT 
+        LogType, 
+        JoypleGameID, 
+        OrderID, 
+        MarketID, 
+        PGID, 
+        PlatformDeviceType, 
+        ProductCode, 
+        ProductName,
+        CurrencyCode, 
+        Price, 
+        LogTimestamp, 
+        UpdatedTimestamp
         FROM dataplatform-reporting.DataService.T_0141_0000_PaymentInfoFix_V
         """
 
@@ -176,6 +199,9 @@ with DAG(
             end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
             query = f"""
+                MERGE datahub-478802.datahub.f_common_payment_total AS  target
+                USING
+                (
                 with TA as (
                 SELECT a.game_id
                     , a.joyple_game_code 
@@ -291,7 +317,7 @@ with DAG(
                 SELECT DATE(a.Info.log_time, "Asia/Seoul") as datekey
                 , d.reg_datekey
                 , DATE_DIFF(d.reg_datekey, DATE(a.Info.log_time, "Asia/Seoul"), DAY) as reg_datediff
-                , d.country_code as reg_country_code
+                , d.reg_country_code
                 , a.Info.game_id
                 , a.joyple_game_code
                 , a.auth_method_id
@@ -324,19 +350,16 @@ with DAG(
                     WHERE datekey >= '2025-11-26'
                     AND datekey < '2025-11-27'
                     GROUP BY currency
-                ) AS c 
+                    ) AS c 
                 ) AS c  
                 ON (a.Info.currency_code = c.currency AND Date(a.Info.log_time, "Asia/Seoul") = c.datekey)
                 LEFT JOIN `datahub-478802.datahub.f_common_register` as d
                 on (CAST(a.joyple_game_code AS STRING) = CAST(d.joyple_game_code AS STRING) 
+                AND a.auth_method_id = d.auth_method_id
                 AND CAST(a.auth_account_name AS STRING) = CAST(d.auth_account_name AS STRING))
                 )
 
-
-                MERGE datahub-478802.datahub.f_common_payment_total AS  target
-                USING
-                (
-                    SELECT datekey, 
+                SELECT datekey, 
                     reg_datekey, 
                     reg_datediff,
                     reg_country_code,
@@ -356,6 +379,7 @@ with DAG(
                     LEFT OUTER JOIN datahub-478802.datahub.dim_ip4_country_code AS b
                     ON (a.ip = b.ip)
                     group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14
+
                 ) as source
                 ON target.datekey = source.datekey
                 AND target.reg_datekey = source.reg_datekey
@@ -430,7 +454,10 @@ with DAG(
                 -- TA는 V_0150_0000_Payment_V 를 처리한 내용
                 -- TB는 V_0153_0000_PaymentDeduct_V 랑 V_0155_0000_PaymentFix_V를 합쳐서 처리한 내용
                 -- 이후 insert 처리를 진행해야 함
-                with TA as (
+                
+                MERGE datahub-478802.datahub.f_common_payment AS target 
+                USING (
+                with TA AS (
                 SELECT a.game_id                                                                            
                     , a.joyple_game_code                                                                          
                     , a.game_account_name
@@ -455,9 +482,7 @@ with DAG(
                 FROM `dataplatform-204306.CommonLog.Payment` AS a
                 LEFT OUTER JOIN datahub-478802.datahub.pre_payment_info_fix AS b 
                 ON (a.joyple_game_code = b.joyple_game_code AND a.order_id = b.order_id)
-                WHERE a.log_time >= '2025-11-26'
-                    AND a.log_time < '2025-11-27'
-                    AND a.game_id           IS NOT NULL
+                WHERE a.game_id           IS NOT NULL
                     AND a.world_id          IS NOT NULL
                     AND a.server_name       IS NOT NULL
                     AND a.auth_method_id    IS NOT NULL
@@ -513,7 +538,7 @@ with DAG(
                 SELECT DATE(a.log_time, "Asia/Seoul") as datekey
                 , d.reg_datekey
                 , DATE_DIFF(d.reg_datekey, DATE(a.log_time, "Asia/Seoul"), DAY) as reg_datediff
-                , d.country_code as reg_country_code
+                , d.reg_country_code
                 , a.game_id
                 , a.joyple_game_code
                 , a.game_account_name
@@ -534,26 +559,22 @@ with DAG(
                 , IFNULL(a.MultiQuantity, 1) AS MultiQuantity
                 FROM TB as a
                 LEFT JOIN (
-                SELECT c.Info.datekey AS datekey
-                    , currency 
-                    , c.Info.exchange_rate
-                FROM (
-                    SELECT currency, ARRAY_AGG(STRUCT(datekey, exchange_rate, create_timestamp) ORDER BY datekey DESC LIMIT 1)[OFFSET(0)] AS Info
-                    FROM `datahub-478802.datahub.dim_exchange` 
-                    WHERE datekey >= '2025-11-23'
-                    AND datekey < '2025-11-24'
-                    GROUP BY currency
-                ) AS c 
+                    SELECT c.Info.datekey AS datekey
+                        , currency 
+                        , c.Info.exchange_rate
+                    FROM (
+                        SELECT currency, ARRAY_AGG(STRUCT(datekey, exchange_rate, create_timestamp) ORDER BY datekey DESC LIMIT 1)[OFFSET(0)] AS Info
+                        FROM `datahub-478802.datahub.dim_exchange` 
+                        GROUP BY currency
+                        ) AS c 
                 ) AS c  
                 ON (a.currency_code = c.currency AND Date(a.log_time, "Asia/Seoul") = c.datekey)
                 LEFT JOIN `datahub-478802.datahub.f_common_register` as d
                 on (CAST(a.joyple_game_code AS STRING) = CAST(d.joyple_game_code AS STRING) 
+                AND CAST(a.auth_method_id AS STRING) = CAST(a.auth_method_id AS STRING)
                 AND CAST(a.auth_account_name AS STRING) = CAST(d.auth_account_name AS STRING))
                 )
 
-                MERGE datahub-478802.datahub.f_common_payment AS  target
-                USING
-                (
                     SELECT a.datekey, 
                     a.reg_datekey, 
                     a.reg_datediff,
@@ -565,8 +586,8 @@ with DAG(
                     a.auth_method_id,
                     a.auth_account_name,
                     a.server_name,
-                    a.device_id
-                    b.country_code as country_code,
+                    a.device_id,
+                    b.country_code,
                     a.market_id,
                     a.os_id,
                     a.pg_id,
@@ -579,7 +600,7 @@ with DAG(
                     FROM TC as a
                     LEFT OUTER JOIN datahub-478802.datahub.dim_ip4_country_code AS b
                     ON (a.ip = b.ip)
-                    group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14
+                    group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
                 ) as source
                 ON target.datekey = source.datekey
                 AND target.reg_datekey = source.reg_datekey
@@ -638,13 +659,13 @@ with DAG(
                 source.auth_method_id,
                 source.auth_account_name,
                 source.server_name,
-                source.device_id
+                source.device_id,
                 source.country_code,
                 source.market_id,
                 source.os_id,
                 source.pg_id,
                 source.platform_device_type,
-                source.game_user_level
+                source.game_user_level,
                 source.product_code,
                 source.product_name,
                 source.revenue,

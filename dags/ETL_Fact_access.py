@@ -187,13 +187,47 @@ with DAG(
                     ON (a.Info.IP = b.ip)
                 )
                 , TC as (
-                SELECT TB.reg_datekey, TB.reg_datetime, TB.game_id, TB.world_id, TB.joyple_game_code, TB.auth_method_id,
-                CAST(TB.auth_account_name AS INTEGER) AS auth_account_name, TB.tracker_account_id, TB.tracker_type_id, TB.device_id, TB.country_code as reg_country_code,
-                TB.market_id, TB.os_id, TB.platform_device_type,
-                aa.app_id, aa.bundle_id, aa.country_code as install_country_code, aa.media_source, aa.media_source_cat, aa.is_organic, aa.agency, aa.campaign, aa.init_campaign,
-                aa.adset_name, aa.ad_name, aa.is_retargeting, aa.advertising_id, aa.idfa, aa.site_id, aa.channel, 
-                aa.CB1_media_source, aa.CB1_campaign, aa.CB2_media_source, aa.CB2_campaign, aa.CB3_media_source, aa.CB3_campaign,
-                aa.install_time, aa.event_time, aa.event_type, aa.install_datekey
+                SELECT 
+                TB.reg_datekey, 
+                TB.reg_datetime, 
+                TB.game_id, 
+                TB.world_id, 
+                TB.joyple_game_code, 
+                TB.auth_method_id,
+                TB.auth_account_name, 
+                TB.tracker_account_id, 
+                TB.tracker_type_id, 
+                TB.device_id, 
+                TB.country_code as reg_country_code,
+                TB.market_id, 
+                TB.os_id, 
+                TB.platform_device_type,
+                aa.app_id, 
+                aa.bundle_id, 
+                aa.country_code as install_country_code, 
+                aa.media_source, 
+                aa.media_source_cat, 
+                aa.is_organic, 
+                aa.agency, 
+                aa.campaign, 
+                aa.init_campaign,
+                aa.adset_name, 
+                aa.ad_name, 
+                aa.is_retargeting, 
+                aa.advertising_id, 
+                aa.idfa, 
+                aa.site_id, 
+                aa.channel, 
+                aa.CB1_media_source, 
+                aa.CB1_campaign, 
+                aa.CB2_media_source, 
+                aa.CB2_campaign, 
+                aa.CB3_media_source, 
+                aa.CB3_campaign,
+                aa.install_time, 
+                aa.event_time, 
+                aa.event_type, 
+                aa.install_datekey
                 FROM TB 
                 LEFT JOIN datahub-478802.datahub.f_tracker_install as aa
                 ON TB.tracker_account_id = aa.tracker_account_id AND TB.tracker_type_id = aa.tracker_type_id
@@ -201,7 +235,7 @@ with DAG(
                 
                 SELECT * FROM TC
                 
-				) AS source ON target.joyple_game_code = source.joyple_game_code AND CAST(target.auth_account_name AS STRING) = CAST(source.auth_account_name AS STRING)
+				) AS source ON target.joyple_game_code = source.joyple_game_code AND target.auth_method_id = source.auth_method_id AND CAST(target.auth_account_name AS STRING) = CAST(source.auth_account_name AS STRING)
                 WHEN MATCHED AND (target.campaign <> source.campaign OR target.media_source <> source.media_source)
                 			AND source.app_id IS NOT NULL THEN
                 UPDATE SET 
@@ -336,6 +370,9 @@ with DAG(
             end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
             query = f"""
+            MERGE `datahub-478802.datahub.f_common_register_char` AS target
+            USING
+            (
             with TA as (
             SELECT a.game_id                                                                                  AS GameID
                 , a.world_id                                                                                 AS WorldID
@@ -375,12 +412,12 @@ with DAG(
             AND a.access_type_id     IS NOT NULL
             AND a.log_time           IS NOT NULL
             AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", game_sub_user_name) NOT IN (
-                SELECT UUID FROM `dataplatform-reporting.DataService.MV_0181_0000_ExcludedGameSubUserInfoUUID_V`
+                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
             )
             UNION ALL
                 SELECT game_id                                                                                    AS GameID
                     , world_id                                                                                   AS WorldID
-                    , TRIM(server_name)                                                                          AS ServerName                                                                            
+                    , TRIM(server_name)                                                       AS ServerName                                                                            
                     , joyple_game_code                                                                              AS JoypleGameID
                     , auth_method_id                                                                          AS AuthMethodID
                     , TRIM(auth_account_name)                                                                     AS AuthAccountName 
@@ -398,11 +435,11 @@ with DAG(
                     , play_seconds                                                                               AS PlaySeconds
                     , log_time                                                                                   AS LogTime
                 FROM `datahub-478802.datahub.pre_access_log_supplement`
-                WHERE CONCAT(CAST(JoypleGameID AS STRING), "|",  AuthMethodID , "|", AuthAccountName , "|", GameSubUserName)  NOT IN (
+                WHERE CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", TRIM(auth_account_name) , "|", TRIM(game_sub_user_name))  NOT IN (
                     SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
             )
             )
-            , TB as (
+            
                 SELECT 
                     Info.GameID AS game_id
                     , Info.WorldID AS world_id
@@ -456,22 +493,53 @@ with DAG(
                     GROUP BY a.JoypleGameID, a.GameAccountName, a.GameSubUserName
                 ) AS a
                 LEFT OUTER JOIN `datahub-478802.datahub.dim_ip4_country_code` AS b ON a.Info.IP = b.ip
-                LEFT OUTER JOIN `datahub-478802.datahub.f_common_register` AS c ON a.JoypleGameID = c.joyple_game_code AND CAST(a.Info.AuthAccountName AS STRING) = CAST(c.auth_account_name AS STRING)
-            )
-            MERGE `datahub-478802.datahub.f_common_register_char` AS target
-            USING TB AS source
+                LEFT OUTER JOIN `datahub-478802.datahub.f_common_register` AS c 
+                ON a.JoypleGameID = c.joyple_game_code AND a.AuthMethodID = c.auth_method_id AND CAST(a.Info.AuthAccountName AS STRING) = CAST(c.auth_account_name AS STRING)) AS source
             ON target.joyple_game_code = source.joyple_game_code 
             AND target.game_sub_user_name = source.game_sub_user_name
             WHEN NOT MATCHED THEN
                 INSERT 
-                (reg_datekey, reg_datetime, game_id, world_id, joyple_game_code, auth_method_id, auth_account_name, 
-                game_account_name, game_sub_user_name, server_name, tracker_account_id, tracker_type_id, device_id, country_code, 
-                market_id, os_id, platform_device_type, game_sub_user_reg_datekey, game_sub_user_reg_datetime)
+                (
+                reg_datekey
+                , reg_datetime
+                , game_id
+                , world_id
+                , joyple_game_code
+                , auth_method_id
+                , auth_account_name
+                , game_sub_user_name
+                , server_name
+                , tracker_account_id
+                , tracker_type_id
+                , device_id
+                , country_code
+                , market_id
+                , os_id
+                , platform_device_type
+                , game_sub_user_reg_datekey
+                , game_sub_user_reg_datetime
+                )
                 VALUES
-                (source.reg_datekey, source.reg_datetime, source.game_id, source.world_id, source.joyple_game_code, source.auth_method_id, 
-                source.auth_account_name, source.game_account_name, source.game_sub_user_name, source.server_name, source.tracker_account_id, 
-                source.tracker_type_id, source.device_id, source.country_code, source.market_id, source.os_id, source.platform_device_type, 
-                source.game_sub_user_reg_datekey, source.game_sub_user_reg_datetime);
+                (
+                source.reg_datekey
+                , source.reg_datetime
+                , source.game_id
+                , source.world_id
+                , source.joyple_game_code
+                , source.auth_method_id
+                , source.auth_account_name
+                , source.game_sub_user_name
+                , source.server_name
+                , source.tracker_account_id
+                , source.tracker_type_id
+                , source.device_id
+                , source.country_code
+                , source.market_id
+                , source.os_id
+                , source.platform_device_type
+                , source.game_sub_user_reg_datekey
+                , source.game_sub_user_reg_datetime
+                );
             """
 
             client.query(query)
@@ -491,6 +559,8 @@ with DAG(
             end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
             query = f"""
+            MERGE `datahub-478802.datahub.f_common_access` AS target
+            USING (
             with TA as (
             SELECT a.game_id                                                                                  AS GameID
                 , a.world_id                                                                                 AS WorldID
@@ -530,7 +600,7 @@ with DAG(
             AND a.access_type_id     IS NOT NULL
             AND a.log_time           IS NOT NULL
             AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", game_sub_user_name) NOT IN (
-                SELECT UUID FROM `dataplatform-reporting.DataService.MV_0181_0000_ExcludedGameSubUserInfoUUID_V`
+                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
             )
             UNION ALL
             SELECT game_id                                                                                    AS GameID
@@ -554,10 +624,9 @@ with DAG(
                 , log_time                                                                                   AS LogTime
             FROM `datahub-478802.datahub.pre_access_log_supplement`
             WHERE CONCAT(CAST(joyple_game_code AS STRING), "|", CAST(auth_method_id AS STRING), "|", auth_account_name, "|", game_sub_user_name)  NOT IN (
-                SELECT UUID FROM `dataplatform-reporting.DataService.MV_0181_0000_ExcludedGameSubUserInfoUUID_V`
+                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
             )
             )
-            , TB as (
                 SELECT 
                     DATE(TA.LogTime, "Asia/Seoul") as datekey
                     , c.reg_datekey
@@ -577,14 +646,13 @@ with DAG(
                     , TA.PlatformDeviceType AS platform_device_type
                     , TA.AccountLevel AS game_user_level
                     , SUM(CASE WHEN TA.AccessTypeID = 1 THEN 1 ELSE 0 END) AS access_cnt
-                    , IF(SUM(TA.PlaySeconds) > 86400, 86400, TA.PlaySeconds) AS play_seconds
+                    , IF(SUM(TA.PlaySeconds) > 86400, 86400, SUM(TA.PlaySeconds)) AS play_seconds
                     FROM TA
                     LEFT OUTER JOIN `datahub-478802.datahub.dim_ip4_country_code` AS b ON TA.IP = b.ip
-                    LEFT OUTER JOIN `datahub-478802.datahub.f_common_register` AS c ON TA.JoypleGameID = c.joyple_game_code AND CAST(TA.AuthAccountName AS STRING) = CAST(c.auth_account_name AS STRING)
+                    LEFT OUTER JOIN `datahub-478802.datahub.f_common_register` AS c 
+                    ON TA.JoypleGameID = c.joyple_game_code AND TA.AuthMethodID = c.auth_method_id AND CAST(TA.AuthAccountName AS STRING) = CAST(c.auth_account_name AS STRING)
                     group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
-            )
-                MERGE `datahub-478802.datahub.f_common_register_char` AS target
-                USING TB AS source
+            ) AS source
                 ON target.datekey = source.datekey
                 AND target.game_id = source.game_id
                 AND target.world_id = source.world_id
@@ -596,19 +664,52 @@ with DAG(
                 AND target.server_name = source.server_name
                 AND target.device_id = source.device_id
                 AND target.country_code = source.country_code
-                AND target.market_id = source.markget_id
+                AND target.market_id = source.market_id
                 AND target.os_id = source.os_id
                 AND target.platform_device_type = source.platform_device_type
                 WHEN NOT MATCHED THEN
                 INSERT
-                (datekey, reg_datekey, reg_datediff, game_id, world_id, joyple_game_code, game_account_name, game_sub_user_name, auth_method_id, auth_account_name,
-                server_name, device_id, country_code, market_id, os_id, platform_device_type, game_user_level, access_cnt, play_seconds
+                (datekey, 
+                reg_datekey, 
+                reg_datediff, 
+                game_id, 
+                world_id, 
+                joyple_game_code, 
+                game_account_name, 
+                game_sub_user_name, 
+                auth_method_id, 
+                auth_account_name,
+                server_name, 
+                device_id, 
+                country_code, 
+                market_id, 
+                os_id, 
+                platform_device_type, 
+                game_user_level, 
+                access_cnt, 
+                play_seconds
                 )
                 VALUES
                 (
-                source.datekey, source.reg_datekey, source.reg_datediff, source.game_id, source.world_id, source.joyple_game_code, source.game_account_name, source.game_sub_user_name,
-                source.auth_method_id, source.auth_account_name, source.server_name, source.device_id, source.country_code, source.market_id, source.os_id, source.platform_device_type,
-                source.game_user_level, source.access_cnt, source.play_secods
+                source.datekey, 
+                source.reg_datekey, 
+                source.reg_datediff, 
+                source.game_id, 
+                source.world_id, 
+                source.joyple_game_code, 
+                source.game_account_name, 
+                source.game_sub_user_name,
+                source.auth_method_id, 
+                source.auth_account_name, 
+                source.server_name, 
+                source.device_id, 
+                source.country_code, 
+                source.market_id, 
+                source.os_id, 
+                source.platform_device_type,
+                source.game_user_level, 
+                source.access_cnt, 
+                source.play_seconds
                 )
             """
 

@@ -57,7 +57,7 @@ with DAG(
             # KST 00:00:00 ~ 23:59:59를 UTC로 변환
             start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
             end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
-
+            ### 해당 쿼리에 대해서는 확실히 확인이 필요함
             query = f"""
             MERGE `datahub-478802`.datahub.f_funnel_access_first AS target
             USING
@@ -189,8 +189,12 @@ with DAG(
                 )  AS a
                 LEFT OUTER JOIN datahub-478802.datahub.f_tracker_install as b
                 on a.tracker_account_id = b.tracker_account_id AND a.tracker_type_id = b.tracker_type_id
-                ) AS source ON target.joyple_game_code = source.joyple_game_code AND target.tracker_account_id = source.tracker_account_id 
-                    AND target.tracker_type_id = source.tracker_type_id AND target.step_id = source.step_id AND target.step_name = source.step_name
+                ) AS source 
+                ON target.joyple_game_code = source.joyple_game_code 
+                AND target.tracker_account_id = source.tracker_account_id 
+                AND target.tracker_type_id = source.tracker_type_id 
+                AND target.step_id = source.step_id 
+                AND target.step_name = source.step_name
                 WHEN MATCHED AND target.install_datekey > CAST(source.install_datekey AS DATE) - 3 THEN
                 UPDATE SET 
                         target.app_id = source.app_id

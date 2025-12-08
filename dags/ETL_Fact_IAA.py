@@ -167,10 +167,10 @@ with DAG(
             WHEN NOT MATCHED BY target THEN
             INSERT (joyple_game_code, watch_datekey, game_sub_user_name, watch_cnt)
             VALUES (
-                source.JoypleGameID
-                , source.WatchDateKST
-                , source.GameSubUserName
-                , source.WatchADCount
+                source.joyple_game_code
+                , source.watch_datekey
+                , source.game_sub_user_name
+                , source.watch_cnt
             );
 
             """
@@ -298,7 +298,7 @@ with DAG(
 
         for td in target_date:
             target_date = td
-
+            # 7일 동안 데이터 삭제 후 다시 insert 처리
             # KST
             start_utc = (target_date - timedelta(days=8)).replace(tzinfo=kst).astimezone(pytz.UTC)
             end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
@@ -311,8 +311,29 @@ with DAG(
 
             query = f"""
             INSERT INTO `datahub-478802`.datahub.f_IAA_auth_account_performance_joyple
-            (joyple_game_code, watch_datekey, watch_datetime, mediation_name, auth_account_name, auth_method_id, gam_sub_user_name, reg_datekey, reg_country_code,
-            os_iaa, log_id, ad_network_code, ad_code, ad_name, placement, media_source, campaign, init_campagin, reg_datediff, revenue_per_user_USD, revenue_per_user_KRW)
+            (
+              joyple_game_code, 
+              watch_datekey, 
+              watch_datetime, 
+              mediation_name, 
+              auth_account_name, 
+              auth_method_id, 
+              game_sub_user_name, 
+              reg_datekey, 
+              reg_country_code,
+              os_iaa, 
+              log_id, 
+              ad_network_code, 
+              ad_code, 
+              ad_name, 
+              placement, 
+              media_source, 
+              campaign, 
+              init_campaign, 
+              reg_datediff, 
+              revenue_per_user_USD, 
+              revenue_per_user_KRW
+              )
 
                 WITH Iaa_Data
                 AS (
@@ -334,7 +355,7 @@ with DAG(
                     , Info.logtime_utc                                                as LogTimeUTC
                     , Info.logdate_utc                                                as LogDateUTC
                     , b.reg_datekey                                         as AuthAccountRegisterDateKST
-                    , b.country_code                                                   as CountryCode
+                    , b.reg_country_code                                                   as CountryCode
                     , b.tracker_account_id
                     , b.tracker_type_id
                     , DATE_DIFF(DATE(Info.logdate_kst), b.reg_datekey, DAY) as DaysFromRegisterDate
@@ -459,7 +480,7 @@ with DAG(
                 FROM Iaa_Data AS a
                 INNER JOIN `datahub-478802`.datahub.dim_exchange AS c 
                 ON (a.CurrencyCode = c.currency AND a.LogDateKST = c.datekey)
-                LEFT OUTRE JOIN `datahub-478802`.datahub.f_tracker_install AS d
+                LEFT OUTER JOIN `datahub-478802`.datahub.f_tracker_install AS d
                 ON (a.tracker_account_id = d.tracker_account_id AND a.tracker_type_id = d.tracker_type_id)
             """
 
@@ -486,12 +507,28 @@ with DAG(
             delete_query=f"""
             DELETE FROM `datahub-478802.datahub.f_IAA_auth_account_performance`
             WHERE watch_datekey >= DATE('2025-11-15', "Asia/Seoul)
-            AND watch_datekey < DATE('2025-11-15', "Asia/Seoul)
+            AND watch_datekey < DATE('2025-12-15', "Asia/Seoul)
             """
 
             query=f"""            
-            INSERT `datahub-478802`.datahub.f_IAA_auth_account_performance
-            (watch_datekey, auth_account_name, auth_method_id, reg_datekey, reg_country_code, os, media_source, campaign, init_campaign, reg_datediff, watch_AD_cnt, revenue_per_user, revenue_per_user_KRW, from_source)
+                        INSERT `datahub-478802`.datahub.f_IAA_auth_account_performance
+            (
+              joyple_game_code,
+              watch_datekey,
+              auth_account_name, 
+              auth_method_id, 
+              reg_datekey, 
+              reg_country_code,
+              os, 
+              media_source, 
+              campaign, 
+              init_campaign, 
+              reg_datediff, 
+              watch_cnt, 
+              revenue_per_user, 
+              revenue_per_user_KRW, 
+              from_source
+            )
 
             WITH InAppADPerformance
                 AS 
