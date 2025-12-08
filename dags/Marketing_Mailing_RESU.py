@@ -358,7 +358,30 @@ with DAG(
             msg['From'] = SENDER_EMAIL
             msg['To'] = ', '.join(RECIPIENT_EMAILS)
             msg['Subject'] = "[Joyple] UA Performance & Cost Report"
-            msg.attach(MIMEText(html_body, 'html'))
+            
+            # 이메일 헤더 추가 (스팸 필터 회피)
+            import email.utils
+            msg['Message-ID'] = email.utils.make_msgid()
+            msg['Date'] = email.utils.formatdate(localtime=True)
+            msg['Reply-To'] = SENDER_EMAIL
+            msg['X-Mailer'] = 'Joyple-Airflow/1.0'
+            
+            # 텍스트 버전 추가 (Plain Text - HTML이 로드 안 될 경우 대체)
+            text_body = f"""Joyple UA Performance & Cost Report
+            조회 기간: {two_weeks_ago} ~ {today}
+            총 행 수: {len(df_all)}
+            생성 시간: {datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")} (KST)
+
+            상세 내용은 HTML 형식의 이메일을 참고하세요.
+
+            자동 생성된 이메일입니다. 회신하지 마세요.
+            """
+            msg.attach(MIMEText(text_body, 'plain', 'utf-8'))
+            
+            # HTML 버전 추가
+            msg.attach(MIMEText(html_body, 'html', 'utf-8'))
+
+
 
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
