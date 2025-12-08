@@ -193,14 +193,15 @@ with DAG(
             
             select regdate_joyple_kst --, geo_user_group 
             , ROUND(sum(cost_exclude_credit),0) as cost
-            , ROUND(sum(install) as install, sum(ru), 0) as ru
-            , ROUND(sum(cost_exclude_credit)/sum(install),1) as CPI 
-            , ROUND(sum(cost_exclude_credit)/sum(ru),0)  as CPRU
-            , ROUND(sum(rev_d0)/sum(ru),0)  as D0LTV
-            , ROUND(sum(rev_d1)/sum(ru),0)  as D1LTV
-            , ROUND(sum(rev_d3)/sum(ru),0)  as D3LTV
-            , ROUND(sum(rev_d7)/sum(ru),0)  as D7LTV
-            , ROUND(sum(rev_dcum)/sum(ru),0)  as DcumLTV
+            , ROUND(sum(install), 0) as install
+            , ROUND(sum(ru), 0) as ru
+            , ROUND(sum(cost_exclude_credit)/sum(install), 1) as CPI 
+            , ROUND(sum(cost_exclude_credit)/sum(ru), 0)  as CPRU
+            , ROUND(sum(rev_d0)/sum(ru), 0)  as D0LTV
+            , ROUND(sum(rev_d1)/sum(ru), 0)  as D1LTV
+            , ROUND(sum(rev_d3)/sum(ru), 0)  as D3LTV
+            , ROUND(sum(rev_d7)/sum(ru), 0)  as D7LTV
+            , ROUND(sum(rev_dcum)/sum(ru), 0)  as DcumLTV
             , ROUND(sum(ru_d1)/sum(ru)*100, 2)  as D1RET
             , ROUND(sum(ru_d3)/sum(ru)*100, 2)  as D3RET
             , ROUND(sum(ru_d7)/sum(ru)*100, 2)  as D7RET
@@ -224,12 +225,12 @@ with DAG(
 
             # HTML 표 생성 (제공된 형식 참고)
             html_table_header = '<tr class="data-title">'
-            for col in df.columns:
+            for col in df_all.columns:
                 html_table_header += f'<td>{col}</td>'
             html_table_header += '</tr>'
 
             html_table_rows = ''
-            for idx, row in df.iterrows():
+            for idx, row in df_all.iterrows():
                 row_class = 'data1' if idx % 2 == 0 else 'data2'
                 html_table_rows += f'<tr class="{row_class}">'
                 for cell in row:
