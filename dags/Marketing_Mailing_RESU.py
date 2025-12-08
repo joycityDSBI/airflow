@@ -27,7 +27,7 @@ with DAG(
     dag_id='Marketing_Mailing_RESU',
     default_args=default_args,
     description='RESU 마케팅 결과를 메일링',
-    schedule_interval='30 20 * * *',
+    schedule='30 20 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['marketing', 'mailing', 'RESU'],
