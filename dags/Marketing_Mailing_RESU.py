@@ -513,6 +513,21 @@ with DAG(
                                 </tbody>
                             </table>
 
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">조회 기간: {two_weeks_ago} ~ {today} | 총 행 수: {len(df_geo)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_geo}
+                                    {html_table_rows_geo}
+                                </tbody>
+                            </table>
+
                             <div style="text-align: center; margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; color: #999; font-size: 8pt;">
                                 <p>자동 생성된 이메일입니다. 회신하지 마세요.</p>
                             </div>
