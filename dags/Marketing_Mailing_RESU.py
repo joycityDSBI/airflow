@@ -220,8 +220,8 @@ with DAG(
             df_all = bigquery_client.query(query).to_dataframe()
             logger.info(f"✅ 데이터 추출 완료: {len(df_all)} rows")
 
-            # DataFrame을 마크다운 표로 변환
-            markdown_table = df_all.to_markdown(index=False)
+            # DataFrame을 HTML 표로 변환
+            html_table = df_all.to_html(index=False, border=1, justify='center')
 
             # 이메일 HTML 본문 생성
             current_time = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
@@ -230,17 +230,32 @@ with DAG(
                 <head>
                     <meta charset="UTF-8">
                     <style>
-                        body {{ font-family: Arial, sans-serif; }}
-                        table {{ border-collapse: collapse; width: 100%; margin-top: 20px; }}
-                        th {{ background-color: #4CAF50; color: white; padding: 10px; text-align: left; }}
-                        td {{ padding: 8px; border-bottom: 1px solid #ddd; }}
+                        body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }}
+                        .container {{ background-color: white; max-width: 1400px; margin: 0 auto; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+                        h2 {{ color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 15px; margin-top: 0; }}
+                        .info {{ background-color: #f0f8ff; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #4CAF50; }}
+                        .info p {{ margin: 8px 0; color: #555; }}
+                        table {{ border-collapse: collapse; width: 100%; margin-top: 20px; font-size: 13px; }}
+                        th {{ background-color: #4CAF50; color: white; padding: 12px; text-align: left; font-weight: bold; }}
+                        td {{ padding: 10px 12px; border: 1px solid #ddd; word-break: break-word; }}
                         tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                        tr:hover {{ background-color: #efefef; }}
+                        .footer {{ text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 11px; }}
                     </style>
                 </head>
                 <body>
-                    <h2>📊 Joyple UA Performance & Cost Report</h2>
-                    <p><strong>Generated:</strong> {current_time} (KST)</p>
-                    <pre>{markdown_table}</pre>
+                    <div class="container">
+                        <h2>📊 Joyple UA Performance & Cost Report</h2>
+                        <div class="info">
+                            <p><strong>생성 시간:</strong> {current_time} (KST)</p>
+                            <p><strong>조회 기간:</strong> {two_weeks_ago} ~ {today}</p>
+                            <p><strong>총 행 수:</strong> {len(df_all)}</p>
+                        </div>
+                        {html_table}
+                        <div class="footer">
+                            <p>자동 생성된 이메일입니다. 회신하지 마세요.</p>
+                        </div>
+                    </div>
                 </body>
             </html>
             """
