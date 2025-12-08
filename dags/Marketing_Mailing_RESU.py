@@ -269,5 +269,5 @@ with DAG(
     task = PythonOperator(
         task_id='extract_and_send_email',
         python_callable=extract_and_send_email,
-        provide_context=True
+        dag=dag,
     )
