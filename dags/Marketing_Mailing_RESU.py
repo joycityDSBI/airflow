@@ -67,6 +67,23 @@ with DAG(
     today = datetime.now(kst).date()
     two_weeks_ago = today - timedelta(days=14) # 2주 전 데이터 기준으로 가져오기
 
+    # 숫자 포맷팅 함수 (1000단위 쉼표 추가)
+    def format_number(value):
+        """숫자에 1000단위 쉼표 추가"""
+        if pd.isna(value):
+            return ''
+        try:
+            # 숫자 타입 확인
+            num = float(value)
+            # 정수인 경우
+            if num == int(num):
+                return f"{int(num):,}"
+            # 소수점이 있는 경우
+            else:
+                return f"{num:,.2f}"
+        except (ValueError, TypeError):
+            return str(value)
+
     def extract_and_send_email(**context):
         """쿼리 실행 및 이메일 발송"""
         try:
@@ -234,7 +251,7 @@ with DAG(
                 row_class = 'data1' if idx % 2 == 0 else 'data2'
                 html_table_rows += f'<tr class="{row_class}">'
                 for cell in row:
-                    cell_value = '' if pd.isna(cell) else str(cell)
+                    cell_value = format_number(cell)
                     html_table_rows += f'<td>{cell_value}</td>'
                 html_table_rows += '</tr>'
 
@@ -401,7 +418,7 @@ with DAG(
                 row_class = 'data1' if idx % 2 == 0 else 'data2'
                 html_table_rows_geo += f'<tr class="{row_class}">'
                 for cell in row:
-                    cell_value = '' if pd.isna(cell) else str(cell)
+                    cell_value = format_number(cell)
                     html_table_rows_geo += f'<td>{cell_value}</td>'
                 html_table_rows_geo += '</tr>'
 
@@ -568,7 +585,7 @@ with DAG(
                 row_class = 'data1' if idx % 2 == 0 else 'data2'
                 html_table_rows_non += f'<tr class="{row_class}">'
                 for cell in row:
-                    cell_value = '' if pd.isna(cell) else str(cell)
+                    cell_value = format_number(cell)
                     html_table_rows_non += f'<td>{cell_value}</td>'
                 html_table_rows_non += '</tr>'
 
@@ -735,7 +752,7 @@ with DAG(
                 row_class = 'data1' if idx % 2 == 0 else 'data2'
                 html_table_rows_nongeo += f'<tr class="{row_class}">'
                 for cell in row:
-                    cell_value = '' if pd.isna(cell) else str(cell)
+                    cell_value = format_number(cell)
                     html_table_rows_nongeo += f'<td>{cell_value}</td>'
                 html_table_rows_nongeo += '</tr>'
 
