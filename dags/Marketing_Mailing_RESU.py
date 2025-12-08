@@ -192,22 +192,23 @@ with DAG(
 
             
             select regdate_joyple_kst --, geo_user_group 
-            , sum(cost_exclude_credit) as cost,  sum(install) as install, sum(ru) as ru
-            ,  sum(cost_exclude_credit)/sum(install) as CPI 
-            ,  sum(cost_exclude_credit)/sum(ru)  as CPRU
-            ,  sum(rev_d0)/sum(ru)  as D0LTV
-            ,  sum(rev_d1)/sum(ru)  as D1LTV
-            ,  sum(rev_d3)/sum(ru)  as D3LTV
-            ,  sum(rev_d7)/sum(ru)  as D7LTV
-            ,  sum(rev_dcum)/sum(ru)  as DcumLTV
-            ,  sum(ru_d1)/sum(ru)  as D1RET
-            ,  sum(ru_d3)/sum(ru)  as D3RET
-            ,  sum(ru_d7)/sum(ru)  as D7RET
-            ,  sum(rev_d0)/sum(cost_exclude_credit)  as D0ROAS
-            ,  sum(rev_d1)/sum(cost_exclude_credit)  as D1ROAS
-            ,  sum(rev_d3)/sum(cost_exclude_credit)  as D3ROAS
-            ,  sum(rev_d7)/sum(cost_exclude_credit)  as D7ROAS
-            ,  sum(rev_dcum)/sum(cost_exclude_credit)  as DcumROAS
+            , ROUND(sum(cost_exclude_credit),0) as cost
+            , ROUND(sum(install) as install, sum(ru), 0) as ru
+            , ROUND(sum(cost_exclude_credit)/sum(install),1) as CPI 
+            , ROUND(sum(cost_exclude_credit)/sum(ru),0)  as CPRU
+            , ROUND(sum(rev_d0)/sum(ru),0)  as D0LTV
+            , ROUND(sum(rev_d1)/sum(ru),0)  as D1LTV
+            , ROUND(sum(rev_d3)/sum(ru),0)  as D3LTV
+            , ROUND(sum(rev_d7)/sum(ru),0)  as D7LTV
+            , ROUND(sum(rev_dcum)/sum(ru),0)  as DcumLTV
+            , ROUND(sum(ru_d1)/sum(ru)*100, 2)  as D1RET
+            , ROUND(sum(ru_d3)/sum(ru)*100, 2)  as D3RET
+            , ROUND(sum(ru_d7)/sum(ru)*100, 2)  as D7RET
+            , ROUND(sum(rev_d0)/sum(cost_exclude_credit)*100, 2)  as D0ROAS
+            , ROUND(sum(rev_d1)/sum(cost_exclude_credit)*100, 2)  as D1ROAS
+            , ROUND(sum(rev_d3)/sum(cost_exclude_credit)*100, 2)  as D3ROAS
+            , ROUND(sum(rev_d7)/sum(cost_exclude_credit)*100, 2)  as D7ROAS
+            , ROUND(sum(rev_dcum)/sum(cost_exclude_credit)*100, 2)  as DcumROAS
             from final2 
             where regdate_joyple_kst >= '{two_weeks_ago}' -- 최근 2주 정도? 
             and osuser = 'And'#And UA User 필터
@@ -221,57 +222,134 @@ with DAG(
             df_all = bigquery_client.query(query).to_dataframe()
             logger.info(f"✅ 데이터 추출 완료: {len(df_all)} rows")
 
-            # HTML 표 수동 생성 (메일 호환성을 위해 인라인 스타일 사용)
-            html_table_header = '<tr>'
-            for col in df_all.columns:
-                html_table_header += f'<th style="background-color: #2E7D32; color: white; padding: 12px; text-align: left; font-weight: bold; border: 1px solid #1B5E20; font-size: 12px;">{col}</th>'
+            # HTML 표 생성 (제공된 형식 참고)
+            html_table_header = '<tr class="data-title">'
+            for col in df.columns:
+                html_table_header += f'<td>{col}</td>'
             html_table_header += '</tr>'
 
             html_table_rows = ''
-            for idx, row in df_all.iterrows():
-                html_table_rows += '<tr>'
+            for idx, row in df.iterrows():
+                row_class = 'data1' if idx % 2 == 0 else 'data2'
+                html_table_rows += f'<tr class="{row_class}">'
                 for cell in row:
-                    # None, NaN 값 처리
                     cell_value = '' if pd.isna(cell) else str(cell)
-                    bg_color = '#f9f9f9' if idx % 2 == 0 else '#ffffff'
-                    html_table_rows += f'<td style="padding: 10px 12px; border: 1px solid #ddd; font-size: 11px; background-color: {bg_color};">{cell_value}</td>'
+                    html_table_rows += f'<td>{cell_value}</td>'
                 html_table_rows += '</tr>'
 
-            html_table = f"""
-            <table style="border-collapse: collapse; width: 100%; margin: 20px 0; border: 1px solid #ddd;">
-                {html_table_header}
-                {html_table_rows}
-            </table>
-            """
 
              # 이메일 HTML 본문 생성 (메일 클라이언트 호환성을 위해 인라인 스타일 사용)
             current_time = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
-            html_body = f"""
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                </head>
-                <body style="font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
-                    <div style="background-color: white; max-width: 1200px; margin: 0 auto; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <h2 style="color: #1B5E20; border-bottom: 3px solid #2E7D32; padding-bottom: 15px; margin-top: 0; margin-bottom: 20px;">📊 Joyple UA Performance & Cost Report</h2>
-                        
-                        <div style="background-color: #E8F5E9; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 5px solid #2E7D32;">
-                            <p style="margin: 8px 0; color: #333; font-size: 14px;"><strong>생성 시간:</strong> {current_time} (KST)</p>
-                            <p style="margin: 8px 0; color: #333; font-size: 14px;"><strong>조회 기간:</strong> {two_weeks_ago} ~ {today}</p>
-                            <p style="margin: 8px 0; color: #333; font-size: 14px;"><strong>총 행 수:</strong> {len(df_all)}</p>
-                        </div>
-                        
-                        {html_table}
-                        
-                        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 11px;">
-                            <p>자동 생성된 이메일입니다. 회신하지 마세요.</p>
-                        </div>
-                    </div>
-                </body>
-            </html>
-            """
+            html_body = f"""<!DOCTYPE html>
+                        <html lang="ko">
+                        <head>
+                            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+                            <meta http-equiv="Content-Script-Type" content="text/javascript">
+                            <meta http-equiv="Content-Style-Type" content="text/css">
+                            <meta http-equiv="X-UA-Compatible" content="IE=edge">
+                            <meta name="robots" content="noindex, nofollow">
+                            <title>Joyple UA Performance & Cost Report</title>
+                            <style>
+                                body {{
+                                    padding: 10px;
+                                    margin: 0;
+                                    width: 100%;
+                                    font-family: Arial, Verdana, Gulim;
+                                    font-size: 8pt;
+                                }}
+                                table {{
+                                    width: 100%;
+                                    display: table;
+                                    border-collapse: collapse;
+                                }}
+                                tr {{
+                                    display: table-row;
+                                    vertical-align: inherit;
+                                    border-color: inherit;
+                                }}
+                                tr:nth-child(odd) {{
+                                    background: #f2f2f2;
+                                    text-align: right;
+                                    color: #555555;
+                                }}
+                                tr:nth-child(even) {{
+                                    background: white;
+                                    text-align: right;
+                                    color: #555555;
+                                }}
+                                td {{
+                                    padding: 3px;
+                                    border: 1px #d6d6d6 solid;
+                                    text-align: center;
+                                    color: black;
+                                    white-space: nowrap;
+                                }}
+                                tr.data1 td {{
+                                    background: white;
+                                    text-align: right;
+                                    color: #555555;
+                                }}
+                                tr.data2 td {{
+                                    background: #f2f2f2;
+                                    text-align: right;
+                                    color: #555555;
+                                }}
+                                tr.data-title td {{
+                                    background: #eaeaec;
+                                    text-align: center;
+                                    color: black;
+                                    font-weight: bold;
+                                    border: 1px #d6d6d6 solid;
+                                }}
+                                .tableTitleNew1 {{
+                                    padding: 5px;
+                                    text-align: left;
+                                    font-weight: bold;
+                                    font-size: 8pt;
+                                    background: #424242;
+                                    color: white;
+                                    border: 1px #2e2e2e solid !important;
+                                }}
+                                .pcenter {{
+                                    text-align: center !important;
+                                }}
+                                .pleft {{
+                                    text-align: left !important;
+                                }}
+                            </style>
+                        </head>
+                        <body>
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space: nowrap" class="tableTitleNew1">
+                                            📊 Joyple UA Performance & Cost Report :: {current_time} (KST)
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">조회 기간: {two_weeks_ago} ~ {today} | 총 행 수: {len(df_all)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header}
+                                    {html_table_rows}
+                                </tbody>
+                            </table>
+
+                            <div style="text-align: center; margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; color: #999; font-size: 8pt;">
+                                <p>자동 생성된 이메일입니다. 회신하지 마세요.</p>
+                            </div>
+                        </body>
+                        </html>
+                        """
 
             # 이메일 발송
             logger.info("📧 이메일 발송 중...")
