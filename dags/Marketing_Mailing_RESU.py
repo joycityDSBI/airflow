@@ -388,7 +388,7 @@ with DAG(
             """
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
-            df_geo = bigquery_client.query(query).to_dataframe()
+            df_geo = bigquery_client.query(query2).to_dataframe()
             logger.info(f"✅ 데이터 추출 완료: {len(df_geo)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
@@ -510,13 +510,6 @@ with DAG(
                                 <tbody>
                                     {html_table_header}
                                     {html_table_rows}
-                                </tbody>
-                            </table>
-
-                            <table border="1" width="100%">
-                                <tbody>
-                                    {html_table_header_geo}
-                                    {html_table_rows_geo}
                                 </tbody>
                             </table>
 
