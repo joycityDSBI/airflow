@@ -218,7 +218,7 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_all = bigquery_client.query(query).to_dataframe()
-            logger.info(f"✅ 데이터 추출 완료: {len(df)} rows")
+            logger.info(f"✅ 데이터 추출 완료: {len(df_all)} rows")
 
             # DataFrame을 마크다운 표로 변환
             markdown_table = df_all.to_markdown(index=False)
