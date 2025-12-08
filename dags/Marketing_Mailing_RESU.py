@@ -915,6 +915,7 @@ with DAG(
 
         except Exception as e:
             logger.error(f"❌ 에러 발생: {str(e)}", exc_info=True)
+            print(f"❌ 에러 발생: {str(e)}"
             raise
 
     # Task 정의
