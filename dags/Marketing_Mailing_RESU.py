@@ -24,13 +24,13 @@ default_args = {
 }
 
 with DAG(
-    dag_id='game_framework_gbtw_main',
+    dag_id='Marketing_Mailing_RESU',
     default_args=default_args,
-    description='BigQuery 쿼리 결과를 이메일로 발송',
+    description='RESU 마케팅 결과를 메일링',
     schedule_interval='30 20 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=['notion', 'sync', 'databricks'],
+    tags=['marketing', 'mailing', 'RESU'],
 ) as dag:
 
     logger = logging.getLogger(__name__)
@@ -43,11 +43,13 @@ with DAG(
     PROJECT_ID = "data-science-division-216308"
     CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
     
+    # SMTP 설정
     SMTP_SERVER = get_var('SMTP_SERVER', 'smtp.gmail.com')
     SMTP_PORT = int(get_var('SMTP_PORT', '587'))
     SENDER_EMAIL = get_var('SENDER_EMAIL')
     SENDER_PASSWORD = get_var('SENDER_PASSWORD')
 
+    # 수신자 설정
     RECIPIENT_EMAILS = 'seongin@joycity.com'
     # RECIPIENT_EMAILS = [email.strip() for email in get_var('RECIPIENT_EMAILS', '').split(',') if email.strip()]
 
@@ -62,7 +64,7 @@ with DAG(
     # 날짜 가져오기 
     kst = timezone(timedelta(hours=9))
     today = datetime.now(kst).date()
-    two_weeks_ago = today - timedelta(days=14)
+    two_weeks_ago = today - timedelta(days=14) # 2주 전 데이터 기준으로 가져오기
 
     def extract_and_send_email(**context):
         """쿼리 실행 및 이메일 발송"""
@@ -206,7 +208,7 @@ with DAG(
             ,  sum(rev_d7)/sum(cost_exclude_credit)  as D7ROAS
             ,  sum(rev_dcum)/sum(cost_exclude_credit)  as DcumROAS
             from final2 
-            where regdate_joyple_kst >= {two_weeks_ago} -- 최근 2주 정도? 
+            where regdate_joyple_kst >= '{two_weeks_ago}' -- 최근 2주 정도? 
             and osuser = 'And'#And UA User 필터
             and gcat = 'UA' and media_category in ('ADNW','Facebook','Google') #And UA User 필터
             group by regdate_joyple_kst-- , geo_user_group  --- 전체> 국가 group 제외 
@@ -215,11 +217,11 @@ with DAG(
             """
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
-            df = bigquery_client.query(query).to_dataframe()
+            df_all = bigquery_client.query(query).to_dataframe()
             logger.info(f"✅ 데이터 추출 완료: {len(df)} rows")
 
             # DataFrame을 마크다운 표로 변환
-            markdown_table = df.to_markdown(index=False)
+            markdown_table = df_all.to_markdown(index=False)
 
             # 이메일 HTML 본문 생성
             current_time = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
@@ -238,7 +240,6 @@ with DAG(
                 <body>
                     <h2>📊 Joyple UA Performance & Cost Report</h2>
                     <p><strong>Generated:</strong> {current_time} (KST)</p>
-                    <p><strong>Total Rows:</strong> {len(df)}</p>
                     <pre>{markdown_table}</pre>
                 </body>
             </html>
