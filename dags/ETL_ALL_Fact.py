@@ -4,15 +4,12 @@ from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from airflow.models.baseoperator import chain
 
-import pandas as pd
 from google.cloud import bigquery
-from google.auth.transport.requests import Request
 import logging
-
 from datetime import datetime, timezone, timedelta
 import time
-import os
 import pytz
+
 
 #### Fact table 처리 함수 불러오기
 from ETL_Fact_tracker import *
@@ -74,6 +71,7 @@ with DAG(
             etl_f_common_register(target_date=target_date)
             etl_f_common_register_char(target_date=target_date)
             etl_f_common_access(target_date=target_date)
+            logger.info("etl_fact_access completed successfully")
             return True
         except Exception as e:
             logger.error(f"etl_fact_access failed with error: {e}")
@@ -86,6 +84,7 @@ with DAG(
             etl_pre_payment_info_fix()
             etl_f_common_payment_total(target_date=target_date)
             etl_f_common_payment(target_date=target_date)
+            logger.info("etl_fact_payment completed successfully")
             return True
         except Exception as e:
             logger.error(f"etl_fact_payment failed with error: {e}")
@@ -95,6 +94,7 @@ with DAG(
         try:
             etl_f_funnel_access_first(target_date=target_date)
             etl_f_funnel_access(target_date=target_date)
+            logger.info("etl_fact_funnel completed successfully")
             return True
         except Exception as e:
             logger.error(f"etl_fact_funnel failed with error: {e}")
@@ -106,6 +106,7 @@ with DAG(
             etl_f_IAA_performance()
             etl_f_IAA_auth_account_performance_joyple(target_date=target_date)
             etl_f_IAA_auth_account_performance(target_date=target_date)
+            logger.info("etl_fact_IAA completed successfully")
             return True
         except Exception as e:
             logger.error(f"etl_fact_IAA failed with error: {e}")
@@ -147,3 +148,4 @@ with DAG(
     )
 
     etl_fact_tracker_task >> etl_fact_access_task >> etl_fact_payment_task >> etl_fact_funnel_task >> etl_fact_IAA_task
+
