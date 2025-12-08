@@ -9,6 +9,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import logging
+import pandas as pd
 import os
 from airflow.models import Variable
 
@@ -220,39 +221,51 @@ with DAG(
             df_all = bigquery_client.query(query).to_dataframe()
             logger.info(f"✅ 데이터 추출 완료: {len(df_all)} rows")
 
-            # DataFrame을 HTML 표로 변환
-            html_table = df_all.to_html(index=False, border=1, justify='center')
+            # HTML 표 수동 생성 (메일 호환성을 위해 인라인 스타일 사용)
+            html_table_header = '<tr>'
+            for col in df_all.columns:
+                html_table_header += f'<th style="background-color: #2E7D32; color: white; padding: 12px; text-align: left; font-weight: bold; border: 1px solid #1B5E20; font-size: 12px;">{col}</th>'
+            html_table_header += '</tr>'
 
-            # 이메일 HTML 본문 생성
+            html_table_rows = ''
+            for idx, row in df_all.iterrows():
+                html_table_rows += '<tr>'
+                for cell in row:
+                    # None, NaN 값 처리
+                    cell_value = '' if pd.isna(cell) else str(cell)
+                    bg_color = '#f9f9f9' if idx % 2 == 0 else '#ffffff'
+                    html_table_rows += f'<td style="padding: 10px 12px; border: 1px solid #ddd; font-size: 11px; background-color: {bg_color};">{cell_value}</td>'
+                html_table_rows += '</tr>'
+
+            html_table = f"""
+            <table style="border-collapse: collapse; width: 100%; margin: 20px 0; border: 1px solid #ddd;">
+                {html_table_header}
+                {html_table_rows}
+            </table>
+            """
+
+             # 이메일 HTML 본문 생성 (메일 클라이언트 호환성을 위해 인라인 스타일 사용)
             current_time = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
             html_body = f"""
+            <!DOCTYPE html>
             <html>
                 <head>
                     <meta charset="UTF-8">
-                    <style>
-                        body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }}
-                        .container {{ background-color: white; max-width: 1400px; margin: 0 auto; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-                        h2 {{ color: #333; border-bottom: 3px solid #4CAF50; padding-bottom: 15px; margin-top: 0; }}
-                        .info {{ background-color: #f0f8ff; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 4px solid #4CAF50; }}
-                        .info p {{ margin: 8px 0; color: #555; }}
-                        table {{ border-collapse: collapse; width: 100%; margin-top: 20px; font-size: 13px; }}
-                        th {{ background-color: #4CAF50; color: white; padding: 12px; text-align: left; font-weight: bold; }}
-                        td {{ padding: 10px 12px; border: 1px solid #ddd; word-break: break-word; }}
-                        tr:nth-child(even) {{ background-color: #f9f9f9; }}
-                        tr:hover {{ background-color: #efefef; }}
-                        .footer {{ text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 11px; }}
-                    </style>
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 </head>
-                <body>
-                    <div class="container">
-                        <h2>📊 Joyple UA Performance & Cost Report</h2>
-                        <div class="info">
-                            <p><strong>생성 시간:</strong> {current_time} (KST)</p>
-                            <p><strong>조회 기간:</strong> {two_weeks_ago} ~ {today}</p>
-                            <p><strong>총 행 수:</strong> {len(df_all)}</p>
+                <body style="font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+                    <div style="background-color: white; max-width: 1200px; margin: 0 auto; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <h2 style="color: #1B5E20; border-bottom: 3px solid #2E7D32; padding-bottom: 15px; margin-top: 0; margin-bottom: 20px;">📊 Joyple UA Performance & Cost Report</h2>
+                        
+                        <div style="background-color: #E8F5E9; padding: 15px; margin: 20px 0; border-radius: 5px; border-left: 5px solid #2E7D32;">
+                            <p style="margin: 8px 0; color: #333; font-size: 14px;"><strong>생성 시간:</strong> {current_time} (KST)</p>
+                            <p style="margin: 8px 0; color: #333; font-size: 14px;"><strong>조회 기간:</strong> {two_weeks_ago} ~ {today}</p>
+                            <p style="margin: 8px 0; color: #333; font-size: 14px;"><strong>총 행 수:</strong> {len(df_all)}</p>
                         </div>
+                        
                         {html_table}
-                        <div class="footer">
+                        
+                        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 11px;">
                             <p>자동 생성된 이메일입니다. 회신하지 마세요.</p>
                         </div>
                     </div>
