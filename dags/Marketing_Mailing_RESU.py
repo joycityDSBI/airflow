@@ -46,8 +46,8 @@ with DAG(
     # SMTP 설정
     SMTP_SERVER = get_var('SMTP_SERVER', 'smtp.gmail.com')
     SMTP_PORT = int(get_var('SMTP_PORT', '587'))
-    SENDER_EMAIL = get_var('SENDER_EMAIL')
-    SENDER_PASSWORD = get_var('SENDER_PASSWORD')
+    SENDER_EMAIL = get_var('EMAIL_FROM')
+    SENDER_PASSWORD = get_var('SMTP_PASSWORD')
 
     # 수신자 설정
     RECIPIENT_EMAILS = 'seongin@joycity.com'
