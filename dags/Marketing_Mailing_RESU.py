@@ -67,7 +67,124 @@ with DAG(
     today = datetime.now(kst).date()
     two_weeks_ago = today - timedelta(days=14)
     yesterday = today - timedelta(days=1)
-# 2주 전 데이터 기준으로 가져오기
+    
+    # Basic query
+    basic_query = f"""
+            with UA_perfo as (
+            select a.JoypleGameID, a.RegdateAuthAccountDateKST, a.APPID,
+                a.MediaSource, a.CamPaign
+                , b.UptdtCampaign
+                , case when a.MediaSource in ('Unknown', 'NULL') then 'Unknown'                
+                        when a.campaign like '%Pirates of the Caribbean Android AU%' then 'UA'  
+                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'UA' 
+                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'UA'
+                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'UA'  
+                        when a.campaign = 'POTC_検索' then 'UA'
+                        when b.gcat is null and a.JoypleGameID =131 then d.gcat 
+                    else b.gcat
+                    end as gcat
+                , a.CountryCode, a.MarketName, a.OS, a.AdsetName, a.AdName
+                , a.TrackerInstallCount, a.RU
+                , a.rev_d0, a.rev_d1, a.rev_d3, a.rev_d7, a.rev_dcum
+                , a.ru_d1, a.ru_d3, a.ru_d7
+                , case  when a.campaign like '%Pirates of the Caribbean Android AU%' then 'ADNW'
+                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'ADNW'
+                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'ADNW'
+                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'ADNW'
+                        when a.campaign = 'POTC_検索' then 'ADNW' 
+                        when b.gcat is null and a.JoypleGameID = 131 then d.media_category 
+                        else b.mediacategory 
+                    end as mediacategory 
+                , b.productcategory, b.media, b.mediadetail
+                , case when b.optim  = 'NONE' and a.AdsetName like '%MAIA%' then 'MAIA'
+                        when b.optim  = 'NONE' and a.AdsetName like '%AEO%' then 'AEO'
+                        when b.optim  = 'NONE' and a.AdsetName like '%VO%' then 'VO'
+                    else b.optim end as optim 
+                , b.etccategory,  b.OSCAM, b.GEOCAM      
+                , b.class
+            , case when  a.MediaSource    = 'Unknown' then '5.Organic' else b.targetgroup end as targetgroup 
+            , case when CountryCode = 'US' then '1.US'
+                when CountryCode = 'JP' then '2.JP'
+                when CountryCode in ('UK','FR','DE','GB') then '3.WEU'
+                else '4.ETC' end as geo_user_group 
+            from(select *
+                from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
+                where JoypleGameID in (1590,159)
+                and RegdateAuthAccountDateKST >= '2025-11-18'
+                and RegdateAuthAccountDateKST < CURRENT_DATE('Asia/Seoul')
+                ) as a
+            left join (select distinct *
+                    from `dataplatform-reporting.DataService.V_0261_0000_AFCampaignRule_V`) as b
+            on a.appID = b.appID and a.MediaSource = b.MediaSource and a.Campaign = b.initCampaign
+            left join `data-science-division-216308.POTC.before_mas_campaign` as d
+            on a.campaign = d.campaign 
+            )
+
+
+
+            , cost_raw AS(
+            select joyplegameid,gameid,  cmpgndate, gcat ,mediacategory, os, geo_user_group
+            , sum(costcurrency) as cost, sum(costcurrencyuptdt) as cost_exclude_credit
+            from (select  * , case when CountryCode = 'US' then '1.US'
+                when CountryCode = 'JP' then '2.JP'
+                when CountryCode in ('UK','FR','DE','GB') then '3.WEU'
+                else '4.ETC' end as geo_user_group 
+            from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
+            where joyplegameid in (1590,159)
+            and cmpgndate >='2025-11-18'
+                and cmpgndate < CURRENT_DATE('Asia/Seoul')
+            ) 
+            group by  joyplegameid,gameid,  cmpgndate, gcat, mediacategory, os,  geo_user_group
+            )
+
+
+            , final AS(
+            select 
+            ifnull(a.joyplegameid , b.joyplegameid) as joyplegameid 
+            ,ifnull(a.RegdateAuthAccountDateKST , b.cmpgndate) as RegdateAuthAccountDateKST
+            , ifnull(a.gcat, b.gcat) as gcat 
+            , ifnull(a.mediacategory, b.mediacategory) as mediacategory
+            , ifnull(a.osuser, b.os) as osuser 
+            , ifnull(a.geo_user_group, b.geo_user_group) as geo_user_group 
+            , a.install, a.ru 
+            ,a.rev_D0, a.rev_D1, a.rev_D3, a.rev_D7, a.rev_dcum
+            , ru_d1, ru_d3, ru_d7
+            , b.cost, b.cost_exclude_credit
+            , date_diff(  CURRENT_DATE('Asia/Seoul'), (case when a.RegdateAuthAccountDateKST is null then b.cmpgndate else a.RegdateAuthAccountDateKST end) ,day) as daydiff 
+            from(
+            select joyplegameid , RegdateAuthAccountDateKST, gcat, mediacategory, geo_user_group
+            , case when OS = 'android' then 'And' when OS = 'ios' then 'IOS' else OS end as osuser 
+            , sum(TrackerInstallCount) as install, sum(ru) as ru , sum(rev_D0) as rev_D0 ,
+            sum(rev_D1) as rev_D1 , sum(rev_D3) as rev_D3 , sum(rev_D7) as rev_D7,  sum(rev_dcum) as rev_Dcum 
+            , sum(ru_d1) as ru_d1, sum(ru_d3) as ru_d3, sum(ru_d7) as ru_d7
+            from ua_perfo 
+            group by  joyplegameid, RegdateAuthAccountDateKST, gcat, mediacategory,  geo_user_group  , os
+
+            ) as a 
+            full join cost_raw as b 
+            on a.joyplegameid = b.joyplegameid
+            and a.regdateauthaccountdatekst = b.cmpgndate
+            and a.gcat = b.gcat 
+            and a.mediacategory = b.mediacategory 
+            and a.geo_user_group = b.geo_user_group 
+            and a.osuser = b.os
+            )
+
+
+            , final2 AS(
+            select joyplegameid, RegdateAuthAccountDateKST as regdate_joyple_kst , gcat, mediacategory as media_category , geo_user_group, osuser,install, ru, rev_d0, 
+            case when daydiff <= 1 then null else rev_d1 end as rev_D1, 
+            case when daydiff <= 3 then null else rev_d3 end as rev_D3, 
+            case when daydiff <= 7 then null else rev_d7 end as rev_D7,
+            rev_Dcum, 
+            case when daydiff <= 1 then null else ru_d1 end as ru_d1, 
+            case when daydiff <= 3 then null else ru_d3 end as ru_d3, 
+            case when daydiff <= 7 then null else ru_d7 end as ru_d7,
+            cost, cost_exclude_credit, 
+            daydiff 
+            from final)
+
+            """
 
     # 숫자 포맷팅 함수 (1000단위 쉼표 추가)
     def format_number(value):
@@ -85,142 +202,39 @@ with DAG(
                 return f"{num:,.2f}"
         except (ValueError, TypeError):
             return str(value)
+        
+    def format_table(df):
+        html_table_header = '<tr class="data-title">'
+        for col in df.columns:
+            html_table_header += f'<td>{col}</td>'  
+        html_table_header += '</tr>'
+        html_table_rows = ''
+        for idx, row in df.iterrows():
+            row_class = 'data1' if idx % 2 == 0 else 'data2'
+            html_table_rows += f'<tr class="{row_class}">'
+            for cell in row:
+                cell_value = format_number(cell)
+                html_table_rows += f'<td>{cell_value}</td>'
+            html_table_rows += '</tr>'
+        return html_table_header, html_table_rows
 
     def extract_and_send_email(**context):
         """쿼리 실행 및 이메일 발송"""
         try:
             # BigQuery 쿼리 실행
-            query = f"""
-            with UA_perfo as (
-            select a.JoypleGameID, a.RegdateAuthAccountDateKST, a.APPID,
-                a.MediaSource, a.CamPaign
-                , b.UptdtCampaign
-                , case when a.MediaSource in ('Unknown', 'NULL') then 'Unknown'                
-                        when a.campaign like '%Pirates of the Caribbean Android AU%' then 'UA'  
-                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'UA' 
-                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'UA'
-                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'UA'  
-                        when a.campaign = 'POTC_検索' then 'UA'
-                        when b.gcat is null and a.JoypleGameID =131 then d.gcat 
-                    else b.gcat
-                    end as gcat
-                , a.CountryCode, a.MarketName, a.OS, a.AdsetName, a.AdName
-                , a.TrackerInstallCount, a.RU
-                , a.rev_d0, a.rev_d1, a.rev_d3, a.rev_d7, a.rev_dcum
-                , a.ru_d1, a.ru_d3, a.ru_d7
-                , case  when a.campaign like '%Pirates of the Caribbean Android AU%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'ADNW'
-                        when a.campaign = 'POTC_検索' then 'ADNW' 
-                        when b.gcat is null and a.JoypleGameID = 131 then d.media_category 
-                        else b.mediacategory 
-                    end as mediacategory 
-                , b.productcategory, b.media, b.mediadetail
-                , case when b.optim  = 'NONE' and a.AdsetName like '%MAIA%' then 'MAIA'
-                        when b.optim  = 'NONE' and a.AdsetName like '%AEO%' then 'AEO'
-                        when b.optim  = 'NONE' and a.AdsetName like '%VO%' then 'VO'
-                    else b.optim end as optim 
-                , b.etccategory,  b.OSCAM, b.GEOCAM      
-                , b.class
-            , case when  a.MediaSource    = 'Unknown' then '5.Organic' else b.targetgroup end as targetgroup 
-            , case when CountryCode = 'KR' then '1.KR'
-                when CountryCode = 'US' then '2.US'
-                when CountryCode = 'JP' then '3.JP'
-                when CountryCode in ('UK','FR','DE','GB') then '4.WEU'
-                else '5.ETC' end as geo_user_group 
-            from(select *
-                from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
-                where JoypleGameID in (1590,159)
-                and RegdateAuthAccountDateKST >= '2025-11-18'
-                and RegdateAuthAccountDateKST < CURRENT_DATE('Asia/Seoul')
-                ) as a
-            left join (select distinct *
-                    from `dataplatform-reporting.DataService.V_0261_0000_AFCampaignRule_V`) as b
-            on a.appID = b.appID and a.MediaSource = b.MediaSource and a.Campaign = b.initCampaign
-            left join `data-science-division-216308.POTC.before_mas_campaign` as d
-            on a.campaign = d.campaign 
-            )
-
-
-
-            , cost_raw AS(
-            select joyplegameid,gameid,  cmpgndate, gcat ,mediacategory, os, geo_user_group
-            , sum(costcurrency) as cost, sum(costcurrencyuptdt) as cost_exclude_credit
-            from (select  * , case when CountryCode = 'KR' then '1.KR'
-                when CountryCode = 'US' then '2.US'
-                when CountryCode = 'JP' then '3.JP'
-                when CountryCode in ('UK','FR','DE','GB') then '4.WEU'
-                else '5.ETC' end as geo_user_group 
-            from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
-            where joyplegameid in (1590,159)
-            and cmpgndate >='2025-11-18'
-                and cmpgndate < CURRENT_DATE('Asia/Seoul')
-            ) 
-            group by  joyplegameid,gameid,  cmpgndate, gcat, mediacategory, os,  geo_user_group
-            )
-
-
-            , final AS(
-            select 
-            ifnull(a.joyplegameid , b.joyplegameid) as joyplegameid 
-            ,ifnull(a.RegdateAuthAccountDateKST , b.cmpgndate) as RegdateAuthAccountDateKST
-            , ifnull(a.gcat, b.gcat) as gcat 
-            , ifnull(a.mediacategory, b.mediacategory) as mediacategory
-            , ifnull(a.osuser, b.os) as osuser 
-            , ifnull(a.geo_user_group, b.geo_user_group) as geo_user_group 
-            , a.install, a.ru 
-            ,a.rev_D0, a.rev_D1, a.rev_D3, a.rev_D7, a.rev_dcum
-            , ru_d1, ru_d3, ru_d7
-            , b.cost, b.cost_exclude_credit
-            , date_diff(  CURRENT_DATE('Asia/Seoul'), (case when a.RegdateAuthAccountDateKST is null then b.cmpgndate else a.RegdateAuthAccountDateKST end) ,day) as daydiff 
-            from(
-            select joyplegameid , RegdateAuthAccountDateKST, gcat, mediacategory, geo_user_group
-            , case when OS = 'android' then 'And' when OS = 'ios' then 'IOS' else OS end as osuser 
-            , sum(TrackerInstallCount) as install, sum(ru) as ru , sum(rev_D0) as rev_D0 ,
-            sum(rev_D1) as rev_D1 , sum(rev_D3) as rev_D3 , sum(rev_D7) as rev_D7,  sum(rev_dcum) as rev_Dcum 
-            , sum(ru_d1) as ru_d1, sum(ru_d3) as ru_d3, sum(ru_d7) as ru_d7
-            from ua_perfo 
-            group by  joyplegameid, RegdateAuthAccountDateKST, gcat, mediacategory,  geo_user_group  , os
-
-            ) as a 
-            full join cost_raw as b 
-            on a.joyplegameid = b.joyplegameid
-            and a.regdateauthaccountdatekst = b.cmpgndate
-            and a.gcat = b.gcat 
-            and a.mediacategory = b.mediacategory 
-            and a.geo_user_group = b.geo_user_group 
-            and a.osuser = b.os
-            )
-
-
-            , final2 AS(
-            select joyplegameid, RegdateAuthAccountDateKST as regdate_joyple_kst , gcat, mediacategory as media_category , geo_user_group, osuser,install, ru, rev_d0, 
-            case when daydiff <= 1 then null else rev_d1 end as rev_D1, 
-            case when daydiff <= 3 then null else rev_d3 end as rev_D3, 
-            case when daydiff <= 7 then null else rev_d7 end as rev_D7,
-            rev_Dcum, 
-            case when daydiff <= 1 then null else ru_d1 end as ru_d1, 
-            case when daydiff <= 3 then null else ru_d3 end as ru_d3, 
-            case when daydiff <= 7 then null else ru_d7 end as ru_d7,
-            cost, cost_exclude_credit, 
-            daydiff 
-            from final)
-
-
-
-            
+            query = basic_query + f"""
             select regdate_joyple_kst --, geo_user_group 
-            , CAST(sum(cost_exclude_credit) as INT64) as cost
-            , CAST(sum(install) as INT64) as install
-            , CAST(sum(ru) as INT64) as ru
-            , CAST(sum(cost_exclude_credit)/sum(install) as INT64) as CPI 
-            , CAST(sum(cost_exclude_credit)/sum(ru) as INT64)  as CPRU
-            , CAST(sum(rev_d0)/sum(ru) as INT64)  as D0LTV
-            , CAST(sum(rev_d1)/sum(ru) as INT64)  as D1LTV
-            , CAST(sum(rev_d3)/sum(ru) as INT64)  as D3LTV
-            , CAST(sum(rev_d7)/sum(ru) as INT64)  as D7LTV
-            , CAST(sum(rev_dcum)/sum(ru) as INT64)  as DcumLTV
+            , ROUND(sum(cost_exclude_credit), 2) as cost
+            , ROUND(sum(install), 2) as install
+            , ROUND(sum(ru), 2) as ru
+            , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
+            , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
+            , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
+            , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
+            , ROUND(sum(rev_d1)/sum(ru), 2)  as D1LTV
+            , ROUND(sum(rev_d3)/sum(ru), 2)  as D3LTV
+            , ROUND(sum(rev_d7)/sum(ru), 2)  as D7LTV
+            , ROUND(sum(rev_dcum)/sum(ru), 2)  as DcumLTV
             , ROUND(sum(ru_d1)/sum(ru)*100, 2)  as D1RET
             , ROUND(sum(ru_d3)/sum(ru)*100, 2)  as D3RET
             , ROUND(sum(ru_d7)/sum(ru)*100, 2)  as D7RET
@@ -235,7 +249,6 @@ with DAG(
             and gcat = 'UA' and media_category in ('ADNW','Facebook','Google') #And UA User 필터
             group by regdate_joyple_kst-- , geo_user_group  --- 전체> 국가 group 제외 
             order by 1
-
             """
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
@@ -243,152 +256,22 @@ with DAG(
             logger.info(f"✅ 데이터 추출 완료: {len(df_all)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
-            html_table_header = '<tr class="data-title">'
-            for col in df_all.columns:
-                html_table_header += f'<td>{col}</td>'
-            html_table_header += '</tr>'
-
-            html_table_rows = ''
-            for idx, row in df_all.iterrows():
-                row_class = 'data1' if idx % 2 == 0 else 'data2'
-                html_table_rows += f'<tr class="{row_class}">'
-                for cell in row:
-                    cell_value = format_number(cell)
-                    html_table_rows += f'<td>{cell_value}</td>'
-                html_table_rows += '</tr>'
+            html_table_header, html_table_rows =format_table(df_all)
 
 
-            query2 = f"""
-            with UA_perfo as (
-            select a.JoypleGameID, a.RegdateAuthAccountDateKST, a.APPID,
-                a.MediaSource, a.CamPaign
-                , b.UptdtCampaign
-                , case when a.MediaSource in ('Unknown', 'NULL') then 'Unknown'                
-                        when a.campaign like '%Pirates of the Caribbean Android AU%' then 'UA'  
-                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'UA' 
-                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'UA'
-                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'UA'  
-                        when a.campaign = 'POTC_検索' then 'UA'
-                        when b.gcat is null and a.JoypleGameID =131 then d.gcat 
-                    else b.gcat
-                    end as gcat
-                , a.CountryCode, a.MarketName, a.OS, a.AdsetName, a.AdName
-                , a.TrackerInstallCount, a.RU
-                , a.rev_d0, a.rev_d1, a.rev_d3, a.rev_d7, a.rev_dcum
-                , a.ru_d1, a.ru_d3, a.ru_d7
-                , case  when a.campaign like '%Pirates of the Caribbean Android AU%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'ADNW'
-                        when a.campaign = 'POTC_検索' then 'ADNW' 
-                        when b.gcat is null and a.JoypleGameID = 131 then d.media_category 
-                        else b.mediacategory 
-                    end as mediacategory 
-                , b.productcategory, b.media, b.mediadetail
-                , case when b.optim  = 'NONE' and a.AdsetName like '%MAIA%' then 'MAIA'
-                        when b.optim  = 'NONE' and a.AdsetName like '%AEO%' then 'AEO'
-                        when b.optim  = 'NONE' and a.AdsetName like '%VO%' then 'VO'
-                    else b.optim end as optim 
-                , b.etccategory,  b.OSCAM, b.GEOCAM      
-                , b.class
-            , case when  a.MediaSource    = 'Unknown' then '5.Organic' else b.targetgroup end as targetgroup 
-            , case when CountryCode = 'KR' then '1.KR'
-                when CountryCode = 'US' then '2.US'
-                when CountryCode = 'JP' then '3.JP'
-                when CountryCode in ('UK','FR','DE','GB') then '4.WEU'
-                else '5.ETC' end as geo_user_group 
-            from(select *
-                from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
-                where JoypleGameID in (1590,159)
-                and RegdateAuthAccountDateKST >= '2025-11-18'
-                and RegdateAuthAccountDateKST < CURRENT_DATE('Asia/Seoul')
-                ) as a
-            left join (select distinct *
-                    from `dataplatform-reporting.DataService.V_0261_0000_AFCampaignRule_V`) as b
-            on a.appID = b.appID and a.MediaSource = b.MediaSource and a.Campaign = b.initCampaign
-            left join `data-science-division-216308.POTC.before_mas_campaign` as d
-            on a.campaign = d.campaign 
-            )
-
-
-
-            , cost_raw AS(
-            select joyplegameid,gameid,  cmpgndate, gcat ,mediacategory, os, geo_user_group
-            , sum(costcurrency) as cost, sum(costcurrencyuptdt) as cost_exclude_credit
-            from (select  * , case when CountryCode = 'KR' then '1.KR'
-                when CountryCode = 'US' then '2.US'
-                when CountryCode = 'JP' then '3.JP'
-                when CountryCode in ('UK','FR','DE','GB') then '4.WEU'
-                else '5.ETC' end as geo_user_group 
-            from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
-            where joyplegameid in (1590,159)
-            and cmpgndate >='2025-11-18'
-                and cmpgndate < CURRENT_DATE('Asia/Seoul')
-            ) 
-            group by  joyplegameid,gameid,  cmpgndate, gcat, mediacategory, os,  geo_user_group
-            )
-
-
-            , final AS(
-            select 
-            ifnull(a.joyplegameid , b.joyplegameid) as joyplegameid 
-            ,ifnull(a.RegdateAuthAccountDateKST , b.cmpgndate) as RegdateAuthAccountDateKST
-            , ifnull(a.gcat, b.gcat) as gcat 
-            , ifnull(a.mediacategory, b.mediacategory) as mediacategory
-            , ifnull(a.osuser, b.os) as osuser 
-            , ifnull(a.geo_user_group, b.geo_user_group) as geo_user_group 
-            , a.install, a.ru 
-            ,a.rev_D0, a.rev_D1, a.rev_D3, a.rev_D7, a.rev_dcum
-            , ru_d1, ru_d3, ru_d7
-            , b.cost, b.cost_exclude_credit
-            , date_diff(  CURRENT_DATE('Asia/Seoul'), (case when a.RegdateAuthAccountDateKST is null then b.cmpgndate else a.RegdateAuthAccountDateKST end) ,day) as daydiff 
-            from(
-            select joyplegameid , RegdateAuthAccountDateKST, gcat, mediacategory, geo_user_group
-            , case when OS = 'android' then 'And' when OS = 'ios' then 'IOS' else OS end as osuser 
-            , sum(TrackerInstallCount) as install, sum(ru) as ru , sum(rev_D0) as rev_D0 ,
-            sum(rev_D1) as rev_D1 , sum(rev_D3) as rev_D3 , sum(rev_D7) as rev_D7,  sum(rev_dcum) as rev_Dcum 
-            , sum(ru_d1) as ru_d1, sum(ru_d3) as ru_d3, sum(ru_d7) as ru_d7
-            from ua_perfo 
-            group by  joyplegameid, RegdateAuthAccountDateKST, gcat, mediacategory,  geo_user_group  , os
-
-            ) as a 
-            full join cost_raw as b 
-            on a.joyplegameid = b.joyplegameid
-            and a.regdateauthaccountdatekst = b.cmpgndate
-            and a.gcat = b.gcat 
-            and a.mediacategory = b.mediacategory 
-            and a.geo_user_group = b.geo_user_group 
-            and a.osuser = b.os
-            )
-
-
-            , final2 AS(
-            select joyplegameid, RegdateAuthAccountDateKST as regdate_joyple_kst , gcat, mediacategory as media_category , geo_user_group, osuser,install, ru, rev_d0, 
-            case when daydiff <= 1 then null else rev_d1 end as rev_D1, 
-            case when daydiff <= 3 then null else rev_d3 end as rev_D3, 
-            case when daydiff <= 7 then null else rev_d7 end as rev_D7,
-            rev_Dcum, 
-            case when daydiff <= 1 then null else ru_d1 end as ru_d1, 
-            case when daydiff <= 3 then null else ru_d3 end as ru_d3, 
-            case when daydiff <= 7 then null else ru_d7 end as ru_d7,
-            cost, cost_exclude_credit, 
-            daydiff 
-            from final)
-
-
-
-            
+            query2 = basic_query + f"""
             select regdate_joyple_kst, geo_user_group 
-            , CAST(sum(cost_exclude_credit) as INT64) as cost
-            , CAST(sum(install) as INT64) as install
-            , CAST(sum(ru) as INT64) as ru
-            , CAST(sum(cost_exclude_credit)/sum(install) as INT64) as CPI 
-            , CAST(sum(cost_exclude_credit)/sum(ru) as INT64)  as CPRU
-            , CAST(sum(rev_d0)/sum(ru) as INT64)  as D0LTV
-            , CAST(sum(rev_d1)/sum(ru) as INT64)  as D1LTV
-            , CAST(sum(rev_d3)/sum(ru) as INT64)  as D3LTV
-            , CAST(sum(rev_d7)/sum(ru) as INT64)  as D7LTV
-            , CAST(sum(rev_dcum)/sum(ru) as INT64)  as DcumLTV
+            , ROUND(sum(cost_exclude_credit), 2) as cost
+            , ROUND(sum(install), 2) as install
+            , ROUND(sum(ru), 2) as ru
+            , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
+            , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
+            , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
+            , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
+            , ROUND(sum(rev_d1)/sum(ru), 2)  as D1LTV
+            , ROUND(sum(rev_d3)/sum(ru), 2)  as D3LTV
+            , ROUND(sum(rev_d7)/sum(ru), 2)  as D7LTV
+            , ROUND(sum(rev_dcum)/sum(ru), 2)  as DcumLTV
             , ROUND(sum(ru_d1)/sum(ru)*100, 2)  as D1RET
             , ROUND(sum(ru_d3)/sum(ru)*100, 2)  as D3RET
             , ROUND(sum(ru_d7)/sum(ru)*100, 2)  as D7RET
@@ -396,7 +279,8 @@ with DAG(
             , ROUND(sum(rev_d1)/sum(cost_exclude_credit)*100, 2)  as D1ROAS
             , ROUND(sum(rev_d3)/sum(cost_exclude_credit)*100, 2)  as D3ROAS
             , ROUND(sum(rev_d7)/sum(cost_exclude_credit)*100, 2)  as D7ROAS
-            , ROUND(sum(rev_dcum)/sum(cost_exclude_credit)*100, 2)  as DcumROAS            from final2 
+            , ROUND(sum(rev_dcum)/sum(cost_exclude_credit)*100, 2)  as DcumROAS      
+            from final2 
             where regdate_joyple_kst >= '{two_weeks_ago}' -- 최근 2주 정도? 
             and osuser = 'And'#And UA User 필터
             and gcat = 'UA' and media_category in ('ADNW','Facebook','Google') #And UA User 필터
@@ -406,156 +290,34 @@ with DAG(
             """
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
-            df_geo = bigquery_client.query(query2).to_dataframe()
-            logger.info(f"✅ 데이터 추출 완료: {len(df_geo)} rows")
+            df_all_geo = bigquery_client.query(query2).to_dataframe()
+            logger.info(f"✅ 데이터 추출 완료: {len(df_all_geo)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
-            html_table_header_geo = '<tr class="data-title">'
-            for col in df_geo.columns:
-                html_table_header_geo += f'<td>{col}</td>'
-            html_table_header_geo += '</tr>'
+            df_all_us = df_all_geo[df_all_geo['geo_user_group'] == '1.US']
+            df_all_jp = df_all_geo[df_all_geo['geo_user_group'] == '2.JP']
+            df_all_weu = df_all_geo[df_all_geo['geo_user_group'] == '3.WEU']
+            df_all_etc = df_all_geo[df_all_geo['geo_user_group'] == '4.ETC']
 
-            html_table_rows_geo = ''
-            for idx, row in df_geo.iterrows():
-                row_class = 'data1' if idx % 2 == 0 else 'data2'
-                html_table_rows_geo += f'<tr class="{row_class}">'
-                for cell in row:
-                    cell_value = format_number(cell)
-                    html_table_rows_geo += f'<td>{cell_value}</td>'
-                html_table_rows_geo += '</tr>'
+            html_table_header_all_us, html_table_rows_all_us = format_table(df_all_us)
+            html_table_header_all_jp, html_table_rows_all_jp = format_table(df_all_jp)
+            html_table_header_all_weu, html_table_rows_all_weu = format_table(df_all_weu)
+            html_table_header_all_etc, html_table_rows_all_etc = format_table(df_all_etc)
 
 
-            query3 = f"""
-            with UA_perfo as (
-            select a.JoypleGameID, a.RegdateAuthAccountDateKST, a.APPID,
-                a.MediaSource, a.CamPaign
-                , b.UptdtCampaign
-                , case when a.MediaSource in ('Unknown', 'NULL') then 'Unknown'                
-                        when a.campaign like '%Pirates of the Caribbean Android AU%' then 'UA'  
-                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'UA' 
-                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'UA'
-                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'UA'  
-                        when a.campaign = 'POTC_検索' then 'UA'
-                        when b.gcat is null and a.JoypleGameID =131 then d.gcat 
-                    else b.gcat
-                    end as gcat
-                , a.CountryCode, a.MarketName, a.OS, a.AdsetName, a.AdName
-                , a.TrackerInstallCount, a.RU
-                , a.rev_d0, a.rev_d1, a.rev_d3, a.rev_d7, a.rev_dcum
-                , a.ru_d1, a.ru_d3, a.ru_d7
-                , case  when a.campaign like '%Pirates of the Caribbean Android AU%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'ADNW'
-                        when a.campaign = 'POTC_検索' then 'ADNW' 
-                        when b.gcat is null and a.JoypleGameID = 131 then d.media_category 
-                        else b.mediacategory 
-                    end as mediacategory 
-                , b.productcategory, b.media, b.mediadetail
-                , case when b.optim  = 'NONE' and a.AdsetName like '%MAIA%' then 'MAIA'
-                        when b.optim  = 'NONE' and a.AdsetName like '%AEO%' then 'AEO'
-                        when b.optim  = 'NONE' and a.AdsetName like '%VO%' then 'VO'
-                    else b.optim end as optim 
-                , b.etccategory,  b.OSCAM, b.GEOCAM      
-                , b.class
-            , case when  a.MediaSource    = 'Unknown' then '5.Organic' else b.targetgroup end as targetgroup 
-            , case when CountryCode = 'KR' then '1.KR'
-                when CountryCode = 'US' then '2.US'
-                when CountryCode = 'JP' then '3.JP'
-                when CountryCode in ('UK','FR','DE','GB') then '4.WEU'
-                else '5.ETC' end as geo_user_group 
-            from(select *
-                from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
-                where JoypleGameID in (1590,159)
-                and RegdateAuthAccountDateKST >= '2025-11-18'
-                and RegdateAuthAccountDateKST < CURRENT_DATE('Asia/Seoul')
-                ) as a
-            left join (select distinct *
-                    from `dataplatform-reporting.DataService.V_0261_0000_AFCampaignRule_V`) as b
-            on a.appID = b.appID and a.MediaSource = b.MediaSource and a.Campaign = b.initCampaign
-            left join `data-science-division-216308.POTC.before_mas_campaign` as d
-            on a.campaign = d.campaign 
-            )
-
-
-
-            , cost_raw AS(
-            select joyplegameid,gameid,  cmpgndate, gcat ,mediacategory, os, geo_user_group
-            , sum(costcurrency) as cost, sum(costcurrencyuptdt) as cost_exclude_credit
-            from (select  * , case when CountryCode = 'KR' then '1.KR'
-                when CountryCode = 'US' then '2.US'
-                when CountryCode = 'JP' then '3.JP'
-                when CountryCode in ('UK','FR','DE','GB') then '4.WEU'
-                else '5.ETC' end as geo_user_group 
-            from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
-            where joyplegameid in (1590,159)
-            and cmpgndate >='2025-11-18'
-                and cmpgndate < CURRENT_DATE('Asia/Seoul')
-            ) 
-            group by  joyplegameid,gameid,  cmpgndate, gcat, mediacategory, os,  geo_user_group
-            )
-
-
-            , final AS(
-            select 
-            ifnull(a.joyplegameid , b.joyplegameid) as joyplegameid 
-            ,ifnull(a.RegdateAuthAccountDateKST , b.cmpgndate) as RegdateAuthAccountDateKST
-            , ifnull(a.gcat, b.gcat) as gcat 
-            , ifnull(a.mediacategory, b.mediacategory) as mediacategory
-            , ifnull(a.osuser, b.os) as osuser 
-            , ifnull(a.geo_user_group, b.geo_user_group) as geo_user_group 
-            , a.install, a.ru 
-            ,a.rev_D0, a.rev_D1, a.rev_D3, a.rev_D7, a.rev_dcum
-            , ru_d1, ru_d3, ru_d7
-            , b.cost, b.cost_exclude_credit
-            , date_diff(  CURRENT_DATE('Asia/Seoul'), (case when a.RegdateAuthAccountDateKST is null then b.cmpgndate else a.RegdateAuthAccountDateKST end) ,day) as daydiff 
-            from(
-            select joyplegameid , RegdateAuthAccountDateKST, gcat, mediacategory, geo_user_group
-            , case when OS = 'android' then 'And' when OS = 'ios' then 'IOS' else OS end as osuser 
-            , sum(TrackerInstallCount) as install, sum(ru) as ru , sum(rev_D0) as rev_D0 ,
-            sum(rev_D1) as rev_D1 , sum(rev_D3) as rev_D3 , sum(rev_D7) as rev_D7,  sum(rev_dcum) as rev_Dcum 
-            , sum(ru_d1) as ru_d1, sum(ru_d3) as ru_d3, sum(ru_d7) as ru_d7
-            from ua_perfo 
-            group by  joyplegameid, RegdateAuthAccountDateKST, gcat, mediacategory,  geo_user_group  , os
-
-            ) as a 
-            full join cost_raw as b 
-            on a.joyplegameid = b.joyplegameid
-            and a.regdateauthaccountdatekst = b.cmpgndate
-            and a.gcat = b.gcat 
-            and a.mediacategory = b.mediacategory 
-            and a.geo_user_group = b.geo_user_group 
-            and a.osuser = b.os
-            )
-
-
-            , final2 AS(
-            select joyplegameid, RegdateAuthAccountDateKST as regdate_joyple_kst , gcat, mediacategory as media_category , geo_user_group, osuser,install, ru, rev_d0, 
-            case when daydiff <= 1 then null else rev_d1 end as rev_D1, 
-            case when daydiff <= 3 then null else rev_d3 end as rev_D3, 
-            case when daydiff <= 7 then null else rev_d7 end as rev_D7,
-            rev_Dcum, 
-            case when daydiff <= 1 then null else ru_d1 end as ru_d1, 
-            case when daydiff <= 3 then null else ru_d3 end as ru_d3, 
-            case when daydiff <= 7 then null else ru_d7 end as ru_d7,
-            cost, cost_exclude_credit, 
-            daydiff 
-            from final)
-
-
-
-            
+            query3 = basic_query + f"""
             select regdate_joyple_kst--, geo_user_group 
-            , CAST(sum(cost_exclude_credit) as INT64) as cost
-            , CAST(sum(install) as INT64) as install
-            , CAST(sum(ru) as INT64) as ru
-            , CAST(sum(cost_exclude_credit)/sum(install) as INT64) as CPI 
-            , CAST(sum(cost_exclude_credit)/sum(ru) as INT64)  as CPRU
-            , CAST(sum(rev_d0)/sum(ru) as INT64)  as D0LTV
-            , CAST(sum(rev_d1)/sum(ru) as INT64)  as D1LTV
-            , CAST(sum(rev_d3)/sum(ru) as INT64)  as D3LTV
-            , CAST(sum(rev_d7)/sum(ru) as INT64)  as D7LTV
-            , CAST(sum(rev_dcum)/sum(ru) as INT64)  as DcumLTV
+            , ROUND(sum(cost_exclude_credit), 2) as cost
+            , ROUND(sum(install), 2) as install
+            , ROUND(sum(ru), 2) as ru
+            , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
+            , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
+            , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
+            , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
+            , ROUND(sum(rev_d1)/sum(ru), 2)  as D1LTV
+            , ROUND(sum(rev_d3)/sum(ru), 2)  as D3LTV
+            , ROUND(sum(rev_d7)/sum(ru), 2)  as D7LTV
+            , ROUND(sum(rev_dcum)/sum(ru), 2)  as DcumLTV
             , ROUND(sum(ru_d1)/sum(ru)*100, 2)  as D1RET
             , ROUND(sum(ru_d3)/sum(ru)*100, 2)  as D3RET
             , ROUND(sum(ru_d7)/sum(ru)*100, 2)  as D7RET
@@ -563,7 +325,8 @@ with DAG(
             , ROUND(sum(rev_d1)/sum(cost_exclude_credit)*100, 2)  as D1ROAS
             , ROUND(sum(rev_d3)/sum(cost_exclude_credit)*100, 2)  as D3ROAS
             , ROUND(sum(rev_d7)/sum(cost_exclude_credit)*100, 2)  as D7ROAS
-            , ROUND(sum(rev_dcum)/sum(cost_exclude_credit)*100, 2)  as DcumROAS            from final2 
+            , ROUND(sum(rev_dcum)/sum(cost_exclude_credit)*100, 2)  as DcumROAS   
+            from final2 
             where regdate_joyple_kst >= '{two_weeks_ago}' -- 최근 2주 정도? 
             --and osuser = 'And'#And UA User 필터
             --and gcat = 'UA' and media_category in ('ADNW','Facebook','Google') #And UA User 필터
@@ -577,152 +340,22 @@ with DAG(
             logger.info(f"✅ 데이터 추출 완료: {len(df_non)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
-            html_table_header_non = '<tr class="data-title">'
-            for col in df_non.columns:
-                html_table_header_non += f'<td>{col}</td>'
-            html_table_header_non += '</tr>'
-
-            html_table_rows_non = ''
-            for idx, row in df_non.iterrows():
-                row_class = 'data1' if idx % 2 == 0 else 'data2'
-                html_table_rows_non += f'<tr class="{row_class}">'
-                for cell in row:
-                    cell_value = format_number(cell)
-                    html_table_rows_non += f'<td>{cell_value}</td>'
-                html_table_rows_non += '</tr>'
+            html_table_header_non, html_table_rows_non =format_table(df_non)
 
 
-            query4 = f"""
-            with UA_perfo as (
-            select a.JoypleGameID, a.RegdateAuthAccountDateKST, a.APPID,
-                a.MediaSource, a.CamPaign
-                , b.UptdtCampaign
-                , case when a.MediaSource in ('Unknown', 'NULL') then 'Unknown'                
-                        when a.campaign like '%Pirates of the Caribbean Android AU%' then 'UA'  
-                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'UA' 
-                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'UA'
-                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'UA'  
-                        when a.campaign = 'POTC_検索' then 'UA'
-                        when b.gcat is null and a.JoypleGameID =131 then d.gcat 
-                    else b.gcat
-                    end as gcat
-                , a.CountryCode, a.MarketName, a.OS, a.AdsetName, a.AdName
-                , a.TrackerInstallCount, a.RU
-                , a.rev_d0, a.rev_d1, a.rev_d3, a.rev_d7, a.rev_dcum
-                , a.ru_d1, a.ru_d3, a.ru_d7
-                , case  when a.campaign like '%Pirates of the Caribbean Android AU%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android KR%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android US%' then 'ADNW'
-                        when a.campaign like '%Pirates of the Caribbean Android GB%' then 'ADNW'
-                        when a.campaign = 'POTC_検索' then 'ADNW' 
-                        when b.gcat is null and a.JoypleGameID = 131 then d.media_category 
-                        else b.mediacategory 
-                    end as mediacategory 
-                , b.productcategory, b.media, b.mediadetail
-                , case when b.optim  = 'NONE' and a.AdsetName like '%MAIA%' then 'MAIA'
-                        when b.optim  = 'NONE' and a.AdsetName like '%AEO%' then 'AEO'
-                        when b.optim  = 'NONE' and a.AdsetName like '%VO%' then 'VO'
-                    else b.optim end as optim 
-                , b.etccategory,  b.OSCAM, b.GEOCAM      
-                , b.class
-            , case when  a.MediaSource    = 'Unknown' then '5.Organic' else b.targetgroup end as targetgroup 
-            , case when CountryCode = 'KR' then '1.KR'
-                when CountryCode = 'US' then '2.US'
-                when CountryCode = 'JP' then '3.JP'
-                when CountryCode in ('UK','FR','DE','GB') then '4.WEU'
-                else '5.ETC' end as geo_user_group 
-            from(select *
-                from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
-                where JoypleGameID in (1590,159)
-                and RegdateAuthAccountDateKST >= '2025-11-18'
-                and RegdateAuthAccountDateKST < CURRENT_DATE('Asia/Seoul')
-                ) as a
-            left join (select distinct *
-                    from `dataplatform-reporting.DataService.V_0261_0000_AFCampaignRule_V`) as b
-            on a.appID = b.appID and a.MediaSource = b.MediaSource and a.Campaign = b.initCampaign
-            left join `data-science-division-216308.POTC.before_mas_campaign` as d
-            on a.campaign = d.campaign 
-            )
-
-
-
-            , cost_raw AS(
-            select joyplegameid,gameid,  cmpgndate, gcat ,mediacategory, os, geo_user_group
-            , sum(costcurrency) as cost, sum(costcurrencyuptdt) as cost_exclude_credit
-            from (select  * , case when CountryCode = 'KR' then '1.KR'
-                when CountryCode = 'US' then '2.US'
-                when CountryCode = 'JP' then '3.JP'
-                when CountryCode in ('UK','FR','DE','GB') then '4.WEU'
-                else '5.ETC' end as geo_user_group 
-            from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
-            where joyplegameid in (1590,159)
-            and cmpgndate >='2025-11-18'
-                and cmpgndate < CURRENT_DATE('Asia/Seoul')
-            ) 
-            group by  joyplegameid,gameid,  cmpgndate, gcat, mediacategory, os,  geo_user_group
-            )
-
-
-            , final AS(
-            select 
-            ifnull(a.joyplegameid , b.joyplegameid) as joyplegameid 
-            ,ifnull(a.RegdateAuthAccountDateKST , b.cmpgndate) as RegdateAuthAccountDateKST
-            , ifnull(a.gcat, b.gcat) as gcat 
-            , ifnull(a.mediacategory, b.mediacategory) as mediacategory
-            , ifnull(a.osuser, b.os) as osuser 
-            , ifnull(a.geo_user_group, b.geo_user_group) as geo_user_group 
-            , a.install, a.ru 
-            ,a.rev_D0, a.rev_D1, a.rev_D3, a.rev_D7, a.rev_dcum
-            , ru_d1, ru_d3, ru_d7
-            , b.cost, b.cost_exclude_credit
-            , date_diff(  CURRENT_DATE('Asia/Seoul'), (case when a.RegdateAuthAccountDateKST is null then b.cmpgndate else a.RegdateAuthAccountDateKST end) ,day) as daydiff 
-            from(
-            select joyplegameid , RegdateAuthAccountDateKST, gcat, mediacategory, geo_user_group
-            , case when OS = 'android' then 'And' when OS = 'ios' then 'IOS' else OS end as osuser 
-            , sum(TrackerInstallCount) as install, sum(ru) as ru , sum(rev_D0) as rev_D0 ,
-            sum(rev_D1) as rev_D1 , sum(rev_D3) as rev_D3 , sum(rev_D7) as rev_D7,  sum(rev_dcum) as rev_Dcum 
-            , sum(ru_d1) as ru_d1, sum(ru_d3) as ru_d3, sum(ru_d7) as ru_d7
-            from ua_perfo 
-            group by  joyplegameid, RegdateAuthAccountDateKST, gcat, mediacategory,  geo_user_group  , os
-
-            ) as a 
-            full join cost_raw as b 
-            on a.joyplegameid = b.joyplegameid
-            and a.regdateauthaccountdatekst = b.cmpgndate
-            and a.gcat = b.gcat 
-            and a.mediacategory = b.mediacategory 
-            and a.geo_user_group = b.geo_user_group 
-            and a.osuser = b.os
-            )
-
-
-            , final2 AS(
-            select joyplegameid, RegdateAuthAccountDateKST as regdate_joyple_kst , gcat, mediacategory as media_category , geo_user_group, osuser,install, ru, rev_d0, 
-            case when daydiff <= 1 then null else rev_d1 end as rev_D1, 
-            case when daydiff <= 3 then null else rev_d3 end as rev_D3, 
-            case when daydiff <= 7 then null else rev_d7 end as rev_D7,
-            rev_Dcum, 
-            case when daydiff <= 1 then null else ru_d1 end as ru_d1, 
-            case when daydiff <= 3 then null else ru_d3 end as ru_d3, 
-            case when daydiff <= 7 then null else ru_d7 end as ru_d7,
-            cost, cost_exclude_credit, 
-            daydiff 
-            from final)
-
-
-
-            
+            query4 = basic_query + f"""
             select regdate_joyple_kst, geo_user_group 
-            , CAST(sum(cost_exclude_credit) as INT64) as cost
-            , CAST(sum(install) as INT64) as install
-            , CAST(sum(ru) as INT64) as ru
-            , CAST(sum(cost_exclude_credit)/sum(install) as INT64) as CPI 
-            , CAST(sum(cost_exclude_credit)/sum(ru) as INT64)  as CPRU
-            , CAST(sum(rev_d0)/sum(ru) as INT64)  as D0LTV
-            , CAST(sum(rev_d1)/sum(ru) as INT64)  as D1LTV
-            , CAST(sum(rev_d3)/sum(ru) as INT64)  as D3LTV
-            , CAST(sum(rev_d7)/sum(ru) as INT64)  as D7LTV
-            , CAST(sum(rev_dcum)/sum(ru) as INT64)  as DcumLTV
+            , ROUND(sum(cost_exclude_credit), 2) as cost
+            , ROUND(sum(install), 2) as install
+            , ROUND(sum(ru), 2) as ru
+            , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
+            , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
+            , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
+            , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
+            , ROUND(sum(rev_d1)/sum(ru), 2)  as D1LTV
+            , ROUND(sum(rev_d3)/sum(ru), 2)  as D3LTV
+            , ROUND(sum(rev_d7)/sum(ru), 2)  as D7LTV
+            , ROUND(sum(rev_dcum)/sum(ru), 2)  as DcumLTV
             , ROUND(sum(ru_d1)/sum(ru)*100, 2)  as D1RET
             , ROUND(sum(ru_d3)/sum(ru)*100, 2)  as D3RET
             , ROUND(sum(ru_d7)/sum(ru)*100, 2)  as D7RET
@@ -730,7 +363,8 @@ with DAG(
             , ROUND(sum(rev_d1)/sum(cost_exclude_credit)*100, 2)  as D1ROAS
             , ROUND(sum(rev_d3)/sum(cost_exclude_credit)*100, 2)  as D3ROAS
             , ROUND(sum(rev_d7)/sum(cost_exclude_credit)*100, 2)  as D7ROAS
-            , ROUND(sum(rev_dcum)/sum(cost_exclude_credit)*100, 2)  as DcumROAS            from final2 
+            , ROUND(sum(rev_dcum)/sum(cost_exclude_credit)*100, 2)  as DcumROAS   
+            from final2 
             where regdate_joyple_kst >= '{two_weeks_ago}' -- 최근 2주 정도? 
             --and osuser = 'And'#And UA User 필터
             --and gcat = 'UA' and media_category in ('ADNW','Facebook','Google') #And UA User 필터
@@ -740,30 +374,31 @@ with DAG(
             """
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
-            df_nongeo = bigquery_client.query(query4).to_dataframe()
-            logger.info(f"✅ 데이터 추출 완료: {len(df_nongeo)} rows")
+            df_non_geo = bigquery_client.query(query4).to_dataframe()
+            logger.info(f"✅ 데이터 추출 완료: {len(df_non_geo)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
-            html_table_header_nongeo = '<tr class="data-title">'
-            for col in df_nongeo.columns:
-                html_table_header_nongeo += f'<td>{col}</td>'
-            html_table_header_nongeo += '</tr>'
+            df_non_us = df_non_geo[df_non_geo['geo_user_group'] == '1.US']
+            df_non_jp = df_non_geo[df_non_geo['geo_user_group'] == '2.JP']
+            df_non_weu = df_non_geo[df_non_geo['geo_user_group'] == '3.WEU']
+            df_non_etc = df_non_geo[df_non_geo['geo_user_group'] == '4.ETC']
 
-            html_table_rows_nongeo = ''
-            for idx, row in df_nongeo.iterrows():
-                row_class = 'data1' if idx % 2 == 0 else 'data2'
-                html_table_rows_nongeo += f'<tr class="{row_class}">'
-                for cell in row:
-                    cell_value = format_number(cell)
-                    html_table_rows_nongeo += f'<td>{cell_value}</td>'
-                html_table_rows_nongeo += '</tr>'
-
-            
+            html_table_header_non_us, html_table_rows_non_us = format_table(df_non_us)
+            html_table_header_non_jp, html_table_rows_non_jp = format_table(df_non_jp)
+            html_table_header_non_weu, html_table_rows_non_weu = format_table(df_non_weu)
+            html_table_header_non_etc, html_table_rows_non_etc = format_table(df_non_etc)
 
 
+            ## 제미나이 해석 추가
+            # from google.genai import Client
+            # LOCATION = "us-central1"
+            # PROJECT_ID = "data-science-division-216308"
+            # genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
 
-             # 이메일 HTML 본문 생성 (메일 클라이언트 호환성을 위해 인라인 스타일 사용)
+
+
+            # 이메일 HTML 본문 생성 (메일 클라이언트 호환성을 위해 인라인 스타일 사용)
             current_time = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
             html_body = f"""<!DOCTYPE html>
                         <html lang="ko">
@@ -862,6 +497,82 @@ with DAG(
                                     </tr>
                                 </tbody>
                             </table>
+                            
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_non}
+                                    {html_table_rows_non}
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(US) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_nongeo)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_non_us}
+                                    {html_table_rows_non_us}
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(JP) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_nongeo)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_non_jp}
+                                    {html_table_rows_non_jp}
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(WEU) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_nongeo)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_non_weu}
+                                    {html_table_rows_non_weu}
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(ETC) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_nongeo)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_non_etc}
+                                    {html_table_rows_non_etc}
+                                </tbody>
+                            </table>
+                            
 
                             <table border="1" width="100%">
                                 <tbody>
@@ -881,48 +592,62 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(지역별) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_geo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(US) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_geo)}</td>
                                     </tr>
                                 </tbody>
                             </table>
 
                             <table border="1" width="100%">
                                 <tbody>
-                                    {html_table_header_geo}
-                                    {html_table_rows_geo}
+                                    {html_table_header_all_us}
+                                    {html_table_rows_all_us}
                                 </tbody>
                             </table>
 
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(JP) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_geo)}</td>
                                     </tr>
                                 </tbody>
                             </table>
 
                             <table border="1" width="100%">
                                 <tbody>
-                                    {html_table_header_non}
-                                    {html_table_rows_non}
+                                    {html_table_header_all_jp}
+                                    {html_table_rows_all_jp}
                                 </tbody>
                             </table>
 
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(지역별) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_nongeo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(WEU) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_geo)}</td>
                                     </tr>
                                 </tbody>
                             </table>
 
                             <table border="1" width="100%">
                                 <tbody>
-                                    {html_table_header_nongeo}
-                                    {html_table_rows_nongeo}
+                                    {html_table_header_all_weu}
+                                    {html_table_rows_all_weu}
                                 </tbody>
                             </table>
 
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(ETC) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_geo)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_all_etc}
+                                    {html_table_rows_all_etc}
+                                </tbody>
+                            </table>
                             <div style="text-align: center; margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; color: #999; font-size: 8pt;">
                                 <p>자동 생성된 이메일입니다. 회신하지 마세요.</p>
                             </div>
