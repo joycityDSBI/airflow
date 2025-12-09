@@ -107,8 +107,7 @@ with DAG(
                 )
             )
         
-        lines = response_data.text.split('*')
-        return '\n'.join([line for line in lines if line.strip()]) 
+        return response_data.text.replace('*', '\n*')
     
 
     # 제미나이 organic 국가별 함수
@@ -147,9 +146,86 @@ with DAG(
                 )
             )
         
-        lines = response_data.text.split('*')
-        return '\n'.join([line for line in lines if line.strip()]) 
+        return response_data.text.replace('*', '\n*')
 
+
+    # 제미나이 Paid 전체 요약 함수
+    def genai_paid_all_analytics(df, text_data):
+        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+        response_data = genai_client.models.generate_content(
+            model=MODEL_NAME,
+            contents = f"""
+
+            2가지 데이터가 있어. 
+            하나는 마케팅으로 유입된 전체 유저에 대한 데이터고, 
+            다른 하나는 국가별로 유입된 유저에 대한 제미나이의 코멘트를 정리한 데이터야
+
+            전체 유저에 대한 마케팅 흐름과
+            국가별 유입된 유저의 제미나이 코멘트에 대해서
+            5줄로 요약해서 정리해줘
+
+            <원하는 서식>
+            1. 요약해주겠다 말 하지말고 요약한 내용에 대해서만 적어주면 돼.
+            2. 습니다. 체로 써줘
+            3. 한 문장마다 노션의 마크다운 리스트 문법을 사용해줘. e.g. * 당월 cost는 이렇습니다.
+
+            <데이터 설명>
+            etc 는 국가가 아니라 나머지 국가 총합이야.
+
+            <마케팅으로 유입된 전체 유저 데이터>
+            {df}
+
+            <제미나이 코멘트>
+            {text_data}
+            """,
+            config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_INSTRUCTION,
+                    # tools=[RAG],
+                    temperature=0.5,
+                    labels=LABELS
+                )
+            )
+        
+        return response_data.text.replace('*', '\n*')
+
+    # 제미나이 전체 유저 요약 함수
+    def genai_organic_all_analytics(df, text_data):
+        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+        response_data = genai_client.models.generate_content(
+            model=MODEL_NAME,
+            contents = f"""
+
+            2가지 데이터가 있어. 
+            하나는 최근 2주간 유입된 유저에 대한 데이터이고,, 
+            다른 하나는 국가별로 유입된 유저에 대한 제미나이의 코멘트를 정리한 데이터야
+
+            전체 유저에 대한 KPI 지표의 흐름과
+            국가별 유입된 유저의 제미나이 코멘트에 대해서
+            5줄로 요약해서 정리해줘
+
+            <원하는 서식>
+            1. 요약해주겠다 말 하지말고 요약한 내용에 대해서만 적어주면 돼.
+            2. 습니다. 체로 써줘
+            3. 한 문장마다 노션의 마크다운 리스트 문법을 사용해줘. e.g. * 당월 cost는 이렇습니다.
+
+            <데이터 설명>
+            etc 는 국가가 아니라 나머지 국가 총합이야.
+
+            <전체 유저 데이터>
+            {df}
+
+            <제미나이 코멘트>
+            {text_data}
+            """,
+            config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_INSTRUCTION,
+                    # tools=[RAG],
+                    temperature=0.5,
+                    labels=LABELS
+                )
+            )
+        
+        return response_data.text.replace('*', '\n*')
 
 
     # GCP 인증
@@ -301,6 +377,7 @@ with DAG(
         except (ValueError, TypeError):
             return str(value)
         
+    # HTML 표 생성 함수
     def format_table(df):
         html_table_header = '<tr class="data-title">'
         for col in df.columns:
@@ -316,6 +393,7 @@ with DAG(
             html_table_rows += '</tr>'
         return html_table_header, html_table_rows
 
+    # 쿼리 실행 및 이메일 발송 함수
     def extract_and_send_email(**context):
         """쿼리 실행 및 이메일 발송"""
         try:
@@ -493,12 +571,15 @@ with DAG(
             genai_all_jp = genai_paid_geo_analytics(df_all_jp)
             genai_all_weu = genai_paid_geo_analytics(df_all_weu)
             genai_all_etc = genai_paid_geo_analytics(df_all_etc)
+            genai_all = genai_paid_all_analytics(df_all, genai_all_us + genai_all_jp + genai_all_weu + genai_all_etc)
+            
             print("📧 Paid 유저에 대한 제미나이 분석 완료")
             genai_non_us = genai_organic_geo_analytics(df_non_us)
             genai_non_jp = genai_organic_geo_analytics(df_non_jp)
             genai_non_weu = genai_organic_geo_analytics(df_non_weu)
             genai_non_etc = genai_organic_geo_analytics(df_non_etc)
-            print("📧 Organic 유저에 대한 제미나이 분석 완료")
+            genai_non = genai_organic_all_analytics(df_non, genai_non_us + genai_non_jp + genai_non_weu + genai_non_etc)
+            print("📧 Organic 포함 전체 유저에 대한 제미나이 분석 완료")
 
             print("✅ 제미나이 해석 완료!")
 
@@ -629,6 +710,16 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_non}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>                            
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
                                         <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(US) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non_us)}</td>
                                     </tr>
                                 </tbody>
@@ -639,7 +730,16 @@ with DAG(
                                     {html_table_header_non_us}
                                     {html_table_rows_non_us}
                                 </tbody>
-                                {genai_non_us}
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_non_us}
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
 
                             <table border="1" width="100%">
@@ -655,7 +755,16 @@ with DAG(
                                     {html_table_header_non_jp}
                                     {html_table_rows_non_jp}
                                 </tbody>
-                                {genai_non_jp}
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_non_jp}
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
 
                             <table border="1" width="100%">
@@ -671,7 +780,16 @@ with DAG(
                                     {html_table_header_non_weu}
                                     {html_table_rows_non_weu}
                                 </tbody>
-                                {genai_non_weu}
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_non_weu}
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
 
                             <table border="1" width="100%">
@@ -687,7 +805,16 @@ with DAG(
                                     {html_table_header_non_etc}
                                     {html_table_rows_non_etc}
                                 </tbody>
-                                {genai_non_etc}
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_non_etc}
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
                             
                             <br>
@@ -706,6 +833,16 @@ with DAG(
                                     {html_table_rows}
                                 </tbody>
                             </table>
+                            
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_all}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>    
 
                             <table border="1" width="100%">
                                 <tbody>
@@ -720,7 +857,16 @@ with DAG(
                                     {html_table_header_all_us}
                                     {html_table_rows_all_us}
                                 </tbody>
-                                {genai_all_us}
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_all_us}
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
 
                             <table border="1" width="100%">
@@ -736,7 +882,16 @@ with DAG(
                                     {html_table_header_all_jp}
                                     {html_table_rows_all_jp}
                                 </tbody>    
-                                {genai_all_jp}
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_all_jp}
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
 
                             <table border="1" width="100%">
@@ -752,7 +907,16 @@ with DAG(
                                     {html_table_header_all_weu}
                                     {html_table_rows_all_weu}
                                 </tbody>
-                                {genai_all_weu}
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_all_weu}
+                                        </td>
+                                    </tr>
+                                </tbody>
                             </table>
 
                             <table border="1" width="100%">
@@ -768,8 +932,18 @@ with DAG(
                                     {html_table_header_all_etc}
                                     {html_table_rows_all_etc}
                                 </tbody>
-                                {genai_all_etc}
                             </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_all_etc}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
                             <div style="text-align: center; margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; color: #999; font-size: 8pt;">
                                 <p>자동 생성된 이메일입니다. 회신하지 마세요.</p>
                             </div>
