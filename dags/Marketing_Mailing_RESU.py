@@ -972,19 +972,37 @@ with DAG(
 
             # 이메일 발송
             logger.info("📧 이메일 발송 중...")
+
+            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
+            server.set_debuglevel(0)  # 디버그 모드 끄기
+            
+            # # 인증이 필요하면
+            # if SENDER_PASSWORD:
+            #     server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            
             msg = MIMEMultipart()
             msg['From'] = SENDER_EMAIL
             msg['To'] = ', '.join(RECIPIENT_EMAILS)
-            msg['Subject'] = f"[RESU] UA Performance & Cost Report {today}"
+            msg['Subject'] = 'Subject'
             msg.attach(MIMEText(html_body, 'html'))
+            
+            server.sendmail(SENDER_EMAIL, RECIPIENT_EMAILS, msg.as_string())
+            server.quit()
+            print("메일 발송 성공")
 
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-                server.starttls()
-                # server.login(SENDER_EMAIL, SENDER_PASSWORD)
-                server.sendmail(SENDER_EMAIL, RECIPIENT_EMAILS, msg.as_string())
+            # msg = MIMEMultipart()
+            # msg['From'] = SENDER_EMAIL
+            # msg['To'] = ', '.join(RECIPIENT_EMAILS)
+            # msg['Subject'] = f"[RESU] UA Performance & Cost Report {today}"
+            # msg.attach(MIMEText(html_body, 'html'))
 
-            logger.info(f"✅ 이메일 발송 완료: {RECIPIENT_EMAILS}")
-            return True
+            # with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            #     server.starttls()
+            #     # server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            #     server.sendmail(SENDER_EMAIL, RECIPIENT_EMAILS, msg.as_string())
+
+            # logger.info(f"✅ 이메일 발송 완료: {RECIPIENT_EMAILS}")
+            # return True
 
         except Exception as e:
             logger.error(f"❌ 에러 발생: {str(e)}", exc_info=True)
