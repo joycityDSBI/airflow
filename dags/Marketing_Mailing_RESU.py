@@ -820,11 +820,20 @@ with DAG(
                                     border: 1px #d6d6d6 solid;
                                 }}
                                 .tableTitleNew1 {{
-                                    padding: 7px;
+                                    padding: 5px;
                                     text-align: left;
                                     font-weight: bold;
-                                    font-size: 12pt;
-                                    background: #FF7A19;
+                                    font-size: 8pt;
+                                    background: #424242;
+                                    color: white;
+                                    border: 1px #2e2e2e solid !important;
+                                }}
+                                .tableTitleNewMain {{
+                                    padding: 5px;
+                                    text-align: left;
+                                    font-weight: bold;
+                                    font-size: 9pt;
+                                    background: #424242;
                                     color: white;
                                     border: 1px #2e2e2e solid !important;
                                 }}
@@ -840,8 +849,8 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space: nowrap" class="tableTitleNew1">
-                                            📊 RESU UA Performance & Cost Report :: {current_time}
+                                        <td style="white-space: nowrap" class="tableTitleNewMain">
+                                            📊 RESU UA Performance & Cost Report :: {current_time} (KST)
                                         </td>
                                     </tr>
                                 </tbody>
