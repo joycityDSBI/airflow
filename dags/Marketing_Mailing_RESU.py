@@ -52,7 +52,7 @@ with DAG(
     # SMTP_PORT = int(get_var('SMTP_PORT', '587'))
     SMTP_SERVER = "61.43.45.137"
     SMTP_PORT = 25
-    SENDER_EMAIL = 'seongin@joycity.com'
+    SENDER_EMAIL = 'ds_bi@joycity.com'
     SENDER_PASSWORD = get_var('SMTP_PASSWORD')
 
     # 수신자 설정
@@ -983,7 +983,7 @@ with DAG(
             msg = MIMEMultipart()
             msg['From'] = SENDER_EMAIL
             msg['To'] = ', '.join(RECIPIENT_EMAILS)
-            msg['Subject'] = 'Subject'
+            msg['Subject'] = f"[RESU] UA Performance & Cost Report {today}"
             msg.attach(MIMEText(html_body, 'html'))
             
             server.sendmail(SENDER_EMAIL, RECIPIENT_EMAILS, msg.as_string())
