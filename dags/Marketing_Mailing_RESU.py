@@ -516,7 +516,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(US) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_nongeo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(US) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non_us)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -531,7 +531,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(JP) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_nongeo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(JP) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non_jp)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -546,7 +546,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(WEU) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_nongeo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(WEU) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non_weu)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -561,7 +561,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(ETC) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_nongeo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(ETC) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non_etc)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -592,7 +592,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(US) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_geo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(US) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all_us)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -607,7 +607,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(JP) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_geo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(JP) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all_jp)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -622,7 +622,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(WEU) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_geo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(WEU) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all_weu)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -637,7 +637,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(ETC) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_geo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(ETC) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all_etc)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -673,7 +673,6 @@ with DAG(
 
         except Exception as e:
             logger.error(f"❌ 에러 발생: {str(e)}", exc_info=True)
-            print(f"❌ 에러 발생: {str(e)}")
             raise
 
     # Task 정의
