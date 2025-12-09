@@ -447,7 +447,7 @@ with DAG(
                     )
                 )
             
-            response_txt = response_data.txt
+            response_txt = response_data.text
             print("✅ 제미나이 해석 완료!")
 
             # 이메일 HTML 본문 생성 (메일 클라이언트 호환성을 위해 인라인 스타일 사용)
