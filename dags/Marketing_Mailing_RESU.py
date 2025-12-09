@@ -758,6 +758,11 @@ with DAG(
                     html_table_rows_nongeo += f'<td>{cell_value}</td>'
                 html_table_rows_nongeo += '</tr>'
 
+            
+
+
+
+
              # 이메일 HTML 본문 생성 (메일 클라이언트 호환성을 위해 인라인 스타일 사용)
             current_time = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
             html_body = f"""<!DOCTYPE html>
@@ -930,7 +935,7 @@ with DAG(
             msg = MIMEMultipart()
             msg['From'] = SENDER_EMAIL
             msg['To'] = ', '.join(RECIPIENT_EMAILS)
-            msg['Subject'] = f"[Joyple] UA Performance & Cost Report {today}"
+            msg['Subject'] = f"[RESU] UA Performance & Cost Report {today}"
             msg.attach(MIMEText(html_body, 'html'))
 
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
