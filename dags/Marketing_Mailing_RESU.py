@@ -820,11 +820,11 @@ with DAG(
                                     border: 1px #d6d6d6 solid;
                                 }}
                                 .tableTitleNew1 {{
-                                    padding: 5px;
+                                    padding: 7px;
                                     text-align: left;
                                     font-weight: bold;
-                                    font-size: 8pt;
-                                    background: #424242;
+                                    font-size: 12pt;
+                                    background: #FF7A19;
                                     color: white;
                                     border: 1px #2e2e2e solid !important;
                                 }}
@@ -841,7 +841,7 @@ with DAG(
                                 <tbody>
                                     <tr>
                                         <td style="white-space: nowrap" class="tableTitleNew1">
-                                            📊 Joyple UA Performance & Cost Report :: {current_time} (KST)
+                                            📊 RESU UA Performance & Cost Report :: {current_time}
                                         </td>
                                     </tr>
                                 </tbody>
@@ -919,7 +919,7 @@ with DAG(
             msg = MIMEMultipart()
             msg['From'] = SENDER_EMAIL
             msg['To'] = ', '.join(RECIPIENT_EMAILS)
-            msg['Subject'] = "[Joyple] UA Performance & Cost Report"
+            msg['Subject'] = f"[Joyple] UA Performance & Cost Report {today}"
             msg.attach(MIMEText(html_body, 'html'))
 
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
