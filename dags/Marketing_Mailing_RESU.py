@@ -389,14 +389,66 @@ with DAG(
             html_table_header_non_etc, html_table_rows_non_etc = format_table(df_non_etc)
 
 
-            ## 제미나이 해석 추가
-            # from google.genai import Client
-            # LOCATION = "us-central1"
-            # PROJECT_ID = "data-science-division-216308"
-            # genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+            # 제미나이 해석 추가
+            print("📧 제미나이 해석 추가 진행 중 ...")
 
+            from google.genai import Client
+            from google.genai import types
 
+            LOCATION = "us-central1"
+            PROJECT_ID = "data-science-division-216308"
+            MODEL_NAME = "gemini-2.5-flash"
+            LABELS = {"datascience_division_service": 'marketing_mailing'}
+            SYSTEM_INSTRUCTION = [
+                "You're a Game Data Analyst.",
+                "Your task is to analyze the metrics of a given mobile game and identify the causes of any changes.",
+                "Your answers must be in Korean.",
+                "The unit of amount in the Sales or Revenue, Cost Data is Korean Won.",
+                "You must answer in Notion's Markdown format, but do not use title syntax.",
+            ]
 
+            genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+
+            response_data = genai_client.models.generate_content(
+                model=MODEL_NAME,
+                contents = f"""
+                최근 2주간 마케팅으로 유입된 유저들의 데이터야.
+                geo_user_group은 지역별로 분류한 값으로 지역별 마케팅 현황에 대해서 분석해줘
+
+                최근 2주간의 geo_user_group 별로 어떻게 cost가 변해왔고, 
+                CPI, CPRU에 대해서 어떤 흐름으로 진행되고 있는지 한 줄로 작성해줘.
+
+                최근 일주일 간의 데이터에서는 D7LTV와 D7RET, D7ROAS에 대해서
+                어떻게 변동이 되고 있는지 파악해줘
+
+                etc 는 기타 국가들 총 합 한 값이라서 etc 에 대해서는 언급하지 말아줘.
+                마케팅 효율개선이 필요하다는말은 하지말아줘.
+
+                <원하는 서식>
+                1. 요약해주겠다 말 하지말고 요약한 내용에 대해서만 적어주면 돼.
+                2. 습니다. 체로 써줘
+                3. 한 문장마다 노션의 마크다운 리스트 문법을 사용해줘. e.g. * 당월 cost는 이렇습니다.
+
+                <데이터 설명>
+                etc 는 국가가 아니라 나머지 국가 총합이야.
+
+                <최근 2주간 마케팅으로 유입된 유저 데이터>
+                {df_all}
+
+                <최근 2주간 geo_user_group별 마케팅으로 유입된 유저 데이터>
+                {df_all_geo}
+
+                """,
+                config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_INSTRUCTION,
+                        # tools=[RAG],
+                        temperature=0.5,
+                        labels=LABELS
+                    )
+                )
+            
+            response_txt = response_data.txt
+            print("✅ 제미나이 해석 완료!")
 
             # 이메일 HTML 본문 생성 (메일 클라이언트 호환성을 위해 인라인 스타일 사용)
             current_time = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
@@ -493,6 +545,16 @@ with DAG(
                                     <tr>
                                         <td style="white-space: nowrap" class="tableTitleNewMain">
                                             📊 RESU UA Performance & Cost Report :: {current_time} (KST)
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space: nowrap" class="tableTitleNew1">
+                                            {response_txt}
                                         </td>
                                     </tr>
                                 </tbody>
