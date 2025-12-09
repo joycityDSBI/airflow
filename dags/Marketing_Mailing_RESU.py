@@ -32,7 +32,7 @@ with DAG(
     dag_id='Marketing_Mailing_RESU',
     default_args=default_args,
     description='RESU 마케팅 결과를 메일링',
-    schedule='30 0 * * *',
+    schedule='01 5 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['marketing', 'mailing', 'RESU'],
@@ -57,7 +57,8 @@ with DAG(
     SENDER_PASSWORD = get_var('SMTP_PASSWORD')
 
     # 수신자 설정
-    RECIPIENT_EMAILS = ['seongin@joycity.com', 'mhjung@joycity.com', 'jy0999@joycity.com']
+    RECIPIENT_EMAILS = ['chosw2@joycity.com', 'mirmir@ndream.com', 'gon0505@ndream.com', 'junezel@joycity.com', 'kyuny@joycity.com', 
+                        'nokchaman@joycity.com', 'lhnr0616@joycity.com', 'seongin@joycity.com', 'mhjung@joycity.com', 'CSD_DSD_MS@joycity.com']
     # RECIPIENT_EMAILS = [email.strip() for email in get_var('RECIPIENT_EMAILS', '').split(',') if email.strip()]
 
     # 제미나이 설정
