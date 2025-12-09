@@ -449,7 +449,7 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_all = bigquery_client.query(query).to_dataframe()
-            df_all = df_all.rename(columns={'regdate_joyple_kst': 'Date', 'geo_user_group': 'Country'})
+            df_all = df_all.rename(columns={'regdate_joyple_kst': 'Date'})
             logger.info(f"✅ 데이터 추출 완료: {len(df_all)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
@@ -535,7 +535,7 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_non = bigquery_client.query(query3).to_dataframe()
-            df_non = df_non.rename(columns={'regdate_joyple_kst': 'Date', 'geo_user_group': 'Country'})
+            df_non = df_non.rename(columns={'regdate_joyple_kst': 'Date'})
             logger.info(f"✅ 데이터 추출 완료: {len(df_non)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
