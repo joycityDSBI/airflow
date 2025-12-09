@@ -48,9 +48,11 @@ with DAG(
     CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
     
     # SMTP 설정
-    SMTP_SERVER = get_var('SMTP_SERVER', 'smtp.gmail.com')
-    SMTP_PORT = int(get_var('SMTP_PORT', '587'))
-    SENDER_EMAIL = get_var('EMAIL_FROM')
+    # SMTP_SERVER = get_var('SMTP_SERVER', 'smtp.gmail.com')
+    # SMTP_PORT = int(get_var('SMTP_PORT', '587'))
+    SMTP_SERVER = "61.43.45.137"
+    SMTP_PORT = 25
+    SENDER_EMAIL = 'seongin@joycity.com'
     SENDER_PASSWORD = get_var('SMTP_PASSWORD')
 
     # 수신자 설정
@@ -978,7 +980,7 @@ with DAG(
 
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
-                server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                # server.login(SENDER_EMAIL, SENDER_PASSWORD)
                 server.sendmail(SENDER_EMAIL, RECIPIENT_EMAILS, msg.as_string())
 
             logger.info(f"✅ 이메일 발송 완료: {RECIPIENT_EMAILS}")
