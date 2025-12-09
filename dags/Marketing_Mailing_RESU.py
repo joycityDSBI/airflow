@@ -227,7 +227,7 @@ with DAG(
             , ROUND(sum(cost_exclude_credit), 2) as cost
             , ROUND(sum(install), 2) as install
             , ROUND(sum(ru), 2) as ru
-            , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
+            --, ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
             , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
             , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
             , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
@@ -264,7 +264,7 @@ with DAG(
             , ROUND(sum(cost_exclude_credit), 2) as cost
             , ROUND(sum(install), 2) as install
             , ROUND(sum(ru), 2) as ru
-            , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
+            --, ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
             , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
             , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
             , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
@@ -501,7 +501,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNewMain">전체 유저 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -577,7 +577,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNewMain">Android Paid User 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -673,6 +673,7 @@ with DAG(
 
         except Exception as e:
             logger.error(f"❌ 에러 발생: {str(e)}", exc_info=True)
+            print(f"❌ 에러 발생: {str(e)}")
             raise
 
     # Task 정의
