@@ -123,8 +123,8 @@ with DAG(
             최근 2주간 유입된 geo_user_group 지역 유저들의 데이터야.
             geo_user_group은 지역별로 분류한 값으로 지역별 현황에 대해서 분석해줘.
 
-            최근 2주간의 cost의 흐름에 대해서 분석하고, 
-            Organic_ratio는 자연유입 유저의 비중이란 수치로 해당 수치가 어떻게 변화하고 있는지 알려줘.
+            최근 2주간의 cost의 흐름에 대해서 분석하고, Organic_ratio는 ru 중 organic 유저의 비율을 뜻해.
+            Organic_ratio의 일자별 수치 흐름에 대해서 파악해줘.
 
             일자별 CPI, D1RET, D1LTV, D1ROAS에 대해서 흐름을 파악하면서, 
             큰 차이를 보이는 경우 간략하게 설명해줘.
