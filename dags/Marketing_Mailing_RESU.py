@@ -399,7 +399,7 @@ with DAG(
             formatted = str(value)
         
         # HTML 엔티티로 변환
-        formatted = formatted.replace('.', '\u.')
+        formatted = formatted.replace('.', '.\u200b')
         return html.escape(formatted)
         
     # HTML 표 생성 함수
