@@ -78,8 +78,8 @@ with DAG(
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
-            최근 2주간 마케팅으로 유입된 geo_user_group 지역 유저들의 데이터야.
-            geo_user_group은 지역별로 분류한 값으로 지역별 마케팅 현황에 대해서 분석해줘
+            최근 2주간 마케팅으로 유입된 Country 지역 유저들의 데이터야.
+            Country별로 분류한 값으로 지역별 마케팅 현황에 대해서 분석해줘
 
             각 숫자는 정확하게 읽어야 한다.
 
@@ -123,8 +123,8 @@ with DAG(
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
-            최근 2주간 유입된 geo_user_group 지역 유저들의 데이터야.
-            geo_user_group은 지역별로 분류한 값으로 지역별 현황에 대해서 분석해줘.
+            최근 2주간 유입된 Country 유저별 데이터야.
+            Country별로 분류한 값으로 지역별 현황에 대해서 분석해줘.
 
             각 숫자는 정확하게 읽어야 한다.
 
@@ -419,7 +419,7 @@ with DAG(
         try:
             # BigQuery 쿼리 실행
             query = basic_query + f"""
-            select regdate_joyple_kst --, geo_user_group 
+            select regdate_joyple_kst as Date --, geo_user_group 
             , CAST(sum(cost_exclude_credit) AS INT64) as Cost
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
@@ -449,7 +449,6 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_all = bigquery_client.query(query).to_dataframe()
-            df_all = df_all.rename(columns={'regdate_joyple_kst': 'Date'})
             logger.info(f"✅ 데이터 추출 완료: {len(df_all)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
@@ -457,7 +456,7 @@ with DAG(
 
 
             query2 = basic_query + f"""
-            select regdate_joyple_kst, geo_user_group
+            select regdate_joyple_kst as Date, geo_user_group as Country
             , CAST(sum(cost_exclude_credit) AS INT64) as Cost
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
@@ -488,14 +487,13 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_all_geo = bigquery_client.query(query2).to_dataframe()
-            df_all_geo = df_all_geo.rename(columns={'regdate_joyple_kst': 'Date', 'geo_user_group': 'Country'})
             logger.info(f"✅ 데이터 추출 완료: {len(df_all_geo)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
-            df_all_us = df_all_geo[df_all_geo['geo_user_group'] == '1.US']
-            df_all_jp = df_all_geo[df_all_geo['geo_user_group'] == '2.JP']
-            df_all_weu = df_all_geo[df_all_geo['geo_user_group'] == '3.WEU']
-            df_all_etc = df_all_geo[df_all_geo['geo_user_group'] == '4.ETC']
+            df_all_us = df_all_geo[df_all_geo['Country'] == '1.US']
+            df_all_jp = df_all_geo[df_all_geo['Country'] == '2.JP']
+            df_all_weu = df_all_geo[df_all_geo['Country'] == '3.WEU']
+            df_all_etc = df_all_geo[df_all_geo['Country'] == '4.ETC']
 
             html_table_header_all_us, html_table_rows_all_us = format_table(df_all_us)
             html_table_header_all_jp, html_table_rows_all_jp = format_table(df_all_jp)
@@ -504,7 +502,7 @@ with DAG(
 
 
             query3 = basic_query + f"""
-            select regdate_joyple_kst--, geo_user_group 
+            select regdate_joyple_kst as Date--, geo_user_group 
             , CAST(sum(cost_exclude_credit) AS INT64) as Cost
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
@@ -535,7 +533,6 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_non = bigquery_client.query(query3).to_dataframe()
-            df_non = df_non.rename(columns={'regdate_joyple_kst': 'Date'})
             logger.info(f"✅ 데이터 추출 완료: {len(df_non)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
@@ -543,7 +540,7 @@ with DAG(
 
 
             query4 = basic_query + f"""
-            select regdate_joyple_kst, geo_user_group
+            select regdate_joyple_kst as Date, geo_user_group as Country
             , CAST(sum(cost_exclude_credit) AS INT64) as Cost
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
@@ -574,14 +571,13 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_non_geo = bigquery_client.query(query4).to_dataframe()
-            df_non_geo = df_non_geo.rename(columns={'regdate_joyple_kst': 'Date', 'geo_user_group': 'Country'})
             logger.info(f"✅ 데이터 추출 완료: {len(df_non_geo)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
-            df_non_us = df_non_geo[df_non_geo['geo_user_group'] == '1.US']
-            df_non_jp = df_non_geo[df_non_geo['geo_user_group'] == '2.JP']
-            df_non_weu = df_non_geo[df_non_geo['geo_user_group'] == '3.WEU']
-            df_non_etc = df_non_geo[df_non_geo['geo_user_group'] == '4.ETC']
+            df_non_us = df_non_geo[df_non_geo['Country'] == '1.US']
+            df_non_jp = df_non_geo[df_non_geo['Country'] == '2.JP']
+            df_non_weu = df_non_geo[df_non_geo['Country'] == '3.WEU']
+            df_non_etc = df_non_geo[df_non_geo['Country'] == '4.ETC']
 
             html_table_header_non_us, html_table_rows_non_us = format_table(df_non_us)
             html_table_header_non_jp, html_table_rows_non_jp = format_table(df_non_jp)
