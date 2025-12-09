@@ -65,7 +65,9 @@ with DAG(
     # 날짜 가져오기 
     kst = timezone(timedelta(hours=9))
     today = datetime.now(kst).date()
-    two_weeks_ago = today - timedelta(days=14) # 2주 전 데이터 기준으로 가져오기
+    two_weeks_ago = today - timedelta(days=14)
+    yesterday = today - timedelta(days=1)
+# 2주 전 데이터 기준으로 가져오기
 
     # 숫자 포맷팅 함수 (1000단위 쉼표 추가)
     def format_number(value):
@@ -859,7 +861,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User 조회 기간: {two_weeks_ago} ~ {today} | 총 행 수: {len(df_all)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -874,7 +876,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(지역별) 조회 기간: {two_weeks_ago} ~ {today} | 총 행 수: {len(df_geo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(지역별) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_geo)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -889,7 +891,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저 조회 기간: {two_weeks_ago} ~ {today} | 총 행 수: {len(df_non)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -904,7 +906,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(지역별) 조회 기간: {two_weeks_ago} ~ {today} | 총 행 수: {len(df_nongeo)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(지역별) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_nongeo)}</td>
                                     </tr>
                                 </tbody>
                             </table>
