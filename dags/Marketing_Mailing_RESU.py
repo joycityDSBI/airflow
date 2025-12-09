@@ -90,7 +90,8 @@ with DAG(
             <원하는 서식>
             1. 요약해주겠다 말 하지말고 요약한 내용에 대해서만 적어주면 돼.
             2. 습니다. 체로 써줘
-            3. 전체 내용은 3줄 이하로 작성해줘
+            3. 한 문장마다 시작은 # 로 시작해줘. e.g. # 당월 매출은 이렇습니다.
+            4. 전체 내용은 3줄 이하로 작성해줘
 
             <데이터 설명>
             etc 는 국가가 아니라 나머지 국가 총합이야.
@@ -107,7 +108,7 @@ with DAG(
                 )
             )
         
-        return response_data.text.replace('*', '<br>\n*')
+        return response_data.text.replace('#', '<br>\n*')
     
 
     # 제미나이 organic 국가별 함수
@@ -129,7 +130,8 @@ with DAG(
             <원하는 서식>
             1. 요약해주겠다 말 하지말고 요약한 내용에 대해서만 적어주면 돼.
             2. 습니다. 체로 써줘
-            3. 전체 내용은 3줄 이하로 작성해줘
+            3. 한 문장마다 시작은 # 로 시작해줘. e.g. # 당월 매출은 이렇습니다.
+            4. 전체 내용은 3줄 이하로 작성해줘
 
             <데이터 설명>
             etc 는 국가가 아니라 나머지 국가 총합이야.
@@ -146,7 +148,7 @@ with DAG(
                 )
             )
         
-        return response_data.text.replace('*', '<br>\n*')
+        return response_data.text.replace('#', '<br>\n*')
 
 
     # 제미나이 Paid 전체 요약 함수
@@ -166,7 +168,8 @@ with DAG(
             <원하는 서식>
             1. 요약해주겠다 말 하지말고 요약한 내용에 대해서만 적어주면 돼.
             2. 습니다. 체로 써줘
-            3. 전체 내용은 5줄 이하로 작성해줘
+            3. 한 문장마다 시작은 # 로 시작해줘. e.g. # 당월 매출은 이렇습니다.
+            4. 전체 내용은 5줄 이하로 작성해줘
 
             <데이터 설명>
             etc 는 국가가 아니라 나머지 국가 총합이야.
@@ -185,7 +188,7 @@ with DAG(
                 )
             )
         
-        return response_data.text.replace('*', '<br>\n*')
+        return response_data.text.replace('#', '<br>\n*')
 
     # 제미나이 전체 유저 요약 함수
     def genai_organic_all_analytics(df, text_data):
@@ -204,7 +207,8 @@ with DAG(
             <원하는 서식>
             1. 요약해주겠다 말 하지말고 요약한 내용에 대해서만 적어주면 돼.
             2. 습니다. 체로 써줘
-            3. 전체 내용은 5줄 이하로 작성해줘
+            3. 한 문장마다 시작은 # 로 시작해줘. e.g. # 당월 매출은 이렇습니다.
+            4. 전체 내용은 5줄 이하로 작성해줘
 
             <데이터 설명>
             etc 는 국가가 아니라 나머지 국가 총합이야.
@@ -223,7 +227,7 @@ with DAG(
                 )
             )
         
-        return response_data.text.replace('*', '<br>\n*')
+        return response_data.text.replace('#', '<br>\n*')
 
 
     # GCP 인증
