@@ -466,7 +466,7 @@ with DAG(
                                     text-align: left;
                                     font-weight: bold;
                                     font-size: 8pt;
-                                    background: #424242;
+                                    background: #707070;
                                     color: white;
                                     border: 1px #2e2e2e solid !important;
                                 }}
@@ -673,7 +673,6 @@ with DAG(
 
         except Exception as e:
             logger.error(f"❌ 에러 발생: {str(e)}", exc_info=True)
-            print(f"❌ 에러 발생: {str(e)}")
             raise
 
     # Task 정의
