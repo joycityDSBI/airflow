@@ -665,8 +665,7 @@ with DAG(
                                 .tableTitleNewgenai {{
                                     padding: 5px;
                                     text-align: left;
-                                    font-weight: bold;
-                                    font-size: 9pt;
+                                    font-size: 8pt;
                                     background: #D2D2D2;
                                     color: black;
                                     border: 1px #2e2e2e solid !important;
