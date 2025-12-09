@@ -54,7 +54,7 @@ with DAG(
     SENDER_PASSWORD = get_var('SMTP_PASSWORD')
 
     # 수신자 설정
-    RECIPIENT_EMAILS = 'seongin@joycity.com'
+    RECIPIENT_EMAILS = ['seongin@joycity.com']
     # RECIPIENT_EMAILS = [email.strip() for email in get_var('RECIPIENT_EMAILS', '').split(',') if email.strip()]
 
     # 제미나이 설정
@@ -80,10 +80,10 @@ with DAG(
             geo_user_group은 지역별로 분류한 값으로 지역별 마케팅 현황에 대해서 분석해줘
 
             최근 2주간의 cost의 흐름에 대해서 분석하고, 
-            CPI, CPRU에 대해서 얼마만큼 상승하고 있는지 구체적인 수치로 분석해줘.
+            CPI, CPRU에 대해서 얼마만큼 상승/하락하고 있는지 구체적인 수치로 분석해줘.
 
-            최근 일주일 간의 데이터에서는 LTV, RET, ROAS 수치에 대해서
-            어떻게 변동이 되고 있는지 파악해줘
+            D1LTV, D1RET, D1ROAS 수치에 대해서 어떻게 변동이 되고 있는지 파악주고,
+            큰 차이를 보이는 경우 구체적인 숫자로 설명해줘.
 
             마케팅 효율개선이 필요하다는말은 하지말아줘.
 
@@ -126,8 +126,8 @@ with DAG(
             최근 2주간의 cost의 흐름에 대해서 분석하고, 
             Organic_ratio는 자연유입 유저의 비중이란 수치로 해당 수치가 어떻게 변화하고 있는지 알려줘.
 
-            일자별 CPI, RET, LTV, ROWS에 대해서 흐름을 분석해주고,
-            커다란 흐름의 차이를 보이는 경우 간략하게 설명해줘.
+            일자별 CPI, D1RET, D1LTV, D1ROAS에 대해서 흐름을 파악하면서, 
+            큰 차이를 보이는 경우 간략하게 설명해줘.
             마케팅 효율개선이 필요하다는말은 하지말아줘.
 
             <원하는 서식>
@@ -411,7 +411,7 @@ with DAG(
             # BigQuery 쿼리 실행
             query = basic_query + f"""
             select regdate_joyple_kst --, geo_user_group 
-            , ROUND(sum(cost_exclude_credit), 2) as cost
+            , CAST(sum(cost_exclude_credit) AS INT64) as cost
             , ROUND(sum(install), 2) as install
             , ROUND(sum(ru), 2) as ru
             --, ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
@@ -448,7 +448,7 @@ with DAG(
 
             query2 = basic_query + f"""
             select regdate_joyple_kst, geo_user_group 
-            , ROUND(sum(cost_exclude_credit), 2) as cost
+            , CAST(sum(cost_exclude_credit) AS INT64) as cost
             , ROUND(sum(install), 2) as install
             , ROUND(sum(ru), 2) as ru
             --, ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
@@ -494,7 +494,7 @@ with DAG(
 
             query3 = basic_query + f"""
             select regdate_joyple_kst--, geo_user_group 
-            , ROUND(sum(cost_exclude_credit), 2) as cost
+            , CAST(sum(cost_exclude_credit) AS INT64) as cost
             , ROUND(sum(install), 2) as install
             , ROUND(sum(ru), 2) as ru
             , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
@@ -532,7 +532,7 @@ with DAG(
 
             query4 = basic_query + f"""
             select regdate_joyple_kst, geo_user_group 
-            , ROUND(sum(cost_exclude_credit), 2) as cost
+            , CAST(sum(cost_exclude_credit) AS INT64) as cost
             , ROUND(sum(install), 2) as install
             , ROUND(sum(ru), 2) as ru
             , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
@@ -679,7 +679,7 @@ with DAG(
                                     padding: 5px;
                                     text-align: left;
                                     font-size: 8pt;
-                                    background: #D2D2D2;
+                                    background: #E5E5E5;
                                     color: black;
                                     border: 1px #2e2e2e solid !important;
                                 }}
