@@ -457,7 +457,7 @@ with DAG(
 
 
             query2 = basic_query + f"""
-            select regdate_joyple_kst as Date, geo_user_group as Country
+            select regdate_joyple_kst, geo_user_group
             , CAST(sum(cost_exclude_credit) AS INT64) as Cost
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
@@ -504,7 +504,7 @@ with DAG(
 
 
             query3 = basic_query + f"""
-            select regdate_joyple_kst as Date--, geo_user_group 
+            select regdate_joyple_kst--, geo_user_group 
             , CAST(sum(cost_exclude_credit) AS INT64) as Cost
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
@@ -543,7 +543,7 @@ with DAG(
 
 
             query4 = basic_query + f"""
-            select regdate_joyple_kst as Date, geo_user_group as Country
+            select regdate_joyple_kst, geo_user_group
             , CAST(sum(cost_exclude_credit) AS INT64) as Cost
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
