@@ -56,7 +56,7 @@ with DAG(
     SENDER_PASSWORD = get_var('SMTP_PASSWORD')
 
     # 수신자 설정
-    RECIPIENT_EMAILS = ['seongin@joycity.com']
+    RECIPIENT_EMAILS = ['seongin@joycity.com', 'mhjung@joycity.com', 'jy0999@joycity.com']
     # RECIPIENT_EMAILS = [email.strip() for email in get_var('RECIPIENT_EMAILS', '').split(',') if email.strip()]
 
     # 제미나이 설정
