@@ -107,7 +107,8 @@ with DAG(
                 )
             )
         
-        return response_data.text
+        lines = response_data.text.split('*')
+        return '\n'.join([line for line in lines if line.strip()]) 
     
 
     # 제미나이 organic 국가별 함수
@@ -146,7 +147,8 @@ with DAG(
                 )
             )
         
-        return response_data.text
+        lines = response_data.text.split('*')
+        return '\n'.join([line for line in lines if line.strip()]) 
 
 
 
@@ -636,9 +638,8 @@ with DAG(
                                 <tbody>
                                     {html_table_header_non_us}
                                     {html_table_rows_non_us}
-                                    <br>
-                                    {genai_non_us}
                                 </tbody>
+                                {genai_non_us}
                             </table>
 
                             <table border="1" width="100%">
@@ -653,9 +654,8 @@ with DAG(
                                 <tbody>
                                     {html_table_header_non_jp}
                                     {html_table_rows_non_jp}
-                                    <br>
-                                    {genai_non_jp}
                                 </tbody>
+                                {genai_non_jp}
                             </table>
 
                             <table border="1" width="100%">
@@ -670,9 +670,8 @@ with DAG(
                                 <tbody>
                                     {html_table_header_non_weu}
                                     {html_table_rows_non_weu}
-                                    <br>
-                                    {genai_non_weu}
                                 </tbody>
+                                {genai_non_weu}
                             </table>
 
                             <table border="1" width="100%">
@@ -687,9 +686,8 @@ with DAG(
                                 <tbody>
                                     {html_table_header_non_etc}
                                     {html_table_rows_non_etc}
-                                    <br>
-                                    {genai_non_etc}
                                 </tbody>
+                                {genai_non_etc}
                             </table>
                             
                             <br>
@@ -721,9 +719,8 @@ with DAG(
                                 <tbody>
                                     {html_table_header_all_us}
                                     {html_table_rows_all_us}
-                                    <br>
-                                    {genai_all_us}
                                 </tbody>
+                                {genai_all_us}
                             </table>
 
                             <table border="1" width="100%">
@@ -738,9 +735,8 @@ with DAG(
                                 <tbody>
                                     {html_table_header_all_jp}
                                     {html_table_rows_all_jp}
-                                    <br>
-                                    {genai_all_jp}
-                                </tbody>
+                                </tbody>    
+                                {genai_all_jp}
                             </table>
 
                             <table border="1" width="100%">
@@ -755,9 +751,8 @@ with DAG(
                                 <tbody>
                                     {html_table_header_all_weu}
                                     {html_table_rows_all_weu}
-                                    <br>
-                                    {genai_all_weu}
                                 </tbody>
+                                {genai_all_weu}
                             </table>
 
                             <table border="1" width="100%">
@@ -772,9 +767,8 @@ with DAG(
                                 <tbody>
                                     {html_table_header_all_etc}
                                     {html_table_rows_all_etc}
-                                    <br>
-                                    {genai_all_etc}
                                 </tbody>
+                                {genai_all_etc}
                             </table>
                             <div style="text-align: center; margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; color: #999; font-size: 8pt;">
                                 <p>자동 생성된 이메일입니다. 회신하지 마세요.</p>
