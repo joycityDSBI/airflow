@@ -85,6 +85,8 @@ with DAG(
             최근 일주일 간의 데이터에서는 LTV, RET, ROAS 수치에 대해서
             어떻게 변동이 되고 있는지 파악해줘
 
+            전체 내용은 3줄 정도로 요약해줘
+
             마케팅 효율개선이 필요하다는말은 하지말아줘.
 
             <원하는 서식>
@@ -107,7 +109,7 @@ with DAG(
                 )
             )
         
-        return response_data.text.replace('*', '\n*')
+        return response_data.text.replace('*', '<br>\n*')
     
 
     # 제미나이 organic 국가별 함수
@@ -126,6 +128,8 @@ with DAG(
             커다란 흐름의 차이를 보이는 경우 간략하게 설명해줘.
             마케팅 효율개선이 필요하다는말은 하지말아줘.
 
+            전체 내용은 3줄 정도로 요약해줘
+
             <원하는 서식>
             1. 요약해주겠다 말 하지말고 요약한 내용에 대해서만 적어주면 돼.
             2. 습니다. 체로 써줘
@@ -146,7 +150,7 @@ with DAG(
                 )
             )
         
-        return response_data.text.replace('*', '\n*')
+        return response_data.text.replace('*', '<br>\n*')
 
 
     # 제미나이 Paid 전체 요약 함수
@@ -186,7 +190,7 @@ with DAG(
                 )
             )
         
-        return response_data.text.replace('*', '\n*')
+        return response_data.text.replace('*', '<br>\n*')
 
     # 제미나이 전체 유저 요약 함수
     def genai_organic_all_analytics(df, text_data):
@@ -225,7 +229,7 @@ with DAG(
                 )
             )
         
-        return response_data.text.replace('*', '\n*')
+        return response_data.text.replace('*', '<br>\n*')
 
 
     # GCP 인증
@@ -670,7 +674,7 @@ with DAG(
                                     font-weight: bold;
                                     font-size: 9pt;
                                     background: #D2D2D2;
-                                    color: white;
+                                    color: black;
                                     border: 1px #2e2e2e solid !important;
                                 }}
                                 .pcenter {{
