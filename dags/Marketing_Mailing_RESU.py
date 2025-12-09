@@ -12,6 +12,7 @@ import logging
 import pandas as pd
 import os
 from airflow.models import Variable
+import html
 
 from google.genai import Client
 from google.genai import types
@@ -382,7 +383,7 @@ with DAG(
 
     # 숫자 포맷팅 함수 (1000단위 쉼표 추가)
     def format_number(value):
-        """숫자에 1000단위 쉼표 추가"""
+        """숫자에 1000단위 쉼표 추가 + HTML 이스케이프"""
         if pd.isna(value):
             return ''
         try:
@@ -390,12 +391,15 @@ with DAG(
             num = float(value)
             # 정수인 경우
             if num == int(num):
-                return f"{int(num):,}"
+                formatted = f"{int(num):,}"
             # 소수점이 있는 경우
             else:
-                return f"{num:,.2f}"
+                formatted = f"{num:,.2f}"
         except (ValueError, TypeError):
-            return str(value)
+            formatted = str(value)
+        
+        # HTML 엔티티로 변환
+        return html.escape(formatted)
         
     # HTML 표 생성 함수
     def format_table(df):
@@ -506,7 +510,7 @@ with DAG(
             , CAST(sum(cost_exclude_credit) AS INT64) as Cost
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
-            , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
+            , CONCAT(CAST(ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru) * 100, 2) AS STRING), '%') as Organic_ratio
             , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
             , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
             , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
@@ -544,7 +548,7 @@ with DAG(
             , CAST(sum(cost_exclude_credit) AS INT64) as Cost
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
-            , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
+            , CONCAT(CAST(ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru) * 100, 2) AS STRING), '%') as Organic_ratio
             , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
             , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
             , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
