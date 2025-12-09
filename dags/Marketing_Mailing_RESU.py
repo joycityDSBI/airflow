@@ -420,9 +420,9 @@ with DAG(
             # BigQuery 쿼리 실행
             query = basic_query + f"""
             select regdate_joyple_kst --, geo_user_group 
-            , CAST(sum(cost_exclude_credit) AS INT64) as cost
-            , ROUND(sum(install), 2) as install
-            , ROUND(sum(ru), 2) as ru
+            , CAST(sum(cost_exclude_credit) AS INT64) as Cost
+            , ROUND(sum(install), 2) as Install
+            , ROUND(sum(ru), 2) as Ru
             --, ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
             , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
             , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
@@ -449,6 +449,7 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_all = bigquery_client.query(query).to_dataframe()
+            df_all = df_all.rename(columns={'regdate_joyple_kst': 'Date', 'geo_user_group': 'Country'})
             logger.info(f"✅ 데이터 추출 완료: {len(df_all)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
@@ -456,10 +457,10 @@ with DAG(
 
 
             query2 = basic_query + f"""
-            select regdate_joyple_kst, geo_user_group 
-            , CAST(sum(cost_exclude_credit) AS INT64) as cost
-            , ROUND(sum(install), 2) as install
-            , ROUND(sum(ru), 2) as ru
+            select regdate_joyple_kst as Date, geo_user_group as Country
+            , CAST(sum(cost_exclude_credit) AS INT64) as Cost
+            , ROUND(sum(install), 2) as Install
+            , ROUND(sum(ru), 2) as Ru
             --, ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
             , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
             , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
@@ -487,6 +488,7 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_all_geo = bigquery_client.query(query2).to_dataframe()
+            df_all_geo = df_all_geo.rename(columns={'regdate_joyple_kst': 'Date', 'geo_user_group': 'Country'})
             logger.info(f"✅ 데이터 추출 완료: {len(df_all_geo)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
@@ -502,10 +504,10 @@ with DAG(
 
 
             query3 = basic_query + f"""
-            select regdate_joyple_kst--, geo_user_group 
-            , CAST(sum(cost_exclude_credit) AS INT64) as cost
-            , ROUND(sum(install), 2) as install
-            , ROUND(sum(ru), 2) as ru
+            select regdate_joyple_kst as Date--, geo_user_group 
+            , CAST(sum(cost_exclude_credit) AS INT64) as Cost
+            , ROUND(sum(install), 2) as Install
+            , ROUND(sum(ru), 2) as Ru
             , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
             , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
             , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
@@ -533,6 +535,7 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_non = bigquery_client.query(query3).to_dataframe()
+            df_non = df_non.rename(columns={'regdate_joyple_kst': 'Date', 'geo_user_group': 'Country'})
             logger.info(f"✅ 데이터 추출 완료: {len(df_non)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
@@ -540,10 +543,10 @@ with DAG(
 
 
             query4 = basic_query + f"""
-            select regdate_joyple_kst, geo_user_group 
-            , CAST(sum(cost_exclude_credit) AS INT64) as cost
-            , ROUND(sum(install), 2) as install
-            , ROUND(sum(ru), 2) as ru
+            select regdate_joyple_kst as Date, geo_user_group as Country
+            , CAST(sum(cost_exclude_credit) AS INT64) as Cost
+            , ROUND(sum(install), 2) as Install
+            , ROUND(sum(ru), 2) as Ru
             , ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
             , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
             , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
@@ -571,6 +574,7 @@ with DAG(
 
             logger.info("🔍 BigQuery 쿼리 실행 중...")
             df_non_geo = bigquery_client.query(query4).to_dataframe()
+            df_non_geo = df_non_geo.rename(columns={'regdate_joyple_kst': 'Date', 'geo_user_group': 'Country'})
             logger.info(f"✅ 데이터 추출 완료: {len(df_non_geo)} rows")
 
             # HTML 표 생성 (제공된 형식 참고)
@@ -687,7 +691,7 @@ with DAG(
                                 .tableTitleNewgenai {{
                                     padding: 5px;
                                     text-align: left;
-                                    font-size: 8pt;
+                                    font-size: 10pt;
                                     background: #E5E5E5;
                                     color: black;
                                     border: 1px #2e2e2e solid !important;
