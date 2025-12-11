@@ -320,6 +320,173 @@ def etl_f_common_register(target_date:list):
     print("✅ f_common_register ETL 완료")
     return True
 
+def etl_f_common_register_adjust(target_date:list):
+
+    for td in target_date:
+        target_date = td
+
+        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+        kst = pytz.timezone('Asia/Seoul')
+        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+
+        query = f"""
+        MERGE datahub-478802.datahub.f_common_register AS target
+        USING 
+        (
+            select DATE(TA.INFO.log_time, "Asia/Seoul") as reg_datekey
+            , DATETIME(TA.INFO.log_time, "Asia/Seoul") as reg_datetime
+            , TA.INFO.game_id
+            , TA.INFO.world_id
+            , TA.joyple_game_code
+            , TA.auth_method_id
+            , TA.auth_account_name
+            , TA.INFO.tracker_account_id
+            , TA.INFO.mmp_type as tracker_type_id
+            , TA.INFO.device_id
+            , TC.country_code as reg_country_code
+            , TA.INFO.market_id
+            , TA.INFO.os_id
+            , TA.INFO.platform_device_type
+            , TA.INFO.app_id
+            , TB.bundle_id
+            , TC.country_code as install_country_code
+            , TB.media_source
+            , TB.media_source_cat
+            , TB.is_organic
+            , TB.agency
+            , TB.campaign
+            , TB.init_campaign
+            , TB.adset_name
+            , TB.ad_name
+            , TB.is_retargeting
+            , TB.advertising_id
+            , TB.idfa
+            , TB.site_id
+            , TB.channel
+            , TB.CB1_media_source
+            , TB.CB1_campaign
+            , TB.CB2_media_source
+            , TB.CB2_campaign
+            , TB.CB3_media_source
+            , TB.CB3_campaign
+            , TB.install_time
+            , TB.event_time
+            , TB.event_type
+            , TB.install_datekey
+            from
+            (
+                select joyple_game_code, auth_method_id, auth_account_name, 
+                array_agg(STRUCT(game_id, world_id, auth_method_id, auth_account_name, tracker_account_id, mmp_type, device_id, ip, market_id, os_id, platform_device_type, 
+                app_id, log_time) ORDER BY log_time asc)[OFFSET(0)] AS INFO
+                from dataplatform-204306.CommonLog.Payment
+                where log_time >= {start_utc}
+                and log_time < {end_utc}
+                group by joyple_game_code, auth_method_id, auth_account_name
+            ) TA
+            left join 
+            datahub-478802.datahub.f_tracker_install as TB
+            on TA.INFO.tracker_account_id = TB.tracker_account_id AND TA.INFO.mmp_type = TB.tracker_type_id
+            left join 
+            datahub-478802.datahub.dim_ip4_country_code as TC
+            on TA.INFO.ip = TC.ip
+        ) AS source ON target.joyple_game_code = source.joyple_game_code AND target.auth_method_id = source.auth_method_id AND target.auth_account_name = source.auth_account_name
+        WHEN NOT MATCHED BY target THEN 
+        INSERT
+        (
+            reg_datekey
+            , reg_datetime
+            , game_id
+            , world_id
+            , joyple_game_code
+            , auth_method_id
+            , auth_account_name
+            , tracker_account_id
+            , tracker_type_id
+            , device_id
+            , reg_country_code
+            , market_id
+            , os_id
+            , platform_device_type
+            , app_id
+            , bundle_id
+            , install_country_code
+            , media_source
+            , media_source_cat
+            , is_organic
+            , agency
+            , campaign
+            , init_campaign
+            , adset_name
+            , ad_name
+            , is_retargeting
+            , advertising_id
+            , idfa
+            , site_id
+            , channel
+            , CB1_media_source
+            , CB1_campaign
+            , CB2_media_source
+            , CB2_campaign
+            , CB3_media_source
+            , CB3_campaign
+            , install_time
+            , event_time
+            , event_type
+            , install_datekey
+        )
+        VALUES
+        (
+            source.reg_datekey
+            , source.reg_datetime
+            , source.game_id
+            , source.world_id
+            , source.joyple_game_code
+            , source.auth_method_id
+            , source.auth_account_name
+            , source.tracker_account_id
+            , source.tracker_type_id
+            , source.device_id
+            , source.reg_country_code
+            , source.market_id
+            , source.os_id
+            , source.platform_device_type
+            , source.app_id
+            , source.bundle_id
+            , source.install_country_code
+            , source.media_source
+            , source.media_source_cat
+            , source.is_organic
+            , source.agency
+            , source.campaign
+            , source.init_campaign
+            , source.adset_name
+            , source.ad_name
+            , source.is_retargeting
+            , source.advertising_id
+            , source.idfa
+            , source.site_id
+            , source.channel
+            , source.CB1_media_source
+            , source.CB1_campaign
+            , source.CB2_media_source
+            , source.CB2_campaign
+            , source.CB3_media_source
+            , source.CB3_campaign
+            , source.install_time
+            , source.event_time
+            , source.event_type
+            , source.install_datekey
+        )
+        """
+        client.query(query)
+        print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register_adjust Batch 완료")
+    
+    print("✅ f_common_register_adjust ETL 완료")
+    return True
+
+
 
 def etl_f_common_register_char(target_date:list):
 
@@ -549,7 +716,6 @@ def etl_f_common_access(target_date: list):
         FROM `dataplatform-204306.CommonLog.Access` AS a
         WHERE a.log_time >= {start_utc}
         AND a.log_time < {end_utc}
-        AND a.access_type_id = 1
         AND a.game_id            IS NOT NULL
         AND a.world_id           IS NOT NULL
         AND a.server_name        IS NOT NULL
@@ -610,13 +776,14 @@ def etl_f_common_access(target_date: list):
                 , TA.OSID AS os_id
                 , TA.PlatformDeviceType AS platform_device_type
                 , TA.AccountLevel AS game_user_level
+                , TA.AccessTypeID AS access_type_id
                 , SUM(CASE WHEN TA.AccessTypeID = 1 THEN 1 ELSE 0 END) AS access_cnt
                 , IF(SUM(TA.PlaySeconds) > 86400, 86400, SUM(TA.PlaySeconds)) AS play_seconds
                 FROM TA
                 LEFT OUTER JOIN `datahub-478802.datahub.dim_ip4_country_code` AS b ON TA.IP = b.ip
                 LEFT OUTER JOIN `datahub-478802.datahub.f_common_register` AS c 
                 ON TA.JoypleGameID = c.joyple_game_code AND TA.AuthMethodID = c.auth_method_id AND CAST(TA.AuthAccountName AS STRING) = CAST(c.auth_account_name AS STRING)
-                group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
+                group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18
         ) AS source
             ON target.datekey = source.datekey
             AND target.game_id = source.game_id
@@ -632,6 +799,8 @@ def etl_f_common_access(target_date: list):
             AND target.market_id = source.market_id
             AND target.os_id = source.os_id
             AND target.platform_device_type = source.platform_device_type
+            AND target.game_user_level = source.game_user_level
+            AND target.access_type_id = source.access_type_id
             WHEN NOT MATCHED THEN
             INSERT
             (datekey, 
@@ -650,7 +819,8 @@ def etl_f_common_access(target_date: list):
             market_id, 
             os_id, 
             platform_device_type, 
-            game_user_level, 
+            game_user_level,
+            access_type_id, 
             access_cnt, 
             play_seconds
             )
@@ -672,7 +842,8 @@ def etl_f_common_access(target_date: list):
             source.market_id, 
             source.os_id, 
             source.platform_device_type,
-            source.game_user_level, 
+            source.game_user_level,
+            source.access_type_id, 
             source.access_cnt, 
             source.play_seconds
             )

@@ -120,7 +120,7 @@ def etl_f_funnel_access(target_date:list):
             USING
             (
             SELECT a.game_id
-                    , a.joyple_game_code
+                , a.joyple_game_code
                 , a.tracker_account_id
                 , a.tracker_type_id
                 , a.device_id
@@ -134,6 +134,7 @@ def etl_f_funnel_access(target_date:list):
                 , b.is_organic
                 , b.country_code as install_country_code
                 , b.is_retargeting
+                , DATETIME(a.log_time, "Asia/Seoul") AS log_datetime
             FROM (
                 SELECT joyple_game_code
                     , game_id
@@ -168,6 +169,7 @@ def etl_f_funnel_access(target_date:list):
                     , target.media_source = source.media_source
                     , target.is_organic = source.is_organic
                     , target.install_country_code = source.install_country_code
+                    , target.log_datetime = source.log_datetime
             WHEN NOT MATCHED BY target THEN
             INSERT (
                 game_id
@@ -185,6 +187,7 @@ def etl_f_funnel_access(target_date:list):
                 , media_source
                 , is_organic
                 , install_country_code
+                , log_datetime
                 )
             VALUES (
                 source.game_id
@@ -202,6 +205,7 @@ def etl_f_funnel_access(target_date:list):
                 , source.media_source
                 , source.is_organic
                 , source.install_country_code
+                , source.log_datetime
             )
         """
 
