@@ -188,6 +188,7 @@ services:
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
 
   airflow-dag-processor:
     <<: *airflow-common
