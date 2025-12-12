@@ -1609,7 +1609,6 @@ def cohort_by_gemini(joyplegameid: int, **context):
         key='cohort_by_country_cost_df'
     )
 
-    #client = genai.Client(api_key="AIzaSyAVv2B6DM6w9jd1MxiP3PbzAEMkl97SCGY")
     response3_revAndCostByCountry = genai_client.models.generate_content(
     model=MODEL_NAME,
 
@@ -1731,7 +1730,6 @@ def os_rev(joyplegameid: int, **context):
 
 ### 4> 일자별 매출에 대한 제미나이 코멘트
 
-#client = genai.Client(api_key="AIzaSyAVv2B6DM6w9jd1MxiP3PbzAEMkl97SCGY")
 def os_by_gemini(joyplegameid: int, **context):
     
     os_rev_df= context['task_instance'].xcom_pull(
