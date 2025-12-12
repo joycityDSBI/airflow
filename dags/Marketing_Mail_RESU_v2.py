@@ -105,14 +105,11 @@ with DAG(
 
     ### [단가 지표]
     - **CPI (Cost per Install)**: Install 1건당 비용
-    - **CPRU (Cost per Revenue User)**: Revenue User 1명당 비용
+    - **CPRU **: 신규 유저(RU) 1명 데려오는 비용
 
     ### [LTV 지표]
-    각 단위는 *유저 1인당 매출 기여도*를 의미하며, 기간별 누적 LTV를 포함해.
-    - **D0LTV**: 첫날 LTV
-    - **D1LTV**: 1일차 LTV
-    - **D3LTV / D7LTV**: 3일차 / 7일차 LTV
-    - **DcumLTV**: 전체 누적 LTV (최대 기간까지)
+    - **D0LTV / D1LTV / D3LTV / D7LTV**: 해당 시점의 LTV
+    - **DcumLTV**: 누적 LTV
 
     ### [Retention 지표]
     - **D1RET / D3RET / D7RET**: 각각 1·3·7일차 잔존율(리텐션)
@@ -133,9 +130,9 @@ with DAG(
         * **줄 수 제한:** 총 5줄 미만으로 간결하게 작성합니다.
 
     * **분석 항목:**
-        1)  **Cost 변화 요약** (마지막일 기준 상승/하락 여부와 증감 비율 포함)
-        2)  **CPI, CPRU 변화율 중심 설명** (마지막일 기준, CPI/CPRU 각각의 증감 비율 포함)
-        3)  **D1LTV, D1RET, D1ROAS 변화** (값이 존재하는 데이터 중 가장 큰 변화 1개에 대해 언급)
+        1)  **Cost 변화 요약** : 가장 하단에 있는 날짜를 기준으로 증감 트렌드 분석
+        2)  **CPI, CPRU 변화율 중심 설명** : 가장 하단에 있는 날짜를 기준으로 증감 트렌드 분석
+        3)  **D1LTV, D1RET, D1ROAS 변화** : 각 열 중 값이 존재하는 가장 마지막 행의 날짜를 기준으로 분석 진행
 """
     
 
@@ -146,7 +143,7 @@ with DAG(
             model=MODEL_NAME,
             contents = [prompt_description,  prompt_part,  f"""
                         <최근 2주간 geo_user_group별 마케팅으로 유입된 유저 데이터>
-                        {df_all_us.to_markdown(index=False)}"""],
+                        {df.to_markdown(index=False)}"""],
             config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
                     # tools=[RAG],
@@ -167,7 +164,7 @@ with DAG(
             model=MODEL_NAME,
             contents = [prompt_description,  prompt_part,  f"""
                         <최근 2주간 geo_user_group별 Organic으로 유입된 유저 데이터>
-                        {df_all_us.to_markdown(index=False)}"""],
+                        {df.to_markdown(index=False)}"""],
             config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
                     # tools=[RAG],
@@ -193,7 +190,7 @@ with DAG(
                         통합 데이터에 대해서 언급 한 후, 제미나이 코멘트 확인 후 가장 변화가 큰 국가의 트렌드를 아래에 적어줘.
                         
                         <마케팅으로 유입된 Paid 전체 유저 데이터>
-                        {df_all_us.to_markdown(index=False)}
+                        {df.to_markdown(index=False)}
                         
                         <제미나이 코멘트>
                         {text_data}
@@ -222,7 +219,7 @@ with DAG(
                         통합 데이터에 대해서 언급 한 후, 제미나이 코멘트 확인 후 가장 변화가 큰 국가의 트렌드를 아래에 적어줘.
                         
                         <일자별 유입된 전체 유저 데이터>
-                        {df_all_us.to_markdown(index=False)}
+                        {df.to_markdown(index=False)}
                         
                         <제미나이 코멘트>
                         {text_data}
