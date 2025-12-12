@@ -62,7 +62,7 @@ x-airflow-common:
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
-    AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
+    AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
     
     # Create admin user if missing
     _AIRFLOW_WWW_USER_CREATE: 'true'
@@ -163,7 +163,7 @@ services:
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
 
 
   airflow-scheduler:
@@ -189,7 +189,7 @@ services:
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
 
   airflow-dag-processor:
     <<: *airflow-common
@@ -214,7 +214,7 @@ services:
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
 
   airflow-worker:
     <<: *airflow-common
@@ -231,7 +231,7 @@ services:
     environment:
       <<: *airflow-common-env
       DUMB_INIT_SETSID: "0"
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
 
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
@@ -356,7 +356,7 @@ services:
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-admin123}
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth google-auth-oauthlib google-auth-httplib2
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
     user: "0:0"
 
   airflow-cli:
@@ -366,7 +366,7 @@ services:
     environment:
       <<: *airflow-common-env
       CONNECTION_CHECK_MAX_COUNT: "0"
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
     # Workaround for entrypoint issue. See: https://github.com/apache/airflow/issues/16252
     command:
       - bash
