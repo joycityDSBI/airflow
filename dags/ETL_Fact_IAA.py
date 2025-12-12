@@ -90,7 +90,7 @@ def etl_f_IAA_game_sub_user_watch(target_date: list):
                 , DATE(LogDate_Svr,'Asia/Seoul') AS watch_datekey
                 , CAST(UserID AS STRING)         AS game_sub_user_name
                 , COUNT(p3)                      AS watch_cnt
-            FROM `dataplatform-204306.DS.T_Log_Game` 
+            FROM ` ` 
             WHERE Reason = 63001 
             AND WorldID NOT IN (6108,5555)
             AND LogDate_Svr >= {start_utc}
@@ -150,8 +150,8 @@ def etl_f_IAA_performance():
     truncate_query=f"""
     TRUNCATE TABLE `datahub-478802.datahub.f_IAA_performance`
     """
-
-    query=f"""
+ 
+    query=f""" 
     INSERT INTO `datahub-478802`.datahub.f_IAA_performance
     (app_name, mediation_name, ADNW_name, watch_datekey, country_code, platform, ad_unit, ad_format, requests, impressions, matched_requests, clicks, revenue)
 
@@ -436,7 +436,7 @@ def etl_f_IAA_auth_account_performance_joyple(target_date:list):
                 END AS os_iaa
                 , a.LogID AS log_id
                 , a.AdNetworkCode AS ad_network_code
-                , a.AdCode AS ad_code
+                , a.AdCode AS ad_code 
                 , a.AdName As AD_name
                 , a.Placement AS placement
                 , d.media_source 
@@ -485,7 +485,7 @@ def etl_f_IAA_auth_account_performance(target_date:list):
         (
             joyple_game_code,
             watch_datekey,
-            auth_account_name, 
+            auth_account_name,  
             auth_method_id, 
             reg_datekey, 
             reg_country_code,
@@ -590,6 +590,7 @@ def etl_f_IAA_auth_account_performance(target_date:list):
             ON (a.os = Lower(o.os_name))
             WHERE a.watch_cnt > 0
             )
+
             SELECT DISTINCT
                 joyple_game_code
                 , watch_datekey

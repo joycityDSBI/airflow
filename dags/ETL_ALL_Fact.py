@@ -69,7 +69,9 @@ with DAG(
     def etl_fact_access(target_date:list):
         try:
             etl_f_common_register(target_date=target_date)
+            adjust_f_common_register(target_date=target_date)
             etl_f_common_register_char(target_date=target_date)
+            adjust_f_common_register_char(target_date=target_date)
             etl_f_common_access(target_date=target_date)
             logger.info("etl_fact_access completed successfully")
             return True

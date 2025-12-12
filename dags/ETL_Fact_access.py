@@ -320,7 +320,7 @@ def etl_f_common_register(target_date:list):
     print("✅ f_common_register ETL 완료")
     return True
 
-def etl_f_common_register_adjust(target_date:list):
+def adjust_f_common_register(target_date:list):
 
     for td in target_date:
         target_date = td
@@ -676,6 +676,104 @@ def etl_f_common_register_char(target_date:list):
         print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register_char Batch 완료")
     
     print("✅ f_common_register_char ETL 완료")
+    return True
+
+
+def adjust_f_common_register_char(target_date:list):
+
+    for td in target_date:
+        target_date = td
+
+        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+        kst = pytz.timezone('Asia/Seoul')
+        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+
+        query = f"""
+        MERGE datahub-478802.datahub.f_common_register_char AS target
+        USING 
+        (
+            select IFNULL(TB.reg_datekey, DATE(TA.INFO.log_time, "Asia/Seoul")) as reg_datekey
+            , IFNULL(TB.reg_datetime, DATETIME(TA.INFO.log_time, "Asia/Seoul")) as reg_datetime
+            , TA.INFO.game_id
+            , TA.INFO.world_id
+            , TA.joyple_game_code
+            , TA.auth_method_id
+            , TA.auth_account_name
+            , TA.game_sub_user_name
+            , TA.INFO.server_name
+            , TA.INFO.tracker_account_id
+            , TA.INFO.mmp_type as tracker_type_id
+            , TA.INFO.device_id
+            , TC.country_code as country_code
+            , TA.INFO.market_id
+            , TA.INFO.os_id
+            , TA.INFO.platform_device_type
+            , DATE(TA.INFO.log_time, "Asia/Seoul") as game_sub_user_reg_datekey
+            , DATETIME(TA.INFO.log_time, "Asia/Seoul") as game_sub_user_reg_datetime            
+            from
+            (
+                select joyple_game_code, auth_method_id, auth_account_name, game_sub_user_name,
+                array_agg(STRUCT(game_id, world_id, auth_method_id, auth_account_name, tracker_account_id, mmp_type, device_id, ip, market_id, os_id, platform_device_type, 
+                app_id, log_time, server_name) ORDER BY log_time asc)[OFFSET(0)] AS INFO
+                from dataplatform-204306.CommonLog.Payment
+                where log_time >= {start_utc}
+                and log_time < {end_utc}
+                group by joyple_game_code, auth_method_id, auth_account_name, game_sub_user_name
+            ) TA
+            left join
+            datahub-478802.datahub.f_common_register as TB
+            on TA.joyple_game_code = TB.joyple_game_code AND TA.auth_method_id = TB.auth_method_id AND CAST(TA.auth_account_name AS STRING) = CAST(TB.auth_account_name AS STRING)
+            left join 
+            datahub-478802.datahub.dim_ip4_country_code as TC
+            on TA.INFO.ip = TC.ip
+        ) AS source ON target.joyple_game_code = source.joyple_game_code AND target.auth_method_id = source.auth_method_id AND target.auth_account_name = source.auth_account_name
+        WHEN NOT MATCHED BY target THEN 
+        INSERT
+        (
+            reg_datekey
+            , reg_datetime
+            , game_id
+            , world_id
+            , joyple_game_code
+            , auth_method_id
+            , auth_account_name
+            , tracker_account_id
+            , tracker_type_id
+            , device_id
+            , reg_country_code
+            , market_id
+            , os_id
+            , platform_device_type
+            , game_sub_user_reg_datekey
+            , game_sub_user_reg_datetime
+        )
+        VALUES
+        (
+            source.reg_datekey
+            , source.reg_datetime
+            , source.game_id
+            , source.world_id
+            , source.joyple_game_code
+            , source.auth_method_id
+            , source.auth_account_name
+            , source.tracker_account_id
+            , source.tracker_type_id
+            , source.device_id
+            , source.reg_country_code
+            , source.market_id
+            , source.os_id
+            , source.platform_device_type
+            , source.game_sub_user_reg_datekey
+            , source.game_sub_user_reg_datetime
+        )
+
+        """
+        client.query(query)
+        print(f"■ {target_date.strftime('%Y-%m-%d')} adjust_common_register_char Batch 완료")
+    
+    print("✅ adjust_common_register_char ETL 완료")
     return True
 
 
