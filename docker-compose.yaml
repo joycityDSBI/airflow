@@ -163,6 +163,7 @@ services:
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
 
 
   airflow-scheduler:
@@ -213,6 +214,7 @@ services:
     environment:
       <<: *airflow-common-env
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
 
   airflow-worker:
     <<: *airflow-common
@@ -229,6 +231,7 @@ services:
     environment:
       <<: *airflow-common-env
       DUMB_INIT_SETSID: "0"
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
 
       # Required to handle warm shutdown of the celery workers properly
       # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
@@ -353,6 +356,7 @@ services:
       _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
       _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-admin123}
       _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth google-auth-oauthlib google-auth-httplib2
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
     user: "0:0"
 
   airflow-cli:
@@ -362,6 +366,7 @@ services:
     environment:
       <<: *airflow-common-env
       CONNECTION_CHECK_MAX_COUNT: "0"
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '60'
     # Workaround for entrypoint issue. See: https://github.com/apache/airflow/issues/16252
     command:
       - bash
