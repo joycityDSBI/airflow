@@ -18,10 +18,11 @@ import json
 from datetime import datetime, timezone, timedelta
 from airflow.operators.python import get_current_context
 from airflow.sdk import get_current_context
-from game_framework_util import *
+from game_framework_util import load_df_from_gcs, save_df_to_gcs, query_run_method
 
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
+
 
 
 def _setup_matplotlib_and_fonts():
@@ -36,7 +37,12 @@ def _setup_matplotlib_and_fonts():
     from matplotlib.patches import Rectangle
     
     # 폰트 설정 (여기서만 실행)
-    setup_korean_font()
+    plt.rcParams['font.sans-serif'] = ['Noto Sans CJK JP', 'DejaVu Sans', 'Noto Sans']
+    plt.rcParams['font.size'] = 10
+    plt.rcParams['axes.unicode_minus'] = False
+    plt.rcParams['lines.linewidth'] = 1.5
+    
+    print("✓ Matplotlib 한글 폰트 설정 완료")
     
     return {
         'plt': plt,
