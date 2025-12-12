@@ -18,7 +18,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from airflow.operators.python import get_current_context
 from airflow.sdk import get_current_context
-from game_framework_util import load_df_from_gcs, save_df_to_gcs, query_run_method
+from game_framework_util import load_df_from_gcs, save_df_to_gcs, query_run_method, df_to_notion_table_under_toggle, md_to_notion_blocks
 
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
