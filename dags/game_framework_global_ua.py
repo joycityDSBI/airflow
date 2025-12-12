@@ -5,20 +5,13 @@ from google.genai import types
 from google.cloud import storage
 
 # 그래프 관련 패키지
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
-from PIL import Image, ImageDraw, ImageFont # 2가지 파일 합치기
-import matplotlib.dates as mdates
 from io import BytesIO
 from typing import List, Tuple
-from matplotlib import rcParams
-from matplotlib.patches import Rectangle
 
 # 전처리 관련 패키지
 import numpy as np
 import os 
 import time
-import pandas as pd
 from notion_client import Client
 import requests
 import json
@@ -30,8 +23,44 @@ from game_framework_util import *
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
 
-# ## 한글 폰트 설정
-# setup_korean_font()
+
+def _setup_matplotlib_and_fonts():
+    """matplotlib 및 폰트 설정 (함수 내부에서만 import)"""
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import matplotlib as mpl
+    import matplotlib.font_manager as fm
+    from matplotlib.ticker import FuncFormatter, StrMethodFormatter, PercentFormatter, MultipleLocator
+    import matplotlib.dates as mdates
+    from matplotlib import rcParams
+    from matplotlib.patches import Rectangle
+    
+    # 폰트 설정 (여기서만 실행)
+    setup_korean_font()
+    
+    return {
+        'plt': plt,
+        'sns': sns,
+        'mpl': mpl,
+        'fm': fm,
+        'FuncFormatter': FuncFormatter,
+        'StrMethodFormatter': StrMethodFormatter,
+        'PercentFormatter': PercentFormatter,
+        'MultipleLocator': MultipleLocator,
+        'mdates': mdates,
+    }
+
+def _setup_image_libs():
+    """이미지 관련 라이브러리"""
+    from PIL import Image, ImageDraw, ImageFont
+    from io import BytesIO
+    
+    return {
+        'Image': Image,
+        'ImageDraw': ImageDraw,
+        'ImageFont': ImageFont,
+        'BytesIO': BytesIO,
+    }
 
 ## 이번달 가입 유저의 국가별 매출
 def cohort_by_country_revenue(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
@@ -356,7 +385,8 @@ def os_by_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM
 
 def by_country_revenue_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
     ## 한글 폰트 설정
-    setup_korean_font()
+    viz_libs = _setup_matplotlib_and_fonts()
+    plt = viz_libs['plt']
     
     query_result3_revByCountry = load_df_from_gcs(bucket, gcs_path)
     query_result3_revByCountry = query_result3_revByCountry.sort_values(by="rev", ascending=False)
@@ -440,8 +470,9 @@ def by_country_revenue_graph_draw(gameidx: str, gcs_path:str, bucket, **context)
 
 def by_country_cost_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
     
-    ## 한글 폰트 설정
-    setup_korean_font()
+    # Step 1: matplotlib 설정 로드
+    viz_libs = _setup_matplotlib_and_fonts()
+    plt = viz_libs['plt']
 
     query_result3_costByCountry = load_df_from_gcs(bucket, gcs_path)
     query_result3_costByCountry = query_result3_costByCountry.sort_values(by="cost", ascending=False)
@@ -525,8 +556,10 @@ def by_country_cost_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
 
 
 def merge_contry_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **context):
-    ## 한글 폰트 설정
-    setup_korean_font()
+    # Step 1: Image 라이브러리 로드
+    image_libs = _setup_image_libs()
+    Image = image_libs['Image']
+    BytesIO = image_libs['BytesIO']
 
     p1=by_country_revenue_graph_draw(gameidx, gcs_path_1, bucket)
     p2=by_country_cost_graph_draw(gameidx, gcs_path_2, bucket)
@@ -587,8 +620,9 @@ def merge_contry_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **c
 ### OS 별 매출
 def os_rev_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
 
-    ## 한글 폰트 설정
-    setup_korean_font()
+    # Step 1: matplotlib 설정 로드
+    viz_libs = _setup_matplotlib_and_fonts()
+    plt = viz_libs['plt']
 
     query_result3_revByOs = load_df_from_gcs(bucket, gcs_path)
 
@@ -672,8 +706,9 @@ def os_rev_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
 ### os 별 Cost
 def os_cost_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
 
-    ## 한글 폰트 설정
-    setup_korean_font()
+    # Step 1: matplotlib 설정 로드
+    viz_libs = _setup_matplotlib_and_fonts()
+    plt = viz_libs['plt']
 
     query_result3_costByOs = load_df_from_gcs(bucket, gcs_path)
 
@@ -755,8 +790,10 @@ def os_cost_graph_draw(gameidx: str, gcs_path:str, bucket, **context):
 
 def merge_os_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **context):
 
-    ## 한글 폰트 설정
-    setup_korean_font()
+    # Step 1: Image 라이브러리 로드
+    image_libs = _setup_image_libs()
+    Image = image_libs['Image']
+    BytesIO = image_libs['BytesIO']
 
     p1 = os_rev_graph_draw(gameidx, gcs_path_1, bucket)
     p2 = os_cost_graph_draw(gameidx, gcs_path_2, bucket)
@@ -1248,9 +1285,12 @@ def country_group_to_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTE
 
 def country_group_df_draw(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context):
 
-    ## 한글 폰트 설정
-    setup_korean_font()
-    
+    # Step 1: matplotlib 설정 로드
+    viz_libs = _setup_matplotlib_and_fonts()
+    plt = viz_libs['plt']
+    FuncFormatter = viz_libs['FuncFormatter']
+
+
     gcs_paths = []
     grouped_dfs, _ = country_group_to_df(joyplegameid=joyplegameid, gameidx=gameidx, bigquery_client=bigquery_client, bucket=bucket, **context)
 
@@ -1322,8 +1362,10 @@ def merge_images_by_three_gcs(
     cleanup_temp: bool = True
     ) -> List[str]:
 
-    ## 한글 폰트 설정
-    setup_korean_font()
+    # Step 1: Image 라이브러리 로드
+    image_libs = _setup_image_libs()
+    Image = image_libs['Image']
+    BytesIO = image_libs['BytesIO']
 
     def pad_to_height(img: Image.Image, h: int, bg: Tuple = bg_color) -> Image.Image:
         """이미지의 높이를 맞춰줌 (세로 패딩 추가)"""
@@ -1423,9 +1465,6 @@ def merge_country_group_df_draw(joyplegameid: int, gameidx: str, bigquery_client
     Airflow DAG에서 사용할 wrapper 함수
     """
     from google.cloud import storage
-
-    ## 한글 폰트 설정
-    setup_korean_font()
     
     # GCS 클라이언트 및 버킷 초기화
     client = storage.Client()
