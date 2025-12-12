@@ -146,7 +146,7 @@ with DAG(
             model=MODEL_NAME,
             contents = [prompt_description,  prompt_part,  f"""
                         <최근 2주간 geo_user_group별 마케팅으로 유입된 유저 데이터>
-                        {df}"""],
+                        {df_all_us.to_markdown(index=False)}"""],
             config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
                     # tools=[RAG],
@@ -167,7 +167,7 @@ with DAG(
             model=MODEL_NAME,
             contents = [prompt_description,  prompt_part,  f"""
                         <최근 2주간 geo_user_group별 Organic으로 유입된 유저 데이터>
-                        {df}"""],
+                        {df_all_us.to_markdown(index=False)}"""],
             config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
                     # tools=[RAG],
@@ -193,7 +193,7 @@ with DAG(
                         통합 데이터에 대해서 언급 한 후, 제미나이 코멘트 확인 후 가장 변화가 큰 국가의 트렌드를 아래에 적어줘.
                         
                         <마케팅으로 유입된 Paid 전체 유저 데이터>
-                        {df}
+                        {df_all_us.to_markdown(index=False)}
                         
                         <제미나이 코멘트>
                         {text_data}
@@ -222,7 +222,7 @@ with DAG(
                         통합 데이터에 대해서 언급 한 후, 제미나이 코멘트 확인 후 가장 변화가 큰 국가의 트렌드를 아래에 적어줘.
                         
                         <일자별 유입된 전체 유저 데이터>
-                        {df}
+                        {df_all_us.to_markdown(index=False)}
                         
                         <제미나이 코멘트>
                         {text_data}
