@@ -7,295 +7,217 @@ import pytz
 # 빅쿼리 클라이언트 연결
 client = bigquery.Client()
 
-def etl_pre_tracker_install():
-
-    truncate_query = f"""
-    TRUNCATE TABLE `datahub-478802.datahub.pre_tracker_install`
-    """
-
-    query = f"""
-    INSERT INTO `datahub-478802.datahub.pre_tracker_install` 
-    (app_id,
-    tracker_account_id,
-    tracker_type_id,
-    bundle_id,
-    platform,
-    country_code,
-    media_source,
-    media_source_cat,
-    is_organic,
-    agency,
-    campaign,
-    init_campaign,
-    adset_name,
-    ad_name,
-    is_retargeting,
-    advertising_id,
-    idfa,
-    site_id,
-    channel,
-    CB1_media_source,
-    CB1_campaign,
-    CB2_media_source,
-    CB2_campaign,
-    CB3_media_source,
-    CB3_campaign,
-    install_time,
-    event_time,
-    event_type
-    )
-
-    SELECT TRIM(AppID) AS app_id
-        , TrackerAccountID AS tracker_account_id
-        , TrackerTypeID AS tracker_type_id
-        , TRIM(BundleID) AS bundle_id
-        , TRIM(Platform) AS platform
-        , CountryCode AS country_code
-        , TRIM(MediaSource) AS media_source
-        , IFNULL(IF(MediaSource = "Organic", "Organic", IF(MediaSource = "Facebook Ads", "FB", IF(MediaSource = "googleadwords_int", "Google", "Other"))), "Other") AS media_source_cat
-        , IF(MediaSource = "Organic", "Organic", IF(MediaSource = "GameRoom", "Unknown", "Non-Organic"))  AS is_organic
-        , TRIM(Agency) AS agency
-        , CASE WHEN b.campaign_name IS NOT NULL THEN b.campaign_name ELSE (IF(a.campaign = '' OR a.campaign is null, "NULL", TRIM(a.campaign))) END AS campaign
-        , CASE WHEN MediaSource = 'googleadwords_int' AND LENGTH(a.campaign) <= 11 AND a.campaign NOT LIKE '%UAC%' AND a.campaign NOT LIKE 'PRE_MAIN%' THEN b.campaign_name
-                WHEN a.campaign = '' OR a.campaign is null THEN "NULL"
-                ELSE TRIM(a.campaign)
-        END AS init_campaign
-        , TRIM(NORMALIZE(AdsetName, NFC)) AS adset_name
-        , TRIM(NORMALIZE(AdName, NFC)) AS ad_name
-        , IsRetargeting AS is_retargeting
-        , TRIM(AdvertisingID) AS advertising_id
-        , TRIM(IDFA) AS idfa
-        , TRIM(SiteID) AS site_id
-        , TRIM(Channel) AS channel
-        , TRIM(CB1MediaSource) AS CB1_media_source
-        , TRIM(CB1Campaign) AS CB1_campaign
-        , TRIM(CB2MediaSource) AS CB2_media_source
-        , TRIM(CB2Campaign) AS CB2_campaign
-        , TRIM(CB3MediaSource) AS CB3_media_source
-        , TRIM(CB3Campaign) AS CB3_campaign         
-        , InstallTime AS install_time
-        , EventTime AS event_time
-        , EventType AS event_type
-    FROM (
-    SELECT app_id                                                                                                                    AS AppID
-        , appsflyer_device_id                                                                                                       AS TrackerAccountID
-        , 1                                                                                                                         AS TrackerTypeID  -- mmp_type
-        , bundle_id                                                                                                                 AS BundleID
-        , platform                                                                                                                  AS Platform
-        , UPPER(country_code)                                                                                                       AS CountryCode
-        -- media_source가 null일 경우 'NULL'로 
-        , IFNULL(IF(appsflyer_device_id = "1000-0000", "GameRoom", IF(media_source = 'organic', "Organic", media_source)), "NULL")  AS MediaSource
-        , agency                                                                                                                    AS Agency
-        , IFNULL(CASE WHEN fb_campaign_name IS NOT NULL THEN fb_campaign_name ELSE campaign END, "NULL")                            AS Campaign
-        , CASE WHEN fb_adset_name IS NOT NULL THEN fb_adset_name ELSE af_adset END                                                  AS AdsetName
-        , CASE WHEN fb_adgroup_name IS NOT NULL THEN fb_adgroup_name ELSE af_ad END                                                 AS AdName
-        , is_retargeting                                                                                                            AS IsRetargeting
-        , advertising_id                                                                                                            AS AdvertisingID
-        , idfa                                                                                                                      AS IDFA
-        , af_siteid                                                                                                                 AS SiteID
-        , af_channel                                                                                                                AS Channel
-        , "NULL"                                                                                                                    AS CB1MediaSource
-        , "NULL"                                                                                                                    AS CB1Campaign
-        , "NULL"                                                                                                                    AS CB2MediaSource
-        , "NULL"                                                                                                                    AS CB2Campaign
-        , "NULL"                                                                                                                    AS CB3MediaSource
-        , "NULL"                                                                                                                    AS CB3Campaign
-        , install_time                                                                                                              AS InstallTime
-        , event_time                                                                                                                AS EventTime
-        , event_type                                                                                                                AS EventType
-    FROM `dataplatform-reporting.AppsflyerLog.V_LogsV1` AS a
-    WHERE event_type in ('install', 'reinstall', 're-attribution', 're-engagement')
-        -- AND download_time < TIMESTAMP_ADD(install_time, INTERVAL 1 DAY)
-        -- AND install_time <= "2020-06-17 05:47:38 UTC"  
-        AND event_time   <= "2020-06-17 05:47:38 UTC" 
-    UNION ALL
-    SELECT app_id                                                                                                                    AS AppID
-        , appsflyer_id                                                                                                              AS TrackerAccountID
-        , 1                                                                                                                         AS TrackerTypeID     
-        , bundle_id                                                                                                                 AS BundleID
-        , platform                                                                                                                  AS Platform
-        , UPPER(country_code)                                                                                                       AS CountryCode
-        -- media_source가 null일 경우 'NULL'로 처리     
-        , IFNULL(IF(appsflyer_id = "1000-0000", "GameRoom", IF(media_source = 'organic', "Organic", media_source)), "NULL")         AS MediaSource
-        , af_prt                                                                                                                    AS Agency
-        , IFNULL(campaign, "NULL")                                                                                                  AS Campaign 
-        , af_adset                                                                                                                  AS AdsetName
-        , af_ad                                                                                                                     AS AdName
-        , is_retargeting                                                                                                            AS IsRetargeting
-        , advertising_id                                                                                                            AS AdvertisingID
-        , idfa                                                                                                                      AS IDFA
-        , af_siteid                                                                                                                 AS SiteID
-        , af_channel                                                                                                                AS Channel
-        , contributor_1_media_source                                                                                                AS CB1MediaSource
-        , contributor_1_campaign                                                                                                    AS CB1Campaign
-        , contributor_2_media_source                                                                                                AS CB2MediaSource
-        , contributor_2_campaign                                                                                                    AS CB2Campaign
-        , contributor_3_media_source                                                                                                AS CB3MediaSource
-        , contributor_3_campaign                                                                                                    AS CB3Campaign        
-        , install_time                                                                                                              AS InstallTime
-        , event_time                                                                                                                AS EventTime
-        , event_name                                                                                                                AS EventType
-    FROM `dataplatform-reporting.AppsflyerLog.V_LogsV2`
-    WHERE event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
-        -- AND install_time >= "2019-12-19 00:48:35.827000 UTC"  
-        AND event_time   >= "2019-12-19 00:48:35.827000 UTC"  
-    UNION ALL
-    SELECT app_id                                                                                                                    AS AppID
-        , appsflyer_id                                                                                                              AS TrackerAccountID
-        , 1                                                                                                                         AS TrackerTypeID
-        , bundle_id                                                                                                                 AS BundleID
-        , platform                                                                                                                  AS Platform
-        , UPPER(country_code)                                                                                                       AS CountryCode
-        , IFNULL(media_source, 'Organic')                                                                                           AS MediaSource 
-        , af_prt                                                                                                                    AS Agency
-        , IFNULL(campaign, "NULL")                                                                                                  AS Campaign
-        , af_adset                                                                                                                  AS AdsetName
-        , af_ad                                                                                                                     AS AdName  
-        , is_retargeting                                                                                                            AS IsRetargeting
-        , advertising_id                                                                                                            AS AdvertisingID
-        , idfa                                                                                                                      AS IDFA
-        , af_siteid                                                                                                                 AS SiteID
-        , af_channel                                                                                                                AS Channel
-        , contributor_1_media_source                                                                                                AS CB1MediaSource
-        , contributor_1_campaign                                                                                                    AS CB1Campaign
-        , contributor_2_media_source                                                                                                AS CB2MediaSource
-        , contributor_2_campaign                                                                                                    AS CB2Campaign
-        , contributor_3_media_source                                                                                                AS CB3MediaSource
-        , contributor_3_campaign                                                                                                    AS CB3Campaign       
-        , install_time                                                                                                              AS InstallTime 
-        , event_time                                                                                                                AS EventTime
-        , event_name                                                                                                                AS EventType
-    FROM `dataplatform-204306.AppsflyerLog.installs_report`
-    WHERE event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
-    ) AS a
-    LEFT JOIN `datahub-478802.datahub.dim_google_campaign` AS b ON a.Campaign = b.campaign_id
-    """
-
-    client.query(truncate_query)
-    time.sleep(5)
-    client.query(query)
-    
-    print("✅ pre_payment_info_fix ETL 완료")
-
-
 def etl_f_tracker_install():
-
-    truncate_query = f"""
-    TRUNCATE TABLE `datahub-478802.datahub.f_tracker_install`
-    """
 
     query = f"""
     INSERT INTO `datahub-478802.datahub.f_tracker_install` 
-    (app_id,
-    joyple_game_code,
-    market_id,
-    tracker_account_id,
-    tracker_type_id,
-    bundle_id,
-    platform,
-    country_code,
-    media_source,
-    media_source_cat,
-    is_organic,
-    agency,
-    campaign,
-    init_campaign,
-    adset_name,
-    ad_name,
-    is_retargeting,
-    advertising_id,
-    idfa,
-    site_id,
-    channel,
-    CB1_media_source,
-    CB1_campaign,
-    CB2_media_source,
-    CB2_campaign,
-    CB3_media_source,
-    CB3_campaign,
-    install_time,
-    event_time,
-    event_type,
-    install_datekey
+        (app_id,
+        joyple_game_code,
+        market_id,
+        tracker_account_id,
+        tracker_type_id,
+        bundle_id,
+        platform,
+        country_code,
+        media_source,
+        media_source_cat,
+        is_organic,
+        agency,
+        campaign,
+        init_campaign,
+        adset_name,
+        ad_name,
+        is_retargeting,
+        advertising_id,
+        idfa,
+        site_id,
+        channel,
+        CB1_media_source,
+        CB1_campaign,
+        CB2_media_source,
+        CB2_campaign,
+        CB3_media_source,
+        CB3_campaign,
+        install_time,
+        event_time,
+        event_type,
+        install_datekey
+        )
+
+    WITH TSS AS (
+    SELECT TRIM(AppID) AS app_id
+            , TrackerAccountID AS tracker_account_id
+            , TrackerTypeID AS tracker_type_id
+            , TRIM(BundleID) AS bundle_id
+            , TRIM(Platform) AS platform
+            , CountryCode AS country_code
+            , TRIM(MediaSource) AS media_source
+            , IFNULL(IF(MediaSource = "Organic", "Organic", IF(MediaSource = "Facebook Ads", "FB", IF(MediaSource = "googleadwords_int", "Google", "Other"))), "Other") AS media_source_cat
+            , IF(MediaSource = "Organic", "Organic", IF(MediaSource = "GameRoom", "Unknown", "Non-Organic"))  AS is_organic
+            , TRIM(Agency) AS agency
+            , CASE WHEN b.campaign_name IS NOT NULL THEN b.campaign_name ELSE (IF(a.campaign = '' OR a.campaign is null, "NULL", TRIM(a.campaign))) END AS campaign
+            , CASE WHEN MediaSource = 'googleadwords_int' AND LENGTH(a.campaign) <= 11 AND a.campaign NOT LIKE '%UAC%' AND a.campaign NOT LIKE 'PRE_MAIN%' THEN b.campaign_name
+                    WHEN a.campaign = '' OR a.campaign is null THEN "NULL"
+                    ELSE TRIM(a.campaign)
+            END AS init_campaign
+            , TRIM(NORMALIZE(AdsetName, NFC)) AS adset_name
+            , TRIM(NORMALIZE(AdName, NFC)) AS ad_name
+            , IsRetargeting AS is_retargeting
+            , TRIM(AdvertisingID) AS advertising_id
+            , TRIM(IDFA) AS idfa
+            , TRIM(SiteID) AS site_id
+            , TRIM(Channel) AS channel
+            , TRIM(CB1MediaSource) AS CB1_media_source
+            , TRIM(CB1Campaign) AS CB1_campaign
+            , TRIM(CB2MediaSource) AS CB2_media_source
+            , TRIM(CB2Campaign) AS CB2_campaign
+            , TRIM(CB3MediaSource) AS CB3_media_source
+            , TRIM(CB3Campaign) AS CB3_campaign         
+            , InstallTime AS install_time
+            , EventTime AS event_time
+            , EventType AS event_type
+        FROM (
+        SELECT app_id                                                                                                                    AS AppID
+            , appsflyer_id                                                                                                              AS TrackerAccountID
+            , 1                                                                                                                         AS TrackerTypeID     
+            , bundle_id                                                                                                                 AS BundleID
+            , platform                                                                                                                  AS Platform
+            , UPPER(country_code)                                                                                                       AS CountryCode
+            -- media_source가 null일 경우 'NULL'로 처리     
+            , IFNULL(IF(appsflyer_id = "1000-0000", "GameRoom", IF(media_source = 'organic', "Organic", media_source)), "NULL")         AS MediaSource
+            , af_prt                                                                                                                    AS Agency
+            , IFNULL(campaign, "NULL")                                                                                                  AS Campaign 
+            , af_adset                                                                                                                  AS AdsetName
+            , af_ad                                                                                                                     AS AdName
+            , is_retargeting                                                                                                            AS IsRetargeting
+            , advertising_id                                                                                                            AS AdvertisingID
+            , idfa                                                                                                                      AS IDFA
+            , af_siteid                                                                                                                 AS SiteID
+            , af_channel                                                                                                                AS Channel
+            , contributor_1_media_source                                                                                                AS CB1MediaSource
+            , contributor_1_campaign                                                                                                    AS CB1Campaign
+            , contributor_2_media_source                                                                                                AS CB2MediaSource
+            , contributor_2_campaign                                                                                                    AS CB2Campaign
+            , contributor_3_media_source                                                                                                AS CB3MediaSource
+            , contributor_3_campaign                                                                                                    AS CB3Campaign        
+            , install_time                                                                                                              AS InstallTime
+            , event_time                                                                                                                AS EventTime
+            , event_name                                                                                                                AS EventType
+        FROM `dataplatform-reporting.AppsflyerLog.V_LogsV2`
+        WHERE event_time >= '2025-12-01' and event_time < '2025-12-02'
+            AND event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
+            -- AND install_time >= "2019-12-19 00:48:35.827000 UTC"  
+            AND event_time   >= "2019-12-19 00:48:35.827000 UTC"  
+        UNION ALL
+        SELECT app_id                                                                                                                    AS AppID
+            , appsflyer_id                                                                                                              AS TrackerAccountID
+            , 1                                                                                                                         AS TrackerTypeID
+            , bundle_id                                                                                                                 AS BundleID
+            , platform                                                                                                                  AS Platform
+            , UPPER(country_code)                                                                                                       AS CountryCode
+            , IFNULL(media_source, 'Organic')                                                                                           AS MediaSource 
+            , af_prt                                                                                                                    AS Agency
+            , IFNULL(campaign, "NULL")                                                                                                  AS Campaign
+            , af_adset                                                                                                                  AS AdsetName
+            , af_ad                                                                                                                     AS AdName  
+            , is_retargeting                                                                                                            AS IsRetargeting
+            , advertising_id                                                                                                            AS AdvertisingID
+            , idfa                                                                                                                      AS IDFA
+            , af_siteid                                                                                                                 AS SiteID
+            , af_channel                                                                                                                AS Channel
+            , contributor_1_media_source                                                                                                AS CB1MediaSource
+            , contributor_1_campaign                                                                                                    AS CB1Campaign
+            , contributor_2_media_source                                                                                                AS CB2MediaSource
+            , contributor_2_campaign                                                                                                    AS CB2Campaign
+            , contributor_3_media_source                                                                                                AS CB3MediaSource
+            , contributor_3_campaign                                                                                                    AS CB3Campaign       
+            , install_time                                                                                                              AS InstallTime 
+            , event_time                                                                                                                AS EventTime
+            , event_name                                                                                                                AS EventType
+        FROM `dataplatform-204306.AppsflyerLog.installs_report`
+        WHERE event_time >= '2025-12-01' and event_time < '2025-12-02'
+        AND event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
+        ) AS a
+        LEFT JOIN `datahub-478802.datahub.dim_google_campaign` AS b ON a.Campaign = b.campaign_id
     )
+
     SELECT TRIM(INFO.app_id) AS app_id
-    , b.joyple_game_code
-    , b.market_id
-    , tracker_account_id
-    , tracker_type_id
-    , INFO.bundle_id
-    , INFO.platform
-    , INFO.country_code
-    , INFO.media_source
-    , INFO.media_source_cat
-    , INFO.is_organic
-    , INFO.agency
-    , INFO.campaign
-    , INFO.init_campaign
-    , INFO.adset_name
-    , INFO.ad_name
-    , INFO.is_retargeting
-    , INFO.advertising_id
-    , INFO.idfa
-    , INFO.site_id
-    , INFO.channel
-    , INFO.CB1_media_source
-    , INFO.CB1_campaign
-    , INFO.CB2_media_source
-    , INFO.CB2_campaign
-    , INFO.CB3_media_source
-    , INFO.CB3_campaign
-    , INFO.install_time
-    , INFO.event_time
-    , INFO.event_type
-    , EXTRACT(DATE FROM DATETIME(INFO.install_time, "+09:00")) AS install_datekey
-    FROM (
-        SELECT tracker_account_id
-            , tracker_type_id
-            , ARRAY_AGG(
-            STRUCT(
-                app_id,
-                bundle_id,
-                platform,
-                country_code,
-                media_source,
-                media_source_cat,
-                is_organic,
-                agency,
-                campaign,
-                init_campaign,
-                adset_name,
-                ad_name,
-                is_retargeting,
-                advertising_id,
-                idfa,
-                site_id,
-                channel,
-                CB1_media_source,
-                CB1_campaign,
-                CB2_media_source,
-                CB2_campaign,
-                CB3_media_source,
-                CB3_campaign,                                            
-                install_time,
-                event_time,
-                event_type
-            )
-            ORDER BY install_time ASC
-            LIMIT 1
-            )[OFFSET(0)] AS INFO  
-        FROM `datahub-478802.datahub.pre_tracker_install`
-        WHERE app_id IS NOT NULL
-        AND tracker_account_id IS NOT NULL
-        AND tracker_account_id <> ""
-        AND event_type = "install"
-        GROUP BY tracker_account_id, tracker_type_id
-    ) AS a
-    LEFT OUTER JOIN `datahub-478802.datahub.dim_app_id` AS b
-    ON a.INFO.app_id = b.app_id
+        , b.joyple_game_code
+        , b.market_id
+        , tracker_account_id
+        , tracker_type_id
+        , INFO.bundle_id
+        , INFO.platform
+        , INFO.country_code
+        , INFO.media_source
+        , INFO.media_source_cat
+        , INFO.is_organic
+        , INFO.agency
+        , INFO.campaign
+        , INFO.init_campaign
+        , INFO.adset_name
+        , INFO.ad_name
+        , INFO.is_retargeting
+        , INFO.advertising_id
+        , INFO.idfa
+        , INFO.site_id
+        , INFO.channel
+        , INFO.CB1_media_source
+        , INFO.CB1_campaign
+        , INFO.CB2_media_source
+        , INFO.CB2_campaign
+        , INFO.CB3_media_source
+        , INFO.CB3_campaign
+        , INFO.install_time
+        , INFO.event_time
+        , INFO.event_type
+        , EXTRACT(DATE FROM DATETIME(INFO.install_time, "+09:00")) AS install_datekey
+        FROM (
+            SELECT tracker_account_id
+                , tracker_type_id
+                , ARRAY_AGG(
+                STRUCT(
+                    app_id,
+                    bundle_id,
+                    platform,
+                    country_code,
+                    media_source,
+                    media_source_cat,
+                    is_organic,
+                    agency,
+                    campaign,
+                    init_campaign,
+                    adset_name,
+                    ad_name,
+                    is_retargeting,
+                    advertising_id,
+                    idfa,
+                    site_id,
+                    channel,
+                    CB1_media_source,
+                    CB1_campaign,
+                    CB2_media_source,
+                    CB2_campaign,
+                    CB3_media_source,
+                    CB3_campaign,                                            
+                    install_time,
+                    event_time,
+                    event_type
+                )
+                ORDER BY install_time ASC
+                LIMIT 1
+                )[OFFSET(0)] AS INFO  
+            FROM TSS
+            WHERE app_id IS NOT NULL
+            AND tracker_account_id IS NOT NULL
+            AND tracker_account_id <> ""
+            AND event_type = "install"
+            GROUP BY tracker_account_id, tracker_type_id
+        ) AS a
+        LEFT OUTER JOIN `datahub-478802.datahub.dim_app_id` AS b
+        ON a.INFO.app_id = b.app_id
+
     """
-    client.query(truncate_query)
-    time.sleep(5)
     client.query(query)
 
     print("✅ f_tracker_install ETL 완료")
