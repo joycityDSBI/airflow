@@ -206,8 +206,8 @@ def etl_f_common_payment_total(target_date: list):
             FROM `dataplatform-204306.JoypleLog.payment_log` AS a
             INNER JOIN `datahub-478802.datahub.dim_joyple_game_code` AS b ON a.GCode = b.joyple_game_code
             LEFT OUTER JOIN `datahub-478802.datahub.dim_currency_joyple` AS d ON a.money_type = d.money_type
-            WHERE a.timestamp >= {start_utc}
-                AND a.timestamp < {end_utc}
+            WHERE a.timestamp >= '2025-12-01 15:00:00 UTC'
+                AND a.timestamp < '2025-12-02 15:00:00 UTC'
                 AND a.product_price > 0
                 AND a.gcode < 30000
                 AND IF((a.timestamp >= '2025-02-19 15:00:00 UTC' AND a.gcode in (131, 133, 155, 156, 159, 1590)), FALSE, IF(gcode < 30000, TRUE, FALSE))
@@ -232,8 +232,8 @@ def etl_f_common_payment_total(target_date: list):
                 , a.log_time                                            
                 , IFNULL(a.multiQuantity, 1) AS multiQuantity
             FROM `dataplatform-204306.CommonLog.Payment` AS a
-            WHERE a.log_time >= {start_utc}
-                AND a.log_time < {end_utc}
+            WHERE a.log_time >= '2025-12-01 15:00:00 UTC'
+                AND a.log_time < '2025-12-02 15:00:00 UTC'
                 AND a.game_id           IS NOT NULL
                 AND a.world_id          IS NOT NULL
                 AND a.server_name       IS NOT NULL
@@ -283,45 +283,29 @@ def etl_f_common_payment_total(target_date: list):
             )
             )
             , TC as (
-            SELECT DATE(a.Info.log_time, "Asia/Seoul") as datekey
+            SELECT DATE(a.log_time, "Asia/Seoul") as datekey
             , d.reg_datekey
-            , DATE_DIFF(d.reg_datekey, DATE(a.Info.log_time, "Asia/Seoul"), DAY) as reg_datediff
+            , DATE_DIFF(d.reg_datekey, DATE(a.log_time, "Asia/Seoul"), DAY) as reg_datediff
             , d.reg_country_code
-            , a.Info.game_id
+            , a.game_id
             , a.joyple_game_code
             , a.auth_method_id
             , a.auth_account_name
-            , a.Info.ip
-            , a.Info.market_id
-            , a.Info.platform_device_type
-            , a.Info.pg_id
-            , a.Info.product_code
-            , a.Info.product_name
-            , a.Info.Price * IFNULL(c.exchange_rate, 1) AS Price_KRW
-            , IFNULL(a.Info.MultiQuantity, 1) AS MultiQuantity
-            FROM
-            (
-            SELECT Joyple_game_code
-                , auth_method_id
-                , auth_account_name
-                , ARRAY_AGG(STRUCT(order_id, game_id, market_id, pg_id, product_code, product_name, ip
-                , platform_device_type, currency_code, price, MultiQuantity, log_time) ORDER BY log_time ASC LIMIT 1)[OFFSET(0)] AS Info
-            FROM TB
-            GROUP BY joyple_game_code, auth_method_id, auth_account_name, order_id
-            ) a
+            , a.ip
+            , a.market_id
+            , a.platform_device_type
+            , a.pg_id
+            , a.product_code
+            , a.product_name
+            , a.Price * IFNULL(c.exchange_rate, 1) AS Price_KRW
+            , IFNULL(a.MultiQuantity, 1) AS MultiQuantity
+            FROM TB as a
             LEFT JOIN (
-            SELECT Info.datekey AS datekey
-                , currency 
-                , Info.exchange_rate
-            FROM (
-                SELECT currency, ARRAY_AGG(STRUCT(datekey, exchange_rate, create_timestamp) ORDER BY datekey DESC LIMIT 1)[OFFSET(0)] AS Info
-                FROM `datahub-478802.datahub.dim_exchange` 
-                WHERE datekey >= '2025-11-26'
-                AND datekey < '2025-11-27'
-                GROUP BY currency
-                ) AS c 
+                SELECT currency, datekey, exchange_rate
+                FROM `datahub-478802.datahub.dim_exchange`
+                GROUP BY currency, datekey, exchange_rate
             ) AS c  
-            ON (a.Info.currency_code = c.currency AND Date(a.Info.log_time, "Asia/Seoul") = c.datekey)
+            ON a.currency_code = c.currency AND Date(a.log_time, "Asia/Seoul") = c.datekey
             LEFT JOIN `datahub-478802.datahub.f_common_register` as d
             on (CAST(a.joyple_game_code AS STRING) = CAST(d.joyple_game_code AS STRING) 
             AND a.auth_method_id = d.auth_method_id
@@ -347,7 +331,21 @@ def etl_f_common_payment_total(target_date: list):
                 FROM TC as a
                 LEFT OUTER JOIN datahub-478802.datahub.dim_ip4_country_code AS b
                 ON (a.ip = b.ip)
-                group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14
+                GROUP BY 
+                datekey, 
+                reg_datekey, 
+                reg_datediff,
+                reg_country_code,
+                game_id, 
+                joyple_game_code,
+                auth_method_id,
+                auth_account_name,
+                b.country_code as country_code,
+                market_id,
+                platform_device_type,
+                pg_id,
+                product_code,
+                product_name
 
             ) as source
             ON target.datekey = source.datekey
@@ -363,6 +361,7 @@ def etl_f_common_payment_total(target_date: list):
             AND target.pg_id = source.pg_id
             AND target.product_code = source.product_code
             AND target.product_name = source.product_name
+            
             WHEN NOT MATCHED BY target THEN 
             INSERT (
             datekey,
@@ -532,22 +531,15 @@ def etl_f_common_payment(target_date: list):
             , IFNULL(a.MultiQuantity, 1) AS MultiQuantity
             FROM TB as a
             LEFT JOIN (
-                SELECT c.Info.datekey AS datekey
-                    , currency 
-                    , c.Info.exchange_rate
-                FROM (
-                    SELECT currency, ARRAY_AGG(STRUCT(datekey, exchange_rate, create_timestamp) ORDER BY datekey DESC LIMIT 1)[OFFSET(0)] AS Info
-                    FROM `datahub-478802.datahub.dim_exchange` 
-                    GROUP BY currency
-                    ) AS c 
+                SELECT currency, datekey, exchange_rate
+                FROM `datahub-478802.datahub.dim_exchange`
+                GROUP BY currency, datekey, exchange_rate
             ) AS c  
-            ON (a.currency_code = c.currency AND Date(a.log_time, "Asia/Seoul") = c.datekey)
+            ON a.currency_code = c.currency AND Date(a.log_time, "Asia/Seoul") = c.datekey
             LEFT JOIN `datahub-478802.datahub.f_common_register` as d
-            on (
-                CAST(a.joyple_game_code AS STRING) = CAST(d.joyple_game_code AS STRING) 
-                AND CAST(a.auth_method_id AS STRING) = CAST(a.auth_method_id AS STRING)
-                AND CAST(a.auth_account_name AS STRING) = CAST(d.auth_account_name AS STRING)
-                )
+            on CAST(a.joyple_game_code AS STRING) = CAST(d.joyple_game_code AS STRING) 
+               AND CAST(a.auth_method_id AS STRING) = CAST(a.auth_method_id AS STRING)
+               AND CAST(a.auth_account_name AS STRING) = CAST(d.auth_account_name AS STRING)
             )
 
                 SELECT a.datekey, 
