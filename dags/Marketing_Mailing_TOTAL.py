@@ -29,7 +29,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='Marketing_Mailing_TOTAL_v2',
+    dag_id='Marketing_Mailing_TOTAL',
     default_args=default_args,
     description='통합 마케팅 결과를 메일링',
     schedule='01 5 * * *',
