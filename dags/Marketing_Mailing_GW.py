@@ -329,7 +329,7 @@ with DAG(
                 else '4.ETC' end as geo_user_group 
             from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
             where joyplegameid in (133)
-            and cmpgndate >= '{two_weeks_ago}
+            and cmpgndate >= '{two_weeks_ago}'
                 and cmpgndate < CURRENT_DATE('Asia/Seoul')
             ) 
             group by  joyplegameid,gameid,  cmpgndate, gcat, mediacategory, os,  geo_user_group

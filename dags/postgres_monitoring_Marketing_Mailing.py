@@ -24,7 +24,7 @@ dag = DAG(
     dag_id='postgres_monitoring_Marketing_Mailing',
     default_args=default_args,
     description='DAG run marketing_mailing query and email',
-    schedule='15 5 * * *',
+    schedule='18 5 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,
 )

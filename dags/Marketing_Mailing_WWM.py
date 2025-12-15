@@ -310,7 +310,7 @@ with DAG(
             from(select *
                 from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
                 where JoypleGameID in (30001)
-                and RegdateAuthAccountDateKST >= {two_weeks_ago}
+                and RegdateAuthAccountDateKST >= '{two_weeks_ago}'
                 and RegdateAuthAccountDateKST < CURRENT_DATE('Asia/Seoul')
                 ) as a
             left join (select distinct *
@@ -329,7 +329,7 @@ with DAG(
                 else '4.ETC' end as geo_user_group 
             from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
             where joyplegameid in (30001)
-            and cmpgndate >= {two_weeks_ago}
+            and cmpgndate >= '{two_weeks_ago}'
                 and cmpgndate < CURRENT_DATE('Asia/Seoul')
             ) 
             group by  joyplegameid,gameid,  cmpgndate, gcat, mediacategory, os,  geo_user_group
