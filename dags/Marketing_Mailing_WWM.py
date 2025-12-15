@@ -815,6 +815,15 @@ with DAG(
                                     {html_table_rows_non_weu}
                                 </tbody>
                             </table>
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_non_weu}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
 
                             <table border="1" width="100%">
                                 <tbody>
@@ -971,7 +980,7 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
-                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(WEU) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all_kr)}</td>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(KR) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all_kr)}</td>
                                     </tr>
                                 </tbody>
                             </table>

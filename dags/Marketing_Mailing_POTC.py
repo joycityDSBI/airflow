@@ -819,6 +819,16 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_non_weu}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
                                         <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(KR) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non_kr)}</td>
                                     </tr>
                                 </tbody>
@@ -835,7 +845,7 @@ with DAG(
                                 <tbody>
                                     <tr>
                                         <td style="white-space:nowrap" class="tableTitleNewgenai">
-                                        {genai_non_weu}
+                                        {genai_non_kr}
                                         </td>
                                     </tr>
                                 </tbody>
