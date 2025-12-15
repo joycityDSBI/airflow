@@ -57,9 +57,9 @@ with DAG(
     SENDER_PASSWORD = get_var('SMTP_PASSWORD')
 
     # 수신자 설정
-     RECIPIENT_EMAILS = ['nayoonkim@joycity.com']
-         #'chosw2@joycity.com', 'mirmir@ndream.com', 'gon0505@ndream.com', 'junezel@joycity.com', 'kyuny@joycity.com', 
-    #                     'nokchaman@joycity.com', 'lhnr0616@joycity.com', 'seongin@joycity.com', 'mhjung@joycity.com', 'CSD_DSD_MS@joycity.com']
+    RECIPIENT_EMAILS = ['nayoonkim@joycity.com']
+    #'chosw2@joycity.com', 'mirmir@ndream.com', 'gon0505@ndream.com', 'junezel@joycity.com', 'kyuny@joycity.com', 
+    #'nokchaman@joycity.com', 'lhnr0616@joycity.com', 'seongin@joycity.com', 'mhjung@joycity.com', 'CSD_DSD_MS@joycity.com']
     # RECIPIENT_EMAILS = [email.strip() for email in get_var('RECIPIENT_EMAILS', '').split(',') if email.strip()]
 
     # 제미나이 설정
@@ -67,7 +67,7 @@ with DAG(
     PROJECT_ID = "data-science-division-216308"
     MODEL_NAME = "gemini-2.5-flash"
     LABELS = {"datascience_division_service": 'marketing_mailing'}
-        SYSTEM_INSTRUCTION = """
+    SYSTEM_INSTRUCTION = """
     너는 전문 마케팅 데이터 분석가야.
     주어진 ROAS 데이터와 퍼포먼스팀의 원문 리포트를 **절대 오류 없이 분석**하고, 요청된 **모든 출력 형식 규칙**을 엄격하게 준수하여 리포트를 작성해야해.
 
@@ -345,7 +345,7 @@ with DAG(
             from ua_perfo 
             group by  joyplegameid, RegdateAuthAccountDateKST, gcat, mediacategory,  geo_user_group  , os
 
-            ) as a 
+            ) as a 웅?
             full join cost_raw as b 
             on a.joyplegameid = b.joyplegameid
             and a.regdateauthaccountdatekst = b.cmpgndate
