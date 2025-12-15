@@ -58,7 +58,7 @@ with DAG(
 
     # 수신자 설정
     RECIPIENT_EMAILS = ['seongin@joycity.com', 'mhjung@joycity.com', 'jy0999@joycity.com']
-    # RECIPIENT_EMAILS = ['chosw2@joycity.com', 'mirmir@ndream.com', 'gon0505@ndream.com', 'junezel@joycity.com', 'kyuny@joycity.com', 
+    # RECIPIENT_EMAILS = ['chosw2@joycity.com', 'mirmir@ndream.com', 'gon0505@ndream.com', 'junezel@joycity.com', 'kyuny@joycity.com', 'dykim162@joycity.com',
     #                     'nokchaman@joycity.com', 'lhnr0616@joycity.com', 'seongin@joycity.com', 'mhjung@joycity.com', 'CSD_DSD_MS@joycity.com']
     # RECIPIENT_EMAILS = [email.strip() for email in get_var('RECIPIENT_EMAILS', '').split(',') if email.strip()]
 
@@ -306,7 +306,8 @@ with DAG(
             , case when CountryCode = 'US' then '1.US'
                 when CountryCode = 'JP' then '2.JP'
                 when CountryCode in ('UK','FR','DE','GB') then '3.WEU'
-                else '4.ETC' end as geo_user_group 
+                when CountryCode = 'KR' then '4.KR'
+                else '5.ETC' end as geo_user_group 
             from(select *
                 from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
                 where JoypleGameID in (133)
@@ -326,7 +327,8 @@ with DAG(
             from (select  * , case when CountryCode = 'US' then '1.US'
                 when CountryCode = 'JP' then '2.JP'
                 when CountryCode in ('UK','FR','DE','GB') then '3.WEU'
-                else '4.ETC' end as geo_user_group 
+                when CountryCode = 'KR' then '4.KR'
+                else '5.ETC' end as geo_user_group 
             from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
             where joyplegameid in (133)
             and cmpgndate >= '{two_weeks_ago}'
@@ -500,11 +502,13 @@ with DAG(
             df_all_us = df_all_geo[df_all_geo['Country'] == '1.US']
             df_all_jp = df_all_geo[df_all_geo['Country'] == '2.JP']
             df_all_weu = df_all_geo[df_all_geo['Country'] == '3.WEU']
-            df_all_etc = df_all_geo[df_all_geo['Country'] == '4.ETC']
+            df_all_kr = df_all_geo[df_all_geo['Country'] == '4.KR']
+            df_all_etc = df_all_geo[df_all_geo['Country'] == '5.ETC']
 
             html_table_header_all_us, html_table_rows_all_us = format_table(df_all_us)
             html_table_header_all_jp, html_table_rows_all_jp = format_table(df_all_jp)
             html_table_header_all_weu, html_table_rows_all_weu = format_table(df_all_weu)
+            html_table_header_all_kr, html_table_rows_all_kr = format_table(df_all_kr)
             html_table_header_all_etc, html_table_rows_all_etc = format_table(df_all_etc)
 
 
@@ -584,11 +588,13 @@ with DAG(
             df_non_us = df_non_geo[df_non_geo['Country'] == '1.US']
             df_non_jp = df_non_geo[df_non_geo['Country'] == '2.JP']
             df_non_weu = df_non_geo[df_non_geo['Country'] == '3.WEU']
-            df_non_etc = df_non_geo[df_non_geo['Country'] == '4.ETC']
+            df_non_kr = df_non_geo[df_non_geo['Country'] == '4.KR']
+            df_non_etc = df_non_geo[df_non_geo['Country'] == '5.ETC']
 
             html_table_header_non_us, html_table_rows_non_us = format_table(df_non_us)
             html_table_header_non_jp, html_table_rows_non_jp = format_table(df_non_jp)
             html_table_header_non_weu, html_table_rows_non_weu = format_table(df_non_weu)
+            html_table_header_non_kr, html_table_rows_non_kr = format_table(df_non_kr)
             html_table_header_non_etc, html_table_rows_non_etc = format_table(df_non_etc)
 
 
@@ -597,15 +603,17 @@ with DAG(
             genai_all_us = genai_paid_geo_analytics(df_all_us)
             genai_all_jp = genai_paid_geo_analytics(df_all_jp)
             genai_all_weu = genai_paid_geo_analytics(df_all_weu)
+            genai_all_kr = genai_paid_geo_analytics(df_all_kr)
             genai_all_etc = genai_paid_geo_analytics(df_all_etc)
-            genai_all = genai_paid_all_analytics(df_all, genai_all_us + genai_all_jp + genai_all_weu + genai_all_etc)
+            genai_all = genai_paid_all_analytics(df_all, genai_all_us + genai_all_jp + genai_all_weu + genai_all_kr + genai_all_etc)
             
             print("📧 Paid 유저에 대한 제미나이 분석 완료")
             genai_non_us = genai_organic_geo_analytics(df_non_us)
             genai_non_jp = genai_organic_geo_analytics(df_non_jp)
             genai_non_weu = genai_organic_geo_analytics(df_non_weu)
+            genai_non_kr = genai_organic_geo_analytics(df_non_kr)
             genai_non_etc = genai_organic_geo_analytics(df_non_etc)
-            genai_non = genai_organic_all_analytics(df_non, genai_non_us + genai_non_jp + genai_non_weu + genai_non_etc)
+            genai_non = genai_organic_all_analytics(df_non, genai_non_us + genai_non_jp + genai_non_weu + genai_non_kr + genai_non_etc)
             print("📧 Organic 포함 전체 유저에 대한 제미나이 분석 완료")
 
             print("✅ 제미나이 해석 완료!")
@@ -818,6 +826,32 @@ with DAG(
                                 </tbody>
                             </table>
 
+                            
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(KR) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non_kr)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_non_kr}
+                                    {html_table_rows_non_kr}
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_non_kr}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
@@ -940,6 +974,31 @@ with DAG(
                                     <tr>
                                         <td style="white-space:nowrap" class="tableTitleNewgenai">
                                         {genai_all_weu}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(KR) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all_kr)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_all_kr}
+                                    {html_table_rows_all_kr}
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_all_kr}
                                         </td>
                                     </tr>
                                 </tbody>
