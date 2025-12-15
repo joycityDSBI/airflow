@@ -103,7 +103,7 @@ def query_dag_stats_and_send_email():
             FROM dag_run
             WHERE start_date + INTERVAL '9 hours' >= CURRENT_DATE
             AND run_type not like '%manual%'
-            where dag_id like '%Marketing_Mailing%'
+            AND dag_id like '%Marketing_Mailing%'
             GROUP BY dag_id, state
         ) AS ts
         ORDER BY minutes_diff desc
