@@ -13,7 +13,7 @@ import pandas as pd
 import os
 from airflow.models import Variable
 import html
-
+from notion_client import Client as NotionClient
 from google.genai import Client
 from google.genai import types
 
@@ -60,7 +60,14 @@ with DAG(
     RECIPIENT_EMAILS = ['seongin@joycity.com', 'mhjung@joycity.com', 'jy0999@joycity.com']
     # RECIPIENT_EMAILS = ['chosw2@joycity.com', 'mirmir@ndream.com', 'gon0505@ndream.com', 'junezel@joycity.com', 'kyuny@joycity.com', 'wls9526@joycity.com', 
     #                     'nokchaman@joycity.com', 'lhnr0616@joycity.com', 'seongin@joycity.com', 'mhjung@joycity.com', 'CSD_DSD_MS@joycity.com']
-    # RECIPIENT_EMAILS = [email.strip() for email in get_var('RECIPIENT_EMAILS', '').split(',') if email.strip()]
+
+
+
+
+
+
+
+
 
     # 제미나이 설정
     LOCATION = "us-central1"
@@ -1079,3 +1086,4 @@ with DAG(
         python_callable=extract_and_send_email,
         dag=dag,
     )
+
