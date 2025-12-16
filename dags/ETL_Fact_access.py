@@ -954,6 +954,50 @@ def etl_f_common_access(target_date: list):
     return True
     
 
+def etl_f_common_access_last_login(target_date: list):
 
+    for td in target_date:
+        target_date = td
 
-            
+        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+        kst = pytz.timezone('Asia/Seoul')
+        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+
+        query = f"""
+        MERGE datahub-478802.datahub.f_common_access_last_login AS target
+        USING
+        (
+            SELECT datekey, joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name
+                , max(game_user_level) as max_game_user_level
+            FROM datahub-478802.datahub.f_common_access
+            WHERE datekey >= '{target_date.strftime('%Y-%m-%d')}' AND datekey < '{(target_date + timedelta(days=1)).strftime('%Y-%m-%d')}'
+            GROUP BY datekey, joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name
+        ) AS source
+        ON target.joyple_game_code = source.joyple_game_code AND target.auth_method_id = source.auth_method_id 
+        AND target.auth_account_name = source.auth_account_name AND target.game_sub_user_name = source.game_sub_user_name
+        WHEN MATCHED AND (target.max_game_user_level <> source.max_game_user_level OR target.last_login_datekey < source.datekey)
+        THEN
+        UPDATE SET 
+        target.last_login_datekey = source.datekey
+        , target.max_game_user_level = source.max_game_user_level
+        , target.update_timestamp = CURRENT_TIMESTAMP()
+        WHEN NOT MATCHED BY target THEN
+        INSERT (joyple_game_code, game_sub_user_name, auth_method_id, auth_account_name, last_login_datekey, max_game_user_level, update_timestamp)
+        VALUES
+        (
+            source.joyple_game_code
+            , source.game_sub_user_name
+            , source.auth_method_id
+            , source.auth_account_name
+            , source.datekey
+            , source.max_game_user_level
+            , CURRENT_TIMESTAMP()
+        )
+        """
+        client.query(query)
+        print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_access_last_login Batch 완료")
+    
+    print("✅ f_common_access_last_login ETL 완료")
+    return True
