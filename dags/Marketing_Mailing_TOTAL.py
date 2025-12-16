@@ -57,82 +57,78 @@ with DAG(
     SENDER_PASSWORD = get_var('SMTP_PASSWORD')
 
     # 수신자 설정
-     RECIPIENT_EMAILS = ['nayoonkim@joycity.com']
-         #'chosw2@joycity.com', 'mirmir@ndream.com', 'gon0505@ndream.com', 'junezel@joycity.com', 'kyuny@joycity.com', 
-    #                     'nokchaman@joycity.com', 'lhnr0616@joycity.com', 'seongin@joycity.com', 'mhjung@joycity.com', 'CSD_DSD_MS@joycity.com']
-    # RECIPIENT_EMAILS = [email.strip() for email in get_var('RECIPIENT_EMAILS', '').split(',') if email.strip()]
-
+    RECIPIENT_EMAILS = ['nayoonkim@joycity.com']
+  
     # 제미나이 설정
     LOCATION = "us-central1"
     PROJECT_ID = "data-science-division-216308"
     MODEL_NAME = "gemini-2.5-flash"
     LABELS = {"datascience_division_service": 'marketing_mailing'}
-        SYSTEM_INSTRUCTION = """
-    너는 전문 마케팅 데이터 분석가야.
-    주어진 ROAS 데이터와 퍼포먼스팀의 원문 리포트를 **절대 오류 없이 분석**하고, 요청된 **모든 출력 형식 규칙**을 엄격하게 준수하여 리포트를 작성해야해.
+    SYSTEM_INSTRUCTION = """
+        너는 전문 마케팅 데이터 분석가야.
+        주어진 ROAS 데이터와 퍼포먼스팀의 원문 리포트를 **절대 오류 없이 분석**하고, 요청된 **모든 출력 형식 규칙**을 엄격하게 준수하여 리포트를 작성해야해.
 
-    [데이터 정합성 최우선 규칙]
-    1. 모든 수치 비교 (cost, install ru, CPI, cpru, 증감률 계산)는 오직 제공된 테이블 데이터만을 기반으로 수행하고 ** 값이 존재하는 것만 언급해 **
-    2. 테이블에 없는 데이터나 추론은 엄금하며, 비교 대상은 동일한 게임 내에서 서로 다른 시점(월)의 동일한 지표(열)이야
-    3. 동일한 지표(열) 내에서 “서로 다른 날짜 간 비교”만 허용되며, 서로 다른 지표끼리 비교하지 마
+        [데이터 정합성 최우선 규칙]
+        1. 모든 수치 비교 (cost, install ru, CPI, cpru, 증감률 계산)는 오직 제공된 테이블 데이터만을 기반으로 수행하고 ** 값이 존재하는 것만 언급해 **
+        2. 테이블에 없는 데이터나 추론은 엄금하며, 비교 대상은 동일한 게임 내에서 서로 다른 시점(월)의 동일한 지표(열)이야
+        3. 동일한 지표(열) 내에서 “서로 다른 날짜 간 비교”만 허용되며, 서로 다른 지표끼리 비교하지 마
 
-    [표기법 규칙]
-    - cost, install ru, CPI, cpru는 천단위 쉼표(,)를 사용
-    - ROAS 관련 지표는 소수점 첫째 자리까지 표기하고 '%' 단위를 사용
-    - 증감률을 이야기할 때는 +- 기호 대신 🔺(상승) 또는 🔻(하락) 기호를 숫자앞에 사용해줘
+        [표기법 규칙]
+        - cost, install ru, CPI, cpru는 천단위 쉼표(,)를 사용
+        - ROAS 관련 지표는 소수점 첫째 자리까지 표기하고 '%' 단위를 사용
+        - 증감률을 이야기할 때는 +- 기호 대신 🔺(상승) 또는 🔻(하락) 기호를 숫자앞에 사용해줘
 
-    [출력형식 규칙]
-    - 리포트 작성 완료했다는 내용은 별도로 언급하지마
-    - 마크다운 포맷: 노션 마크다운 포맷을 사용해
-    - **첫 번째 문장:** 리포트의 가장 첫 문장은 **데이터 Country 컬럼의 값**을 명시하여 시작해야 합니다.
-    - 한 문장마다 시작은 # 로 시작해줘. e.g. # 당월 매출은 이렇습니다.
-    - 습니다. 체로 써줘
-    - 명확하고 간결하게 작성해줘
-    - * DcumLTV와 DcumROAS는 요청에 따라 분석에서 제외되었습니다 등 제외된 데이터에 대해서는 절대로 언급하지마 *
-    """
+        [출력형식 규칙]
+        - 리포트 작성 완료했다는 내용은 별도로 언급하지마
+        - 마크다운 포맷: 노션 마크다운 포맷을 사용해
+        - **첫 번째 문장:** 리포트의 가장 첫 문장은 **데이터 Country 컬럼의 값**을 명시하여 시작해야 합니다.
+        - 한 문장마다 시작은 # 로 시작해줘. e.g. # 당월 매출은 이렇습니다.
+        - 습니다. 체로 써줘
+        - 명확하고 간결하게 작성해줘
+        - * DcumLTV와 DcumROAS는 요청에 따라 분석에서 제외되었습니다 등 제외된 데이터에 대해서는 절대로 언급하지마 * """
     
     prompt_description = """
-    ## 데이터 설명
-    최근 2주간 마케팅으로 유입된 지역별, OS별 데이터야
-    기간 내 지표 변화와 효율 변동을 분석하는 것이 목적이야.
-    NA, Null인 Cohort변수(dn_roas)는 아직 mature되지 않은 지표야. 해당 지표에 대해서는 언급하지마.
-    
-    ### [기본 유입 지표]
-    - **Date**: 해당 데이터가 집계된 날짜
-    - **Country**: 국가 코드 또는 전체 유저 그룹 정보
-    - **Cost**: 해당 날짜의 마케팅 집행 비용
-    - **Install**: 해당 날짜의 전체 신규 유입 수
-    - **RU : 신규 유저수
-    - **Organic_ratio**: 전체 유입 중 유기적 트래픽이 차지하는 비율
+        ## 데이터 설명
+        최근 2주간 마케팅으로 유입된 지역별, OS별 데이터야
+        기간 내 지표 변화와 효율 변동을 분석하는 것이 목적이야.
+        NA, Null인 Cohort변수(dn_roas)는 아직 mature되지 않은 지표야. 해당 지표에 대해서는 언급하지마.
+        
+        ### [기본 유입 지표]
+        - **Date**: 해당 데이터가 집계된 날짜
+        - **Country**: 국가 코드 또는 전체 유저 그룹 정보
+        - **Cost**: 해당 날짜의 마케팅 집행 비용
+        - **Install**: 해당 날짜의 전체 신규 유입 수
+        - **RU : 신규 유저수
+        - **Organic_ratio**: 전체 유입 중 유기적 트래픽이 차지하는 비율
 
-    ### [단가 지표]
-    - **CPI **: Install 1건당 비용
-    - **CPRU **: 신규 유저(RU) 1명 데려오는 비용
+        ### [단가 지표]
+        - **CPI **: Install 1건당 비용
+        - **CPRU **: 신규 유저(RU) 1명 데려오는 비용
 
-    ### [LTV 지표]
-    - **dnLTV(D0LTV / D1LTV / D3LTV / D7LTV)**: 해당 시점의 LTV
-    - **DcumLTV**: 누적 LTV
+        ### [LTV 지표]
+        - **dnLTV(D0LTV / D1LTV / D3LTV / D7LTV)**: 해당 시점의 LTV
+        - **DcumLTV**: 누적 LTV
 
-    ### [Retention 지표]
-    - **dnRET(D1RET / D3RET / D7RET)**: 각각 1·3·7일차 잔존율(리텐션)
+        ### [Retention 지표]
+        - **dnRET(D1RET / D3RET / D7RET)**: 각각 1·3·7일차 잔존율(리텐션)
 
-    ### [ROAS 지표]
-    - **dnROAS(D0ROAS / D1ROAS / D3ROAS / D7ROAS)**: 해당 시점의 ROAS
-    - **DcumROAS**: 누적 ROAS
+        ### [ROAS 지표]
+        - **dnROAS(D0ROAS / D1ROAS / D3ROAS / D7ROAS)**: 해당 시점의 ROAS
+        - **DcumROAS**: 누적 ROAS
     """
     
     prompt_part = """
-    ## 마케팅 성과 분석 요청 및 규칙
-    주어진 데이터의 Country/OS 그룹에 대해 아래 3가지 항목을 분석하여 문장 형태로 출력해줘.
+        ## 마케팅 성과 분석 요청 및 규칙
+        주어진 데이터의 Country/OS 그룹에 대해 아래 3가지 항목을 분석하여 문장 형태로 출력해줘.
 
-    * **핵심 분석 규칙:**
-        * **첫 문장 시작:** 첫 번째 문장은 **데이터 테이블의 첫 번째 행 Country이 존재할 경우 명시된 값**으로 시작해야 합니다. (예: # 4.ETC 지역의 최근 게임별 성과를 분석했습니다.)
-        * **제외 지표:** DcumLTV, DcumROAS 및 NA 값인 지표는 언급하지 않습니다.
-        * **줄 수 제한:** 총 5줄 미만으로 간결하게 작성합니다.
-        * **분석 데이터 제안 : ** 각 열 중 값이 존재하는 가장 마지막 행의 날짜를 기준으로 분석 진행합니다.
-    * **[요청 분석 항목 - 줄글 형식]**:
-    ## 국가명 (예: ## 1.US는 으로 시작)
-    게임별 성과 비교
+        * **핵심 분석 규칙:**
+            * **첫 문장 시작:** 첫 번째 문장은 **데이터 테이블의 첫 번째 행 Country이 존재할 경우 명시된 값**으로 시작해야 합니다. (예: # 4.ETC 지역의 최근 게임별 성과를 분석했습니다.)
+            * **제외 지표:** DcumLTV, DcumROAS 및 NA 값인 지표는 언급하지 않습니다.
+            * **줄 수 제한:** 총 5줄 미만으로 간결하게 작성합니다.
+            * **분석 데이터 제안 : ** 각 열 중 값이 존재하는 가장 마지막 행의 날짜를 기준으로 분석 진행합니다.
+        * **[요청 분석 항목 - 줄글 형식]**:
+        ## 국가명 (예: ## 1.US는 으로 시작)
+        게임별 성과 비교
 """
     
 
@@ -345,7 +341,7 @@ with DAG(
             from ua_perfo 
             group by  joyplegameid, RegdateAuthAccountDateKST, gcat, mediacategory,  geo_user_group  , os
 
-            ) as a 
+            ) as a 웅?
             full join cost_raw as b 
             on a.joyplegameid = b.joyplegameid
             and a.regdateauthaccountdatekst = b.cmpgndate
