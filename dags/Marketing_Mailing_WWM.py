@@ -13,7 +13,7 @@ import pandas as pd
 import os
 from airflow.models import Variable
 import html
-
+import requests
 from google.genai import Client
 from google.genai import types
 
@@ -56,11 +56,54 @@ with DAG(
     SENDER_EMAIL = 'ds_bi@joycity.com'
     SENDER_PASSWORD = get_var('SMTP_PASSWORD')
 
-    # 수신자 설정
-    RECIPIENT_EMAILS = ['seongin@joycity.com', 'mhjung@joycity.com', 'jy0999@joycity.com']
-    # RECIPIENT_EMAILS = ['chosw2@joycity.com', 'mirmir@ndream.com', 'gon0505@ndream.com', 'junezel@joycity.com', 'kyuny@joycity.com', 'parkm96@joycity.com',
-    #                     'nokchaman@joycity.com', 'lhnr0616@joycity.com', 'seongin@joycity.com', 'mhjung@joycity.com', 'CSD_DSD_MS@joycity.com']
-    # RECIPIENT_EMAILS = [email.strip() for email in get_var('RECIPIENT_EMAILS', '').split(',') if email.strip()]
+    # Notion 설정
+    NOTION_TOKEN = get_var('NOTION_TOKEN')
+
+    # 수신자 설정 (notion에서 불러오기)
+    database_id = "2cbea67a56818058b9c1c5bf0cb3f3a4"
+
+    headers = {
+        "Authorization": f"Bearer {NOTION_TOKEN}",
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json"
+    }
+
+    # 쿼리 전송
+    response = requests.post(
+        f"https://api.notion.com/v1/databases/{database_id}/query",
+        headers=headers,
+        json={
+            "filter": {
+                "or": [
+                    {
+                        "property": "Project",
+                        "select": {
+                            "equals": "ALL"
+                        }
+                    }, 
+                    {
+                        "property": "Project",
+                        "select": {
+                            "equals": "WWMC"
+                        }
+                    }
+                ]
+            }
+        }
+    )
+
+    data = response.json()
+    # email 값 추출
+    emails = []
+    for item in data.get("results", []):
+        if "Email" in item["properties"]:
+            email_prop = item["properties"]["Email"]
+            # email이 rich_text 타입인 경우
+            if email_prop.get("rich_text"):
+                email_value = "".join([text["plain_text"] for text in email_prop["rich_text"]])
+                emails.append(email_value)
+
+    RECIPIENT_EMAILS = emails
 
     # 제미나이 설정
     LOCATION = "us-central1"

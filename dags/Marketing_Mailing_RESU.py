@@ -57,10 +57,7 @@ with DAG(
     # Notion 설정
     NOTION_TOKEN = get_var('NOTION_TOKEN')
 
-    # 수신자 설정
-    # RECIPIENT_EMAILS = ['chosw2@joycity.com', 'mirmir@ndream.com', 'gon0505@ndream.com', 'junezel@joycity.com', 'kyuny@joycity.com', 
-    #                     'nokchaman@joycity.com', 'lhnr0616@joycity.com', 'seongin@joycity.com', 'mhjung@joycity.com', 'CSD_DSD_MS@joycity.com']
-
+    # 수신자 설정 (notion에서 불러오기)
     database_id = "2cbea67a56818058b9c1c5bf0cb3f3a4"
 
     headers = {
@@ -79,7 +76,13 @@ with DAG(
                     {
                         "property": "Project",
                         "select": {
-                            "equals": "Admin"
+                            "equals": "ALL"
+                        }
+                    }, 
+                    {
+                        "property": "Project",
+                        "select": {
+                            "equals": "RESU"
                         }
                     }
                 ]
