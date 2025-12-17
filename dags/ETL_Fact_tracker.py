@@ -697,35 +697,35 @@ def etl_f_cost_campaign_rule():
                 , mediation
                 , impressions ## 기존 데사실 Cost 테이블에 있지만 없는 컬럼 추가 
                 , clicks ## ## 기존 데사실 Cost 테이블에 있지만 없는 컬럼 추가 
-                , CASE WHEN media_category LIKE '%-Pre'   THEN true
+                , CASE WHEN media_category LIKE '%-Pre' THEN true
                         WHEN media_category LIKE '%-Pre-%' THEN true
-                        WHEN media_category LIKE 'Pre-%'   THEN true
-                        WHEN media_category LIKE 'pre-%'   THEN true
-                        WHEN media_category LIKE '%-pre'   THEN true
+                        WHEN media_category LIKE 'Pre-%' THEN true
+                        WHEN media_category LIKE 'pre-%' THEN true
+                        WHEN media_category LIKE '%-pre' THEN true
                         WHEN media_category IN ('Preregister','Update-Preregister','Update -Preregister','Google-ACP') THEN true
                         WHEN media IN ('GL-PC-UpdatePre','GL-PC-Pre','FB-PC-UpdatePre','FB-PC-Pre') THEN true  -- 210923 수정한 부분
                         ELSE false 
                     END AS pre_yn
                 , CASE WHEN game_id = 'KOFS' and country = 'JP' then 1 
-                        WHEN game_id = 'RESU' and country = 'KR' then 1
+                        WHEN game_id = 'RESU' and country IN ('KR', 'TW', 'HK', 'MO', 'VN', 'ID', 'BN', 'MM', 'MN') then 1
                         ELSE 0 
                         END AS extra_process_required ## 기존 작성되어있던 extra_process_required 쿼리에 RESU 캠페인 처리 추가   
-                ,CASE
+                , CASE
                     WHEN etc_category = 'L&F' THEN CONCAT(optim,'_L&F')
                     WHEN media_category = 'ADNW' AND (optim IS NULL OR optim = '구분없음') THEN product_category
                     WHEN media_category = 'ADNW' THEN CONCAT(product_category,'_',optim)
-                    WHEN media_category in( 'Facebook' ,'Facebook-Gaming','Facebook-Playable','Facebook-Re') THEN optim2        
-                    WHEN media_category = 'AppleSA.Self'   THEN product_category
-                    WHEN media_category = 'Mytarget.Self'   THEN optim
+                    WHEN media_category in ('Facebook' ,'Facebook-Gaming','Facebook-Playable','Facebook-Re') THEN optim2        
+                    WHEN media_category = 'AppleSA.Self' THEN product_category
+                    WHEN media_category = 'Mytarget.Self' THEN optim
                     WHEN media_category in ('Google','Google-Re') AND (etc_category IS NULL OR etc_category = '구분없음') THEN optim
                     WHEN media_category in ('Google','Google-Re') AND etc_category = 'Purchase' THEN CONCAT(optim,'_',etc_category)
                     WHEN media_category in ('Google','Google-Re') AND etc_category != 'Purchase' THEN CONCAT(optim,'_ETC')
                 ELSE '구분없음'
                 END AS class
-                , CASE WHEN media_category = 'Google'                 THEN 'Google'
-                    WHEN media_category = 'Facebook'               THEN 'FB'
-                    WHEN media_category = 'ADNW'                   THEN 'ADNW'
-                    WHEN LOWER(gcat) in ('organic','unknown')   THEN 'Organic'
+                , CASE WHEN media_category = 'Google' THEN 'Google'
+                    WHEN media_category = 'Facebook' THEN 'FB'
+                    WHEN media_category = 'ADNW' THEN 'ADNW'
+                    WHEN LOWER(gcat) in ('organic','unknown') THEN 'Organic'
                     ELSE 'Other' 
                 END AS media_group
         FROM (select * ,
