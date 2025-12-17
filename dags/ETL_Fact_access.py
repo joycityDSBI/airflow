@@ -62,9 +62,8 @@ def etl_f_common_register(target_date:list):
             AND a.ip                 IS NOT NULL
             AND a.access_type_id     IS NOT NULL
             AND a.log_time           IS NOT NULL
-            AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", game_sub_user_name) NOT IN (
-                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
-            )
+            AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, ''))  NOT IN (
+                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
             UNION ALL
             SELECT game_id                                                                                    AS GameID
                 , world_id                                                                                   AS WorldID
@@ -85,10 +84,9 @@ def etl_f_common_register(target_date:list):
                 , access_type_id                                                                              AS AccessTypeID
                 , play_seconds                                                                               AS PlaySeconds
                 , log_time                                                                                   AS LogTime
-            FROM `datahub-478802.datahub.pre_access_log_supplement`
-            WHERE CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", game_sub_user_name)  NOT IN (
-                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
-            )
+            FROM `datahub-478802.datahub.pre_access_log_supplement` -- 현재는 유지하지만 향후 서비스할 때 필요한지는 한번 더 논의가 필요함.
+            WHERE CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, ''))  NOT IN (
+                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
             )
             , TB as (
             SELECT 
@@ -168,12 +166,12 @@ def etl_f_common_register(target_date:list):
             aa.country_code as install_country_code, 
             aa.media_source, 
             aa.media_source_cat, 
-            aa.is_organic, 
+            if(J.auth_account_name is not null, 'Non-Organic',aa.is_organic) as is_organic, 
             aa.agency, 
-            aa.campaign, 
-            aa.init_campaign,
-            aa.adset_name, 
-            aa.ad_name, 
+            coalesce(J.Campaign_name,aa.campaign)                            as campaign, 
+            coalesce(J.Campaign_name,aa.init_campaign)                       as init_campaign,
+            aa.adset_name,                   
+            coalesce(cast(J.ad_name as string),aa.ad_name)                   as ad_name, 
             aa.is_retargeting, 
             aa.advertising_id, 
             aa.idfa, 
@@ -192,6 +190,13 @@ def etl_f_common_register(target_date:list):
             FROM TB 
             LEFT JOIN datahub-478802.datahub.f_tracker_install as aa
             ON TB.tracker_account_id = aa.tracker_account_id AND TB.tracker_type_id = aa.tracker_type_id
+            LEFT JOIN ( -- 조이트래킹 서비스 종료할때까지만 반영하면됨.
+                       SELECT a.*, b.* except(campaign_name, joyple_game_code)
+                       FROM `datahub-478802.datahub.pre_joytracking_tracker` as a
+                       LEFT JOIN `datahub-478802.datahub.dim_pccampaign_list_joytracking` as b
+                       ON a.campaign_name = b.campaign_name AND a.joyple_game_code = b.joyple_game_code) as J
+            ON TB.joyple_game_code = j.joyple_game_code AND TB.auth_account_name = j.auth_account_name
+            )
             )
             
             SELECT * FROM TC
@@ -354,12 +359,12 @@ def adjust_f_common_register(target_date:list):
             , TC.country_code as install_country_code
             , TB.media_source
             , TB.media_source_cat
-            , TB.is_organic
+            , if(J.auth_account_name is not null, 'Non-Organic',TB.is_organic) as is_organic
             , TB.agency
-            , TB.campaign
-            , TB.init_campaign
+            , coalesce(J.Campaign_name,TB.campaign) as campaign
+            , coalesce(J.Campaign_name,TB.init_campaign) as init_campaign
             , TB.adset_name
-            , TB.ad_name
+            , coalesce(cast(J.ad_name as string),TB.ad_name) as ad_name 
             , TB.is_retargeting
             , TB.advertising_id
             , TB.idfa
@@ -391,6 +396,12 @@ def adjust_f_common_register(target_date:list):
             left join 
             datahub-478802.datahub.dim_ip4_country_code as TC
             on TA.INFO.ip = TC.ip
+            LEFT JOIN ( -- 조이트래킹 서비스 종료할때까지만 반영하면됨.
+                       SELECT a.*, b.* except(campaign_name, joyple_game_code)
+                       FROM `datahub-478802.datahub.pre_joytracking_tracker` as a
+                       LEFT JOIN `datahub-478802.datahub.dim_pccampaign_list_joytracking` as b
+                       ON a.campaign_name = b.campaign_name AND a.joyple_game_code = b.joyple_game_code) as J
+            ON TA.joyple_game_code = j.joyple_game_code AND TA.auth_account_name = j.auth_account_name
         ) AS source ON target.joyple_game_code = source.joyple_game_code AND target.auth_method_id = source.auth_method_id AND target.auth_account_name = source.auth_account_name
         WHEN NOT MATCHED BY target THEN 
         INSERT
@@ -524,8 +535,8 @@ def etl_f_common_register_char(target_date:list):
             , IFNULL(a.play_seconds, 0)                                                                  AS PlaySeconds
             , a.log_time                                                                                 AS LogTime
         FROM `dataplatform-204306.CommonLog.Access` AS a
-        WHERE a.log_time >= '2025-12-01'
-        AND a.log_time < '2025-12-02'
+        WHERE a.log_time >= {start_utc}
+        AND a.log_time < {end_utc}
         AND a.access_type_id = 1
         AND a.game_id            IS NOT NULL
         AND a.world_id           IS NOT NULL
@@ -541,9 +552,8 @@ def etl_f_common_register_char(target_date:list):
         AND a.ip                 IS NOT NULL
         AND a.access_type_id     IS NOT NULL
         AND a.log_time           IS NOT NULL
-        AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", game_sub_user_name) NOT IN (
-            SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
-        )
+        AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, '')) NOT IN (  
+                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
         UNION ALL
             SELECT game_id                                                                                    AS GameID
                 , world_id                                                                                   AS WorldID
@@ -564,10 +574,9 @@ def etl_f_common_register_char(target_date:list):
                 , access_type_id                                                                              AS AccessTypeID
                 , play_seconds                                                                               AS PlaySeconds
                 , log_time                                                                                   AS LogTime
-            FROM `datahub-478802.datahub.pre_access_log_supplement`
-            WHERE CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", TRIM(auth_account_name) , "|", TRIM(game_sub_user_name))  NOT IN (
-                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
-        )
+            FROM `datahub-478802.datahub.pre_access_log_supplement` -- 현재는 유지하지만 향후 서비스할 때 필요한지는 한번 더 논의가 필요함
+            WHERE CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, '')) NOT IN (  
+                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
         )
         
             SELECT 
@@ -604,8 +613,8 @@ def etl_f_common_register_char(target_date:list):
                         a.TrackerAccountName, a.TrackerTypeID, a.DeviceAccountName, a.GameAccountName,
                         a.GameSubUserName, a.ServerName, a.PlatformDeviceType, a.MarketID, a.OSID, a.IP, a.LogTime
                     FROM TA AS a
-                    WHERE a.LogTime >= '2025-12-01'
-                    AND a.LogTime < '2025-12-02'
+                    WHERE a.LogTime >= {start_utc}
+                    AND a.LogTime < {end_utc}
                     AND a.AccessTypeID = 1
                     AND a.GameID IS NOT NULL
                     AND a.WorldID           IS NOT NULL
@@ -682,7 +691,6 @@ def etl_f_common_register_char(target_date:list):
         print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register_char Batch 완료")
     
     print("✅ f_common_register_char ETL 완료")
-    print("야호!")
     return True
 
 
@@ -837,9 +845,8 @@ def etl_f_common_access(target_date: list):
         AND a.ip                 IS NOT NULL
         AND a.access_type_id     IS NOT NULL
         AND a.log_time           IS NOT NULL
-        AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", game_sub_user_name) NOT IN (
-            SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
-        )
+        AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, '')) NOT IN (  
+                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
         UNION ALL
         SELECT game_id                                                                                    AS GameID
             , world_id                                                                                   AS WorldID
@@ -860,10 +867,9 @@ def etl_f_common_access(target_date: list):
             , access_type_id                                                                              AS AccessTypeID
             , play_seconds                                                                               AS PlaySeconds
             , log_time                                                                                   AS LogTime
-        FROM `datahub-478802.datahub.pre_access_log_supplement`
-        WHERE CONCAT(CAST(joyple_game_code AS STRING), "|", CAST(auth_method_id AS STRING), "|", auth_account_name, "|", game_sub_user_name)  NOT IN (
-            SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`
-        )
+        FROM `datahub-478802.datahub.pre_access_log_supplement` -- 현재는 유지하지만 향후 서비스할 때 필요한지는 한번 더 논의가 필요함
+        WHERE CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, '')) NOT IN (  
+                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
         )
             SELECT 
                 DATE(TA.LogTime, "Asia/Seoul") as datekey
