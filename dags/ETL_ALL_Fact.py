@@ -59,6 +59,7 @@ with DAG(
         try:
             etl_f_tracker_install(target_date=target_date)
             etl_f_tracker_re_engagement(target_date=target_date)
+            etl_pre_joytracking_tracker(target_date=target_date)
             etl_f_cost_campaign_rule()
             logger.info("etl_fact_tracker completed successfully")
             return True

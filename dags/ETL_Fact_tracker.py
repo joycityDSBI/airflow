@@ -7,6 +7,98 @@ import pytz
 # 빅쿼리 클라이언트 연결
 client = bigquery.Client()
 
+
+def etl_pre_joytracking_tracker():
+
+    for td in target_date:
+        target_date = td
+
+        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+        kst = pytz.timezone('Asia/Seoul')
+        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+
+        query = f"""
+        MERGE `datahub-478802.datahub.pre_joytracking_tracker` AS target
+        USING
+        (
+          WITH AuthAccountInfo
+          AS (
+              SELECT joyple_game_code
+                   , auth_account_name
+                   , INFO.tracker_id AS tracker_account_id
+                   , INFO.world_id   AS world_id
+                   , INFO.user_type  AS user_type
+                   , INFO.log_date   AS auth_account_log_timestamp
+              FROM (
+                    SELECT a.game_code         AS joyple_game_code 
+                         , a.auth_account_name AS auth_account_name
+                         , ARRAY_AGG(STRUCT(tracker_id, world_id, log_date, user_type)
+                                     ORDER BY log_date ASC 
+                                     LIMIT 1
+                                    )[OFFSET(0)] AS INFO         
+                    FROM `dataplatform-204306.JoyTracking.lt_pop_visit_history` AS a 
+                    WHERE a.log_date >= {start_utc} 
+                      AND a.log_date < {end_utc}
+                      AND a.tracker_id IS NOT NULL 
+                      AND a.tracker_id != ''
+                      AND left(a.tracker_id,16) != '0000000000000000'
+                    GROUP BY joyple_game_code, auth_account_name
+                   ) AS a
+          )
+    
+          SELECT a.joyple_game_code                      AS joyple_game_code
+               , a.INFO.world_id                         AS world_id
+               , a.auth_account_name                     AS auth_account_name
+               , a.INFO.tracker_account_id               AS tracker_account_id
+               , c.campaign                              AS campaign_name
+               , a.INFO.ad_name                          AS ad_name
+               , a.user_type                             AS user_type
+               , timestamp(a.INFO.log_datetime_kst)      AS register_timestamp
+          FROM (
+                SELECT joyple_game_code
+                     , auth_account_name
+                     , tracker_account_id
+                     , user_type
+                     , ARRAY_AGG(STRUCT(world_id, tracker_account_id, ad_name, log_datetime_kst)
+                                 ORDER BY log_datetime_kst DESC 
+                                 LIMIT 1
+                                )[OFFSET(0)] AS INFO       
+                FROM(
+                     SELECT a.auth_account_name                    AS auth_account_name
+                          , a.joyple_game_code                     AS joyple_game_code
+                          , a.world_id                             AS world_id
+                          , a.tracker_account_id                   AS tracker_account_id
+                          , a.user_type                            AS user_type
+                          , b.ads                              AS ad_name
+                          , DATETIME(b.log_date, "Asia/Seoul") AS log_datetime_kst  
+                    FROM AuthAccountInfo  AS a
+                    INNER JOIN `dataplatform-204306.JoyTracking.lt_click_visit_history` AS b ON (a.tracker_account_id = b.tracker_id)
+                    WHERE b.log_date BETWEEN DATE_SUB(a.auth_account_log_timestamp, INTERVAL 7 DAY) AND a.auth_account_log_timestamp
+                    AND b.tracker_id not like  "0000000000000000%" -- 0000000000000000% 는 조회하지 않음
+                   )
+                GROUP BY auth_account_name, joyple_game_code, world_id, tracker_account_id, user_type
+          ) AS a
+          LEFT OUTER JOIN `dataplatform-joytracking.joytracking.tb_ads_campaign` AS c 
+          ON (a.INFO.ad_name = c.ads) 
+          WHERE a.joyple_game_code IS NOT NULL
+          AND a.INFO.ad_name between 35 and 10000 --- 테스트 데이터는 제외
+        ) AS source ON target.joyple_game_code = source.joyple_game_code AND target.auth_account_name = source.auth_account_name
+        WHEN NOT MATCHED BY target THEN
+          INSERT (joyple_game_code, auth_account_name, tracker_account_id, campaign_name, ad_name,user_type, register_timestamp)
+          VALUES (
+                  source.joyple_game_code
+                , source.auth_account_name
+                , source.tracker_account_id
+                , source.campaign_name
+                , source.ad_name
+                , source.user_type
+                , source.register_timestamp
+	      )     
+    
+        """
+
 def etl_f_tracker_install():
 
     for td in target_date:
