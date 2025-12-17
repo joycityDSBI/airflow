@@ -728,7 +728,9 @@ def adjust_f_common_register_char(target_date:list):
             left join 
             datahub-478802.datahub.dim_ip4_country_code as TC
             on TA.INFO.ip = TC.ip
-        ) AS source ON target.joyple_game_code = source.joyple_game_code AND target.auth_method_id = source.auth_method_id AND target.auth_account_name = source.auth_account_name
+        ) AS source 
+        ON target.joyple_game_code = source.joyple_game_code AND target.auth_method_id = source.auth_method_id 
+        AND target.auth_account_name = source.auth_account_name AND target.game_sub_user_name = source.game_sub_user_name
         WHEN NOT MATCHED BY target THEN 
         INSERT
         (
@@ -972,7 +974,7 @@ def etl_f_common_access_last_login(target_date: list):
             SELECT datekey, joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name
                 , max(game_user_level) as max_game_user_level
             FROM datahub-478802.datahub.f_common_access
-            WHERE datekey >= '{target_date.strftime('%Y-%m-%d')}' AND datekey < '{(target_date + timedelta(days=1)).strftime('%Y-%m-%d')}'
+            WHERE datekey >= DATE_SUB(DATE('{target_date}'), INTERVAL 1 DAY) AND datekey < '{target_date}'
             GROUP BY datekey, joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name
         ) AS source
         ON target.joyple_game_code = source.joyple_game_code AND target.auth_method_id = source.auth_method_id 
