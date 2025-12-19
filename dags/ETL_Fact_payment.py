@@ -79,7 +79,7 @@ def etl_pre_payment_deduct_order(target_date: list):
                 , ProductCode
                 , LogTime       AS LogTimestamp
                 , RegistredTime AS UpdatedTimestamp
-        FROM `dataplatform-services.ServiceData.PaymentDeductOrder`
+        FROM `dataplatform-services.ServiceData.PaymentDeductOrder` --
             WHERE RegistredTime >= {start_utc}
             AND RegistredTime < {end_utc}
             AND JoypleGameID IS NOT NULL
@@ -147,7 +147,7 @@ def etl_pre_payment_info_fix():
     Price, 
     LogTimestamp, 
     UpdatedTimestamp
-    FROM dataplatform-reporting.DataService.T_0141_0000_PaymentInfoFix_V
+    FROM dataplatform-reporting.DataService.T_0141_0000_PaymentInfoFix_V ---- 얘가 어떤 데이터인지 좀 명확히 확인하고 지금처럼 처리하는게 맞을지?
     """
 
     client.query(truncate_query)
