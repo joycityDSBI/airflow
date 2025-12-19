@@ -561,51 +561,48 @@ def etl_f_cost_campaign_rule():
 
     query = f"""
 
--- TRUNCATE TABLE `datahub-478802.datahub.f_common_register`
-
-
 insert into `datahub-478802.datahub.f_common_register`
 (
-  reg_datekey,
-  reg_datetime,
-  game_id,
-  world_id,
-  joyple_game_code,
-  auth_method_id,
-  auth_account_name,
-  tracker_account_id,
-  tracker_type_id,
-  device_id,
-  reg_country_code,
-  market_id,
-  os_id,
-  platform_device_type,
-  app_id,
-  bundle_id,
-  install_country_code,
-  media_source,
-  media_source_cat,
-  is_organic,
-  agency,
-  campaign,
-  init_campaign,
-  adset_name,
-  ad_name,
-  is_retargeting,
-  advertising_id,
-  idfa,
-  site_id,
-  channel,
-  CB1_media_source,
-  CB1_campaign,
-  CB2_media_source,
-  CB2_campaign,
-  CB3_media_source,
-  CB3_campaign,
-  install_time,
-  event_time,
-  event_type,
-  install_datekey
+  reg_datekey,
+  reg_datetime,
+  game_id,
+  world_id,
+  joyple_game_code,
+  auth_method_id,
+  auth_account_name,
+  tracker_account_id,
+  tracker_type_id,
+  device_id,
+  reg_country_code,
+  market_id,
+  os_id,
+  platform_device_type,
+  app_id,
+  bundle_id,
+  install_country_code,
+  media_source,
+  media_source_cat,
+  is_organic,
+  agency,
+  campaign,
+  init_campaign,
+  adset_name,
+  ad_name,
+  is_retargeting,
+  advertising_id,
+  idfa,
+  site_id,
+  channel,
+  CB1_media_source,
+  CB1_campaign,
+  CB2_media_source,
+  CB2_campaign,
+  CB3_media_source,
+  CB3_campaign,
+  install_time,
+  event_time,
+  event_type,
+  install_datekey
 )
 SELECT
 a.AuthAccountRegDateKST as reg_datekey,
@@ -654,10 +651,10 @@ dataplatform-reporting.DataService.T_0210_0000_OS_V as b
 on a.OS = b.OSNameLower
 left join
 (
-  select TrackerAccountID, TrackerTypeID,
-  ARRAY_AGG(STRUCT(DeviceID, CountryCode, PlatformDeviceType) ORDER BY UpdatedTimestamp ASC LIMIT 1)[OFFSET(0)] AS INFO
-  from dataplatform-reporting.DataService.T_0272_0000_TrackerAccountInfo_V
-  GROUP BY TrackerAccountID, TrackerTypeID
+  select TrackerAccountID, TrackerTypeID,
+  ARRAY_AGG(STRUCT(DeviceID, CountryCode, PlatformDeviceType) ORDER BY UpdatedTimestamp ASC LIMIT 1)[OFFSET(0)] AS INFO
+  from dataplatform-reporting.DataService.T_0272_0000_TrackerAccountInfo_V
+  GROUP BY TrackerAccountID, TrackerTypeID
 )
 as c
 on a.TrackerAccountID = c.TrackerAccountID and a.TrackerTypeID = c.TrackerTypeID
