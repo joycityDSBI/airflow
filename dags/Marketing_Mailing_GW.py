@@ -104,6 +104,7 @@ with DAG(
                 emails.append(email_value)
 
     RECIPIENT_EMAILS = emails
+    RECIPIENT_EMAILS = ['seongin@joycity.com']
 
     # 제미나이 설정
     LOCATION = "us-central1"
@@ -509,30 +510,29 @@ with DAG(
 
             query2 = basic_query + f"""
             select regdate_joyple_kst as Date, geo_user_group as Country
-            , CAST(sum(cost_exclude_credit) AS INT64) as Cost
-            , ROUND(sum(install), 2) as Install
-            , ROUND(sum(ru), 2) as Ru
-            --, ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru), 2) as Organic_ratio
-            , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
-            , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
-            , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
-            , ROUND(sum(rev_d1)/sum(ru), 2)  as D1LTV
-            , ROUND(sum(rev_d3)/sum(ru), 2)  as D3LTV
-            , ROUND(sum(rev_d7)/sum(ru), 2)  as D7LTV
-            , ROUND(sum(rev_dcum)/sum(ru), 2)  as DcumLTV
-            , ROUND(sum(ru_d1)/sum(ru)*100, 2)  as D1RET
-            , ROUND(sum(ru_d3)/sum(ru)*100, 2)  as D3RET
-            , ROUND(sum(ru_d7)/sum(ru)*100, 2)  as D7RET
-            , ROUND(sum(rev_d0)/sum(cost_exclude_credit)*100, 2)  as D0ROAS
-            , ROUND(sum(rev_d1)/sum(cost_exclude_credit)*100, 2)  as D1ROAS
-            , ROUND(sum(rev_d3)/sum(cost_exclude_credit)*100, 2)  as D3ROAS
-            , ROUND(sum(rev_d7)/sum(cost_exclude_credit)*100, 2)  as D7ROAS
-            , ROUND(sum(rev_dcum)/sum(cost_exclude_credit)*100, 2)  as DcumROAS      
+                , CAST(sum(cost_exclude_credit) AS INT64) as Cost
+                , ROUND(sum(install), 2) as Install
+                , ROUND(sum(ru), 2) as Ru
+                , ROUND(SAFE_DIVIDE(sum(cost_exclude_credit), sum(install)), 2) as CPI 
+                , ROUND(SAFE_DIVIDE(sum(cost_exclude_credit), sum(ru)), 2) as CPRU
+                , ROUND(SAFE_DIVIDE(sum(rev_d0), sum(ru)), 2) as D0LTV
+                , ROUND(SAFE_DIVIDE(sum(rev_d1), sum(ru)), 2) as D1LTV
+                , ROUND(SAFE_DIVIDE(sum(rev_d3), sum(ru)), 2) as D3LTV
+                , ROUND(SAFE_DIVIDE(sum(rev_d7), sum(ru)), 2) as D7LTV
+                , ROUND(SAFE_DIVIDE(sum(rev_dcum), sum(ru)), 2) as DcumLTV
+                , ROUND(SAFE_DIVIDE(sum(ru_d1), sum(ru))*100, 2) as D1RET
+                , ROUND(SAFE_DIVIDE(sum(ru_d3), sum(ru))*100, 2) as D3RET
+                , ROUND(SAFE_DIVIDE(sum(ru_d7), sum(ru))*100, 2) as D7RET
+                , ROUND(SAFE_DIVIDE(sum(rev_d0), sum(cost_exclude_credit))*100, 2) as D0ROAS
+                , ROUND(SAFE_DIVIDE(sum(rev_d1), sum(cost_exclude_credit))*100, 2) as D1ROAS
+                , ROUND(SAFE_DIVIDE(sum(rev_d3), sum(cost_exclude_credit))*100, 2) as D3ROAS
+                , ROUND(SAFE_DIVIDE(sum(rev_d7), sum(cost_exclude_credit))*100, 2) as D7ROAS
+                , ROUND(SAFE_DIVIDE(sum(rev_dcum), sum(cost_exclude_credit))*100, 2) as DcumROAS      
             from final2 
-            where regdate_joyple_kst >= '{two_weeks_ago}' -- 최근 2주 정도? 
-            and osuser = 'And'#And UA User 필터
-            and gcat = 'UA' and media_category in ('ADNW','Facebook','Google') #And UA User 필터
-            group by regdate_joyple_kst, geo_user_group  --- 전체> 국가 group 제외 
+            where regdate_joyple_kst >= '{two_weeks_ago}'
+            and osuser = 'And'
+            and gcat = 'UA' and media_category in ('ADNW','Facebook','Google')
+            group by regdate_joyple_kst, geo_user_group
             order by 2, 1
 
             """
@@ -561,21 +561,21 @@ with DAG(
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
             , CONCAT(CAST(ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru) * 100, 2) AS STRING), '%') as Organic_ratio
-            , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
-            , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
-            , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
-            , ROUND(sum(rev_d1)/sum(ru), 2)  as D1LTV
-            , ROUND(sum(rev_d3)/sum(ru), 2)  as D3LTV
-            , ROUND(sum(rev_d7)/sum(ru), 2)  as D7LTV
-            , ROUND(sum(rev_dcum)/sum(ru), 2)  as DcumLTV
-            , ROUND(sum(ru_d1)/sum(ru)*100, 2)  as D1RET
-            , ROUND(sum(ru_d3)/sum(ru)*100, 2)  as D3RET
-            , ROUND(sum(ru_d7)/sum(ru)*100, 2)  as D7RET
-            , ROUND(sum(rev_d0)/sum(cost_exclude_credit)*100, 2)  as D0ROAS
-            , ROUND(sum(rev_d1)/sum(cost_exclude_credit)*100, 2)  as D1ROAS
-            , ROUND(sum(rev_d3)/sum(cost_exclude_credit)*100, 2)  as D3ROAS
-            , ROUND(sum(rev_d7)/sum(cost_exclude_credit)*100, 2)  as D7ROAS
-            , ROUND(sum(rev_dcum)/sum(cost_exclude_credit)*100, 2)  as DcumROAS   
+            , ROUND(SAFE_DIVIDE(sum(cost_exclude_credit), sum(install)), 2) as CPI 
+            , ROUND(SAFE_DIVIDE(sum(cost_exclude_credit), sum(ru)), 2) as CPRU
+            , ROUND(SAFE_DIVIDE(sum(rev_d0), sum(ru)), 2) as D0LTV
+            , ROUND(SAFE_DIVIDE(sum(rev_d1), sum(ru)), 2) as D1LTV
+            , ROUND(SAFE_DIVIDE(sum(rev_d3), sum(ru)), 2) as D3LTV
+            , ROUND(SAFE_DIVIDE(sum(rev_d7), sum(ru)), 2) as D7LTV
+            , ROUND(SAFE_DIVIDE(sum(rev_dcum), sum(ru)), 2) as DcumLTV
+            , ROUND(SAFE_DIVIDE(sum(ru_d1), sum(ru))*100, 2) as D1RET
+            , ROUND(SAFE_DIVIDE(sum(ru_d3), sum(ru))*100, 2) as D3RET
+            , ROUND(SAFE_DIVIDE(sum(ru_d7), sum(ru))*100, 2) as D7RET
+            , ROUND(SAFE_DIVIDE(sum(rev_d0), sum(cost_exclude_credit))*100, 2) as D0ROAS
+            , ROUND(SAFE_DIVIDE(sum(rev_d1), sum(cost_exclude_credit))*100, 2) as D1ROAS
+            , ROUND(SAFE_DIVIDE(sum(rev_d3), sum(cost_exclude_credit))*100, 2) as D3ROAS
+            , ROUND(SAFE_DIVIDE(sum(rev_d7), sum(cost_exclude_credit))*100, 2) as D7ROAS
+            , ROUND(SAFE_DIVIDE(sum(rev_dcum), sum(cost_exclude_credit))*100, 2) as DcumROAS   
             from final2 
             where regdate_joyple_kst >= '{two_weeks_ago}' -- 최근 2주 정도? 
             --and osuser = 'And'#And UA User 필터
@@ -599,21 +599,21 @@ with DAG(
             , ROUND(sum(install), 2) as Install
             , ROUND(sum(ru), 2) as Ru
             , CONCAT(CAST(ROUND(SUM(CASE WHEN gcat = "Organic" or gcat = "Unknown" then ru end) / sum(ru) * 100, 2) AS STRING), '%') as Organic_ratio
-            , ROUND(sum(cost_exclude_credit)/sum(install), 2) as CPI 
-            , ROUND(sum(cost_exclude_credit)/sum(ru), 2)  as CPRU
-            , ROUND(sum(rev_d0)/sum(ru), 2)  as D0LTV
-            , ROUND(sum(rev_d1)/sum(ru), 2)  as D1LTV
-            , ROUND(sum(rev_d3)/sum(ru), 2)  as D3LTV
-            , ROUND(sum(rev_d7)/sum(ru), 2)  as D7LTV
-            , ROUND(sum(rev_dcum)/sum(ru), 2)  as DcumLTV
-            , ROUND(sum(ru_d1)/sum(ru)*100, 2)  as D1RET
-            , ROUND(sum(ru_d3)/sum(ru)*100, 2)  as D3RET
-            , ROUND(sum(ru_d7)/sum(ru)*100, 2)  as D7RET
-            , ROUND(sum(rev_d0)/sum(cost_exclude_credit)*100, 2)  as D0ROAS
-            , ROUND(sum(rev_d1)/sum(cost_exclude_credit)*100, 2)  as D1ROAS
-            , ROUND(sum(rev_d3)/sum(cost_exclude_credit)*100, 2)  as D3ROAS
-            , ROUND(sum(rev_d7)/sum(cost_exclude_credit)*100, 2)  as D7ROAS
-            , ROUND(sum(rev_dcum)/sum(cost_exclude_credit)*100, 2)  as DcumROAS   
+            , ROUND(SAFE_DIVIDE(sum(cost_exclude_credit), sum(install)), 2) as CPI 
+            , ROUND(SAFE_DIVIDE(sum(cost_exclude_credit), sum(ru)), 2) as CPRU
+            , ROUND(SAFE_DIVIDE(sum(rev_d0), sum(ru)), 2) as D0LTV
+            , ROUND(SAFE_DIVIDE(sum(rev_d1), sum(ru)), 2) as D1LTV
+            , ROUND(SAFE_DIVIDE(sum(rev_d3), sum(ru)), 2) as D3LTV
+            , ROUND(SAFE_DIVIDE(sum(rev_d7), sum(ru)), 2) as D7LTV
+            , ROUND(SAFE_DIVIDE(sum(rev_dcum), sum(ru)), 2) as DcumLTV
+            , ROUND(SAFE_DIVIDE(sum(ru_d1), sum(ru))*100, 2) as D1RET
+            , ROUND(SAFE_DIVIDE(sum(ru_d3), sum(ru))*100, 2) as D3RET
+            , ROUND(SAFE_DIVIDE(sum(ru_d7), sum(ru))*100, 2) as D7RET
+            , ROUND(SAFE_DIVIDE(sum(rev_d0), sum(cost_exclude_credit))*100, 2) as D0ROAS
+            , ROUND(SAFE_DIVIDE(sum(rev_d1), sum(cost_exclude_credit))*100, 2) as D1ROAS
+            , ROUND(SAFE_DIVIDE(sum(rev_d3), sum(cost_exclude_credit))*100, 2) as D3ROAS
+            , ROUND(SAFE_DIVIDE(sum(rev_d7), sum(cost_exclude_credit))*100, 2) as D7ROAS
+            , ROUND(SAFE_DIVIDE(sum(rev_dcum), sum(cost_exclude_credit))*100, 2) as DcumROAS  
             from final2 
             where regdate_joyple_kst >= '{two_weeks_ago}' -- 최근 2주 정도? 
             --and osuser = 'And'#And UA User 필터
