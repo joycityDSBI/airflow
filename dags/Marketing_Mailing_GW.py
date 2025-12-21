@@ -104,7 +104,7 @@ with DAG(
                 emails.append(email_value)
 
     RECIPIENT_EMAILS = emails
-    RECIPIENT_EMAILS = ['seongin@joycity.com']
+
 
     # 제미나이 설정
     LOCATION = "us-central1"
@@ -1115,6 +1115,7 @@ with DAG(
 
         except Exception as e:
             logger.error(f"❌ 에러 발생: {str(e)}", exc_info=True)
+            print("메일 발송 실패")
             raise
 
     # Task 정의
