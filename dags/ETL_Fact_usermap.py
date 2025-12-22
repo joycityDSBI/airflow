@@ -284,6 +284,73 @@ def etl_f_user_map_char():
         print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
 
         query = f"""
+        INSERT INTO datahub-478802.datahub.f_user_map_char
+        (
+        datekey
+        , joyple_game_code
+        , auth_account_name
+        , auth_method_id
+        , game_sub_user_name
+        , RU
+        , game_id
+        , world_id
+        , server_name
+        , reg_country_code
+        , reg_market_id
+        , reg_os_id
+        , platform_device_type
+        , tracker_type_id
+        , tracker_account_id
+        , game_sub_user_reg_datekey
+        , datediff_sub_user_reg
+        , game_sub_user_reg_datetime
+        , user_reg_datekey
+        , datediff_reg
+        , daily_total_rev
+        , daily_buy_cnt
+        , daily_pu
+        , stacked_rev
+        , stacked_buy_cnt
+        , stacked_rev_percent_rank
+        , monthly_rev
+        , monthly_rgroup_sub_user
+        , before_monthly_rev
+        , before_monthly_rgroup_sub_user
+        , yearly_rev
+        , last_30days_rev
+        , first_payment_datekey
+        , last_payment_datekey
+        , stacked_IAA_rev
+        , daily_IAA_rev
+        , play_seconds
+        , access_cnt
+        , max_game_user_level
+        , last_login_datekey
+        , datediff_last_login_sub_user
+        , stickiness
+        , products_array
+        , install_country_code
+        , install_datekey
+        , app_id
+        , bundle_id
+        , is_organic
+        , agency
+        , campaign
+        , init_campaign
+        , adset_name
+        , ad_name
+        , is_retargeting
+        , advertising_id
+        , idfa
+        , site_id
+        , channel
+        , CB1_media_source
+        , CB1_campaign
+        , CB2_media_source
+        , CB2_campaign
+        , CB3_media_source
+        , CB3_campaign
+        )
         SELECT 
         A.datekey
         , A.joyple_game_code

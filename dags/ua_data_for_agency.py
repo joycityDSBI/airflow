@@ -423,7 +423,7 @@ def generate_agency_reports(**context):
             # 대행사별 필터 조건 설정
             agency_filter_condition = ""
             if agency_name == 'dotlab':
-                agency_filter_condition = "AND media_category in ('ADNW', 'adnw-pre', 'ADNW-Pre') AND agency IN ('dotlab','NULL', 'webmediail626')"
+                agency_filter_condition = "AND media_category in ('ADNW', 'adnw-pre', 'ADNW-Pre') AND agency IN ('dotlab','NULL', 'webmediail626', 'tryads')"
             elif agency_name == 'Nasmedia':
                 agency_filter_condition = """
                 AND (
