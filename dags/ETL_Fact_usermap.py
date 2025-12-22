@@ -17,6 +17,7 @@ def etl_f_user_map():
         start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
         end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
         print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+        print(f"■ {target_date.strftime('%Y-%m-%d')} f_user_map Batch 시작")
 
         query = f"""
         INSERT INTO datahub-478802.datahub.f_user_map
