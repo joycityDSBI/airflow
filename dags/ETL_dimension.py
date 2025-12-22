@@ -221,6 +221,42 @@ with DAG(
         
         return True
     
+
+    def etl_dim_product_code(target_date:list):
+
+        for td in target_date:
+            target_date = td
+
+            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
+            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
+            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+            query = f"""
+            MERGE `datahub-478802.datahub.dim_product_code` AS target
+            USING(
+            SELECT distinct joyple_game_code, product_code
+            FROM `dataplatform-204306.CommonLog.Payment`
+            WHERE log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            ) as source
+            ON target.joyple_game_code = source.joyple_game_code AND target.product_code = source.product_code
+            WHEN NOT MATCHED THEN
+            INSERT (
+            joyple_game_code,
+            product_code,
+            update_timestamp
+            )
+            VALUES(
+            source.joyple_game_code,
+            source.product_code,
+            CURRENT_TIMESTAMP()
+            )
+            """
+            client.query(query)
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_product_code Batch 완료")
+        print("✅ dim_product_code ETL 완료")
+        return True
+    
+    
     def etl_dim_exchange_rate(target_date:list):
         
         for td in target_date:
@@ -1023,6 +1059,13 @@ with DAG(
         dag=dag,
     )
 
+    etl_dim_product_code_task = PythonOperator(
+        task_id='etl_dim_product_code',
+        python_callable=etl_dim_product_code,
+        op_kwargs = {'target_date': target_date},
+        dag=dag,
+    )
+
 
 chain(
     etl_dim_os_task,
@@ -1040,5 +1083,6 @@ chain(
     etl_dim_os_id_task,
     etl_dim_package_kind_task,
     etl_dim_pg_id_task,
-    etl_dim_IAA_app_name_task
+    etl_dim_IAA_app_name_task,
+    etl_dim_product_code_task,
 )
