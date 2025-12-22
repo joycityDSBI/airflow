@@ -70,7 +70,6 @@ def etl_f_user_map():
         , last_30days_rev
         , first_payment_datekey
         , last_payment_datekey
-        , daily_IAP_rev
         , stacked_IAA_watch_cnt
         , stacked_IAA_rev
         , daily_IAA_watch_cnt
@@ -146,7 +145,6 @@ def etl_f_user_map():
         , C.last_30days_rev
         , C.first_payment_datekey
         , C.last_payment_datekey
-        , D.daily_IAP_rev
         , E.stacked_IAA_watch_cnt
         , E.stacked_IAA_rev
         , E.daily_IAA_watch_cnt
@@ -201,21 +199,11 @@ def etl_f_user_map():
             SUM(IF(datekey >= DATE_SUB('2025-12-01', INTERVAL 30 DAY) AND datekey < '2025-12-02', revenue, 0)) as last_30days_rev,
             min(datekey) as first_payment_datekey,
             MAX(IF(datekey < '2025-12-01', datekey, null)) as last_payment_datekey
-            FROM datahub-478802.datahub.f_common_payment_total
+            FROM datahub-478802.datahub.f_common_payment
             WHERE datekey < '2025-12-02'
             group by joyple_game_code, auth_account_name, auth_method_id
         ) AS C
         ON A.joyple_game_code = C.joyple_game_code AND A.auth_method_id = C.auth_method_id AND A.auth_account_name = C.auth_account_name
-        -- 당일 구매액 및 당일 PU 여부 (IAP)
-        LEFT OUTER JOIN
-        (
-            SELECT joyple_game_code, auth_account_name, auth_method_id,
-            sum(revenue) as daily_IAP_rev
-            FROM datahub-478802.datahub.f_common_payment
-            where datekey >= '2025-12-01' and datekey < '2025-12-02'
-            group by joyple_game_code, auth_account_name, auth_method_id
-        ) AS D
-        ON A.joyple_game_code = D.joyple_game_code AND A.auth_method_id = D.auth_method_id AND A.auth_account_name = D.auth_account_name
         -- 누적 IAA 매출액, 광고 시청 횟수
         LEFT OUTER JOIN
         (
