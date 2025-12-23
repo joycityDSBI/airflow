@@ -175,118 +175,65 @@ def etl_f_common_payment(target_date: list):
             MERGE datahub-478802.datahub.f_common_payment AS target 
             USING (
             with TA AS (
-            SELECT a.game_id                                                                            
-                , a.joyple_game_code                                                                          
-                , a.game_account_name
-                , a.game_sub_user_name
-                , a.auth_method_id
-                , a.auth_account_name
-                , a.server_name
-                , a.device_id
-                , a.market_id
-                , a.os_id
-                , a.pg_id
-                , a.game_user_level
-                , IFNULL(IF(a.joyple_game_code BETWEEN 60000 AND 60008,  2, a.platform_device_type),1) AS platform_device_type
-                , a.ip                                                                                 
-                , a.order_id                                                                                
-                , a.product_code                                                                       
-                , IFNULL(a.product_name, a.product_code) AS product_name
-                , a.currency_code                                       
-                , a.price                                               
-                , a.log_time                                            
-                , IFNULL(a.multiQuantity, 1) AS multiQuantity
-            FROM `dataplatform-204306.CommonLog.Payment` AS a
-            LEFT OUTER JOIN datahub-478802.datahub.pre_payment_info_fix AS b 
-            ON (a.joyple_game_code = b.joyple_game_code AND a.order_id = b.order_id)
-            WHERE a.log_time >= {start_utc}
-                AND a.log_time < {end_utc}
-                AND a.game_id           IS NOT NULL
-                AND a.world_id          IS NOT NULL
-                AND a.server_name       IS NOT NULL
-                AND a.auth_method_id    IS NOT NULL
-                AND a.auth_account_name IS NOT NULL
-                AND a.game_account_name IS NOT NULL
-                AND a.market_id         IS NOT NULL
-                AND a.os_id             IS NOT NULL
-                AND a.pg_id             IS NOT NULL
-                AND a.ip                IS NOT NULL
-                AND a.product_code      IS NOT NULL
-                AND a.currency_code     IS NOT NULL
-                AND a.price             IS NOT NULL
-                AND a.order_id          IS NOT NULL
-                AND a.log_time          IS NOT NULL
-                AND a.price > 0
-                AND (a.joyple_game_code >= 30000 OR a.joyple_game_code in (131, 133, 155, 156, 67, 159, 1590))
-                AND IF(a.joyple_game_code >= 30000, TRUE, IF(a.log_time < '2025-02-19 15:00:00 UTC' AND a.joyple_game_code in (131, 133, 155, 156), FALSE, TRUE))
-                AND IF(a.joyple_game_code >= 30000, TRUE, IF(a.log_time < '2025-04-07 15:00:00 UTC' AND a.joyple_game_code in (67), FALSE, TRUE))
-                AND a.market_id NOT IN (40)  -- 조이포인트 구매 제외  
-            ), 
-            -- deduction 처리
-            TB as (
-            SELECT TA.game_id,
-            TA.joyple_game_code,
-            TA.game_account_name,
-            TA.game_sub_user_name,
-            TA.auth_method_id,
-            TA.auth_account_name,
-            TA.server_name,
-            TA.device_id,
-            TA.ip,
-            TA.market_id,
-            TA.os_id,
-            TA.pg_id,
-            TA.platform_device_type,
-            TA.game_user_level,
-            TA.order_id,
-            TA.product_code,
-            TA.product_name,
-            TA.currency_code,
-            TA.price,
-            TA.log_time,
-            TA.MultiQuantity
-            FROM TA
-            WHERE CONCAT(TA.joyple_game_code, TA.order_id) not in (
-                SELECT CONCAT(joyple_game_code, order_id) FROM datahub-478802.datahub.pre_payment_deduct_order
-            )
-            AND CONCAT(TA.joyple_game_code, TA.auth_method_id, TA.auth_account_name) not in (
-                SELECT CONCAT(joyple_game_code, auth_method_id, auth_account_name) FROM datahub-478802.datahub.pre_payment_deduct_user
-            )
-            )
+            SELECT a.GameID
+                , a.JoypleGameID
+                , a.GameAccountName
+                , a.GameSubUserName
+                , a.AuthMethodID
+                , a.AuthAccountName
+                , a.ServerName
+                , a.DeviceID
+                , a.MarketID
+                , a.OSID
+                , a.PGID
+                , a.GameSubUserLevel
+                , a.PlatformDeviceType
+                , a.IP                                                                  
+                , a.OrderID
+                , a.ProductCode
+                , a.ProductName
+                , a.CurrencyCode
+                , a.Price
+                , a.LogTime                                            
+                , IFNULL(a.MultiQuantity, 1) AS MultiQuantity
+            FROM `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V` AS a
+            WHERE a.LogTime >= {start_utc}
+                AND a.LogTime < {end_utc}
+            ),
             , TC as (
-            SELECT DATE(a.log_time, "Asia/Seoul") as datekey
+            SELECT DATE(a.LogTime, "Asia/Seoul") as datekey
             , d.reg_datekey
-            , DATE_DIFF(DATE(a.log_time, "Asia/Seoul"), d.reg_datekey, DAY) as reg_datediff
+            , DATE_DIFF(DATE(a.LogTime, "Asia/Seoul"), d.reg_datekey, DAY) as reg_datediff
             , d.reg_country_code
-            , a.game_id
-            , a.joyple_game_code
-            , a.game_account_name
-            , a.game_sub_user_name
-            , a.auth_method_id
-            , a.auth_account_name
-            , a.server_name
-            , a.device_id
-            , a.ip
-            , a.market_id
-            , a.os_id
-            , a.pg_id
-            , a.platform_device_type
-            , a.game_user_level
-            , a.product_code
-            , a.product_name
-            , a.price * IFNULL(c.exchange_rate, 1) AS Price_KRW
+            , a.GameID as game_id
+            , a.JoypleGameID as joyple_game_code
+            , a.GameAccountName as game_account_name
+            , a.GameSubUserName as game_sub_user_name
+            , a.AuthMethodID as auth_method_id
+            , a.AuthAccountName as auth_account_name
+            , a.ServerName as server_name
+            , a.DeviceID asdevice_id
+            , a.IP as ip
+            , a.MarketID as market_id
+            , a.OSID as os_id
+            , a.PGID as pg_id
+            , a.PlatformDeviceType as latform_device_type
+            , a.GameSubUserLevel as game_user_level
+            , a.ProductCode as product_code
+            , a.ProductName as product_name
+            , a.Price * IFNULL(c.exchange_rate, 1) AS Price_KRW
             , IFNULL(a.MultiQuantity, 1) AS MultiQuantity
-            FROM TB as a
+            FROM TA as a
             LEFT JOIN (
                 SELECT currency, datekey, exchange_rate
                 FROM `datahub-478802.datahub.dim_exchange`
                 GROUP BY currency, datekey, exchange_rate
             ) AS c  
-            ON a.currency_code = c.currency AND Date(a.log_time, "Asia/Seoul") = c.datekey
+            ON a.currency_code = c.currency AND Date(a.LogTime, "Asia/Seoul") = c.datekey
             LEFT JOIN `datahub-478802.datahub.f_common_register` as d
-            on CAST(a.joyple_game_code AS STRING) = CAST(d.joyple_game_code AS STRING) 
-               AND CAST(a.auth_method_id AS STRING) = CAST(a.auth_method_id AS STRING)
-               AND CAST(a.auth_account_name AS STRING) = CAST(d.auth_account_name AS STRING)
+            on CAST(a.JoypleGameID AS STRING) = CAST(d.JoypleGameID AS STRING) 
+               AND CAST(a.AuthMethodID AS STRING) = CAST(a.AuthMethodID AS STRING)
+               AND CAST(a.AuthAccountName AS STRING) = CAST(d.AuthAccountName AS STRING)
             )
 
                 SELECT a.datekey, 

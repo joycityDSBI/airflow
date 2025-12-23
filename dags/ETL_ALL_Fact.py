@@ -82,9 +82,9 @@ with DAG(
     
     def etl_fact_payment(target_date:list):
         try:
-            etl_pre_payment_deduct_user(target_date=target_date)
-            etl_pre_payment_deduct_order(target_date=target_date)
-            etl_pre_payment_info_fix()
+            # etl_pre_payment_deduct_user(target_date=target_date)
+            # etl_pre_payment_deduct_order(target_date=target_date)
+            # etl_pre_payment_info_fix()
             etl_f_common_payment(target_date=target_date)
             logger.info("etl_fact_payment completed successfully")
             return True
