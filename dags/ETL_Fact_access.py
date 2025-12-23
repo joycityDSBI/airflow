@@ -25,68 +25,29 @@ def etl_f_common_register(target_date:list):
         USING
         (
             with TA as (
-            SELECT a.game_id                                                                                  AS GameID
-                , a.world_id                                                                                 AS WorldID
-                , TRIM(a.server_name)                                                                        AS ServerName
-                , a.joyple_game_code                                                                         AS JoypleGameID
-                , a.auth_method_id                                                                           AS AuthMethodID
-                , TRIM(a.auth_account_name)                                                                  AS AuthAccountName
-                , TRIM(a.game_account_name)                                                                  AS GameAccountName
-                , TRIM(a.game_sub_user_name)                                                                 AS GameSubUserName
-                , a.device_id                                                                                AS DeviceAccountName
-                , a.tracker_account_id                                                                       AS TrackerAccountName
-                , IFNULL(IF(a.mmp_type = 0, 1, a.mmp_type), 1)                                               AS TrackerTypeID
-                , a.market_id                                                                                AS MarketID
-                , a.os_id                                                                                    AS OSID
-                , IFNULL(IF(a.joyple_game_code BETWEEN 60000 AND 60008, 2, a.platform_device_type), 1)       AS PlatformDeviceType
-                , IFNULL(a.game_user_level, 0)                                                               AS AccountLevel
-                , a.ip                                                                                       AS IP
-                , a.access_type_id                                                                           AS AccessTypeID
-                , IFNULL(a.play_seconds, 0)                                                                  AS PlaySeconds
-                , a.log_time                                                                                 AS LogTime
-            FROM `dataplatform-204306.CommonLog.Access` AS a
-            WHERE a.log_time >= {start_utc}
-            AND a.log_time < {end_utc}
-            AND a.access_type_id = 1
-            AND a.game_id            IS NOT NULL
-            AND a.world_id           IS NOT NULL
-            AND a.server_name        IS NOT NULL
-            AND a.joyple_game_code   IS NOT NULL
-            AND a.auth_method_id     IS NOT NULL
-            AND a.auth_account_name  IS NOT NULL
-            AND a.auth_account_name  NOT IN ("0", "")
-            AND a.game_account_name  IS NOT NULL
-            AND a.market_id          IS NOT NULL
-            AND a.os_id              IS NOT NULL
-            -- AND a.game_user_level    IS NOT NULL
-            AND a.ip                 IS NOT NULL
-            AND a.access_type_id     IS NOT NULL
-            AND a.log_time           IS NOT NULL
-            AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, ''))  NOT IN (
-                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
-            UNION ALL
-            SELECT game_id                                                                                    AS GameID
-                , world_id                                                                                   AS WorldID
-                , TRIM(server_name)                                                                          AS ServerName                                                                            
-                , joyple_game_code                                                                              AS JoypleGameID
-                , auth_method_id                                                                          AS AuthMethodID
-                , TRIM(auth_account_name)                                                                     AS AuthAccountName 
-                , TRIM(game_account_name)                                                                     AS GameAccountName
-                , TRIM(game_sub_user_name)                                                                     AS GameSubUserName
-                , device_account_name                                                                         AS DeviceAccountName
-                , tracker_account_name                                                                       AS TrackerAccountName
-                , IF(tracker_type_id = 0, 1, tracker_type_id)                                                   AS TrackerTypeID
-                , market_id                                                                                  AS MarketID
-                , os_id                                                                                      AS OSID
-                , platform_device_type                                                                        AS PlatformDeviceType
-                , account_level                                                                              AS AccountLevel
-                , ip                                                                                        AS IP
-                , access_type_id                                                                              AS AccessTypeID
-                , play_seconds                                                                               AS PlaySeconds
-                , log_time                                                                                   AS LogTime
-            FROM `datahub-478802.datahub.pre_access_log_supplement` -- 현재는 유지하지만 향후 서비스할 때 필요한지는 한번 더 논의가 필요함.
-            WHERE CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, ''))  NOT IN (
-                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
+            SELECT a.GameID
+                , a.WorldID
+                , a.ServerName
+                , a.JoypleGameID
+                , a.AuthMethodID
+                , a.AuthAccountName
+                , a.GameAccountName
+                , a.GameSubUserName
+                , a.DeviceAccountName
+                , a.TrackerAccountName
+                , a.TrackerTypeID
+                , a.MarketID
+                , a.OSID
+                , a.PlatformDeviceType
+                , a.AccountLevel
+                , a.IP
+                , a.AccessTypeID
+                , a.PlaySeconds
+                , a.LogTime
+            FROM `dataplatform-reporting.DataService.V_0160_0000_AccessLog_V` AS a
+            WHERE a.LogTime >= {start_utc}
+            AND a.LogTime < {end_utc}
+            AND a.AccessTypeID = 1
             )
             , TB as (
             SELECT 
@@ -520,65 +481,25 @@ def etl_f_common_register_char(target_date:list):
             , TRIM(a.server_name)                                                                        AS ServerName
             , a.joyple_game_code                                                                         AS JoypleGameID
             , a.auth_method_id                                                                           AS AuthMethodID
-            , TRIM(a.auth_account_name)                                                                  AS AuthAccountName
-            , TRIM(a.game_account_name)                                                                  AS GameAccountName
-            , TRIM(a.game_sub_user_name)                                                                 AS GameSubUserName
-            , a.device_id                                                                                AS DeviceAccountName
-            , a.tracker_account_id                                                                       AS TrackerAccountName
-            , IFNULL(IF(a.mmp_type = 0, 1, a.mmp_type), 1)                                               AS TrackerTypeID
-            , a.market_id                                                                                AS MarketID
-            , a.os_id                                                                                    AS OSID
-            , IFNULL(IF(a.joyple_game_code BETWEEN 60000 AND 60008, 2, a.platform_device_type), 1)       AS PlatformDeviceType
-            , IFNULL(a.game_user_level, 0)                                                               AS AccountLevel
-            , a.ip                                                                                       AS IP
-            , a.access_type_id                                                                           AS AccessTypeID
-            , IFNULL(a.play_seconds, 0)                                                                  AS PlaySeconds
-            , a.log_time                                                                                 AS LogTime
-        FROM `dataplatform-204306.CommonLog.Access` AS a
-        WHERE a.log_time >= {start_utc}
-        AND a.log_time < {end_utc}
-        AND a.access_type_id = 1
-        AND a.game_id            IS NOT NULL
-        AND a.world_id           IS NOT NULL
-        AND a.server_name        IS NOT NULL
-        AND a.joyple_game_code   IS NOT NULL
-        AND a.auth_method_id     IS NOT NULL
-        AND a.auth_account_name  IS NOT NULL
-        AND a.auth_account_name  NOT IN ("0", "")
-        AND a.game_account_name  IS NOT NULL
-        AND a.market_id          IS NOT NULL
-        AND a.os_id              IS NOT NULL
-        -- AND a.game_user_level    IS NOT NULL
-        AND a.ip                 IS NOT NULL
-        AND a.access_type_id     IS NOT NULL
-        AND a.log_time           IS NOT NULL
-        AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, '')) NOT IN (  
-                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
-        UNION ALL
-            SELECT game_id                                                                                    AS GameID
-                , world_id                                                                                   AS WorldID
-                , TRIM(server_name)                                                       AS ServerName                                                                            
-                , joyple_game_code                                                                              AS JoypleGameID
-                , auth_method_id                                                                          AS AuthMethodID
-                , TRIM(auth_account_name)                                                                     AS AuthAccountName 
-                , TRIM(game_account_name)                                                                     AS GameAccountName
-                , TRIM(game_sub_user_name)                                                                     AS GameSubUserName
-                , device_account_name                                                                         AS DeviceAccountName
-                , tracker_account_name                                                                       AS TrackerAccountName
-                , IF(tracker_type_id = 0, 1, tracker_type_id)                                                   AS TrackerTypeID
-                , market_id                                                                                  AS MarketID
-                , os_id                                                                                      AS OSID
-                , platform_device_type                                                                        AS PlatformDeviceType
-                , account_level                                                                              AS AccountLevel
-                , ip                                                                                        AS IP
-                , access_type_id                                                                              AS AccessTypeID
-                , play_seconds                                                                               AS PlaySeconds
-                , log_time                                                                                   AS LogTime
-            FROM `datahub-478802.datahub.pre_access_log_supplement` -- 현재는 유지하지만 향후 서비스할 때 필요한지는 한번 더 논의가 필요함
-            WHERE CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, '')) NOT IN (  
-                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
+            , a.AuthAccountName
+            , a.GameAccountName
+            , a.GameSubUserName
+            , a.DeviceAccountName
+            , a.TrackerAccountName
+            , a.TrackerTypeID
+            , a.MarketID
+            , a.OSID
+            , a.PlatformDeviceType
+            , a.AccountLevel
+            , a.IP
+            , a.AccessTypeID
+            , a.PlaySeconds
+            , a.LogTime
+        FROM `dataplatform-reporting.DataService.V_0160_0000_AccessLog_V` AS a
+        WHERE a.LogTime >= {start_utc}
+        AND a.LogTime < {end_utc}
+        AND a.AccessTypeID = 1
         )
-        
             SELECT 
                 Info.GameID AS game_id
                 , Info.WorldID AS world_id
@@ -809,67 +730,28 @@ def etl_f_common_access(target_date: list):
         MERGE `datahub-478802.datahub.f_common_access` AS target
         USING (
         with TA as (
-        SELECT a.game_id                                                                                  AS GameID
-            , a.world_id                                                                                 AS WorldID
-            , TRIM(a.server_name)                                                                        AS ServerName
-            , a.joyple_game_code                                                                         AS JoypleGameID
-            , a.auth_method_id                                                                           AS AuthMethodID
-            , TRIM(a.auth_account_name)                                                                  AS AuthAccountName
-            , TRIM(a.game_account_name)                                                                  AS GameAccountName
-            , TRIM(a.game_sub_user_name)                                                                 AS GameSubUserName
-            , a.device_id                                                                                AS DeviceAccountName
-            , a.tracker_account_id                                                                       AS TrackerAccountName
-            , IFNULL(IF(a.mmp_type = 0, 1, a.mmp_type), 1)                                               AS TrackerTypeID
-            , a.market_id                                                                                AS MarketID
-            , a.os_id                                                                                    AS OSID
-            , IFNULL(IF(a.joyple_game_code BETWEEN 60000 AND 60008, 2, a.platform_device_type), 1)       AS PlatformDeviceType
-            , IFNULL(a.game_user_level, 0)                                                               AS AccountLevel
-            , a.ip                                                                                       AS IP
-            , a.access_type_id                                                                           AS AccessTypeID
-            , IFNULL(a.play_seconds, 0)                                                                  AS PlaySeconds
-            , a.log_time                                                                                 AS LogTime
-        FROM `dataplatform-204306.CommonLog.Access` AS a
-        WHERE a.log_time >= {start_utc}
-        AND a.log_time < {end_utc}
-        AND a.game_id            IS NOT NULL
-        AND a.world_id           IS NOT NULL
-        AND a.server_name        IS NOT NULL
-        AND a.joyple_game_code   IS NOT NULL
-        AND a.auth_method_id     IS NOT NULL
-        AND a.auth_account_name  IS NOT NULL
-        AND a.auth_account_name  NOT IN ("0", "")
-        AND a.game_account_name  IS NOT NULL
-        AND a.market_id          IS NOT NULL
-        AND a.os_id              IS NOT NULL
-        -- AND a.game_user_level    IS NOT NULL
-        AND a.ip                 IS NOT NULL
-        AND a.access_type_id     IS NOT NULL
-        AND a.log_time           IS NOT NULL
-        AND CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, '')) NOT IN (  
-                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
-        UNION ALL
-        SELECT game_id                                                                                    AS GameID
-            , world_id                                                                                   AS WorldID
-            , TRIM(server_name)                                                                          AS ServerName                                                                            
-            , joyple_game_code                                                                              AS JoypleGameID
-            , auth_method_id                                                                          AS AuthMethodID
-            , TRIM(auth_account_name)                                                                     AS AuthAccountName 
-            , TRIM(game_account_name)                                                                     AS GameAccountName
-            , TRIM(game_sub_user_name)                                                                     AS GameSubUserName
-            , device_account_name                                                                         AS DeviceAccountName
-            , tracker_account_name                                                                       AS TrackerAccountName
-            , IF(tracker_type_id = 0, 1, tracker_type_id)                                                   AS TrackerTypeID
-            , market_id                                                                                  AS MarketID
-            , os_id                                                                                      AS OSID
-            , platform_device_type                                                                        AS PlatformDeviceType
-            , account_level                                                                              AS AccountLevel
-            , ip                                                                                        AS IP
-            , access_type_id                                                                              AS AccessTypeID
-            , play_seconds                                                                               AS PlaySeconds
-            , log_time                                                                                   AS LogTime
-        FROM `datahub-478802.datahub.pre_access_log_supplement` -- 현재는 유지하지만 향후 서비스할 때 필요한지는 한번 더 논의가 필요함
-        WHERE CONCAT(CAST(joyple_game_code AS STRING), "|",  auth_method_id , "|", auth_account_name , "|", COALESCE(game_sub_user_name, '')) NOT IN (  
-                SELECT UUID FROM `datahub-478802.datahub.f_exclude_game_sub_user_info`)
+        SELECT a.GameID
+            , a.WorldID
+            , a.ServerName
+            , a.JoypleGameID
+            , a.AuthMethodID
+            , a.AuthAccountName
+            , a.GameAccountName
+            , a.GameSubUserName
+            , a.DeviceAccountName
+            , a.TrackerAccountName
+            , a.TrackerTypeID
+            , a.MarketID
+            , a.OSID
+            , a.PlatformDeviceType
+            , a.AccountLevel
+            , a.IP
+            , a.AccessTypeID
+            , a.PlaySeconds
+            , a.LogTime
+        FROM `dataplatform-reporting.DataService.V_0160_0000_AccessLog_V` AS a
+        WHERE a.LogTime >= {start_utc}
+        AND a.LogTime < {end_utc}
         )
             SELECT 
                 DATE(TA.LogTime, "Asia/Seoul") as datekey

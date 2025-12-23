@@ -367,9 +367,9 @@ def generate_all_projects_reports(**context):
 # ============= Task 2: 대행사 보고서 생성 및 업로드 =============
 def generate_agency_reports(**context):
     """대행사 보고서 생성 및 GCS 업로드"""
-    print("=" * 80)
+    print("=" * 90)
     print("Task 2: 대행사 보고서 생성 시작")
-    print("=" * 80)
+    print("=" * 90)
     
     # 수정: info → credentials_info
     # Google Sheets 클라이언트 초기화
@@ -423,7 +423,7 @@ def generate_agency_reports(**context):
             # 대행사별 필터 조건 설정
             agency_filter_condition = ""
             if agency_name == 'dotlab':
-                agency_filter_condition = "AND media_category in ('ADNW', 'adnw-pre', 'ADNW-Pre') AND agency IN ('dotlab','NULL', 'webmediail626', 'tryads')"
+                agency_filter_condition = "AND media_category in ('ADNW', 'adnw-pre', 'ADNW-Pre') AND agency IN ('dotlab','NULL', 'webmediail626', 'tyrads')"
             elif agency_name == 'Nasmedia':
                 agency_filter_condition = """
                 AND (
