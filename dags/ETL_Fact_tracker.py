@@ -496,8 +496,8 @@ def etl_f_tracker_re_engagement():
             , INFO.CB2_campaign
             , INFO.CB3_media_source
             , INFO.CB3_campaign
-            , DATETIME(INFO.install_time, 'Asia/Seoul') as install_time
-            , DATETIME(INFO.event_time,, 'Asia/Seoul') as event_time
+            , TIMESTAMP(INFO.install_time, 'Asia/Seoul') as install_time
+            , TIMESTAMP(INFO.event_time,, 'Asia/Seoul') as event_time
             , INFO.event_type
             , EXTRACT(DATE FROM DATETIME(INFO.install_time, "+09:00")) AS install_datekey
             FROM (
