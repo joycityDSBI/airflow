@@ -752,6 +752,31 @@ def etl_f_common_access(target_date: list):
         FROM `dataplatform-reporting.DataService.V_0160_0000_AccessLog_V` AS a
         WHERE a.LogTime >= {start_utc}
         AND a.LogTime < {end_utc}
+
+        UNION ALL
+
+        SELECT game_id AS GameID
+        , world_id AS WorldID
+        , TRIM(server_name) as ServerName
+        , joyple_game_code as JoypleGameID
+        , auth_method_id as AuthMethodID
+        , auth_account_name as AuthAccountName
+        , game_account_name as GameAccountName
+        , game_sub_user_name as GameSubUserName
+        , device_id as DeviceAccountName
+        , tracker_account_id as TrackerAccountName
+        , IF(mmp_type = 0, 1, mmp_type) as TrackerTypeID
+        , market_id as MarketID
+        , os_id as OSID
+        , platform_device_type as PlatformDeviceType
+        , game_user_level as AccountLevel
+        , ip as IP
+        , 1 as AccessTypeID
+        , 0 as PlaySeconds
+        , log_time as LogTime
+        FROM `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V`
+        WHERE log_time >= {start_utc}
+        AND log_time < {end_utc}
         )
             SELECT 
                 DATE(TA.LogTime, "Asia/Seoul") as datekey
