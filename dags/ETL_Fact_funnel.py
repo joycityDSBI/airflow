@@ -8,7 +8,7 @@ import pytz
 client = bigquery.Client()
 
 
-def etl_f_funnel_access_first(target_date:list):
+def etl_f_funnel_access_first(target_date:list):   ### Device_id 기준 최초 funnel 데이터는 현재사용하고 있는 case 없음. -> DE팀 install 메일링 데이터에 활용.
 
     for td in target_date:
         target_date = td

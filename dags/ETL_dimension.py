@@ -160,7 +160,7 @@ with DAG(
                     , rule_yn
                     , init_campaign
                     , uptdt_campaign
-                    , upload_time
+                    , DATETIME(upload_time, "Asia/Seoul") as upload_time
                     , case 
                            when etc_category = 'L&F' then '그룹없음'
                            when (media_category = 'Mytarget.Self' and gcat = 'UA' and product_category is null and optim = 'MAIA') then 'UA-Install'

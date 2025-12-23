@@ -205,7 +205,7 @@ def etl_f_tracker_install():
                 , event_time                                                                                                                AS EventTime
                 , event_name                                                                                                                AS EventType
             FROM `dataplatform-reporting.AppsflyerLog.V_LogsV2`
-            WHERE event_time >= '2025-12-01' and event_time < '2025-12-02'
+            WHERE event_time >= {start_utc} and event_time < {end_utc}
                 AND event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
                 -- AND install_time >= "2019-12-19 00:48:35.827000 UTC"  
                 AND event_time   >= "2019-12-19 00:48:35.827000 UTC"  
@@ -236,7 +236,7 @@ def etl_f_tracker_install():
                 , event_time                                                                                                                AS EventTime
                 , event_name                                                                                                                AS EventType
             FROM `dataplatform-204306.AppsflyerLog.installs_report`
-            WHERE event_time >= '2025-12-01' and event_time < '2025-12-02'
+            WHERE event_time >= {start_utc} and event_time < {end_utc}
             AND event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
             ) AS a
             LEFT JOIN `datahub-478802.datahub.dim_google_campaign` AS b ON a.Campaign = b.campaign_id
@@ -269,8 +269,8 @@ def etl_f_tracker_install():
             , INFO.CB2_campaign
             , INFO.CB3_media_source
             , INFO.CB3_campaign
-            , INFO.install_time
-            , INFO.event_time
+            , DATETIME(INFO.install_time, 'Asia/Seoul') as install_time
+            , DATETIME(INFO.event_time,, 'Asia/Seoul') as event_time
             , INFO.event_type
             , EXTRACT(DATE FROM DATETIME(INFO.install_time, "+09:00")) AS install_datekey
             FROM (
@@ -432,7 +432,7 @@ def etl_f_tracker_re_engagement():
                 , event_time                                                                                                                AS EventTime
                 , event_name                                                                                                                AS EventType
             FROM `dataplatform-reporting.AppsflyerLog.V_LogsV2`
-            WHERE event_time >= '2025-12-01' and event_time < '2025-12-02'
+            WHERE event_time >= {start_utc} and event_time < {end_utc}
                 AND event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
                 -- AND install_time >= "2019-12-19 00:48:35.827000 UTC"  
                 AND event_time   >= "2019-12-19 00:48:35.827000 UTC"  
@@ -463,7 +463,7 @@ def etl_f_tracker_re_engagement():
                 , event_time                                                                                                                AS EventTime
                 , event_name                                                                                                                AS EventType
             FROM `dataplatform-204306.AppsflyerLog.installs_report`
-            WHERE event_time >= '2025-12-01' and event_time < '2025-12-02'
+            WHERE event_time >= {start_utc} and event_time < {end_utc}
             AND event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
             ) AS a
             LEFT JOIN `datahub-478802.datahub.dim_google_campaign` AS b ON a.Campaign = b.campaign_id
@@ -496,8 +496,8 @@ def etl_f_tracker_re_engagement():
             , INFO.CB2_campaign
             , INFO.CB3_media_source
             , INFO.CB3_campaign
-            , INFO.install_time
-            , INFO.event_time
+            , DATETIME(INFO.install_time, 'Asia/Seoul') as install_time
+            , DATETIME(INFO.event_time,, 'Asia/Seoul') as event_time
             , INFO.event_type
             , EXTRACT(DATE FROM DATETIME(INFO.install_time, "+09:00")) AS install_datekey
             FROM (
