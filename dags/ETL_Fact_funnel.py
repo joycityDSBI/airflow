@@ -119,43 +119,44 @@ def etl_f_funnel_access(target_date:list):
             MERGE `datahub-478802.datahub.f_funnel_access` AS target
             USING
             (
-            SELECT a.game_id
-                , a.joyple_game_code
-                , a.tracker_account_id
-                , a.tracker_type_id
-                , a.device_id
-                , a.step_id
-                , a.step_name
-                , b.install_datekey 
-                , b.app_id
-                , b.campaign
-                , b.init_campaign
-                , b.media_source
-                , b.is_organic
-                , b.country_code as install_country_code
-                , b.is_retargeting
-                , DATETIME(a.log_time, "Asia/Seoul") AS log_datetime
-            FROM (
-                SELECT joyple_game_code
-                    , game_id
-                    , tracker_account_id
-                    , IFNULL(mmp_type, 1) AS tracker_type_id
-                    , ARRAY_AGG(device_id IGNORE NULLS ORDER BY log_time ASC LIMIT 1)[OFFSET(0)] AS device_id
-                    , step_id
-                    , step_name
-                    , MIN(log_time) AS log_time
-                FROM `dataplatform-204306.CommonLog.Funnel`
-                WHERE log_time >= {start_utc}
-                AND log_time < {end_utc}
-                AND joyple_game_code   IS NOT NULL
-                AND tracker_account_id IS NOT NULL
-                AND step_id            IS NOT NULL
-                AND step_name          IS NOT NULL
-                GROUP BY joyple_game_code, game_id, tracker_account_id, mmp_type, step_id, step_name
-            )  AS a
-            LEFT OUTER JOIN datahub-478802.datahub.f_tracker_install as b
+              SELECT a.game_id
+                  , a.joyple_game_code
+                  , a.tracker_account_id
+                  , a.tracker_type_id
+                  , a.device_id
+                  , a.step_id
+                  , a.step_name
+                  , b.install_datekey 
+                  , b.install_time 
+                  , b.app_id
+                  , b.campaign
+                  , b.init_campaign
+                  , b.media_source
+                  , b.is_organic
+                  , b.country_code as install_country_code
+                  , b.is_retargeting
+                  , timestamp_add(a.log_time, interval 9 hour) AS log_datetime
+              FROM (
+                    SELECT joyple_game_code
+                        , game_id
+                        , tracker_account_id
+                        , IFNULL(mmp_type, 1) AS tracker_type_id
+                        , ARRAY_AGG(device_id IGNORE NULLS ORDER BY log_time ASC LIMIT 1)[OFFSET(0)] AS device_id
+                        , step_id
+                        , step_name
+                        , MIN(log_time) AS log_time
+                    FROM `dataplatform-204306.CommonLog.Funnel`
+                    WHERE log_time >= {start_utc}
+                    AND log_time < {end_utc}
+                    AND joyple_game_code   IS NOT NULL
+                    AND tracker_account_id IS NOT NULL
+                    AND step_id            IS NOT NULL
+                    AND step_name          IS NOT NULL
+                    GROUP BY joyple_game_code, game_id, tracker_account_id, mmp_type, step_id, step_name
+                   )  AS a
+            LEFT OUTER JOIN `datahub-478802.datahub.f_tracker_install` as b
             on a.tracker_account_id = b.tracker_account_id AND a.tracker_type_id = b.tracker_type_id
-            ) AS source 
+            )  AS source 
             ON target.joyple_game_code = source.joyple_game_code 
             AND target.tracker_account_id = source.tracker_account_id 
             AND target.tracker_type_id = source.tracker_type_id 
