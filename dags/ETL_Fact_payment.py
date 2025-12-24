@@ -199,7 +199,7 @@ def etl_f_common_payment(target_date: list):
             FROM `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V` AS a
             WHERE a.LogTime >= {start_utc}
                 AND a.LogTime < {end_utc}
-            ),
+            )
             , TC as (
             SELECT DATE(a.LogTime, "Asia/Seoul") as datekey
             , d.reg_datekey
@@ -229,11 +229,11 @@ def etl_f_common_payment(target_date: list):
                 FROM `datahub-478802.datahub.dim_exchange`
                 GROUP BY currency, datekey, exchange_rate
             ) AS c  
-            ON a.currency_code = c.currency AND Date(a.LogTime, "Asia/Seoul") = c.datekey
+            ON a.CurrencyCode = c.currency AND Date(a.LogTime, "Asia/Seoul") = c.datekey
             LEFT JOIN `datahub-478802.datahub.f_common_register` as d
-            on CAST(a.JoypleGameID AS STRING) = CAST(d.JoypleGameID AS STRING) 
-               AND CAST(a.AuthMethodID AS STRING) = CAST(a.AuthMethodID AS STRING)
-               AND CAST(a.AuthAccountName AS STRING) = CAST(d.AuthAccountName AS STRING)
+            on CAST(a.JoypleGameID AS STRING) = CAST(d.joyple_game_code AS STRING) 
+               AND CAST(a.AuthMethodID AS STRING) = CAST(d.auth_method_id AS STRING)
+               AND CAST(a.AuthAccountName AS STRING) = CAST(d.auth_account_name AS STRING)
             )
 
                 SELECT a.datekey, 
