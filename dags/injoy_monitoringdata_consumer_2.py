@@ -7,6 +7,7 @@ import time
 import os
 from databricks import sql
 
+# notion : In-Joy 질의 모니터링 데이터 DB 에 동기화 처리
 # Airflow Variable import (버전 호환성 처리)
 try:
     from airflow.sdk import Variable
@@ -58,6 +59,7 @@ def get_var(key: str, default: str = None, required: bool = False) -> str:
     
     print(f"ℹ️  {key} 값을 찾을 수 없습니다 (선택사항)")
     return None
+
 
 NOTION_DATABASE_ID = get_var('NOTION_DB_ID_INJOY_MONITORINGDATA_CONSUMER', "230ea67a568180c591fee27d4e90e001")
 
