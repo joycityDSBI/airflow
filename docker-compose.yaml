@@ -1,27 +1,8 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-#
-
 ---
 x-airflow-common:
   &airflow-common
   build: .
-  # Airflow 3.0.0 이상의 이미지를 사용한다고 가정 (없으면 latest나 dev 태그 확인 필요)
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.0}
+  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.0.0-dev}
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
@@ -33,10 +14,9 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
     AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
     
-    # Airflow 3.0 Execution API Server URL 설정
+    # [중요] 워커는 내부망(Docker Network)을 통해 API 서버의 8080포트로 통신함
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
 
-    # 관리자 계정 설정 (기본값 설정으로 경고 제거)
     _AIRFLOW_WWW_USER_CREATE: 'true'
     _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
     _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-admin123}
@@ -101,16 +81,17 @@ services:
       start_period: 30s
     restart: always
 
-  # [중요] Airflow 3.0 Execution API Server (UI 역할도 겸하는지 확인 필요)
-  # 만약 3.0에서 UI(웹서버)와 API서버가 분리되었다면, 웹 UI를 보려면 airflow-webserver 서비스도 따로 띄워야 할 수 있습니다.
+  # [1] API Server (워커 통신용)
   airflow-apiserver:
     <<: *airflow-common
     command: bash -c "airflow db migrate && airflow api-server"
     ports:
-      - "9091:9091"
+      # Host(9091) -> Container(8080)
+      # 외부 충돌 방지를 위해 Host 포트만 9091로 변경
+      - "9091:8080"
     healthcheck:
-      # [수정] URL 경로(404) 대신, 포트가 열려있는지(TCP) 확인하는 방식으로 변경
-      test: ["CMD-SHELL", "nc -z localhost 9091 || exit 1"]
+      # 컨테이너 내부는 8080이므로 여기서 8080을 체크해야 성공함
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -121,11 +102,13 @@ services:
       airflow-init:
         condition: service_completed_successfully
 
-# [2] 우리가 접속할 웹 서버 (화면 있음, 포트 8080) <--- 이걸 추가해야 화면이 나옵니다!
+  # [2] Web Server (UI용 - 사용자 접속)
   airflow-webserver:
     <<: *airflow-common
     command: webserver
     ports:
+      # Host(8080) -> Container(8080)
+      # 사용자가 접속할 포트
       - "8080:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
@@ -137,7 +120,7 @@ services:
     depends_on:
       <<: *airflow-common-depends-on
       airflow-apiserver:
-        condition: service_healthy # 웹서버는 API 서버가 켜진 뒤에 켜지는 게 좋습니다.
+        condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
 
@@ -188,7 +171,6 @@ services:
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
-      # [수정됨] webserver가 아니라 apiserver를 기다리도록 변경
       airflow-apiserver:
         condition: service_healthy
       airflow-init:
@@ -219,13 +201,9 @@ services:
           echo "AIRFLOW_UID not set!"
           export AIRFLOW_UID=$$(id -u)
         fi
-        
         mkdir -v -p /opt/airflow/{logs,dags,plugins,config}
-        
         echo "Running Airflow DB Init..."
         airflow db migrate
-        
-        # 관리자 계정 생성
         airflow users create \
           --username "${_AIRFLOW_WWW_USER_USERNAME:-admin}" \
           --password "${_AIRFLOW_WWW_USER_PASSWORD:-admin123}" \
@@ -233,7 +211,6 @@ services:
           --lastname "${_AIRFLOW_WWW_USER_LASTNAME:-User}" \
           --email "${_AIRFLOW_WWW_USER_EMAIL:-admin@example.com}" \
           --role Admin || echo "Admin user already exists"
-
         echo "Init completed."
     environment:
       <<: *airflow-common-env
