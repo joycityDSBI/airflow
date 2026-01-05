@@ -87,7 +87,7 @@ def Daily_revenue_query(joyplegameid: int, gameidx: str, bigquery_client, bucket
     """
     query_result = query_run_method('1_daily_sales', bigquery_client, query)
     # ✅ get_current_context()로 context 가져오기
-
+    print("test")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     gcs_path = f"{gameidx}/{timestamp}.parquet"
         
