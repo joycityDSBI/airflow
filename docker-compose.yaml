@@ -107,10 +107,10 @@ services:
     <<: *airflow-common
     command: bash -c "airflow db migrate && airflow api-server"
     ports:
-      - "8080:8080"
+      - "9091:9091"
     healthcheck:
       # [수정] URL 경로(404) 대신, 포트가 열려있는지(TCP) 확인하는 방식으로 변경
-      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
+      test: ["CMD-SHELL", "nc -z localhost 9091 || exit 1"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -118,6 +118,26 @@ services:
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+# [2] 우리가 접속할 웹 서버 (화면 있음, 포트 8080) <--- 이걸 추가해야 화면이 나옵니다!
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-apiserver:
+        condition: service_healthy # 웹서버는 API 서버가 켜진 뒤에 켜지는 게 좋습니다.
       airflow-init:
         condition: service_completed_successfully
 
