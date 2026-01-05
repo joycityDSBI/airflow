@@ -109,8 +109,9 @@ services:
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
-      interval: 30s
+      # [수정] URL 경로(404) 대신, 포트가 열려있는지(TCP) 확인하는 방식으로 변경
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
+      interval: 10s
       timeout: 10s
       retries: 5
       start_period: 30s
