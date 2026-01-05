@@ -52,52 +52,46 @@ x-airflow-common:
   image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.0}
   build: .
   environment:
-    &airflow-common-env
-    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
-    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
-    AIRFLOW__CORE__FERNET_KEY: ''
-    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-    AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
-    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
-    AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
-    
-    # Create admin user if missing
-    _AIRFLOW_WWW_USER_CREATE: 'true'
-    _AIRFLOW_WWW_USER_USERNAME: admin
-    _AIRFLOW_WWW_USER_PASSWORD: admin123
-    _AIRFLOW_WWW_USER_FIRSTNAME: Admin
-    _AIRFLOW_WWW_USER_LASTNAME: User
-    _AIRFLOW_WWW_USER_EMAIL: admin@example.com
+      &airflow-common-env
+      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+      AIRFLOW__CORE__FERNET_KEY: ''
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
+      
+      # 관리자 계정 설정
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin123
+      _AIRFLOW_WWW_USER_FIRSTNAME: Admin
+      _AIRFLOW_WWW_USER_LASTNAME: User
+      _AIRFLOW_WWW_USER_EMAIL: admin@example.com
 
-    # Flask limiter Redis 설정
-    AIRFLOW__API__ENABLE_EXPERIMENTAL_API: 'true'
-    # rate limiting 비활성화 (개발 환경)
-    AIRFLOW__API__MAXIMUM_PAGE_LIMIT: 100
+      # API 및 성능 설정
+      AIRFLOW__API__ENABLE_EXPERIMENTAL_API: 'true'
+      AIRFLOW__API__MAXIMUM_PAGE_LIMIT: 100
 
-    SMTP_HOST: smtp.gmail.com
-    SMTP_PORT: 587
-    SMTP_USER: ds_bi@joycity.com
-    SMTP_PASSWORD: dhxlacxtjquhdqfn
-    EMAIL_FROM: ds_bi@joycity.com
+      # SMTP 설정 (Gmail)
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USER: ds_bi@joycity.com
+      SMTP_PASSWORD: dhxlacxtjquhdqfn
+      EMAIL_FROM: ds_bi@joycity.com
 
-    # yamllint disable rule:line-length
-    # Use simple http server on scheduler for health checks
-    # See https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/logging-monitoring/check-health.html#scheduler-health-check-server
-    # yamllint enable rule:line-length
-    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-    # WARNING: Use _PIP_ADDITIONAL_REQUIREMENTS option ONLY for a quick checks
-    # for other purpose (development, test and especially production usage) build/extend Airflow image.
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
-    # The following line can be used to set a custom config file, stored in the local config folder
-    AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+      
+      # 이미 빌드 단계에서 requirements.txt를 설치했으므로, 런타임 추가 설치는 비워둡니다.
+      _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+      
+      AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
   volumes:
-    - /home/seongin/dags:/opt/airflow/dags
-    - /home/seongin/logs:/opt/airflow/logs
-    - /home/seongin/config:/opt/airflow/config
-    - /home/seongin/plugins:/opt/airflow/plugins
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./config:/opt/airflow/config
+    - ./plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -140,36 +134,11 @@ services:
 
   airflow-apiserver:
     <<: *airflow-common
+    command: webserver
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
-      interval: 30s
-      timeout: 10s
-      retries: 6
-      start_period: 150s
-    restart: always
-    depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
-    volumes:
-      - /home/seongin/dags:/opt/airflow/dags
-      - /home/seongin/logs:/opt/airflow/logs
-      - /home/seongin/config:/opt/airflow/config
-      - /home/seongin/plugins:/opt/airflow/plugins
-      - /home/seongin/requirements.txt:/requirements.txt
-    command: bash -c "pip install -r /requirements.txt && airflow db migrate && airflow api-server"
-    environment:
-      <<: *airflow-common-env
-      _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
-
-
-  airflow-scheduler:
-    <<: *airflow-common
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -179,20 +148,26 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    volumes:
-      - /home/seongin/dags:/opt/airflow/dags
-      - /home/seongin/logs:/opt/airflow/logs
-      - /home/seongin/config:/opt/airflow/config
-      - /home/seongin/plugins:/opt/airflow/plugins
-      - /home/seongin/requirements.txt:/requirements.txt
-    command: bash -c "pip install -r /requirements.txt && airflow scheduler"
-    environment:
-      <<: *airflow-common-env
-      _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
+
+
+  airflow-scheduler:
+      <<: *airflow-common
+      command: scheduler
+      healthcheck:
+        test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
+        start_period: 30s
+      restart: always
+      depends_on:
+        <<: *airflow-common-depends-on
+        airflow-init:
+          condition: service_completed_successfully
 
   airflow-dag-processor:
     <<: *airflow-common
+    command: dag-processor
     healthcheck:
       test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
       interval: 30s
@@ -204,23 +179,11 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-    volumes:
-      - /home/seongin/dags:/opt/airflow/dags
-      - /home/seongin/logs:/opt/airflow/logs
-      - /home/seongin/config:/opt/airflow/config
-      - /home/seongin/plugins:/opt/airflow/plugins
-      - /home/seongin/requirements.txt:/requirements.txt
-    command: bash -c "pip install -r /requirements.txt && airflow dag-processor"
-    environment:
-      <<: *airflow-common-env
-      _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
 
   airflow-worker:
     <<: *airflow-common
-    command: bash -c "pip install -r /requirements.txt && airflow celery worker"
+    command: celery worker
     healthcheck:
-      # yamllint disable rule:line-length
       test:
         - "CMD-SHELL"
         - 'celery --app airflow.providers.celery.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}" || celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
@@ -231,25 +194,13 @@ services:
     environment:
       <<: *airflow-common-env
       DUMB_INIT_SETSID: "0"
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
-
-      # Required to handle warm shutdown of the celery workers properly
-      # See https://airflow.apache.org/docs/docker-stack/entrypoint.html#signal-propagation
-
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
-      airflow-apiserver:
+      airflow-webserver:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
-
-    volumes:
-      - /home/seongin/dags:/opt/airflow/dags
-      - /home/seongin/logs:/opt/airflow/logs
-      - /home/seongin/config:/opt/airflow/config
-      - /home/seongin/plugins:/opt/airflow/plugins
-      - /home/seongin/requirements.txt:/requirements.txt
 
   airflow-triggerer:
     <<: *airflow-common
@@ -269,94 +220,34 @@ services:
   airflow-init:
     <<: *airflow-common
     entrypoint: /bin/bash
-    # yamllint disable rule:line-length
     command:
       - -c
       - |
         if [[ -z "${AIRFLOW_UID}" ]]; then
-          echo
-          echo -e "\033[1;33mWARNING!!!: AIRFLOW_UID not set!\e[0m"
-          echo "If you are on Linux, you SHOULD follow the instructions below to set "
-          echo "AIRFLOW_UID environment variable, otherwise files will be owned by root."
-          echo "For other operating systems you can get rid of the warning with manually created .env file:"
-          echo "    See: https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#setting-the-right-airflow-user"
-          echo
+          echo "AIRFLOW_UID not set!"
           export AIRFLOW_UID=$$(id -u)
         fi
-        one_meg=1048576
-        mem_available=$$(($$(getconf _PHYS_PAGES) * $$(getconf PAGE_SIZE) / one_meg))
-        cpus_available=$$(grep -cE 'cpu[0-9]+' /proc/stat)
-        disk_available=$$(df / | tail -1 | awk '{print $$4}')
-        warning_resources="false"
-        if (( mem_available < 4000 )) ; then
-          echo
-          echo -e "\033[1;33mWARNING!!!: Not enough memory available for Docker.\e[0m"
-          echo "At least 4GB of memory required. You have $$(numfmt --to iec $$((mem_available * one_meg)))"
-          echo
-          warning_resources="true"
-        fi
-        if (( cpus_available < 2 )); then
-          echo
-          echo -e "\033[1;33mWARNING!!!: Not enough CPUS available for Docker.\e[0m"
-          echo "At least 2 CPUs recommended. You have $${cpus_available}"
-          echo
-          warning_resources="true"
-        fi
-        if (( disk_available < one_meg * 10 )); then
-          echo
-          echo -e "\033[1;33mWARNING!!!: Not enough Disk space available for Docker.\e[0m"
-          echo "At least 10 GBs recommended. You have $$(numfmt --to iec $$((disk_available * 1024 )))"
-          echo
-          warning_resources="true"
-        fi
-        if [[ $${warning_resources} == "true" ]]; then
-          echo
-          echo -e "\033[1;33mWARNING!!!: You have not enough resources to run Airflow (see above)!\e[0m"
-          echo "Please follow the instructions to increase amount of resources available:"
-          echo "   https://airflow.apache.org/docs/apache-airflow/stable/howto/docker-compose/index.html#before-you-begin"
-          echo
-        fi
-        echo
-        echo "Creating missing opt dirs if missing:"
-        echo
+        
+        # 디렉토리 생성
         mkdir -v -p /opt/airflow/{logs,dags,plugins,config}
-        echo
-        echo "Airflow version:"
-        /entrypoint airflow version
-        echo
-        echo "Files in shared volumes:"
-        echo
-        ls -la /opt/airflow/{logs,dags,plugins,config}
-        echo
-        echo "Running airflow config list to create default config file if missing."
-        echo
-        /entrypoint airflow config list >/dev/null
-        echo
-        echo "Files in shared volumes:"
-        echo
-        ls -la /opt/airflow/{logs,dags,plugins,config}
-        echo
-        echo "Change ownership of files in /opt/airflow to ${AIRFLOW_UID}:0"
-        echo
-        chown -R "${AIRFLOW_UID}:0" /opt/airflow/
-        echo
-        echo "Change ownership of files in shared volumes to ${AIRFLOW_UID}:0"
-        echo
-        chown -v -R "${AIRFLOW_UID}:0" /opt/airflow/{logs,dags,plugins,config}
-        echo
-        echo "Files in shared volumes:"
-        echo
-        ls -la /opt/airflow/{logs,dags,plugins,config}
+        
+        # 초기화 및 DB 마이그레이션
+        echo "Running Airflow DB Init..."
+        airflow db migrate
+        
+        # 관리자 계정 생성 (존재하지 않을 경우)
+        airflow users create \
+          --username "${_AIRFLOW_WWW_USER_USERNAME}" \
+          --password "${_AIRFLOW_WWW_USER_PASSWORD}" \
+          --firstname "${_AIRFLOW_WWW_USER_FIRSTNAME}" \
+          --lastname "${_AIRFLOW_WWW_USER_LASTNAME}" \
+          --email "${_AIRFLOW_WWW_USER_EMAIL}" \
+          --role Admin || echo "Admin user already exists"
 
-    # yamllint enable rule:line-length
+        echo "Init completed."
     environment:
       <<: *airflow-common-env
       _AIRFLOW_DB_MIGRATE: 'true'
-      _AIRFLOW_WWW_USER_CREATE: 'true'
-      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
-      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-admin123}
-      _PIP_ADDITIONAL_REQUIREMENTS: gspread google-auth google-auth-oauthlib google-auth-httplib2
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
     user: "0:0"
 
   airflow-cli:
