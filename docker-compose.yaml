@@ -1,97 +1,48 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-#
-
-# Basic Airflow cluster configuration for CeleryExecutor with Redis and PostgreSQL.
-#
-# WARNING: This configuration is for local development. Do not use it in a production deployment.
-#
-# This configuration supports basic configuration using environment variables or an .env file
-# The following variables are supported:
-#
-# AIRFLOW_IMAGE_NAME           - Docker image name used to run Airflow.
-#                                Default: apache/airflow:3.1.0
-# AIRFLOW_UID                  - User ID in Airflow containers
-#                                Default: 50000
-# AIRFLOW_PROJ_DIR             - Base path to which all the files will be volumed.
-#                                Default: .
-# Those configurations are useful mostly in case of standalone testing/running Airflow in test/try-out mode
-#
-# _AIRFLOW_WWW_USER_USERNAME   - Username for the administrator account (if requested).
-#                                Default: airflow
-# _AIRFLOW_WWW_USER_PASSWORD   - Password for the administrator account (if requested).
-#                                Default: airflow
-# _PIP_ADDITIONAL_REQUIREMENTS - Additional PIP requirements to add when starting all containers.
-#                                Use this option ONLY for quick checks. Installing requirements at container
-#                                startup is done EVERY TIME the service is started.
-#                                A better way is to build a custom image or extend the official image
-#                                as described in https://airflow.apache.org/docs/docker-stack/build.html.
-#                                Default: ''
-#
-# Feel free to modify this file to suit your needs.
 ---
 x-airflow-common:
   &airflow-common
-  # In order to add custom dependencies or upgrade provider distributions you can use your extended image.
-  # Comment the image line, place your Dockerfile in the directory where you placed the docker-compose.yaml
-  # and uncomment the "build" line below, Then run `docker-compose build` to build the images.
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.0}
   build: .
+  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.1.0}
   environment:
-      &airflow-common-env
-      AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
-      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
-      AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
-      AIRFLOW__CORE__FERNET_KEY: ''
-      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
-      AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
-      
-      # 관리자 계정 설정
-      _AIRFLOW_WWW_USER_CREATE: 'true'
-      _AIRFLOW_WWW_USER_USERNAME: admin
-      _AIRFLOW_WWW_USER_PASSWORD: admin123
-      _AIRFLOW_WWW_USER_FIRSTNAME: Admin
-      _AIRFLOW_WWW_USER_LASTNAME: User
-      _AIRFLOW_WWW_USER_EMAIL: admin@example.com
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'true'
+    AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
+    
+    # [중요] 워커는 내부망(Docker Network)을 통해 API 서버의 8080포트로 통신함
+    AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
 
-      # API 및 성능 설정
-      AIRFLOW__API__ENABLE_EXPERIMENTAL_API: 'true'
-      AIRFLOW__API__MAXIMUM_PAGE_LIMIT: 100
+    _AIRFLOW_WWW_USER_CREATE: 'true'
+    _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
+    _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-admin123}
+    _AIRFLOW_WWW_USER_FIRSTNAME: ${_AIRFLOW_WWW_USER_FIRSTNAME:-Admin}
+    _AIRFLOW_WWW_USER_LASTNAME: ${_AIRFLOW_WWW_USER_LASTNAME:-User}
+    _AIRFLOW_WWW_USER_EMAIL: ${_AIRFLOW_WWW_USER_EMAIL:-admin@example.com}
 
-      # SMTP 설정 (Gmail)
-      SMTP_HOST: smtp.gmail.com
-      SMTP_PORT: 587
-      SMTP_USER: ds_bi@joycity.com
-      SMTP_PASSWORD: dhxlacxtjquhdqfn
-      EMAIL_FROM: ds_bi@joycity.com
+    AIRFLOW__API__ENABLE_EXPERIMENTAL_API: 'true'
+    AIRFLOW__API__MAXIMUM_PAGE_LIMIT: 100
 
-      AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
-      
-      # 이미 빌드 단계에서 requirements.txt를 설치했으므로, 런타임 추가 설치는 비워둡니다.
-      _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
-      
-      AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    SMTP_HOST: smtp.gmail.com
+    SMTP_PORT: 587
+    SMTP_USER: ds_bi@joycity.com
+    SMTP_PASSWORD: dhxlacxtjquhdqfn
+    EMAIL_FROM: ds_bi@joycity.com
+
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./config:/opt/airflow/config
     - ./plugins:/opt/airflow/plugins
+
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
@@ -119,8 +70,6 @@ services:
       - "5432:5432"
 
   redis:
-    # Redis is limited to 7.2-bookworm due to licencing change
-    # https://redis.io/blog/redis-adopts-dual-source-available-licensing/
     image: redis:7.2-bookworm
     expose:
       - 6379
@@ -132,10 +81,34 @@ services:
       start_period: 30s
     restart: always
 
+  # [1] API Server (워커 통신용)
   airflow-apiserver:
+    <<: *airflow-common
+    command: bash -c "airflow db migrate && airflow api-server"
+    ports:
+      # Host(9091) -> Container(8080)
+      # 외부 충돌 방지를 위해 Host 포트만 9091로 변경
+      - "9091:8080"
+    healthcheck:
+      # 컨테이너 내부는 8080이므로 여기서 8080을 체크해야 성공함
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  # [2] Web Server (UI용 - 사용자 접속)
+  airflow-webserver:
     <<: *airflow-common
     command: webserver
     ports:
+      # Host(8080) -> Container(8080)
+      # 사용자가 접속할 포트
       - "8080:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
@@ -146,24 +119,25 @@ services:
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
+      airflow-apiserver:
+        condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
 
-
   airflow-scheduler:
-      <<: *airflow-common
-      command: scheduler
-      healthcheck:
-        test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
-        interval: 30s
-        timeout: 10s
-        retries: 5
-        start_period: 30s
-      restart: always
-      depends_on:
-        <<: *airflow-common-depends-on
-        airflow-init:
-          condition: service_completed_successfully
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
 
   airflow-dag-processor:
     <<: *airflow-common
@@ -197,7 +171,7 @@ services:
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
-      airflow-webserver:
+      airflow-apiserver:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
@@ -227,23 +201,16 @@ services:
           echo "AIRFLOW_UID not set!"
           export AIRFLOW_UID=$$(id -u)
         fi
-        
-        # 디렉토리 생성
         mkdir -v -p /opt/airflow/{logs,dags,plugins,config}
-        
-        # 초기화 및 DB 마이그레이션
         echo "Running Airflow DB Init..."
         airflow db migrate
-        
-        # 관리자 계정 생성 (존재하지 않을 경우)
         airflow users create \
-          --username "${_AIRFLOW_WWW_USER_USERNAME}" \
-          --password "${_AIRFLOW_WWW_USER_PASSWORD}" \
-          --firstname "${_AIRFLOW_WWW_USER_FIRSTNAME}" \
-          --lastname "${_AIRFLOW_WWW_USER_LASTNAME}" \
-          --email "${_AIRFLOW_WWW_USER_EMAIL}" \
+          --username "${_AIRFLOW_WWW_USER_USERNAME:-admin}" \
+          --password "${_AIRFLOW_WWW_USER_PASSWORD:-admin123}" \
+          --firstname "${_AIRFLOW_WWW_USER_FIRSTNAME:-Admin}" \
+          --lastname "${_AIRFLOW_WWW_USER_LASTNAME:-User}" \
+          --email "${_AIRFLOW_WWW_USER_EMAIL:-admin@example.com}" \
           --role Admin || echo "Admin user already exists"
-
         echo "Init completed."
     environment:
       <<: *airflow-common-env
@@ -257,36 +224,12 @@ services:
     environment:
       <<: *airflow-common-env
       CONNECTION_CHECK_MAX_COUNT: "0"
-      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: '300'
-    # Workaround for entrypoint issue. See: https://github.com/apache/airflow/issues/16252
     command:
       - bash
       - -c
       - airflow
     depends_on:
       <<: *airflow-common-depends-on
-
-  # You can enable flower by adding "--profile flower" option e.g. docker-compose --profile flower up
-  # or by explicitly targeted on the command line e.g. docker-compose up flower.
-  # See: https://docs.docker.com/compose/profiles/
-  flower:
-    <<: *airflow-common
-    command: celery flower
-    profiles:
-      - flower
-    ports:
-      - "5555:5555"
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: always
-    depends_on:
-      <<: *airflow-common-depends-on
-      airflow-init:
-        condition: service_completed_successfully
 
 volumes:
   postgres-db-volume:
