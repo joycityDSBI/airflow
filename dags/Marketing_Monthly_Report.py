@@ -10,6 +10,8 @@ import os
 import re
 import random
 import logging
+import tempfile
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -61,13 +63,35 @@ def get_var(key: str, default: str = None) -> str:
 os.environ['GOOGLE_CLOUD_PROJECT'] = 'data-science-division-216308'
 os.environ['GOOGLE_CLOUD_LOCATION'] = 'us-central1'  #global
 
-# 한글 폰트 지정: 먼저 설치된 것을 우선으로, 없으면 다음 후보로 폴백
-mpl.rcParams["font.family"] = ["Noto Sans CJK KR", "NanumGothic", "DejaVu Sans"]
-mpl.rcParams["axes.unicode_minus"] = False  # 마이너스 깨짐 방지
+# 한글 폰트 설정 함수
+def set_korean_font():
+    """OS에 따른 한글 폰트 설정"""
+    candidates = ["Noto Sans CJK KR", "NanumGothic", "Malgun Gothic", "AppleGothic", "DejaVu Sans"]
+    
+    # 1. 시스템에 설치된 폰트 중 후보군이 있는지 확인
+    system_fonts = {f.name for f in fm.fontManager.ttflist}
+    
+    selected_font = None
+    for font in candidates:
+        if font in system_fonts:
+            selected_font = font
+            break
+            
+    if selected_font:
+        mpl.rcParams["font.family"] = selected_font
+    else:
+        # 2. 리눅스 환경 등에서 특정 경로의 폰트 파일 시도 (기존 로직 유지 및 개선)
+        linux_font_path = "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"
+        if Path(linux_font_path).exists():
+            fm.fontManager.addfont(linux_font_path)
+            mpl.rcParams["font.family"] = 'NanumGothic'
+        else:
+            print("⚠️ 한글 폰트를 찾지 못했습니다. 기본 폰트를 사용합니다.")
 
-names = sorted({f.name for f in fm.fontManager.ttflist})
-[k for k in names if "Noto" in k or "Nanum" in k][:50]
-names
+    mpl.rcParams["axes.unicode_minus"] = False  # 마이너스 깨짐 방지
+
+set_korean_font()
+
 
 NOTION_TOKEN = get_var("NOTION_TOKEN_MS")  # Airflow Variable에 저장된 Notion 통합 토큰
 NOTION_VERSION = "2022-06-28"
@@ -218,16 +242,25 @@ def md_to_notion_blocks(md_text, blank_blocks=3):
 
     return blocks
 
-def mkt_monthly_report_total():
+def mkt_monthly_report_total(**kwargs):
     from datetime import datetime, timezone, timedelta
-    RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
+    
+    # Airflow Context에서 실행 날짜 가져오기 (없으면 현재 시간)
+    execution_date = kwargs.get('execution_date')
+    if execution_date:
+        # pendulum 객체를 datetime으로 변환 (KST로 변환)
+        now_kst = execution_date.in_timezone(ZoneInfo("Asia/Seoul"))
+    else:
+        now_kst = datetime.now(ZoneInfo("Asia/Seoul"))
+
+    RUN_ID = now_kst.strftime("%Y%m%d")
     LABELS = {"datascience_division_service": "monthly_mkt_framework",
             "run_id": RUN_ID,
             "datascience_division_service_sub" : "mkt_monthly_1_total_roas"} ## 딕셔너리 형태로 붙일 수 있음.
     print("RUN_ID=", RUN_ID, "LABEL_ID=", LABELS)
 
     client = bigquery.Client()
-    query = """
+    query = f"""
     WITH revraw AS(
     select  JoypleGameID, Month
     ,sum(RU) as RU,#
@@ -269,10 +302,10 @@ def mkt_monthly_report_total():
     CASE WHEN RegdateAuthAccountDateKST <= CAST(DATE_ADD(CURRENT_DATE('Asia/Seoul'), INTERVAL -361 DAY) AS Date)  THEN  IFNULL(sum(rev_D360),0) ELSE  null END as Sales_D360
     from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
         where JoypleGameID in (131,133,30001,30003)
-    and (JoypleGameID = 131 AND RegdateAuthAccountDateKST BETWEEN '2021-01-01' AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY))
-    OR (JoypleGameID = 133 AND RegdateAuthAccountDateKST BETWEEN '2021-01-01' AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY))
-    OR (JoypleGameID = 30001 AND RegdateAuthAccountDateKST BETWEEN '2022-05-01' AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY))
-    OR (JoypleGameID = 30003 AND RegdateAuthAccountDateKST BETWEEN '2024-01-01' AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY))
+    and (JoypleGameID = 131 AND RegdateAuthAccountDateKST BETWEEN '{now_kst.year - 3}-01-01' AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY))
+    OR (JoypleGameID = 133 AND RegdateAuthAccountDateKST BETWEEN '{now_kst.year - 3}-01-01' AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY))
+    OR (JoypleGameID = 30001 AND RegdateAuthAccountDateKST BETWEEN '{now_kst.year - 2}-01-01' AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY))
+    OR (JoypleGameID = 30003 AND RegdateAuthAccountDateKST BETWEEN '{now_kst.year - 1}-01-01' AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY))
     group by JoypleGameID, RegdateAuthAccountDateKST
     ) group by JoypleGameID, month
     )
@@ -455,7 +488,6 @@ def mkt_monthly_report_total():
     )
     )
     )
-    )
 
 
     ,final2 AS(
@@ -466,7 +498,7 @@ def mkt_monthly_report_total():
     , sum(costcurrency) as cost, sum(costcurrencyuptdt) as cost_exclude_credit
     from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
     where joyplegameid in (131,133,30001,30003)
-    and cmpgndate >='2021-01-01'
+    and cmpgndate >='{now_kst.year - 3}-01-01'
     and cmpgndate <= DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
     group by joyplegameid,  format_date('%Y-%m', cmpgndate)
 
@@ -515,7 +547,7 @@ def mkt_monthly_report_total():
 
     ### 2> pLTV_D360
     client = bigquery.Client()
-    query = """with perfo_raw AS(
+    query = f"""with perfo_raw AS(
     select a.*
     , b.countrycode, b.os
     , b.gcat, b.mediacategory, b.class, b.media, b.adsetname, b.adname, b.optim, b.oscam, b.geocam, b.targetgroup
@@ -524,7 +556,7 @@ def mkt_monthly_report_total():
     case when logdatekst < current_date('Asia/Seoul') then pricekrw else daypred_low end as combined_rev_low,
     case when logdatekst < current_date('Asia/Seoul') then pricekrw else daypred_upp end as combined_rev_upp,
     FROM `data-science-division-216308.VU.Performance_pLTV`
-    where authaccountregdatekst>='2024-01-01'
+    where authaccountregdatekst>='{now_kst.year - 1}-01-01'
     and authaccountregdatekst <= CAST(DATE_ADD(CURRENT_DATE('Asia/Seoul'), INTERVAL -8 DAY) AS Date)
     and joyplegameid in (131,133)
     ) as a
@@ -551,7 +583,7 @@ def mkt_monthly_report_total():
 
     ### 3> 복귀유저
     client = bigquery.Client()
-    query = """
+    query = f"""
     with raw AS(
     select *
     , sum(d90diff) over(partition by joyplegameid, authaccountname order by logdatekst) as cum_d90diff
@@ -561,7 +593,7 @@ def mkt_monthly_report_total():
     , case when  date_diff(logdatekst,AuthAccountLastAccessBeforeDateKST, day )  >= 90 then 1 else 0  end as d90diff
     FROM `dataplatform-reporting.DataService.T_0317_0000_AuthAccountPerformance_V`
     WHERE joyplegameid in (131,133,30001,30003)
-    and logdatekst >= '2023-01-01'
+    and logdatekst >= '{now_kst.year - 2}-01-01'
     and DaysFromRegisterDate >= 0 -- 가입일이 이후에 찍힌 case제외
     )
     )
@@ -583,7 +615,7 @@ def mkt_monthly_report_total():
     , count(distinct authaccountname) as ru
     , sum(if(DaysFromRegisterDate<=360, pricekrw, null)) as d360rev
     from raw2
-    where  AuthAccountRegDateKST  >= '2023-01-01'
+    where  AuthAccountRegDateKST  >= '{now_kst.year - 2}-01-01'
     and AuthAccountRegDateKST <= DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
 
     group by joyplegameid,    format_date('%Y-%m',authaccountregdatekst)
@@ -595,7 +627,7 @@ def mkt_monthly_report_total():
     , count(distinct if(daydiff_re = 0 , authaccountname, null)) as ru
     , sum(if(daydiff_re<=360, pricekrw, null)) as d360rev_all
     from raw2
-    where  returndate  >= '2023-01-01'
+    where  returndate  >= '{now_kst.year - 2}-01-01'
     and returndate <= DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
     group by joyplegameid,   format_date('%Y-%m', returndate)
     )
@@ -626,7 +658,7 @@ def mkt_monthly_report_total():
     select joyplegameid,  format_date('%Y-%m',cmpgndate) as regmonth, sum(costcurrency) as cost, sum(costcurrencyuptdt) as cost_exclude_credit
     from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
     where joyplegameid in (131,133,30001,30003)
-    and cmpgndate >='2023-01-01'
+    and cmpgndate >='{now_kst.year - 2}-01-01'
     and cmpgndate <= DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
     group by  joyplegameid,  format_date('%Y-%m',cmpgndate)
     ) as c
@@ -667,7 +699,7 @@ def mkt_monthly_report_total():
 
     ### 4> BEP
     client = bigquery.Client()
-    query = """
+    query = f"""
     with raw AS(
     select a.*, b.value
     , case when b.value is not null then b.value
@@ -694,7 +726,7 @@ def mkt_monthly_report_total():
     from  dataplatform-reporting.DataService.V_0317_0000_AuthAccountPerformance_V AS t1,
     UNNEST(t1.PaymentDetailArrayStruct) AS t2
     where joyplegameid in (131,133,30001,30003)
-    and authaccountregdatekst >='2024-01-01'
+    and authaccountregdatekst >='{now_kst.year - 1}-01-01'
     group by JoypleGameID, format_date('%Y-%m', authaccountregdatekst) , t2.PGName
     ) as a
     left join (
@@ -793,7 +825,7 @@ def mkt_monthly_report_total():
     ## 기간 필터
 
     # 기준일과 래그
-    asof = pd.Timestamp.today().normalize()   # <-- 여기 핵심 (tz 없음)
+    asof = pd.Timestamp(now_kst.date()) # tz 없음
     LAG_DAYS = 8
     obs_end_candidate = asof - pd.Timedelta(days=LAG_DAYS)  # naive
 
@@ -876,14 +908,8 @@ def mkt_monthly_report_total():
         df.loc[~mask, "d180roas_growth"] = np.nan
 
 
-    ## 한글깨짐 방지를 위해 폰트 지정
-    font_path = "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"
-    if Path(font_path).exists():
-        fm.fontManager.addfont(font_path)       # 수동 등록
-        mpl.rc('font', family='NanumGothic')    # 기본 폰트 지정
-        mpl.rc('axes', unicode_minus=False)     # 마이너스 깨짐 방지
-    else:
-        print("⚠️ NanumGothic 설치 실패. 다른 폰트를 써야 합니다.")
+    ## 한글깨짐 방지 (이미 위에서 설정했지만, 필요시 재확인)
+    # set_korean_font() # 이미 전역에서 호출됨
 
 
 
@@ -986,12 +1012,17 @@ def mkt_monthly_report_total():
 
     ax1.legend(handles, labels, loc="best")
     plt.tight_layout()
-    plt.savefig('roas_graph.png', dpi=160)
-    plt.show()
+    plt.tight_layout()
+    
+    # 임시 디렉토리에 저장
+    temp_dir = tempfile.mkdtemp()
+    roas_graph_path = os.path.join(temp_dir, 'roas_graph.png')
+    plt.savefig(roas_graph_path, dpi=160)
+    # plt.show() # Airflow 환경에서는 show() 불필요
 
     # 특정 파일의 절대 경로 확인
-    import os
-    file_path = os.path.abspath("roas_graph.png")
+    # 특정 파일의 절대 경로 확인
+    file_path = os.path.abspath(roas_graph_path)
     print("저장된 파일 절대 경로:", file_path)
 
     mapping = {"POTC": "1.POTC", "GBTW": "2.GBTW", "WWM": "3.WWMC", "DRSG": "4.DRSG", "RESU" : "5.RESU"}
@@ -1033,7 +1064,7 @@ def mkt_monthly_report_total():
     selected_cols = base_cols + growth_cols+base_cols2
 
     final4 = final3[selected_cols].sort_values(by = ['game_name', 'regmonth'])
-    final4 = final4[final4['regmonth_ts'] >= '2024-01-01']
+    final4 = final4[final4['regmonth_ts'] >= f'{now_kst.year}-01-01']
 
     df_numeric = final4.copy()
     df_numeric = df_numeric.reset_index(drop=True)
@@ -1309,8 +1340,8 @@ def mkt_monthly_report_total():
         # HTML 파일로 저장
         rendered_html = Template(html_template).render(game_name=game, table=table_html, kpi_table=kpi_html)
 
-        # 저장할 파일 경로 설정
-        html_path = f"{game}_roas_table.html"
+        # 저장할 파일 경로 설정 (임시 디렉토리 사용)
+        html_path = os.path.join(temp_dir, f"{game}_roas_table.html")
 
     # HTML 파일 저장
         with open(html_path, "w", encoding="utf-8") as f:
@@ -1352,8 +1383,8 @@ def mkt_monthly_report_total():
     # # 게임별 HTML을 이미지로 저장하기
     async def save_images_for_all_games():
         for game in styled_tables.keys():
-            html_path = f"{game}_roas_table.html"  # HTML 파일 경로
-            output_image_path = f"{game}_roas_table.png"  # 저장될 이미지 경로
+            html_path = os.path.join(temp_dir, f"{game}_roas_table.html")  # HTML 파일 경로
+            output_image_path = os.path.join(temp_dir, f"{game}_roas_table.png")  # 저장될 이미지 경로
 
             await capture_html_to_image(html_path, output_image_path)
             print(f"{game} 테이블을 이미지로 저장 완료: {output_image_path}")
@@ -1392,7 +1423,7 @@ def mkt_monthly_report_total():
 
 
     # 기준일(최근 8일 전) — 월간 리포트 탐색 시 기준이 되는 날짜
-    REF_DT = datetime.now(ZoneInfo("Asia/Seoul")) - timedelta(days=8)
+    REF_DT = now_kst - timedelta(days=8)
 
     notion = NotionClient(auth=NOTION_TOKEN, timeout_ms=60_000, log_level=logging.WARNING, notion_version=NOTION_VERSION)
     print(NOTION_VERSION)
@@ -1746,14 +1777,14 @@ def mkt_monthly_report_total():
     notion = NotionClient(auth=NOTION_TOKEN, notion_version=NOTION_VERSION)
 
     title_prop: str = "이름"
-    page_title = f"SLG 월별 마케팅 현황 리뷰_{datetime.today().strftime('%y%m%d')}"
+    page_title = f"SLG 월별 마케팅 현황 리뷰_{now_kst.strftime('%y%m%d')}"
     project_list = ["GBTW","POTC","DRSG","WWM"]
 
 
     # DB 속성 구성
     props = {
         title_prop: {"title": [{"text": {"content": page_title}}]},
-        "등록 날짜": {"date": {"start": datetime.today().isoformat()}},
+        "등록 날짜": {"date": {"start": now_kst.isoformat()}},
 
         # '프로젝트' 속성 (Rich Text 또는 Select)
         "프로젝트": {"multi_select": [{"name": project} for project in project_list  ] },
@@ -1789,7 +1820,7 @@ def mkt_monthly_report_total():
 
 
     # 업로드용 경로 변수
-    IMG_PATH = Path("roas_graph.png").resolve()  # 절대경로로 변환(권장)
+    IMG_PATH = Path(roas_graph_path).resolve()  # 절대경로로 변환(권장)
     assert IMG_PATH.exists() and IMG_PATH.stat().st_size > 0
 
     hdr_json = {
@@ -1870,11 +1901,13 @@ def mkt_monthly_report_total():
 
     ########### (3) 표 첨부
     # 업로드용 경로
+    ########### (3) 표 첨부
+    # 업로드용 경로 (temp_dir 사용)
     IMG_PATHS = [
-        Path("1.POTC_roas_table.png").resolve(),
-        Path("2.GBTW_roas_table.png").resolve(),
-        Path("3.WWMC_roas_table.png").resolve(),
-        Path("4.DRSG_roas_table.png").resolve(),
+        Path(os.path.join(temp_dir, "1.POTC_roas_table.png")).resolve(),
+        Path(os.path.join(temp_dir, "2.GBTW_roas_table.png")).resolve(),
+        Path(os.path.join(temp_dir, "3.WWMC_roas_table.png")).resolve(),
+        Path(os.path.join(temp_dir, "4.DRSG_roas_table.png")).resolve(),
     ]
 
 
@@ -2032,7 +2065,7 @@ def mkt_monthly_report_total():
 
     ### 1> os 별
     client = bigquery.Client()
-    query = """
+    query = f"""
     WITH revraw AS(
     select  JoypleGameID, regmonth, osuser
     ,sum(RU) as RU,
@@ -2082,7 +2115,7 @@ def mkt_monthly_report_total():
         , case when OS = 'android' then 'And' when OS = 'ios' then 'IOS' else OS end as osuser
     from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
         where JoypleGameID in (131,133,30001,30003)
-        and RegdateAuthAccountDateKST between '2025-01-01' and DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
+        and RegdateAuthAccountDateKST between '{now_kst.year}-01-01' and DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
     )
     group by JoypleGameID, RegdateAuthAccountDateKST,  osuser
     ) group by JoypleGameID, regmonth,  osuser
@@ -2102,7 +2135,7 @@ def mkt_monthly_report_total():
         else '5.ETC' end as geo_user_group
     from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
     where joyplegameid in (131,133,30001,30003)
-    and cmpgndate between '2025-01-01' and DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
+    and cmpgndate between '{now_kst.year}-01-01' and DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
     )
     group by  joyplegameid,gameid,  format_date('%Y-%m', cmpgndate)  , os
     )
@@ -2341,10 +2374,11 @@ def mkt_monthly_report_total():
     """
 
     # HTML 렌더링 및 저장
+    # HTML 렌더링 및 저장
     table_html = styled_df.to_html()
     rendered_html = Template(html_template).render(table=table_html)
 
-    html_path = "os_roas.html"
+    html_path = os.path.join(temp_dir, "os_roas.html")
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(rendered_html)
 
@@ -2354,7 +2388,8 @@ def mkt_monthly_report_total():
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page(viewport={"width": 1600, "height": 1000})
             await page.goto("file://" + os.path.abspath(html_path))
-            await page.screenshot(path="os_roas.png", full_page=True)
+            out_path = os.path.join(temp_dir, "os_roas.png")
+            await page.screenshot(path=out_path, full_page=True)
             await browser.close()
 
     # Spyder or GCP Notebook 환경 대응
@@ -2380,8 +2415,8 @@ def mkt_monthly_report_total():
     ########### (2) OS 서식표 업로드
 
     # 업로드용 경로 변수
-    from pathlib import Path
-    IMG_PATH = Path("os_roas.png").resolve()  # 절대경로로 변환(권장)
+    # from pathlib import Path # Already imported
+    IMG_PATH = Path(os.path.join(temp_dir, "os_roas.png")).resolve()  # 절대경로로 변환(권장)
     assert IMG_PATH.exists() and IMG_PATH.stat().st_size > 0
 
     hdr_json = {
@@ -2446,8 +2481,7 @@ def mkt_monthly_report_total():
         children=blocks
     )
 
-    from datetime import datetime, timezone, timedelta
-    RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
+    # RUN_ID = now_kst.strftime("%Y%m%d") # Already defined
 
     LABELS = {"datascience_division_service": "monthly_mkt_framework",
             "run_id": RUN_ID,
@@ -2456,7 +2490,7 @@ def mkt_monthly_report_total():
 
     # 2> 국가별
     client = bigquery.Client()
-    query = """
+    query = f"""
     WITH revraw AS(
     select  JoypleGameID, regmonth, geo_user_group
     ,sum(RU) as RU,
@@ -2506,7 +2540,7 @@ def mkt_monthly_report_total():
         , case when OS = 'android' then 'And' when OS = 'ios' then 'IOS' else OS end as osuser
     from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
         where JoypleGameID in (131,133,30001,30003)
-        and RegdateAuthAccountDateKST between '2025-01-01' and DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
+        and RegdateAuthAccountDateKST between '{now_kst.year}-01-01' and DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
     )
     group by JoypleGameID, RegdateAuthAccountDateKST, geo_user_group
     ) group by JoypleGameID, regmonth, geo_user_group
@@ -2526,7 +2560,7 @@ def mkt_monthly_report_total():
         else '5.ETC' end as geo_user_group
     from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
     where joyplegameid in (131,133,30001,30003)
-    and cmpgndate between '2025-01-01' and DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
+    and cmpgndate between '{now_kst.year}-01-01' and DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 8 DAY)
     )
     group by  joyplegameid,gameid,  format_date('%Y-%m', cmpgndate) , geo_user_group
     )
@@ -2712,5 +2746,6 @@ with DAG(
     task = PythonOperator(
         task_id='mkt_monthly_report_total',
         python_callable=mkt_monthly_report_total,
+        provide_context=True, # Airflow Context 전달을 위해 필요 (Airflow 버전에 따라 생략 가능하나 명시)
         dag=dag,
     )
