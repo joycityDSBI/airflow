@@ -21,8 +21,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib as mpl
 from matplotlib.ticker import PercentFormatter
-import dataframe_image as dfi
-from PIL import Image
+# import dataframe_image as dfi
+# from PIL import Image
 
 # Google Cloud 관련
 from google.cloud import bigquery
