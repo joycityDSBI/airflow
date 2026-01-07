@@ -1,4 +1,5 @@
-from airflow import DAG, Variable
+from airflow import DAG
+from airflow.models import Variable
 from airflow.operators.python import PythonOperator
 
 # 폰트 캐시 재구축
