@@ -14,6 +14,8 @@ google-cloud-bigquery>=3.11,<3.12  # Python 3.8 호환
 google-cloud-storage>=2.10,<2.11
 google-cloud-tasks>=2.13,<2.15
 google-api-python-client>=2.95,<2.100
+google-cloud-aiplatform>=1.120.0,<1.132.0
+google-generativeai>=0.8.5
 
 # Google Auth & Sheets
 gspread>=6.0,<6.2
@@ -75,6 +77,7 @@ vertexai>=1.38,<1.50  # 1.71.1은 Python 3.9+ 필요
 matplotlib>=3.7,<3.8  # Python 3.8 최대
 seaborn>=0.12,<0.13  # 0.13.2는 Python 3.9+ 권장
 pillow>=10.0,<10.5  # 12.0.0은 Python 3.9+ 필요
+dataframe-image>=0.2.6
 
 # IPython
 ipython>=8.12,<8.13  # 9.6.0은 Python 3.9+ 필요
