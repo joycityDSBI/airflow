@@ -31,8 +31,8 @@ def etl_f_IAA_game_sub_user_watch(target_date: list):
             FROM `dataplatform-204306.POTC.COMMAND_GOLD_GET`
             WHERE WorldID <= 900
             AND Reason = 511
-            AND LogDate_Svr >= {start_utc}
-            AND LogDate_Svr < {end_utc}
+            AND LogDate_Svr >= '{start_utc}'
+            AND LogDate_Svr < '{end_utc}'
             AND p0 != 0
             AND ((p5 = 0 and p6 = 2) OR (p5 = 0 and p6 = 0 and logdate_svr <= '2022-03-23 05:01:34'))
             GROUP BY joyple_game_code, watch_datekey, game_sub_user_name
@@ -47,8 +47,8 @@ def etl_f_IAA_game_sub_user_watch(target_date: list):
             WHERE reason = 4906 -- 광고시청 완료
             AND worldid >=1000
             AND p0 in (0,1,3,4,5,6,7,8,9,10,11,12,13) -- 정의서 상 2번은 골드로 되어있으나, 1번이 골드이며, 2번은 실제 남지 않는 로그 
-            AND logdate >= {start_utc}
-            AND logdate < {end_utc}
+            AND logdate >= '{start_utc}'
+            AND logdate < '{end_utc}'
             GROUP BY joyple_game_code, watch_datekey, game_sub_user_name 
             
             UNION ALL -- WWM
@@ -64,8 +64,8 @@ def etl_f_IAA_game_sub_user_watch(target_date: list):
                 , MAX(CASE WHEN C1 IN ('D_kill', 'D_Star') THEN 1 ELSE p4 END) AS watch_cnt1  --퍼킬의 경우, p4에 퍼킬몬스터 남음 
             FROM `dataplatform-204306.WWM.T_Log_Game` 
             WHERE Reason = 3901 
-            AND LogDate_Svr >= {start_utc}
-            AND LogDate_Svr < {end_utc}
+            AND LogDate_Svr >= '{start_utc}'
+            AND LogDate_Svr < '{end_utc}'
             GROUP BY WatchDateKST, UserID, C1 
             )
             GROUP BY joyple_game_code, watch_datekey, game_sub_user_name
@@ -80,8 +80,8 @@ def etl_f_IAA_game_sub_user_watch(target_date: list):
             WHERE reason  = 4906 -- 광고시청 완료
             AND command = 49  -- 인앱광고
             AND worldid >= 1000 
-            AND LogDate_Svr >= {start_utc}
-            AND LogDate_Svr < {end_utc}
+            AND LogDate_Svr >= '{start_utc}'
+            AND LogDate_Svr < '{end_utc}'
             GROUP BY joyple_game_code, watch_datekey, game_sub_user_name
             
             UNION ALL -- DS
@@ -93,8 +93,8 @@ def etl_f_IAA_game_sub_user_watch(target_date: list):
             FROM ` ` 
             WHERE Reason = 63001 
             AND WorldID NOT IN (6108,5555)
-            AND LogDate_Svr >= {start_utc}
-            AND LogDate_Svr < {end_utc}
+            AND LogDate_Svr >= '{start_utc}'
+            AND LogDate_Svr < '{end_utc}'
             GROUP BY joyple_game_code, watch_datekey, game_sub_user_name
             
             UNION ALL -- KOF
@@ -105,8 +105,8 @@ def etl_f_IAA_game_sub_user_watch(target_date: list):
                 , COUNT(UserID)                  AS watch_cnt
             FROM `dataplatform-204306.KOFS.T_Log_Game` 
             WHERE Reason = 63001 
-            AND LogDate_Svr >= {start_utc}
-            AND LogDate_Svr < {end_utc}
+            AND LogDate_Svr >= '{start_utc}'
+            AND LogDate_Svr < '{end_utc}'
             GROUP BY joyple_game_code, watch_datekey, game_sub_user_name
             
             UNION ALL -- DRB
@@ -117,8 +117,8 @@ def etl_f_IAA_game_sub_user_watch(target_date: list):
                 , COUNT(UserID)                  AS watch_cnt
             FROM `dataplatform-204306.DRB.T_Log_Game` 
             WHERE Reason = 3901 
-            AND LogDate_Svr >= {start_utc}
-            AND LogDate_Svr < {end_utc}
+            AND LogDate_Svr >= '{start_utc}'
+            AND LogDate_Svr < '{end_utc}'
             GROUP BY joyple_game_code, watch_datekey, game_sub_user_name
 
         ) AS source 
@@ -273,8 +273,8 @@ def etl_f_IAA_auth_account_performance_joyple(target_date:list):
 
         delete_query = f"""
         DELETE FROM `datahub-478802`.datahub.f_IAA_auth_account_performance_joyple
-        WHERE watch_datekey >= DATE({start_utc}, "Asia/Seoul")
-        AND watch_datekey <  DATE({end_utc}, "Asia/Seoul")
+        WHERE watch_datekey >= DATE('{start_utc}', "Asia/Seoul")
+        AND watch_datekey <  DATE('{end_utc}', "Asia/Seoul")
         """
 
         query = f"""
@@ -366,8 +366,8 @@ def etl_f_IAA_auth_account_performance_joyple(target_date:list):
                         , event_time                                  as logtime_utc
                         , date(event_time)                            as logdate_utc
                     FROM `dataplatform-204306.JoypleLog.iaa_admob_log` 
-                    WHERE event_time >= {start_utc}
-                    AND event_time < {end_utc}
+                    WHERE event_time >= '{start_utc}'
+                    AND event_time < '{end_utc}'
                     AND event_name = 'COMPLETED' -- 광고 시청 완료 Case만   
                     UNION ALL
                     -- Max 미디에이션에서 송출한 광고
@@ -388,8 +388,8 @@ def etl_f_IAA_auth_account_performance_joyple(target_date:list):
                         , event_time                                  as logtime_utc
                         , date(event_time)                            as logdate_utc
                     FROM `dataplatform-204306.JoypleLog.iaa_max_log`
-                    WHERE event_time >= {start_utc}
-                    AND event_time < {end_utc}
+                    WHERE event_time >= '{start_utc}'
+                    AND event_time < '{end_utc}'
                     AND event_name = 'COMPLETED' -- 광고 시청 완료 Case만   
                     UNION ALL
                     -- Inhouse 송출 광고 (매출 X)
@@ -410,8 +410,8 @@ def etl_f_IAA_auth_account_performance_joyple(target_date:list):
                         , event_time                                  as logtime_utc
                         , date(event_time)                            as logdate_utc
                     FROM `dataplatform-204306.JoypleLog.iaa_inhouse_log`
-                    WHERE event_time >= {start_utc}
-                    AND event_time < {end_utc}
+                    WHERE event_time >= '{start_utc}'
+                    AND event_time < '{end_utc}'
                     AND event_name = 'COMPLETED' -- 광고 시청 완료 Case만       
                 ) AS a     
                 GROUP BY log_id
@@ -476,8 +476,8 @@ def etl_f_IAA_auth_account_performance(target_date:list):
 
         delete_query=f"""
         DELETE FROM `datahub-478802.datahub.f_IAA_auth_account_performance`
-        WHERE watch_datekey >= DATE({start_utc}, "Asia/Seoul)
-        AND watch_datekey < DATE({end_utc}, "Asia/Seoul)
+        WHERE watch_datekey >= DATE('{start_utc}', "Asia/Seoul)
+        AND watch_datekey < DATE('{end_utc}', "Asia/Seoul)
         """
 
         query=f"""            
@@ -515,8 +515,8 @@ def etl_f_IAA_auth_account_performance(target_date:list):
             FROM `datahub-478802.datahub.f_IAA_performance` AS a
             INNER JOIN `datahub-478802.datahub.dim_IAA_app_name` AS b
             ON (a.app_name = b.app_name)  
-            WHERE watch_datekey >= DATE({start_utc}, "Asia/Seoul")
-                AND watch_datekey <  DATE({end_utc}, "Asia/Seoul")
+            WHERE watch_datekey >= DATE('{start_utc}', "Asia/Seoul")
+                AND watch_datekey <  DATE('{end_utc}', "Asia/Seoul")
                 AND revenue != 0
             GROUP BY joyple_game_code, watch_datekey,  country_code, os
             ),
@@ -542,8 +542,8 @@ def etl_f_IAA_auth_account_performance(target_date:list):
             on (b.os_id = c.os_id)
             LEFT OUTER JOIN `datahub-478802.datahub.f_tracker_install` AS d
             on (b.tracker_account_id = d.tracker_account_id AND CAST(b.tracker_type_id AS STRING) = CAST(d.tracker_type_id AS STRING))
-            WHERE a.watch_datekey >= DATE({start_utc}, "Asia/Seoul")
-                AND a.watch_datekey <  DATE({end_utc}, "Asia/Seoul")
+            WHERE a.watch_datekey >= DATE('{start_utc}', "Asia/Seoul")
+                AND a.watch_datekey <  DATE('{end_utc}', "Asia/Seoul")
             GROUP BY watch_datekey, joyple_game_code, auth_account_name, auth_method_id, reg_datekey, country_code, os, reg_datediff, media_source, campaign, init_campaign
             ),
             T_FULL_SUM # 3 > 일별X국가별XOS 별 매출, 시청 횟수 매칭 =>  GameSubUserInfo2 에서 rev_user, rev_user_krw 구하기 위해 필요
