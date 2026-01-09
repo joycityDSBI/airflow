@@ -212,12 +212,12 @@ def etl_f_common_payment(target_date: list):
             , a.AuthMethodID as auth_method_id
             , a.AuthAccountName as auth_account_name
             , a.ServerName as server_name
-            , a.DeviceID asdevice_id
+            , a.DeviceID as device_id
             , a.IP as ip
             , a.MarketID as market_id
             , a.OSID as os_id
             , a.PGID as pg_id
-            , a.PlatformDeviceType as latform_device_type
+            , a.PlatformDeviceType as platform_device_type
             , a.GameSubUserLevel as game_user_level
             , a.ProductCode as product_code
             , a.ProductName as product_name
@@ -262,6 +262,36 @@ def etl_f_common_payment(target_date: list):
                 LEFT OUTER JOIN datahub-478802.datahub.dim_ip4_country_code AS b
                 ON (a.ip = b.ip)
                 group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
+
+                union all
+
+                SELECT a.datekey, 
+                       a.reg_datekey, 
+                       a.reg_datediff,
+                       a.reg_country_code,
+                       a.game_id,
+                       a.joyple_game_code,
+                       a.game_account_name,
+                       a.game_sub_user_name,
+                       a.auth_method_id,
+                       a.auth_account_name,
+                       a.server_name,
+                       a.device_id,
+                       a.country_code,
+                       a.market_id,
+                       a.os_id,
+                       a.pg_id,
+                       a.platform_device_type,
+                       a.game_user_level,
+                       product_code,
+                       product_name,
+                       sum(price_KRW) as revenue,
+                       sum(MultiQuantity) as buy_cnt
+                from `datahub-478802.datahub.pre_paymentfix_receipt_after_y24_view` as a 
+                WHERE a.log_time >= {start_utc}
+                AND log_time < {end_utc}  
+                group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
+
             ) as source
             ON target.datekey = source.datekey
             AND target.reg_datekey = source.reg_datekey
