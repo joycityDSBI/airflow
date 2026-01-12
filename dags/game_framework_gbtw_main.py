@@ -206,7 +206,6 @@ def daily_data_task(**context):
         bucket=clients['bucket'], headers_json=clients['headers_json'],
         **context
     )
-    print(f"✅ {GAME_IDX} 일간 매출 데이터 업로드 완료")
 
 def inhouse_data_task(**context):
     clients = init_clients()
