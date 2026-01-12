@@ -129,7 +129,8 @@ def init_clients():
     }
     
     # 노션 DB ID
-    database_id = Variable.get("GAMEFRAMEWORK_GBTW_NOTION_DB_ID") 
+    ##################################################### 라이브 전환 시 수정해야 함 #########################################
+    database_id = Variable.get("GAMEFRAMEWORK_GBTW_NOTION_DB_ID_TEST") 
     
 
     return {
