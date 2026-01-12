@@ -1105,11 +1105,16 @@ with DAG(
                         </html>
                         """
 
-            # 이메일 발송
-            logger.info("📧 이메일 발송 중...")
+            # [수정] 디버깅 로그 추가 및 수신자 확인
+            logger.info("📧 이메일 발송 준비 시작...")
+            logger.info(f"📋 수신자 목록: {RECIPIENT_EMAILS}")
+
+            if not RECIPIENT_EMAILS:
+                logger.error("❌ 수신자가 없습니다. 이메일을 발송하지 않습니다.")
+                return
 
             server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
-            server.set_debuglevel(0)  # 디버그 모드 끄기
+            server.set_debuglevel(1)  # 👈 상세 로그 켜기
             
             # # 인증이 필요하면
             # if SENDER_PASSWORD:
