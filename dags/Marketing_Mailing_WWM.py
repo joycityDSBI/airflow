@@ -16,6 +16,7 @@ import html
 import requests
 from google.genai import Client
 from google.genai import types
+from google.oauth2 import service_account
 
 
 # DAG 기본 설정
@@ -103,7 +104,8 @@ with DAG(
                 email_value = "".join([text["plain_text"] for text in email_prop["rich_text"]])
                 emails.append(email_value)
 
-    RECIPIENT_EMAILS = emails
+    # RECIPIENT_EMAILS = emails
+    RECIPIENT_EMAILS = ['seongin@joycity.com']
 
     # 제미나이 설정
     LOCATION = "us-central1"
@@ -299,10 +301,19 @@ with DAG(
 
     # GCP 인증
     cred_dict = json.loads(CREDENTIALS_JSON)
-    credentials, _ = google.auth.default(
+# 2. private_key 줄바꿈 문자 처리 (필수 체크)
+    if 'private_key' in cred_dict:
+            # 만약 키 값에 \\n 문자가 그대로 들어있다면 실제 줄바꿈으로 변경
+        if '\\n' in cred_dict['private_key']:
+            cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+
+    # 3. 명시적으로 Service Account Credentials 생성 (google.auth.default 아님!)
+    credentials = service_account.Credentials.from_service_account_info(
+        cred_dict,
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
     )
-    credentials.refresh(Request())
+    
+    # 4. 클라이언트 생성
     bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
 
     # 날짜 가져오기 
@@ -469,6 +480,23 @@ with DAG(
     def extract_and_send_email(**context):
         """쿼리 실행 및 이메일 발송"""
         try:
+            cred_dict = json.loads(CREDENTIALS_JSON)
+
+            # 2. private_key 줄바꿈 문자 처리 (필수 체크)
+            if 'private_key' in cred_dict:
+                 # 만약 키 값에 \\n 문자가 그대로 들어있다면 실제 줄바꿈으로 변경
+                if '\\n' in cred_dict['private_key']:
+                    cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+
+            # 3. 명시적으로 Service Account Credentials 생성 (google.auth.default 아님!)
+            credentials = service_account.Credentials.from_service_account_info(
+                cred_dict,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+            
+            # 4. 클라이언트 생성
+            bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
+
             # BigQuery 쿼리 실행
             query = basic_query + f"""
             select regdate_joyple_kst as Date --, geo_user_group 
