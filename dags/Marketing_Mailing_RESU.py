@@ -663,7 +663,7 @@ with DAG(
             genai_all_us = genai_paid_geo_analytics(df_all_us, credentials)
             genai_all_jp = genai_paid_geo_analytics(df_all_jp, credentials)
             genai_all_weu = genai_paid_geo_analytics(df_all_weu, credentials)
-            genai_all_etc = genai_paid_geo_analytics(df_all_etc)
+            genai_all_etc = genai_paid_geo_analytics(df_all_etc, credentials)
             genai_all = genai_paid_all_analytics(df_all, credentials, genai_all_us + genai_all_jp + genai_all_weu + genai_all_etc)
             
             print("📧 Paid 유저에 대한 제미나이 분석 완료")

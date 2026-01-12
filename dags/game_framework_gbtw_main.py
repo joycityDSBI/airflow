@@ -66,6 +66,8 @@ from game_framework_summary import *
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
+import json
+from google.oauth2 import service_account
 
 
 ## 한글 폰트 설정
@@ -110,12 +112,24 @@ with DAG(
     # DATABASE_ID=get_var("GAMEFRAMEWORK_GBTW_NOTION_DB_ID")  ###### 라이브 환경 DB
     CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
-    # GCP credential key 로드
-    cred_dict = json.loads(CREDENTIALS_JSON)
-    credentials, project_id = google.auth.default(
+    
+    # credentials 갱신 및 BigQuery, VertexAI 클라이언트 초기화
+    credentials_json = Variable.get('GOOGLE_CREDENTIAL_JSON')
+    cred_dict = json.loads(credentials_json)
+    
+    # 2. private_key 줄바꿈 문자 처리
+    if 'private_key' in cred_dict:
+        if '\\n' in cred_dict['private_key']:
+            cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+
+    # 3. Credentials 객체 생성
+    credentials = service_account.Credentials.from_service_account_info(
+        cred_dict,
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
     )
-    credentials.refresh(Request())
+    
+    # 4. Client 생성 시 credentials 전달 (여기가 핵심!)
+    client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
 
     ## vertexai 초기화 진행
     vertexai.init(project=PROJECT_ID, location=LOCATION)
@@ -187,6 +201,50 @@ with DAG(
         , 'response5_regyearRevenue.text'
         , 'response6_monthlyROAS.text'
     ]
+
+    def get_clients_and_config():
+        """Task 실행 시점에 호출되어 인증 및 클라이언트를 생성하는 함수"""
+        
+        # 1. Variable 가져오기
+        notion_token = Variable.get("MS_TEAM_NOTION_TOKEN")
+        notion_version = Variable.get("NOTION_API_VERSION")
+        database_id = '256ea67a568180318e32ddc6f610ba39' # Variable.get("GAMEFRAMEWORK_GBTW_NOTION_DB_ID")
+        credentials_json = Variable.get('GOOGLE_CREDENTIAL_JSON')
+        
+        # 2. GCP 인증 처리
+        cred_dict = json.loads(credentials_json)
+        if 'private_key' in cred_dict and '\\n' in cred_dict['private_key']:
+            cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+            
+        credentials = service_account.Credentials.from_service_account_info(
+            cred_dict, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+
+        # 3. Vertex AI 초기화
+        vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=credentials)
+
+        # 4. 클라이언트 생성
+        clients = {
+            'bigquery': bigquery.Client(project=PROJECT_ID, credentials=credentials),
+            'storage': storage.Client.from_service_account_info(cred_dict),
+            'bucket': storage.Client.from_service_account_info(cred_dict).bucket('game-framework1'),
+            'genai': Client(), # Vertex AI init 후 생성
+            'notion': notionClient(auth=notion_token)
+        }
+        
+        # 5. 설정값 리턴
+        config = {
+            'notion_token': notion_token,
+            'notion_version': notion_version,
+            'database_id': database_id,
+            'headers_json': {
+                "Authorization": f"Bearer {notion_token}",
+                "Notion-Version": notion_version,
+                "Content-Type": "application/json"
+            }
+        }
+        
+        return clients, config
 
 
 
