@@ -441,6 +441,7 @@ def newuser_roas_task(**context):
     service_sub = SERVICE_SUB_LIST[5]
     bq = clients['bq_client']
     bk = clients['bucket']
+    creds = get_gcp_credentials()
 
     path_result6_monthlyROAS = result6_monthlyROAS(joyplegameid=JOYPLE_GAME_ID, gameidx=GAME_IDX, bigquery_client=bq, bucket=bk)
     path_result6_pLTV = result6_pLTV(joyplegameid=JOYPLE_GAME_ID, gameidx=GAME_IDX, bigquery_client=bq, bucket=bk)
@@ -459,7 +460,7 @@ def newuser_roas_task(**context):
     roas_kpi_table_merge(
         gameidx=GAME_IDX, path_roas_dataframe_preprocessing=path_roas_dataframe_preprocessing,
         path_result6_monthlyROAS=path_result6_monthlyROAS, path_roas_kpi=path_roas_kpi,
-        bucket=bk, gcs_bucket=BUCKET_NAME
+        bucket=bk, gcs_bucket=BUCKET_NAME, credentials=creds
     )
 
     retrieve_new_user_upload_notion(
@@ -468,7 +469,7 @@ def newuser_roas_task(**context):
         path_roas_dataframe_preprocessing=path_roas_dataframe_preprocessing,
         MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
         NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version'],
-        notion=clients['notion_client'], bucket=bk, headers_json=clients['headers_json']
+        notion=clients['notion_client'], bucket=bk, headers_json=clients['headers_json'], genai_client=clients['genai_client']
     )
 
 def summary_task(**context):
@@ -547,4 +548,6 @@ with DAG(
     )
 
     # 의존성 설정
-    t1_create_page >> t2_daily >> t3_inhouse >> t4_global_ua >> t5_rgroup >> t6_longterm >> t7_newuser_roas >> t8_summary
+    t1_create_page >> t7_newuser_roas >> t8_summary
+
+    # t2_daily >> t3_inhouse >> t4_global_ua >> t5_rgroup >> t6_longterm >>
