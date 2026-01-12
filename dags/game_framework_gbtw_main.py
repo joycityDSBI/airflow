@@ -138,7 +138,9 @@ def init_clients():
     
     # 노션 DB ID
     ##################################################### 라이브 전환 시 수정해야 함 #########################################
+    # database_id = Variable.get("GAMEFRAMEWORK_GBTW_NOTION_DB_ID") 
     database_id = Variable.get("GAMEFRAMEWORK_GBTW_NOTION_DB_ID_TEST") 
+    
     print(f"✅ 설정 및 상수 정의 완료 for {database_id}")
 
     return {
@@ -411,17 +413,17 @@ def longterm_sales_task(**context):
 
     longterm_rev_upload_notion(
         gameidx=GAME_IDX, service_sub=service_sub,
-        path_monthly_day_average_rev=path_monthly_day_average_rev,
-        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version'],
+        path_monthly_day_average_rev=path_monthly_day_average_rev, 
         MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
-        notion=clients['notion_client'], bucket=bk, headers_json=clients['headers_json']
+        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version'], 
+        notion=clients['notion_client'], bucket=bk, headers_json=clients['headers_json'], genai_client=clients['genai_client']
     )
 
     monthly_rgroup_upload_notion(
         gameidx=GAME_IDX, service_sub=service_sub,
         path_rgroup_rev_total=path_rgroup_rev_total, path_rgroup_rev_DOD=path_rgroup_rev_DOD,
         path_merge_merge_rgroup_total_rev_pu_ALL_table=path_merge_merge_rgroup_total_rev_pu_ALL_table,
-        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version'],
+        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version'], genai_client=clients['genai_client'],
         MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
         notion=clients['notion_client'], bucket=bk, headers_json=clients['headers_json']
     )
@@ -429,7 +431,7 @@ def longterm_sales_task(**context):
     cohort_rev_upload_notion(
         gameidx=GAME_IDX, service_sub=service_sub,
         path_regyearRevenue=path_regyearRevenue, path_regyearRevenue_pv2=path_regyearRevenue_pv2,
-        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version'],
+        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version'], genai_client=clients['genai_client'],
         MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
         notion=clients['notion_client'], bucket=bk, headers_json=clients['headers_json']
     )
