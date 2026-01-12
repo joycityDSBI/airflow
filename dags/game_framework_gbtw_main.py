@@ -357,28 +357,32 @@ def rgroup_iapgemruby_task(**context):
 
     iap_toggle_add(
         gameidx=GAME_IDX, service_sub=service_sub, MODEL_NAME=MODEL_NAME,
-        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, path_iap_df=path_iap_df,
+        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, genai_client=clients['genai_client'],
+        path_iap_df=path_iap_df,
         path_iapgemruby_history=path_iap_gem_ruby_history, PROJECT_ID=PROJECT_ID,
         LOCATION=LOCATION, bucket=bk, notion=clients['notion_client'], headers_json=clients['headers_json']
     )
     
     gem_toggle_add(
         gameidx=GAME_IDX, service_sub=service_sub, MODEL_NAME=MODEL_NAME,
-        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, path_gem_df=path_gem_df,
+        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, genai_client=clients['genai_client'],
+        path_gem_df=path_gem_df,
         path_iapgemruby_history=path_iap_gem_ruby_history, PROJECT_ID=PROJECT_ID,
         LOCATION=LOCATION, bucket=bk, notion=clients['notion_client'], headers_json=clients['headers_json']
     )
 
     ruby_toggle_add(
         gameidx=GAME_IDX, service_sub=service_sub, MODEL_NAME=MODEL_NAME,
-        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, path_ruby_df=path_ruby_df,
+        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, genai_client=clients['genai_client'],
+        path_ruby_df=path_ruby_df,
         path_iapgemruby_history=path_iap_gem_ruby_history, PROJECT_ID=PROJECT_ID,
         LOCATION=LOCATION, bucket=bk, notion=clients['notion_client'], headers_json=clients['headers_json']
     )
 
     rgroup_top3_upload_notion(
         gameidx=GAME_IDX, service_sub=service_sub, MODEL_NAME=MODEL_NAME,
-        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, path_rgroup_top3_pu=path_rgroup_top3_pu,
+        SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, genai_client=clients['genai_client'],
+        path_rgroup_top3_pu=path_rgroup_top3_pu,
         path_rgroup_top3_rev=path_rgroup_top3_rev, PROJECT_ID=PROJECT_ID,
         LOCATION=LOCATION, bucket=bk, notion=clients['notion_client'], headers_json=clients['headers_json']
     )
