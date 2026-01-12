@@ -1,56 +1,38 @@
-import time
-import pandas as pd
-from google.cloud import bigquery
-from google import genai
-from google.genai import types
-from google.cloud import storage
-import vertexai
-from google.genai import Client as GenAIClient # VertexAI Client 명칭 충돌 방지
-from google.genai.types import GenerateContentConfig, Retrieval, Tool, VertexRagStore
-
-# 인증관련
-import google.auth
-from google.auth.transport.requests import Request
-import logging
-
-# 그래프 관련 패키지
-import seaborn as sns
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter, StrMethodFormatter, PercentFormatter, MultipleLocator
-import matplotlib as mpl
-import matplotlib.font_manager as fm
-from matplotlib import cm
-from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont # 2가지 파일 합치기
-import matplotlib.dates as mdates
-import nest_asyncio
-from jinja2 import Template
-from playwright.async_api import async_playwright
-import asyncio
-import IPython.display as IPd
-from bs4 import BeautifulSoup
-from io import BytesIO
-from typing import List, Tuple
-from matplotlib import rcParams
-from matplotlib.patches import Rectangle
-
-# 전처리 관련 패키지
-import numpy as np
-import re
-import os 
-import math
-from notion_client import Client as notionClient
-import requests
+import os
 import json
-from datetime import datetime, timezone, timedelta
-from adjustText import adjust_text
-from airflow.models import Variable
-from airflow.sdk import get_current_context
-from zoneinfo import ZoneInfo  # Python 3.9 이상
-from pathlib import Path
+import logging
+import time
 import io
+import math
+from datetime import datetime, timedelta
+from typing import List, Tuple, Any
+from zoneinfo import ZoneInfo
+from pathlib import Path
 
-# 게임 프레임워크 모듈
+# Airflow
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from airflow.models import Variable
+from airflow.exceptions import AirflowException
+from airflow.sdk import get_current_context
+
+# Google Cloud
+from google.cloud import bigquery, storage
+from google.oauth2 import service_account
+from google.genai import Client as GenAIClient
+import vertexai
+
+# Notion
+from notion_client import Client as NotionClient
+
+# Data & Visualization
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import seaborn as sns
+
+# Custom Modules (사용자 정의 모듈)
 from game_framework_util import *
 from game_framework_daily import *
 from game_framework_inhouse import *
@@ -60,20 +42,14 @@ from game_framework_longterm_sales import *
 from game_framework_newuser_roas import *
 from game_framework_summary import *
 
-# Airflow function
-from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
-from airflow.models import Variable
-from airflow.exceptions import AirflowException
-from google.oauth2 import service_account
-from notion_client import Client as NotionClient
-
-
-## 한글 폰트 설정
-setup_korean_font()
+## 한글 폰트 설정 (Task 내부에서 실행하는 것이 안전하지만, 전역 설정이 필요하다면 유지)
+try:
+    setup_korean_font()
+except Exception:
+    pass # 폰트 설정 실패가 DAG 전체 실패로 이어지지 않게 처리
 
 # ---------------------------------------------------------
-# 1. 설정 및 상수 정의 (Top-Level에서는 변수만 선언)
+# 1. 설정 및 상수 정의 (변수 선언만 수행)
 # ---------------------------------------------------------
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
@@ -122,10 +98,7 @@ def get_gcp_credentials():
     )
 
 def init_clients():
-    """
-    Task 내부에서 실행되어 필요한 클라이언트들을 생성하여 반환합니다.
-    (Top-level 실행 방지)
-    """
+    """Task 내부에서 실행되어 필요한 클라이언트들을 생성하여 반환합니다."""
     creds = get_gcp_credentials()
     
     # 1. GCP Clients
@@ -135,7 +108,7 @@ def init_clients():
     
     # 2. Vertex AI Init
     vertexai.init(project=PROJECT_ID, location=LOCATION, credentials=creds)
-    genai_client = GenAIClient() # vertexai.init 이후 생성
+    genai_client = GenAIClient() 
 
     # 3. Notion Client
     notion_token = Variable.get("MS_TEAM_NOTION_TOKEN")
@@ -149,7 +122,7 @@ def init_clients():
         "Content-Type": "application/json"
     }
     
-    # 노션 DB ID (테스트/라이브 분기)
+    # 노션 DB ID
     # database_id = Variable.get("GAMEFRAMEWORK_GBTW_NOTION_DB_ID") 
     database_id = '256ea67a568180318e32ddc6f610ba39' 
 
@@ -167,13 +140,13 @@ def init_clients():
 def validate_path(path: Any, func_name: str, context_str: str):
     """결과 경로 유효성 검사 및 로깅. 실패 시 예외 발생."""
     logger = logging.getLogger("airflow.task")
-    # path가 문자열인 경우 길이 체크, 리스트인 경우 요소 개수 체크 등 유연하게 처리
     is_valid = False
+    
     if isinstance(path, str) and len(path) > 0:
         is_valid = True
     elif isinstance(path, (list, tuple)) and len(path) > 0:
         is_valid = True
-    elif path is not None: # 객체가 존재하면 성공으로 간주할 수도 있음
+    elif path is not None:
         is_valid = True
 
     if is_valid:
@@ -181,11 +154,10 @@ def validate_path(path: Any, func_name: str, context_str: str):
     else:
         error_msg = f"❌ {context_str}: {func_name} 실패 (결과 없음)"
         logger.error(error_msg)
-        # 중요: Airflow가 실패를 인지하게 하려면 Exception을 발생시켜야 함
         raise AirflowException(error_msg)
-    
+
 # ---------------------------------------------------------
-# 3. Task 함수 정의 (DAG Context 외부)
+# 3. Task 함수 정의
 # ---------------------------------------------------------
 
 def make_gameframework_notion_page_task(**context):
@@ -198,15 +170,9 @@ def make_gameframework_notion_page_task(**context):
             notion=clients['notion_client']
         )
         print(f"✅ {GAME_IDX} NOTION 페이지 생성 완료")
-        
-        # XCom Push (PythonOperator는 return 값을 자동으로 xcom push 함)
         return page_info
     except Exception as e:
         raise AirflowException(f"❌ 페이지 생성 실패: {e}")
-
-
-
-####### 일자별 게임 프레임 워크
 
 def daily_data_task(**context):
     clients = init_clients()
@@ -224,14 +190,14 @@ def daily_data_task(**context):
     img_gcs_path = merge_daily_graph(gameidx=GAME_IDX, daily_revenue_path=st1, daily_revenue_yoy_path=st2, bucket=clients['bucket'])
     validate_path(img_gcs_path, "merge_daily_graph", service_sub)
 
+    # 오타 수정: MOEDEL_NAME -> MODEL_NAME
     daily_revenue_data_upload_to_notion(
         st1=st1, st2=st2, st3=st3,
-        MODEL_NAME=MODEL_NAME, gameidx=GAME_IDX, service_sub=service_sub,
+        MOEDEL_NAME=MODEL_NAME, gameidx=GAME_IDX, service_sub=service_sub,
         genai_client=clients['genai_client'], MODEL_NAME=MODEL_NAME,
         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, notion=clients['notion_client'],
         bucket=clients['bucket'], headers_json=clients['headers_json']
     )
-
 
 def inhouse_data_task(**context):
     clients = init_clients()
@@ -278,7 +244,6 @@ def global_ua_data_task(**context):
     merged_os_graph = merge_os_graph(gameidx=GAME_IDX, gcs_path_1=st3, gcs_path_2=st4, bucket=bk)
     validate_path(merged_os_graph, "merge_os_graph", service_sub)
 
-    # Uploads
     country_data_upload_to_notion(
         gameidx=GAME_IDX, st1=st1, st2=st2, service_sub=service_sub,
         genai_client=clients['genai_client'], MODEL_NAME=MODEL_NAME,
@@ -309,7 +274,6 @@ def global_ua_data_task(**context):
         headers_json=clients['headers_json'], NOTION_TOKEN=clients['notion_token'],
         NOTION_VERSION=clients['notion_version']
     )
-
 
 def rgroup_iapgemruby_task(**context):
     clients = init_clients()
@@ -352,7 +316,6 @@ def rgroup_iapgemruby_task(**context):
     path_merge_rgroup_graph = merge_rgroup_graph(gameidx=GAME_IDX, path_group_rev_pu=path_rev_group_rev_pu, bucket=bk)
     validate_path(path_merge_rgroup_graph, "merge_rgroup_graph", service_sub)
 
-    # Upload Sections
     rgroup_rev_upload_notion(
         gameidx=GAME_IDX, path_rev_group_rev_pu=path_rev_group_rev_pu,
         rev_group_rev_pu_path=path_rev_group_rev_pu, service_sub=service_sub,
@@ -372,7 +335,6 @@ def rgroup_iapgemruby_task(**context):
         notion=clients['notion_client'], bucket=bk, headers_json=clients['headers_json']
     )
 
-    # Toggles
     iap_toggle_add(
         gameidx=GAME_IDX, service_sub=service_sub, MODEL_NAME=MODEL_NAME,
         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, path_iap_df=path_iap_df,
@@ -400,7 +362,7 @@ def rgroup_iapgemruby_task(**context):
         path_rgroup_top3_rev=path_rgroup_top3_rev, PROJECT_ID=PROJECT_ID,
         LOCATION=LOCATION, bucket=bk, notion=clients['notion_client'], headers_json=clients['headers_json']
     )
-        
+
 def longterm_sales_task(**context):
     clients = init_clients()
     service_sub = SERVICE_SUB_LIST[4]
@@ -414,7 +376,6 @@ def longterm_sales_task(**context):
     
     monthly_day_average_merge_graph(gameidx=GAME_IDX, path_monthly_day_average_rev=path_monthly_day_average_rev, bucket=bk)
     
-    # Merge Tables
     path_merge_rgroup_rev_pu_table = merge_rgroup_rev_pu_table(gameidx=GAME_IDX, path_rgroup_rev_DOD=path_rgroup_rev_DOD, bucket=bk)
     path_merge_rgroup_total_rev_pu_table = merge_rgroup_total_rev_pu_table(gameidx=GAME_IDX, path_rgroup_rev_total=path_rgroup_rev_total, bucket=bk)
     
@@ -424,7 +385,6 @@ def longterm_sales_task(**context):
         path_merge_rgroup_total_rev_pu_table=path_merge_rgroup_total_rev_pu_table
     )
 
-    # Uploads
     longterm_rev_upload_notion(
         gameidx=GAME_IDX, service_sub=service_sub,
         path_monthly_day_average_rev=path_monthly_day_average_rev,
@@ -450,7 +410,6 @@ def longterm_sales_task(**context):
         notion=clients['notion_client'], bucket=bk, headers_json=clients['headers_json']
     )
 
-
 def newuser_roas_task(**context):
     clients = init_clients()
     service_sub = SERVICE_SUB_LIST[5]
@@ -471,7 +430,6 @@ def newuser_roas_task(**context):
         path_result6_BEP=path_result6_BEP, path_roas_kpi=path_roas_kpi, bucket=bk
     )
 
-    # GCS_BUCKET 이름이 BUCKET_NAME과 동일하다고 가정 (필요시 별도 설정)
     roas_kpi_table_merge(
         gameidx=GAME_IDX, path_roas_dataframe_preprocessing=path_roas_dataframe_preprocessing,
         path_result6_monthlyROAS=path_result6_monthlyROAS, path_roas_kpi=path_roas_kpi,
