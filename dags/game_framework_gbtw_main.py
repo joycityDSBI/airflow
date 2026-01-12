@@ -129,8 +129,8 @@ def init_clients():
     }
     
     # 노션 DB ID
-    # database_id = Variable.get("GAMEFRAMEWORK_GBTW_NOTION_DB_ID") 
-    database_id = '256ea67a568180318e32ddc6f610ba39' 
+    database_id = Variable.get("GAMEFRAMEWORK_GBTW_NOTION_DB_ID") 
+    
 
     return {
         "bq_client": bq_client,
