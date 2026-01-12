@@ -121,8 +121,8 @@ with DAG(
     ]
 
     # 제미나이 paid 국가별 함수
-    def genai_paid_geo_analytics(df):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+    def genai_paid_geo_analytics(df, credentials):
+        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -166,8 +166,8 @@ with DAG(
     
 
     # 제미나이 organic 국가별 함수
-    def genai_organic_geo_analytics(df):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+    def genai_organic_geo_analytics(df, credentials):
+        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -211,8 +211,8 @@ with DAG(
 
 
     # 제미나이 Paid 전체 요약 함수
-    def genai_paid_all_analytics(df, text_data):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+    def genai_paid_all_analytics(df, credentials, text_data):
+        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -255,8 +255,8 @@ with DAG(
         return first_hash_removed.replace('#', '<br>\n*')
 
     # 제미나이 전체 유저 요약 함수
-    def genai_organic_all_analytics(df, text_data):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+    def genai_organic_all_analytics(df, credentials, text_data):
+        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -671,20 +671,20 @@ with DAG(
 
             # 제미나이 해석 추가
             print("📧 제미나이 해석 추가 진행 중 ...")
-            genai_all_us = genai_paid_geo_analytics(df_all_us)
-            genai_all_jp = genai_paid_geo_analytics(df_all_jp)
-            genai_all_weu = genai_paid_geo_analytics(df_all_weu)
-            genai_all_kr = genai_paid_geo_analytics(df_all_kr)
-            genai_all_etc = genai_paid_geo_analytics(df_all_etc)
-            genai_all = genai_paid_all_analytics(df_all, genai_all_us + genai_all_jp + genai_all_weu + genai_all_kr + genai_all_etc)
+            genai_all_us = genai_paid_geo_analytics(df_all_us, credentials)
+            genai_all_jp = genai_paid_geo_analytics(df_all_jp, credentials)
+            genai_all_weu = genai_paid_geo_analytics(df_all_weu, credentials)
+            genai_all_kr = genai_paid_geo_analytics(df_all_kr, credentials)
+            genai_all_etc = genai_paid_geo_analytics(df_all_etc, credentials)
+            genai_all = genai_paid_all_analytics(df_all, credentials, genai_all_us + genai_all_jp + genai_all_weu + genai_all_kr + genai_all_etc)
             
             print("📧 Paid 유저에 대한 제미나이 분석 완료")
-            genai_non_us = genai_organic_geo_analytics(df_non_us)
-            genai_non_jp = genai_organic_geo_analytics(df_non_jp)
-            genai_non_weu = genai_organic_geo_analytics(df_non_weu)
-            genai_non_kr = genai_organic_geo_analytics(df_non_kr)
-            genai_non_etc = genai_organic_geo_analytics(df_non_etc)
-            genai_non = genai_organic_all_analytics(df_non, genai_non_us + genai_non_jp + genai_non_weu + genai_non_kr + genai_non_etc)
+            genai_non_us = genai_organic_geo_analytics(df_non_us, credentials)
+            genai_non_jp = genai_organic_geo_analytics(df_non_jp, credentials)
+            genai_non_weu = genai_organic_geo_analytics(df_non_weu, credentials)
+            genai_non_kr = genai_organic_geo_analytics(df_non_kr, credentials)
+            genai_non_etc = genai_organic_geo_analytics(df_non_etc, credentials)
+            genai_non = genai_organic_all_analytics(df_non, credentials, genai_non_us + genai_non_jp + genai_non_weu + genai_non_kr + genai_non_etc)
             print("📧 Organic 포함 전체 유저에 대한 제미나이 분석 완료")
 
             print("✅ 제미나이 해석 완료!")
