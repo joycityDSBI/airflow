@@ -112,7 +112,7 @@ def init_clients():
             vertexai=True,
             project=PROJECT_ID,
             location=LOCATION,
-            # credentials=creds  # google-genai 버전에 따라 이 인자가 필요 없거나, http_options 등으로 넘겨야 할 수 있습니다.
+            credentials=creds  # google-genai 버전에 따라 이 인자가 필요 없거나, http_options 등으로 넘겨야 할 수 있습니다.
                                 # 보통 vertexai=True와 project/location만 있으면 google.auth를 내부적으로 사용합니다.
         )
 

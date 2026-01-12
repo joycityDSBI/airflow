@@ -240,9 +240,6 @@ def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery
 ### 4> 일자별 매출에 대한 제미나이 코멘트
 def daily_revenue_gemini(gameidx: str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, path_sales_goal, bucket, PROJECT_ID, LOCATION, **context):
     
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     query_result1_dailySales = load_df_from_gcs(bucket, path_daily_revenue)
     query_result1_monthlySales = load_df_from_gcs(bucket, path_monthly_revenue)
     query_result1_salesGoal = load_df_from_gcs(bucket, path_sales_goal)
