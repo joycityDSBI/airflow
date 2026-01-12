@@ -203,7 +203,8 @@ def daily_data_task(**context):
         gameidx=GAME_IDX, service_sub=service_sub,
         genai_client=clients['genai_client'], MODEL_NAME=MODEL_NAME,
         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, notion=clients['notion_client'],
-        bucket=clients['bucket'], headers_json=clients['headers_json']
+        bucket=clients['bucket'], headers_json=clients['headers_json'],
+        **context
     )
     print(f"✅ {GAME_IDX} 일간 매출 데이터 업로드 완료")
 

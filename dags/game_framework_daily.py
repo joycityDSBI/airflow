@@ -552,8 +552,15 @@ def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, 
 
 def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, st3, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    current_context = get_current_context()
-    ti = current_context['task_instance']
+    # context에서 task_instance 우선 확인
+    if 'task_instance' in context:
+        ti = context['task_instance']
+    else:
+        # Fallback
+        current_context = get_current_context()
+        ti = current_context['task_instance']
+
+    print(f"🔧 Task Instance ID: {ti.task_id}, DAG ID: {ti.dag_id}")
     
     # 1. 먼저 'page_info' 키로 시도
     PAGE_INFO = ti.xcom_pull(
