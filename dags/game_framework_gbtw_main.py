@@ -487,7 +487,7 @@ with DAG(
 
     # Task 정의
     t1_create_page = PythonOperator(
-        task_id='create_gameframework_notion_page',
+        task_id='make_gameframework_notion_page_wraper', # 이 ID를 내부 함수들이 참조하고 있음
         python_callable=make_gameframework_notion_page_task,
     )
 
