@@ -1471,10 +1471,7 @@ def merge_country_group_df_draw(joyplegameid: int, gameidx: str, bigquery_client
     """
     from google.cloud import storage
     
-    # GCS 클라이언트 및 버킷 초기화
-    client = storage.Client()
-    bucket = client.bucket("game-framework1")  # 버킷명 수정 필요
-    
+   
     # 이미지 저장 경로 가져오기 (리스트)
     img_gcs_list = country_group_df_draw(joyplegameid, gameidx, bigquery_client, bucket)
     
@@ -1633,13 +1630,14 @@ def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, st1, se
     )
 
     # GCS 클라이언트 및 버킷 초기화
-    gcs_client = storage.Client()
-    bucket = gcs_client.bucket(bucket_name)
+    # GCS 클라이언트 및 버킷 초기화
+    # gcs_client = storage.Client()
+    # bucket = gcs_client.bucket(bucket_name)
+
     
     # GCS에서 합쳐진 이미지 목록 조회
     gcs_image_paths = []
-    blobs = gcs_client.list_blobs(
-        bucket_name,
+    blobs = bucket.list_blobs(
         prefix=f"{gameidx}/{merged_image_dir}/"
     )
 
