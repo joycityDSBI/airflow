@@ -16,6 +16,7 @@ import html
 import requests
 from google.genai import Client
 from google.genai import types
+from google.oauth2 import service_account
 
 
 # DAG 기본 설정
@@ -118,8 +119,8 @@ with DAG(
     ]
 
     # 제미나이 paid 국가별 함수
-    def genai_paid_geo_analytics(df):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+    def genai_paid_geo_analytics(df, credentials):
+        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -163,8 +164,8 @@ with DAG(
     
 
     # 제미나이 organic 국가별 함수
-    def genai_organic_geo_analytics(df):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+    def genai_organic_geo_analytics(df, credentials):
+        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -208,8 +209,8 @@ with DAG(
 
 
     # 제미나이 Paid 전체 요약 함수
-    def genai_paid_all_analytics(df, text_data):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+    def genai_paid_all_analytics(df, credentials, text_data):
+        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -252,8 +253,8 @@ with DAG(
         return first_hash_removed.replace('#', '<br>\n*')
 
     # 제미나이 전체 유저 요약 함수
-    def genai_organic_all_analytics(df, text_data):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+    def genai_organic_all_analytics(df, credentials, text_data):
+        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -298,11 +299,17 @@ with DAG(
 
     # GCP 인증
     cred_dict = json.loads(CREDENTIALS_JSON)
-    credentials, _ = google.auth.default(
+    # 2. private_key 줄바꿈 문자 처리 (필수 체크)
+    if 'private_key' in cred_dict:
+            # 만약 키 값에 \\n 문자가 그대로 들어있다면 실제 줄바꿈으로 변경
+        if '\\n' in cred_dict['private_key']:
+            cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+
+    # 3. 명시적으로 Service Account Credentials 생성 (google.auth.default 아님!)
+    credentials = service_account.Credentials.from_service_account_info(
+        cred_dict,
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
     )
-    credentials.refresh(Request())
-    bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
 
     # 날짜 가져오기 
     kst = timezone(timedelta(hours=9))
@@ -466,6 +473,23 @@ with DAG(
     def extract_and_send_email(**context):
         """쿼리 실행 및 이메일 발송"""
         try:
+            # GCP 인증
+            cred_dict = json.loads(CREDENTIALS_JSON)
+
+            # 2. private_key 줄바꿈 문자 처리 (필수 체크)
+            if 'private_key' in cred_dict:
+                 # 만약 키 값에 \\n 문자가 그대로 들어있다면 실제 줄바꿈으로 변경
+                if '\\n' in cred_dict['private_key']:
+                    cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+
+            # 3. 명시적으로 Service Account Credentials 생성 (google.auth.default 아님!)
+            credentials = service_account.Credentials.from_service_account_info(
+                cred_dict,
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+            
+            # 4. 클라이언트 생성
+            bigquery_client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
             # BigQuery 쿼리 실행
             query = basic_query + f"""
             select regdate_joyple_kst as Date --, geo_user_group 
@@ -636,18 +660,18 @@ with DAG(
 
             # 제미나이 해석 추가
             print("📧 제미나이 해석 추가 진행 중 ...")
-            genai_all_us = genai_paid_geo_analytics(df_all_us)
-            genai_all_jp = genai_paid_geo_analytics(df_all_jp)
-            genai_all_weu = genai_paid_geo_analytics(df_all_weu)
+            genai_all_us = genai_paid_geo_analytics(df_all_us, credentials)
+            genai_all_jp = genai_paid_geo_analytics(df_all_jp, credentials)
+            genai_all_weu = genai_paid_geo_analytics(df_all_weu, credentials)
             genai_all_etc = genai_paid_geo_analytics(df_all_etc)
-            genai_all = genai_paid_all_analytics(df_all, genai_all_us + genai_all_jp + genai_all_weu + genai_all_etc)
+            genai_all = genai_paid_all_analytics(df_all, credentials, genai_all_us + genai_all_jp + genai_all_weu + genai_all_etc)
             
             print("📧 Paid 유저에 대한 제미나이 분석 완료")
-            genai_non_us = genai_organic_geo_analytics(df_non_us)
-            genai_non_jp = genai_organic_geo_analytics(df_non_jp)
-            genai_non_weu = genai_organic_geo_analytics(df_non_weu)
-            genai_non_etc = genai_organic_geo_analytics(df_non_etc)
-            genai_non = genai_organic_all_analytics(df_non, genai_non_us + genai_non_jp + genai_non_weu + genai_non_etc)
+            genai_non_us = genai_organic_geo_analytics(df_non_us, credentials)
+            genai_non_jp = genai_organic_geo_analytics(df_non_jp, credentials)
+            genai_non_weu = genai_organic_geo_analytics(df_non_weu, credentials)
+            genai_non_etc = genai_organic_geo_analytics(df_non_etc, credentials)
+            genai_non = genai_organic_all_analytics(df_non, credentials, genai_non_us + genai_non_jp + genai_non_weu + genai_non_etc)
             print("📧 Organic 포함 전체 유저에 대한 제미나이 분석 완료")
 
             print("✅ 제미나이 해석 완료!")

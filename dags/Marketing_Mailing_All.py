@@ -35,6 +35,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel
 import google.generativeai as genai
 from google.generativeai import GenerativeModel as GeminiModel # 이름 충돌 방지를 위해 별칭 사용
+from google.oauth2 import service_account
 
 # Notion API
 from notion_client import Client
@@ -58,6 +59,7 @@ from google.genai import types
 from airflow.models import Variable
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+
 
 # 날짜 관련
 from datetime import datetime, timezone, timedelta
