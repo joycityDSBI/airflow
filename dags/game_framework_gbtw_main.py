@@ -177,7 +177,7 @@ def make_gameframework_notion_page_task(**context):
         )
         print(f"✅ {GAME_IDX} NOTION 페이지 생성 완료")
         context['task_instance'].xcom_push(key='page_info', value=page_info)
-        
+
         return page_info
     except Exception as e:
         raise AirflowException(f"❌ 페이지 생성 실패: {e}")
@@ -198,10 +198,9 @@ def daily_data_task(**context):
     img_gcs_path = merge_daily_graph(gameidx=GAME_IDX, daily_revenue_path=st1, daily_revenue_yoy_path=st2, bucket=clients['bucket'])
     validate_path(img_gcs_path, "merge_daily_graph", service_sub)
 
-    # 오타 수정: MOEDEL_NAME -> MODEL_NAME
     daily_revenue_data_upload_to_notion(
         st1=st1, st2=st2, st3=st3,
-        MOEDEL_NAME=MODEL_NAME, gameidx=GAME_IDX, service_sub=service_sub,
+        gameidx=GAME_IDX, service_sub=service_sub,
         genai_client=clients['genai_client'], MODEL_NAME=MODEL_NAME,
         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, notion=clients['notion_client'],
         bucket=clients['bucket'], headers_json=clients['headers_json']
