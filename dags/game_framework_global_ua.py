@@ -860,10 +860,14 @@ def merge_os_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **conte
 
 def country_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    current_context = get_current_context()
+    if 'task_instance' in context:
+        ti = context['task_instance']
+    else:
+        current_context = get_current_context()
+        ti = current_context['task_instance']
 
-    PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page_wraper',
+    PAGE_INFO = ti.xcom_pull(
+        task_ids='make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -1026,10 +1030,14 @@ def country_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_cli
 ## IAP+유가젬
 def os_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    current_context = get_current_context()
+    if 'task_instance' in context:
+        ti = context['task_instance']
+    else:
+        current_context = get_current_context()
+        ti = current_context['task_instance']
 
-    PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page_wraper',
+    PAGE_INFO = ti.xcom_pull(
+        task_ids='make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -1498,10 +1506,14 @@ def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, st1, se
                                         bucket, headers_json, NOTION_TOKEN, NOTION_VERSION, 
                                         bucket_name: str = "game-framework1", merged_image_dir: str= "merged", **context):
 
-    current_context = get_current_context()
+    if 'task_instance' in context:
+        ti = context['task_instance']
+    else:
+        current_context = get_current_context()
+        ti = current_context['task_instance']
 
-    PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page_wraper',
+    PAGE_INFO = ti.xcom_pull(
+        task_ids='make_gameframework_notion_page_wraper',
         key='page_info'
     )
 

@@ -226,7 +226,8 @@ def inhouse_data_task(**context):
         genai_client=clients['genai_client'], MODEL_NAME=MODEL_NAME,
         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, notion=clients['notion_client'],
         bucket=clients['bucket'], headers_json=clients['headers_json'],
-        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version']
+        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version'],
+        **context
     )
 
 def global_ua_data_task(**context):
@@ -258,7 +259,8 @@ def global_ua_data_task(**context):
         genai_client=clients['genai_client'], MODEL_NAME=MODEL_NAME,
         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, notion=clients['notion_client'],
         bucket=bk, headers_json=clients['headers_json'],
-        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version']
+        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version'],
+        **context
     )
 
     os_data_upload_to_notion(
@@ -266,7 +268,8 @@ def global_ua_data_task(**context):
         genai_client=clients['genai_client'], MODEL_NAME=MODEL_NAME,
         SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, notion=clients['notion_client'],
         bucket=bk, headers_json=clients['headers_json'],
-        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version']
+        NOTION_TOKEN=clients['notion_token'], NOTION_VERSION=clients['notion_version'],
+        **context
     )
 
     st5 = country_group_rev(joyplegameid=JOYPLE_GAME_ID, gameidx=GAME_IDX, bigquery_client=bq, bucket=bk)
@@ -281,7 +284,7 @@ def global_ua_data_task(**context):
         MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION,
         notion=clients['notion_client'], bigquery_client=bq, bucket=bk,
         headers_json=clients['headers_json'], NOTION_TOKEN=clients['notion_token'],
-        NOTION_VERSION=clients['notion_version']
+        NOTION_VERSION=clients['notion_version'], **context
     )
 
 def rgroup_iapgemruby_task(**context):
