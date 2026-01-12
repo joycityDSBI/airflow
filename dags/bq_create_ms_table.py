@@ -50,8 +50,6 @@ def get_bigquery_client():
     return client
 
 
-# 사용
-client = get_bigquery_client()
 
 def check_service_account():
     """서비스 계정 정보 확인 및 안내"""
@@ -106,6 +104,9 @@ with DAG(
 ) as dag:
 
     def POTC_standard_creative_list(**context):
+        # 사용
+        client = get_bigquery_client()
+
         query = """
         CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.POTC_standard_creative_list`
         (
@@ -142,6 +143,8 @@ with DAG(
 
 
     def GBTW_standard_creative_list(**context):
+        # 사용
+        client = get_bigquery_client()
         query = """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.GBTW_standard_creative_list`
             (
@@ -177,6 +180,8 @@ with DAG(
 
 
     def GBTW_Old_standard_creative_list(**context):
+        # 사용
+        client = get_bigquery_client()
         query = """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.GBTW_Old_standard_creative_list`
             (
@@ -207,6 +212,8 @@ with DAG(
         print(f"✅ GBTW_Old_standard_creative_list ✅ 테이블 생성 완료")
 
     def WWM_standard_creative_list(**context):
+        # 사용
+        client = get_bigquery_client()
         query = """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.WWM_standard_creative_list`
             (
@@ -242,6 +249,8 @@ with DAG(
 
 
     def DS_standard_creative_list(**context):
+        # 사용
+        client = get_bigquery_client()
         query= """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.DS_standard_creative_list`
             (
@@ -276,6 +285,8 @@ with DAG(
         print(f"✅ DS_standard_creative_list ✅ 테이블 생성 완료")
 
     def DRB_standard_creative_list(**context):
+        # 사용
+        client = get_bigquery_client()
         query="""
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.DRB_standard_creative_list`
             (
@@ -311,6 +322,8 @@ with DAG(
 
 
     def JYWN_standard_creative_list(**context):
+        # 사용
+        client = get_bigquery_client()
         query= """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.JYWN_standard_creative_list`
             (
@@ -345,6 +358,8 @@ with DAG(
 
 
     def BSTD_standard_creative_list(**context):
+        # 사용
+        client = get_bigquery_client()
         query = """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.BSTD_standard_creative_list`
             (
@@ -378,6 +393,8 @@ with DAG(
         print(f"✅ BSTD_standard_creative_list ✅ 테이블 생성 완료")          
 
     def RESU_standard_creative_list(**context):
+        # 사용
+        client = get_bigquery_client()
         query = """
             CREATE OR REPLACE EXTERNAL TABLE `data-science-division-216308.Creative.RESU_standard_creative_list`
             (
@@ -411,6 +428,8 @@ with DAG(
         print(f"✅ RESU_standard_creative_list ✅ 테이블 생성 완료")
 
     def all_standard_creative_list(**context):
+        # 사용
+        client = get_bigquery_client()
         query = """
             CREATE OR REPLACE TABLE `data-science-division-216308.Creative.all_standard_creative_list` AS 
             select
