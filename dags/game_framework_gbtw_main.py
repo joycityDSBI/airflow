@@ -92,9 +92,17 @@ def get_gcp_credentials():
     if 'private_key' in cred_dict:
         cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
     
+    # [수정] 스코프(Scopes)를 명시적으로 여러 개 추가합니다.
+    SCOPES = [
+        "https://www.googleapis.com/auth/cloud-platform",       # 기본 전체 권한
+        "https://www.googleapis.com/auth/devstorage.read_write", # GCS 업로드 필수 권한
+        "https://www.googleapis.com/auth/bigquery",             # BigQuery 권한
+        "https://www.googleapis.com/auth/drive"                 # (혹시 모를) 드라이브 권한
+    ]
+    
     return service_account.Credentials.from_service_account_info(
         cred_dict,
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        scopes=SCOPES
     )
 
 def init_clients():
@@ -131,7 +139,7 @@ def init_clients():
     # 노션 DB ID
     ##################################################### 라이브 전환 시 수정해야 함 #########################################
     database_id = Variable.get("GAMEFRAMEWORK_GBTW_NOTION_DB_ID_TEST") 
-    
+    print(f"✅ 설정 및 상수 정의 완료 for {database_id}")
 
     return {
         "bq_client": bq_client,
