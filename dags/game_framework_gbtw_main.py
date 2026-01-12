@@ -176,6 +176,8 @@ def make_gameframework_notion_page_task(**context):
             notion=clients['notion_client']
         )
         print(f"✅ {GAME_IDX} NOTION 페이지 생성 완료")
+        context['task_instance'].xcom_push(key='page_info', value=page_info)
+        
         return page_info
     except Exception as e:
         raise AirflowException(f"❌ 페이지 생성 실패: {e}")
