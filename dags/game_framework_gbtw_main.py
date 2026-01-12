@@ -81,7 +81,7 @@ SYSTEM_INSTRUCTION = [
     "The unit of amount in the Sales or Revenue, Cost Data is Korean Won.",
     "You must answer in Notion's Markdown format, but do not use title syntax.",
 ]
-
+print(f"✅ 설정 및 상수 정의 완료 for {GAME_IDX}")
 # ---------------------------------------------------------
 # 2. 유틸리티 함수 (클라이언트 생성 및 검증)
 # ---------------------------------------------------------

@@ -175,9 +175,6 @@ def cohort_by_country_cost(joyplegameid: int, gameidx: str, bigquery_client, buc
 ### 4> 일자별 매출에 대한 제미나이 코멘트
 def cohort_by_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
     
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     cohort_country_revenue = load_df_from_gcs(bucket, path_daily_revenue)
     cohort_country_cost = load_df_from_gcs(bucket, path_monthly_revenue)
 
@@ -329,9 +326,6 @@ def os_cost(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context)
 #client = genai.Client(api_key="AIzaSyAVv2B6DM6w9jd1MxiP3PbzAEMkl97SCGY")
 def os_by_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
     
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     os_rev_df = load_df_from_gcs(bucket, path_daily_revenue)
     os_cost_df = load_df_from_gcs(bucket, path_monthly_revenue)
 
@@ -1265,9 +1259,6 @@ def country_group_to_df(joyplegameid:int, gameidx:str, bigquery_client, bucket, 
 
 
 def country_group_to_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, bucket, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     query_result = load_df_from_gcs(bucket=bucket, path=path_daily_revenue)
 
