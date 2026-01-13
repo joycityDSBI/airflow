@@ -416,27 +416,84 @@ def format_number(value):
     formatted = formatted.replace('.', '.\u200b')
     return html.escape(formatted)
 
-
-# HTML 표 생성 함수
+# HTML 테이블 생성 함수 : 튜플 처리 추가
 def format_table(df):
-    # [권장] f-string을 유지하세요. (Old style '%' 포맷팅 금지)
-    html_table_header = '<tr class="data-title">'
-    for col in df.columns:
-        # 컬럼명에도 %가 있을 수 있으므로 방어 처리
-        safe_col = str(col).replace('%', '%%')
-        html_table_header += f'<td>{safe_col}</td>'  
-    html_table_header += '</tr>'
+    html_table_header = ''
+    
+    # [핵심] MultiIndex(2줄 이상 헤더) 처리
+    if isinstance(df.columns, pd.MultiIndex):
+        levels = df.columns.levels
+        codes = df.columns.codes
+        n_levels = len(levels) # 헤더 줄 수 (보통 2줄)
 
+        for level_i in range(n_levels):
+            html_table_header += '<tr class="data-title">'
+            
+            # 현재 레벨의 컬럼들을 순회
+            col_i = 0
+            while col_i < len(df.columns):
+                # 현재 컬럼의 이름 가져오기
+                col_name = df.columns[col_i][level_i]
+                
+                # 병합(colspan)할 칸 수 계산
+                colspan = 1
+                for next_i in range(col_i + 1, len(df.columns)):
+                    # 다음 컬럼이 현재 컬럼과 같은 그룹인지 확인
+                    # (상위 레벨들이 모두 같고, 현재 레벨 이름도 같아야 함)
+                    is_same_group = (
+                        df.columns[next_i][:level_i+1] == df.columns[col_i][:level_i+1]
+                    )
+                    if is_same_group:
+                        colspan += 1
+                    else:
+                        break
+                
+                # rowspan 계산 (하위 레벨이 비어있거나 동일한 경우 등 - 여기서는 간단히 빈칸 처리)
+                # 보통 MultiIndex에서 상위 레벨 이름 출력 후 colspan 적용
+                
+                # 안전한 문자열 변환 (% 기호 방어)
+                safe_col_name = str(col_name).replace('%', '%%')
+                
+                # HTML 생성 (colspan 적용)
+                if colspan > 1:
+                    html_table_header += f'<td colspan="{colspan}" style="text-align:center; font-weight:bold;">{safe_col_name}</td>'
+                else:
+                    # 상위 레벨이 비어있지 않거나, 하위 레벨인 경우
+                    html_table_header += f'<td style="text-align:center; font-weight:bold;">{safe_col_name}</td>'
+                
+                col_i += colspan # 처리한 만큼 인덱스 점프
+            
+            html_table_header += '</tr>'
+            
+    # [기존] SingleIndex(1줄 헤더) 처리
+    else:
+        html_table_header = '<tr class="data-title">'
+        for col in df.columns:
+            safe_col = str(col).replace('%', '%%')
+            html_table_header += f'<td>{safe_col}</td>'  
+        html_table_header += '</tr>'
+
+    # ---------------------------------------------------------
+    # 데이터 행(Body) 생성 부분 (기존과 동일하지만 안전성 강화)
     html_table_rows = ''
     for i, (idx, row) in enumerate(df.iterrows()):
         row_class = 'data1' if i % 2 == 0 else 'data2'
         html_table_rows += f'<tr class="{row_class}">'
         for cell in row:
+            # format_number 함수가 있다고 가정
             cell_value = format_number(cell)
             html_table_rows += f'<td>{cell_value}</td>'
         html_table_rows += '</tr>'
         
     return html_table_header, html_table_rows
+
+
+# 텍스트 파싱 함수
+def parse_response_text(response_data):
+    text = response_data.text
+    first_hash_removed = text.replace('#', '', 1)
+
+    return first_hash_removed.replace('#', '<br>\n*')
 
 
 # 메일 생성 및 발송 함수
@@ -1175,6 +1232,12 @@ def create_graph_send_email(**kwargs):
     html_table_header_wow_paid, html_table_rows_wow_paid =format_table(df_wow_paid)
     html_table_header_country, html_table_rows_country =format_table(df_country)
     html_table_header_os, html_table_rows_os =format_table(df_os)
+
+    response_current_text = parse_response_text(response_current)
+    response_organic_paid_text = parse_response_text(response_organic_paid)
+    response_wow_paid_text = parse_response_text(response_wow_paid)
+    response_country_text = parse_response_text(response_country)
+    response5_text = parse_response_text(response5)
     
 
     try:
@@ -1305,7 +1368,7 @@ def create_graph_send_email(**kwargs):
                             <tbody>
                                 <tr>
                                     <td style="white-space:nowrap" class="tableTitleNewgenai">
-                                    {response_current.text}
+                                    {response_current_text}
                                     </td>
                                 </tr>
                             </tbody>
@@ -1330,7 +1393,7 @@ def create_graph_send_email(**kwargs):
                             <tbody>
                                 <tr>
                                     <td style="white-space:nowrap" class="tableTitleNewgenai">
-                                    {response_organic_paid.text}
+                                    {response_organic_paid_text}
                                     </td>
                                 </tr>
                             </tbody>
@@ -1355,7 +1418,7 @@ def create_graph_send_email(**kwargs):
                             <tbody>
                                 <tr>
                                     <td style="white-space:nowrap" class="tableTitleNewgenai">
-                                    {response_wow_paid.text}
+                                    {response_wow_paid_text}
                                     </td>
                                 </tr>
                             </tbody>
@@ -1379,7 +1442,7 @@ def create_graph_send_email(**kwargs):
                             <tbody>
                                 <tr>
                                     <td style="white-space:nowrap" class="tableTitleNewgenai">
-                                    {response_country.text}
+                                    {response_country_text}
                                     </td>
                                 </tr>
                             </tbody>
@@ -1404,7 +1467,7 @@ def create_graph_send_email(**kwargs):
                             <tbody>
                                 <tr>
                                     <td style="white-space:nowrap" class="tableTitleNewgenai">
-                                    {response5.text}
+                                    {response5_text}
                                     </td>
                                 </tr>
                             </tbody>
