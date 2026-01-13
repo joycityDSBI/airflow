@@ -208,7 +208,8 @@ def parse_flat(rows):
 ### 4> 변환된 데이터프레임을 BigQuery로 업로드
 def upload_to_bigquery(df, project_id, dataset_id, table_id):
      # BigQuery 클라이언트 생성
-    client = bigquery.Client(project=project_id)
+    creds = get_gcp_credentials()
+    client = bigquery.Client(project=project_id, credentials=creds)
 
     # 완전한 테이블 ID
     full_table_id = f"{project_id}.{dataset_id}.{table_id}"
