@@ -1109,11 +1109,8 @@ def create_graph_send_email():
     # 날짜 가져오기 
     kst = timezone(timedelta(hours=9))
     today = datetime.now(kst).date()
-    two_weeks_ago = today - timedelta(days=14)
-    yesterday = today - timedelta(days=1)
 
     try:
-
         # 이메일 HTML 본문 생성 (메일 클라이언트 호환성을 위해 인라인 스타일 사용)
         current_time = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
         html_body = f"""<!DOCTYPE html>
@@ -1404,7 +1401,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='Marketing_Mailing_ALL',
+    dag_id='Marketing_Mailing_ALL_Project',
     default_args=default_args,
     description='전체 프로젝트 마케팅 메일링',
     schedule='10 5 * * *',
@@ -1413,7 +1410,8 @@ with DAG(
     tags=['marketing', 'mailing', 'Total'],
 ) as dag:
 
-    marketing_mailing_gw = PythonOperator(
+
+    create_graph_send_email_task = PythonOperator(
         task_id='create_graph_send_email',
         python_callable=create_graph_send_email,
         provide_context=True,
