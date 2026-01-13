@@ -878,7 +878,7 @@ def create_graph_send_email(**kwargs):
 
     config_current_optimized = GenerateContentConfig(
         temperature=1.0,
-        thinking_config=types.ThinkingConfig(thinking_level="high"),
+        thinking_config=types.ThinkingConfig(include_thoughts=True),
         system_instruction= SYSTEM_INSTRUCTION,
         labels=LABELS
     )
@@ -932,7 +932,7 @@ def create_graph_send_email(**kwargs):
 
     config_organic_paid_optimized = GenerateContentConfig(
         temperature=1.0,
-        thinking_config=types.ThinkingConfig(thinking_level="high"),
+        thinking_config=types.ThinkingConfig(include_thoughts=True),
         system_instruction= SYSTEM_INSTRUCTION,
         labels=LABELS
     )
@@ -994,7 +994,7 @@ def create_graph_send_email(**kwargs):
 
     config_wow_paid_optimized = GenerateContentConfig(
         temperature=1.0,
-        thinking_config=types.ThinkingConfig(thinking_level="high"),
+        thinking_config=types.ThinkingConfig(include_thoughts=True),
         system_instruction= SYSTEM_INSTRUCTION,
         labels=LABELS
     )
@@ -1044,7 +1044,7 @@ def create_graph_send_email(**kwargs):
 
     config_country_optimized = GenerateContentConfig(
         temperature=1.0,
-        thinking_config=types.ThinkingConfig(thinking_level="high"),
+        thinking_config=types.ThinkingConfig(include_thoughts=True),
         system_instruction= SYSTEM_INSTRUCTION,
         labels=LABELS
     )
@@ -1097,7 +1097,7 @@ def create_graph_send_email(**kwargs):
 
     config_os_optimized = GenerateContentConfig(
         temperature=1.0,
-        thinking_config=types.ThinkingConfig(thinking_level="high"),
+        thinking_config=types.ThinkingConfig(include_thoughts=True),
         system_instruction= SYSTEM_INSTRUCTION,
         labels=LABELS
     )
