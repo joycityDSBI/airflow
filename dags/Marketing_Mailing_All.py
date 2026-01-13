@@ -7,6 +7,7 @@ import requests
 import json
 import logging
 import html
+import pandas as pd
 
 # 날짜 관련
 from datetime import datetime, timezone, timedelta
@@ -389,11 +390,12 @@ def df_to_md(df):
 
     return "\n".join([header, rows])
 
-# 숫자 포맷팅 함수 (1000단위 쉼표 추가)
+# 숫자 포맷팅 함수
 def format_number(value):
-    """숫자에 1000단위 쉼표 추가 + HTML 이스케이프"""
+    """숫자에 1000단위 쉼표 추가 + HTML 이스케이프 + % 기호 방어"""
     if pd.isna(value):
         return ''
+    
     try:
         # 숫자 타입 확인
         num = float(value)
@@ -406,6 +408,10 @@ def format_number(value):
     except (ValueError, TypeError):
         formatted = str(value)
     
+    # [핵심 수정 1] 데이터 안에 있는 '%' 문자를 '%%'로 바꿔줍니다.
+    # 이렇게 하면 나중에 혹시 % 포맷팅을 쓰더라도 에러가 나지 않습니다.
+    formatted = formatted.replace('%', '%%')
+
     # HTML 엔티티로 변환
     formatted = formatted.replace('.', '.\u200b')
     return html.escape(formatted)
@@ -413,10 +419,14 @@ def format_number(value):
 
 # HTML 표 생성 함수
 def format_table(df):
+    # [권장] f-string을 유지하세요. (Old style '%' 포맷팅 금지)
     html_table_header = '<tr class="data-title">'
     for col in df.columns:
-        html_table_header += f'<td>{col}</td>'  
+        # 컬럼명에도 %가 있을 수 있으므로 방어 처리
+        safe_col = str(col).replace('%', '%%')
+        html_table_header += f'<td>{safe_col}</td>'  
     html_table_header += '</tr>'
+
     html_table_rows = ''
     for idx, row in df.iterrows():
         row_class = 'data1' if idx % 2 == 0 else 'data2'
@@ -425,6 +435,7 @@ def format_table(df):
             cell_value = format_number(cell)
             html_table_rows += f'<td>{cell_value}</td>'
         html_table_rows += '</tr>'
+        
     return html_table_header, html_table_rows
 
 
