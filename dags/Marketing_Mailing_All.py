@@ -428,8 +428,8 @@ def format_table(df):
     html_table_header += '</tr>'
 
     html_table_rows = ''
-    for idx, row in df.iterrows():
-        row_class = 'data1' if idx % 2 == 0 else 'data2'
+    for i, (idx, row) in enumerate(df.iterrows()):
+        row_class = 'data1' if i % 2 == 0 else 'data2'
         html_table_rows += f'<tr class="{row_class}">'
         for cell in row:
             cell_value = format_number(cell)
