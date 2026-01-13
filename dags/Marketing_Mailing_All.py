@@ -384,7 +384,7 @@ def df_to_md(df):
     return "\n".join([header, rows])
 
 
-def create_graph_send_email():
+def create_graph_send_email(**kwargs):
     """마케팅 프레임워크 Total 정보 생성 및 이메일 발송"""
 
     # 1. GCP 인증 정보 가져오기
