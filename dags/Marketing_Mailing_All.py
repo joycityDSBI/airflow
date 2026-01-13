@@ -405,7 +405,7 @@ def format_number(value):
         # 소수점이 있는 경우
         else:
             formatted = f"{num:,.2f}"
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
         formatted = str(value)
     
     # [핵심 수정 1] 데이터 안에 있는 '%' 문자를 '%%'로 바꿔줍니다.
