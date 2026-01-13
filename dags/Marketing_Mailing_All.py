@@ -123,8 +123,14 @@ def get_gcp_credentials():
     # 3. 명시적으로 Service Account Credentials 생성 (google.auth.default 아님!)
     credentials = service_account.Credentials.from_service_account_info(
         cred_dict,
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        SCOPES = [
+        "https://www.googleapis.com/auth/cloud-platform", # [필수] Vertex AI 및 대부분의 GCP 서비스 만능 키
+        "https://www.googleapis.com/auth/devstorage.read_write",
+        "https://www.googleapis.com/auth/bigquery",
+        "https://www.googleapis.com/auth/drive"
+        ]
     )
+    
     return credentials
 
 
@@ -884,9 +890,9 @@ def create_graph_send_email(**kwargs):
     )
 
     response_current = genai_client.models.generate_content(
-        model="gemini-3-pro-preview",   # API 호출
-        contents = prompt_current_final
-        ,config=config_current_optimized
+        model="gemini-3-pro-preview"   # API 호출
+        , contents = prompt_current_final
+        , config=config_current_optimized
     )
 
     df_organic_paid_md = df_to_md(df_organic_paid)
