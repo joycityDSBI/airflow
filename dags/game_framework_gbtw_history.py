@@ -245,7 +245,7 @@ def notion_to_bigquery():
     df.columns = df.columns.str.strip()
 
     ## 원하는 컬럼만 가져오기
-    df = df[['공개','대상 월드','패치 일자','상태','시작일','종료일','분류','제목','이벤트 카테고리','자체 결제']] ## 10개
+    df = df[['공개','대상 월드','패치 일자','상태','시작일','종료일','분류','제목','분석 카테고리','자체 결제']] ## 10개
 
     ## 컬럼명 영어로 변경
     df = df.rename(columns={
@@ -257,7 +257,7 @@ def notion_to_bigquery():
             '종료일': 'endDate',
             '분류': 'category',
             '제목': 'title',
-            '이벤트 카테고리' : 'eventCategory',
+            '분석 카테고리' : 'eventCategory',
             '자체 결제' : 'isSelfPayment'
         })
     
