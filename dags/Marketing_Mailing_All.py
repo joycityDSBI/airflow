@@ -6,6 +6,7 @@ import os
 import requests
 import json
 import logging
+import html
 
 # 날짜 관련
 from datetime import datetime, timezone, timedelta
@@ -388,7 +389,46 @@ def df_to_md(df):
 
     return "\n".join([header, rows])
 
+# 숫자 포맷팅 함수 (1000단위 쉼표 추가)
+def format_number(value):
+    """숫자에 1000단위 쉼표 추가 + HTML 이스케이프"""
+    if pd.isna(value):
+        return ''
+    try:
+        # 숫자 타입 확인
+        num = float(value)
+        # 정수인 경우
+        if num == int(num):
+            formatted = f"{int(num):,}"
+        # 소수점이 있는 경우
+        else:
+            formatted = f"{num:,.2f}"
+    except (ValueError, TypeError):
+        formatted = str(value)
+    
+    # HTML 엔티티로 변환
+    formatted = formatted.replace('.', '.\u200b')
+    return html.escape(formatted)
 
+
+# HTML 표 생성 함수
+def format_table(df):
+    html_table_header = '<tr class="data-title">'
+    for col in df.columns:
+        html_table_header += f'<td>{col}</td>'  
+    html_table_header += '</tr>'
+    html_table_rows = ''
+    for idx, row in df.iterrows():
+        row_class = 'data1' if idx % 2 == 0 else 'data2'
+        html_table_rows += f'<tr class="{row_class}">'
+        for cell in row:
+            cell_value = format_number(cell)
+            html_table_rows += f'<td>{cell_value}</td>'
+        html_table_rows += '</tr>'
+    return html_table_header, html_table_rows
+
+
+# 메일 생성 및 발송 함수
 def create_graph_send_email(**kwargs):
     """마케팅 프레임워크 Total 정보 생성 및 이메일 발송"""
 
@@ -1118,6 +1158,14 @@ def create_graph_send_email(**kwargs):
     kst = timezone(timedelta(hours=9))
     today = datetime.now(kst).date()
 
+    # 표 변환
+    html_table_header_current, html_table_rows_current =format_table(df_current)
+    html_table_header_organic_paid, html_table_rows_organic_paid =format_table(df_organic_paid)
+    html_table_header_wow_paid, html_table_rows_wow_paid =format_table(df_wow_paid)
+    html_table_header_country, html_table_rows_country =format_table(df_country)
+    html_table_header_os, html_table_rows_os =format_table(df_os)
+    
+
     try:
         # 이메일 HTML 본문 생성 (메일 클라이언트 호환성을 위해 인라인 스타일 사용)
         current_time = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
@@ -1237,7 +1285,8 @@ def create_graph_send_email(**kwargs):
 
                         <table border="1" width="100%">
                             <tbody>
-                                {df_current}
+                                {html_table_header_current}
+                                {html_table_rows_current}
                             </tbody>
                         </table>
 
@@ -1261,7 +1310,8 @@ def create_graph_send_email(**kwargs):
 
                         <table border="1" width="100%">
                             <tbody>
-                                {df_organic_paid}
+                                {html_table_header_organic_paid}
+                                {html_table_rows_organic_paid}
                             </tbody>
                         </table>
 
@@ -1285,7 +1335,8 @@ def create_graph_send_email(**kwargs):
 
                         <table border="1" width="100%">
                             <tbody>
-                                {df_wow_paid}
+                                {html_table_header_wow_paid}
+                                {html_table_rows_wow_paid}
                             </tbody>
                         </table>
 
@@ -1309,7 +1360,8 @@ def create_graph_send_email(**kwargs):
 
                         <table border="1" width="100%">
                             <tbody>
-                                {df_country}
+                                {html_table_header_country}
+                                {html_table_rows_country}
                             </tbody>
                         </table>
                         <table border="1" width="100%">
@@ -1332,7 +1384,8 @@ def create_graph_send_email(**kwargs):
 
                         <table border="1" width="100%">
                             <tbody>
-                                {df_os}
+                                {html_table_header_os}
+                                {html_table_rows_os}
                             </tbody>
                         </table>
 
@@ -1371,7 +1424,7 @@ def create_graph_send_email(**kwargs):
         msg = MIMEMultipart()
         msg['From'] = SENDER_EMAIL
         msg['To'] = ', '.join(RECIPIENT_EMAILS)
-        msg['Subject'] = f"[WWM] UA Performance & Cost Report {today}"
+        msg['Subject'] = f"게임 별 메일링 통합 성과 리포트 {today}"
         msg.attach(MIMEText(html_body, 'html'))
         
         server.sendmail(SENDER_EMAIL, RECIPIENT_EMAILS, msg.as_string())
