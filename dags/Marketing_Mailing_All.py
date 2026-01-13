@@ -878,7 +878,8 @@ def create_graph_send_email(**kwargs):
 
     genai_client = GeminiClient(
         vertexai=True,
-        location="global"      # genai 호출용location 변경
+        location="global",     # genai 호출용location 변경
+        credentials=credentials
     )
 
     config_current_optimized = GenerateContentConfig(
