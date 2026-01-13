@@ -102,8 +102,8 @@ with DAG(
                 email_value = "".join([text["plain_text"] for text in email_prop["rich_text"]])
                 emails.append(email_value)
 
-    # RECIPIENT_EMAILS = emails
-    RECIPIENT_EMAILS = ['seongin@joycity.com']
+    RECIPIENT_EMAILS = emails
+    # RECIPIENT_EMAILS = ['seongin@joycity.com']
 
     # 제미나이 설정
     LOCATION = "us-central1"

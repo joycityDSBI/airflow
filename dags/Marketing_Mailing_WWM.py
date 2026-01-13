@@ -301,7 +301,7 @@ with DAG(
 
     # GCP 인증
     cred_dict = json.loads(CREDENTIALS_JSON)
-# 2. private_key 줄바꿈 문자 처리 (필수 체크)
+    # 2. private_key 줄바꿈 문자 처리 (필수 체크)
     if 'private_key' in cred_dict:
             # 만약 키 값에 \\n 문자가 그대로 들어있다면 실제 줄바꿈으로 변경
         if '\\n' in cred_dict['private_key']:
