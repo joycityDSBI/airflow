@@ -512,30 +512,30 @@ with DAG(
         python_callable=make_gameframework_notion_page_task,
     )
 
-    # t2_daily = PythonOperator(
-    #     task_id='daily_data_game_framework',
-    #     python_callable=daily_data_task,
-    # )
+    t2_daily = PythonOperator(
+        task_id='daily_data_game_framework',
+        python_callable=daily_data_task,
+    )
 
-    # t3_inhouse = PythonOperator(
-    #     task_id='inhouse_data_game_framework',
-    #     python_callable=inhouse_data_task,
-    # )
+    t3_inhouse = PythonOperator(
+        task_id='inhouse_data_game_framework',
+        python_callable=inhouse_data_task,
+    )
 
-    # t4_global_ua = PythonOperator(
-    #     task_id='global_ua_data_game_framework',
-    #     python_callable=global_ua_data_task,
-    # )
+    t4_global_ua = PythonOperator(
+        task_id='global_ua_data_game_framework',
+        python_callable=global_ua_data_task,
+    )
 
-    # t5_rgroup = PythonOperator(
-    #     task_id='rgroup_iapgemruby_data_game_framework',
-    #     python_callable=rgroup_iapgemruby_task,
-    # )
+    t5_rgroup = PythonOperator(
+        task_id='rgroup_iapgemruby_data_game_framework',
+        python_callable=rgroup_iapgemruby_task,
+    )
 
-    # t6_longterm = PythonOperator(
-    #     task_id='longterm_sales_data_game_framework',
-    #     python_callable=longterm_sales_task,
-    # )
+    t6_longterm = PythonOperator(
+        task_id='longterm_sales_data_game_framework',
+        python_callable=longterm_sales_task,
+    )
 
     t7_newuser_roas = PythonOperator(
         task_id='newuser_roas_data_game_framework',
@@ -548,6 +548,4 @@ with DAG(
     )
 
     # 의존성 설정
-    t1_create_page >> t7_newuser_roas >> t8_summary
-
-    # t2_daily >> t3_inhouse >> t4_global_ua >> t5_rgroup >> t6_longterm >>
+    t1_create_page >> t2_daily >> t3_inhouse >> t4_global_ua >> t5_rgroup >> t6_longterm >> t7_newuser_roas >> t8_summary
