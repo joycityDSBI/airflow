@@ -123,14 +123,13 @@ def get_gcp_credentials():
     # 3. 명시적으로 Service Account Credentials 생성 (google.auth.default 아님!)
     credentials = service_account.Credentials.from_service_account_info(
         cred_dict,
-        SCOPES = [
+        scopes=[
         "https://www.googleapis.com/auth/cloud-platform", # [필수] Vertex AI 및 대부분의 GCP 서비스 만능 키
         "https://www.googleapis.com/auth/devstorage.read_write",
         "https://www.googleapis.com/auth/bigquery",
         "https://www.googleapis.com/auth/drive"
         ]
     )
-    
     return credentials
 
 
