@@ -389,7 +389,9 @@ def create_graph_send_email(**kwargs):
 
     # 1. GCP 인증 정보 가져오기
     credentials = get_gcp_credentials()
-    client = bigquery.Client(project=GOOGLE_CLOUD_PROJECT, location=GOOGLE_CLOUD_LOCATION, credentials=credentials)
+    client = bigquery.Client(project=GOOGLE_CLOUD_PROJECT
+                            #  , location='US'
+                             , credentials=credentials)
 
     ## 1> cohort별 전체 지표
     query = """WITH ua_perfo AS (
