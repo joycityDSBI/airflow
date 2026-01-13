@@ -1414,5 +1414,5 @@ with DAG(
     create_graph_send_email_task = PythonOperator(
         task_id='create_graph_send_email',
         python_callable=create_graph_send_email,
-        provide_context=True,
+        dag=dag
     )
