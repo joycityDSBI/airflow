@@ -104,6 +104,11 @@ def query_notion_database(notion_token, dbid, notion_version):
         "Content-Type": "application/json"
     }
 
+    if notion_token:
+        print(f"🔑 Token Check: {notion_token[:4]}**** (Length: {len(notion_token)})")
+    else:
+        print("❌ Token is Empty or None!")
+
     results = []       # 조회된 데이터 저장할 리스트
     has_more = True    # 다음 페이지가 있는지 여부
     next_cursor = None # 다음 페이지 시작 위치
@@ -129,6 +134,11 @@ def query_notion_database(notion_token, dbid, notion_version):
         "Notion-Version": notion_version,
         "Content-Type": "application/json"
     }
+
+    if notion_token:
+        print(f"🔑 Token Check: {notion_token[:4]}**** (Length: {len(notion_token)})")
+    else:
+        print("❌ Token is Empty or None!")
 
     results = []       # 조회된 데이터 저장할 리스트
     has_more = True    # 다음 페이지가 있는지 여부
