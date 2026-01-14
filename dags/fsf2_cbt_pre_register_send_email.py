@@ -90,7 +90,7 @@ def get_country_mail():
         COUNT(DISTINCT CASE WHEN platform = 'Xbox Series X|S' THEN email end) as xbox_user_count
     FROM fsf2_beta_testers
     GROUP BY country
-    ORDER BY country DESC;
+    ORDER BY 2 DESC;
     """
     
     try:
