@@ -10,7 +10,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine
 
