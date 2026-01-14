@@ -110,10 +110,16 @@ def update_google_sheet(df):
         # 기존 데이터 클리어 (헤더 포함 전체 삭제)
         worksheet.clear()
         
+        # ========================================================
+        # [수정] 데이터 타입 변환 (Timestamp -> String)
+        # ========================================================
+        # 날짜 객체를 JSON이 이해할 수 있는 문자열로 변환합니다.
+        df_str = df.astype(str)
+
         # 데이터 준비 (헤더 + 내용)
         # gspread는 리스트의 리스트 형태로 데이터를 받습니다.
-        header = df.columns.values.tolist()
-        data = df.values.tolist()
+        header = df_str.columns.values.tolist()
+        data = df_str.values.tolist()
         final_data = [header] + data
         
         # 데이터 업데이트 (A1 셀부터 시작)
