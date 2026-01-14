@@ -10,6 +10,7 @@ import os
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 from sqlalchemy.dialects.postgresql import insert # Bulk Upsert용
