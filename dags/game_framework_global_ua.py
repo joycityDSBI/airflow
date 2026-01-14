@@ -1140,10 +1140,23 @@ def os_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, 
         PROJECT_ID=PROJECT_ID,
         LOCATION=LOCATION)
     blocks = md_to_notion_blocks(gemini_text)
-    notion.blocks.children.append(
-        block_id=PAGE_INFO['id'],
-        children=blocks
-    )
+
+    # [수정] 블록을 배치 단위(예: 50개)로 나누어 전송하는 로직 추가
+    batch_size = 50  # 한 번에 보낼 블록 수 (타임아웃 방지)
+    
+    print(f"📝 총 {len(blocks)}개의 블록을 {batch_size}개씩 나누어 업로드합니다.")
+
+    for i in range(0, len(blocks), batch_size):
+        batch = blocks[i:i + batch_size]
+        try:
+            notion.blocks.children.append(
+                block_id=PAGE_INFO['id'],
+                children=batch
+            )
+            print(f"   ✅ 배치 {i//batch_size + 1} 업로드 완료 ({len(batch)}개)")
+        except Exception as e:
+            print(f"   ❌ 배치 {i//batch_size + 1} 업로드 실패: {e}")
+            raise e
 
 
 # 최근 30일 기준 국가그룹별 X 결제처별 매출 쿼리

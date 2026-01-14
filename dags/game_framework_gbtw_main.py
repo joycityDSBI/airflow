@@ -126,7 +126,7 @@ def init_clients():
 
     # 3. Notion Client
     notion_token = Variable.get("MS_TEAM_NOTION_TOKEN")
-    notion_client = NotionClient(auth=notion_token)
+    notion_client = NotionClient(auth=notion_token, timeout_ms=120000)
     
     # 4. Configs
     notion_version = Variable.get("NOTION_API_VERSION")
