@@ -16,11 +16,13 @@ from Crypto.Util.Padding import unpad
 from sqlalchemy.dialects.postgresql import insert # Bulk Upsert용
 from sqlalchemy import text
 
-from airflow import DAG
+from airflow import DAG, Dataset
 from airflow.models import Variable
 from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
 
 
+fsf2_cbt_pre_register_etl = Dataset('fsf2_cbt_pre_register_etl')
 
 def get_var(key: str, default: str = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
@@ -284,3 +286,11 @@ with DAG(
         op_kwargs={'start_unix': None},
         dag=dag
     )
+
+    bash_task = BashOperator(
+        task_id = 'bash_task',
+        outlets = [fsf2_cbt_pre_register_etl],
+        bash_command = 'echo "producer_1 수행 완료"'
+    )
+
+    fsf2_cbt_pre_register_etl_task >> bash_task
