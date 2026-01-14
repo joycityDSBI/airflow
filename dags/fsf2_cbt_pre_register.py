@@ -115,6 +115,13 @@ def execute_bulk_upsert(session, batch_data: List[Dict]):
 # 5. 메인 로직 (fetch_and_store_data)
 # ==========================================
 def fetch_and_store_data(start_unix: Optional[int] = None):
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
+
     # 1. API 호출
     params = {}
     if start_unix:
@@ -124,7 +131,7 @@ def fetch_and_store_data(start_unix: Optional[int] = None):
     
     try:
         # stream=True로 설정하여 메모리 효율성 증대 (초대용량 응답 대비)
-        response = requests.get(EXTERNAL_API_URL, params=params, stream=True, timeout=60)
+        response = requests.get(EXTERNAL_API_URL, params=params, headers=headers, stream=True, timeout=60)
         response.raise_for_status()
         
         # 전체 JSON을 한 번에 로드 (50만건 정도는 메모리 로드 가능, 수 GB급이면 ijson 같은 라이브러리 필요)
