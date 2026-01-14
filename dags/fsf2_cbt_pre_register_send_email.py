@@ -60,12 +60,12 @@ def get_country_stats():
     sql = """
     SELECT 
         DATE(created_at) as datekey,
-        country, platform,
-        COUNT(DISTINCT email) as user_count,
-        MAX(synced_at) as last_updated
+        country, 
+        COUNT(DISTINCT CASE WHEN platform = 'PlayStation 5' THEN email end) as ps5_user_count,
+        COUNT(DISTINCT CASE WHEN platform = 'Xbox Series X|S' THEN email end) as xbox_user_count
     FROM fsf2_beta_testers
-    GROUP BY 1,2,3
-    ORDER BY user_count DESC;
+    GROUP BY 1,2
+    ORDER BY 1,2 DESC;
     """
     
     try:
@@ -85,12 +85,12 @@ def get_country_mail():
     # 요청하신 쿼리: 전체 기간, 국가별 Group By, Count Distinct Email
     sql = """
     SELECT 
-        country, platform,
-        COUNT(DISTINCT email) as user_count,
-        MAX(synced_at) as last_updated
+        country, 
+        COUNT(DISTINCT CASE WHEN platform = 'PlayStation 5' THEN email end) as ps5_user_count,
+        COUNT(DISTINCT CASE WHEN platform = 'Xbox Series X|S' THEN email end) as xbox_user_count
     FROM fsf2_beta_testers
-    GROUP BY country, platform
-    ORDER BY user_count DESC;
+    GROUP BY country
+    ORDER BY country DESC;
     """
     
     try:
@@ -169,7 +169,8 @@ def send_stats_email(df):
     current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # User Count 합계 계산
-    total_count = df['user_count'].sum() if 'user_count' in df.columns else 0
+    ps5_count = df['ps5_user_count'].sum() if 'ps5_user_count' in df.columns else 0
+    xbox_count = df['xbox_user_count'].sum() if 'xbox_user_count' in df.columns else 0
     
     html_table = df.to_html(index=False, border=1, justify='center')
     
@@ -219,7 +220,9 @@ def send_stats_email(df):
             
             <div class="meta-info">
                 <p style="margin: 5px 0;"><strong>📅 발송 시간:</strong> {current_time_str}</p>
-                <p style="margin: 5px 0;"><strong>👥 총 가입자 수:</strong> <span style="color: #d35400; font-weight: bold;">{total_count:,} 명</span></p>
+                <p style="margin: 5px 0;"><strong>🧑‍🤝‍🧑 PS5 가입자 수:</strong> <span style="color: #d35400; font-weight: bold;">{ps5_count:,} 명</span></p>
+                <p style="margin: 5px 0;"><strong>🧑‍🤝‍🧑 Xbox 가입자 수:</strong> <span style="color: #d35400; font-weight: bold;">{xbox_count:,} 명</span></p>
+                <p style="margin: 5px 0;"><strong>👥 총 가입자 수:</strong> <span style="color: #d35400; font-weight: bold;">{xbox_count + ps5_count:,} 명</span></p>
             </div>
             
             {html_table}
