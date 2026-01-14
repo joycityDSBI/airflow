@@ -59,6 +59,32 @@ def get_country_stats():
     # 요청하신 쿼리: 전체 기간, 국가별 Group By, Count Distinct Email
     sql = """
     SELECT 
+        DATE(created_at) as datekey,
+        country,
+        COUNT(DISTINCT email) as user_count,
+        MAX(synced_at) as last_updated
+    FROM fsf2_beta_testers
+    GROUP BY 1,2
+    ORDER BY user_count DESC;
+    """
+    
+    try:
+        df = pd.read_sql(sql, engine)
+        logger.info(f"Fetched {len(df)} rows from DB.")
+        return df
+    except Exception as e:
+        logger.error(f"DB Query Failed: {e}")
+        raise
+
+def get_country_mail():
+    """
+    [DB 조회] 전체 기간에 대해 국가별 가입자 수 집계
+    """
+    engine = create_engine(DATABASE_URL)
+    
+    # 요청하신 쿼리: 전체 기간, 국가별 Group By, Count Distinct Email
+    sql = """
+    SELECT 
         country,
         COUNT(DISTINCT email) as user_count,
         MAX(synced_at) as last_updated
@@ -184,12 +210,13 @@ def send_stats_email(df):
 def etl_process(**kwargs):
     # 1. DB 조회
     df = get_country_stats()
+    df_mail = get_country_mail()
     
     # 2. 구글 시트 업데이트
     update_google_sheet(df)
     
     # 3. 이메일 발송
-    send_stats_email(df)
+    send_stats_email(df_mail)
 
 default_args = {
     'owner': 'airflow',
