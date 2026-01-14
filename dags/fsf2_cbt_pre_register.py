@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 from sqlalchemy.dialects.postgresql import insert # Bulk Upsert용
+from sqlalchemy import text
 
 from airflow import DAG
 from airflow.models import Variable
@@ -71,17 +72,51 @@ Base.metadata.create_all(bind=engine)
 # 3. 유틸리티 함수
 # ==========================================
 def decrypt_country(encrypted_text: str) -> Optional[str]:
-    """AES-256-CBC 복호화"""
+    """
+    AES-256-CBC 복호화 함수 (디버깅 로그 추가 버전)
+    """
+    if not encrypted_text:
+        return None
+
     try:
-        if not encrypted_text: return None
+        # 1. Base64 디코딩
         enc_data = base64.b64decode(encrypted_text)
+        
+        # 2. Key / IV 준비
+        # (전역 변수 AES_KEY_STR, AES_IV_STR 사용)
         key = AES_KEY_STR.encode('utf-8')
         iv = AES_IV_STR.encode('utf-8')
+        
+        # 3. 복호화 실행
         cipher = AES.new(key, AES.MODE_CBC, iv)
-        return unpad(cipher.decrypt(enc_data), AES.block_size).decode('utf-8')
+        decrypted_data = unpad(cipher.decrypt(enc_data), AES.block_size)
+        
+        return decrypted_data.decode('utf-8')
+
     except Exception as e:
-        # 복호화 실패 시 로그 남기고 원본 리턴 혹은 None
-        # logger.warning(f"Decryption failed: {e}") 
+        # ============================================================
+        # [핵심] 복호화 실패 원인 로그 출력
+        # ============================================================
+        logger.error(f"##### [Decryption Failed] #####")
+        logger.error(f"1. Input Text (Short): {encrypted_text[:20]}...") # 앞부분만 출력
+        logger.error(f"2. Error Message: {str(e)}")
+        logger.error(f"3. Error Type: {type(e).__name__}")
+        
+        # 키/IV 검증 (중요: 환경변수 로딩 문제 확인)
+        key_len = len(AES_KEY_STR) if AES_KEY_STR else 0
+        iv_len = len(AES_IV_STR) if AES_IV_STR else 0
+        logger.error(f"4. Key Length Check: {key_len} (Must be 32)")
+        logger.error(f"5. IV Length Check: {iv_len} (Must be 16)")
+        
+        # Base64 디코딩 문제인지 확인
+        try:
+            base64.b64decode(encrypted_text)
+        except Exception as b64_err:
+            logger.error(f"6. Base64 Decode Error: {str(b64_err)}")
+            
+        logger.error(f"################################")
+        
+        # 실패 시 프로그램이 죽지 않도록 원본(암호문)을 그대로 반환
         return encrypted_text
     
 def execute_bulk_upsert(session, batch_data: List[Dict]):
@@ -150,6 +185,10 @@ def fetch_and_store_data(start_unix: Optional[int] = None):
     processed_count = 0
 
     try:
+
+        logger.info("Truncating table beta_testers...")
+        session.execute(text("TRUNCATE TABLE beta_testers RESTART IDENTITY CASCADE;"))
+
         for index, item in enumerate(items):
             encrypted_email = item.get("email")
             encrypted_country = item.get("country")
