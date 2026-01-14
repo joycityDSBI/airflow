@@ -62,7 +62,7 @@ def get_country_stats():
         country,
         COUNT(DISTINCT email) as user_count,
         MAX(synced_at) as last_updated
-    FROM beta_testers
+    FROM fsf2_beta_testers
     GROUP BY country
     ORDER BY user_count DESC;
     """
