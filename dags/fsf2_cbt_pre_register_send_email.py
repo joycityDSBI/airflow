@@ -35,7 +35,7 @@ GOOGLE_SHEET_ID = "1wB6_RhpTPanaONtqQD93Kd1PCWvpIv7MCfq7JCypc5k" # 시트 URL �
 TARGET_SHEET_NAME = "Sheet1" # 데이터를 넣을 시트 탭 이름
 
 # 이메일 수신자
-EMAIL_RECIPIENT = ["seongin@joycity.com"]
+EMAIL_RECIPIENT = ["fc748c69.joycity.com@kr.teams.ms"]
 
 # SMTP 설정
 SMTP_SERVER = "61.43.45.137"
@@ -60,11 +60,11 @@ def get_country_stats():
     sql = """
     SELECT 
         DATE(created_at) as datekey,
-        country,
+        country, platform,
         COUNT(DISTINCT email) as user_count,
         MAX(synced_at) as last_updated
     FROM fsf2_beta_testers
-    GROUP BY 1,2
+    GROUP BY 1,2,3
     ORDER BY user_count DESC;
     """
     
@@ -85,11 +85,11 @@ def get_country_mail():
     # 요청하신 쿼리: 전체 기간, 국가별 Group By, Count Distinct Email
     sql = """
     SELECT 
-        country,
+        country, platform,
         COUNT(DISTINCT email) as user_count,
         MAX(synced_at) as last_updated
     FROM fsf2_beta_testers
-    GROUP BY country
+    GROUP BY country, platform
     ORDER BY user_count DESC;
     """
     
@@ -166,22 +166,73 @@ def send_stats_email(df):
 
     # 1. HTML 본문 생성
     # Pandas의 to_html 기능을 사용하여 스타일이 적용된 표를 만듭니다.
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # User Count 합계 계산
+    total_count = df['user_count'].sum() if 'user_count' in df.columns else 0
     
     html_table = df.to_html(index=False, border=1, justify='center')
     
+    style = """
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; }
+        .report-container { font-size: 13px; color: #333; }
+        h3 { font-size: 18px; margin-bottom: 10px; color: #2c3e50; }
+        .meta-info { margin-bottom: 20px; font-size: 13px; color: #555; }
+        
+        /* 테이블 스타일 */
+        .report-table {
+            width: 100%;
+            max-width: 600px;
+            border-collapse: collapse; /* 테두리 겹침 방지 (선을 얇게 만듦) */
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .report-table th {
+            background-color: #f2f2f2;
+            border-bottom: 2px solid #ddd; /* 헤더 아래는 조금 진하게 */
+            border-top: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            color: #333;
+        }
+        .report-table td {
+            border-bottom: 1px solid #eee; /* 셀 아래는 연하게 */
+            padding: 8px;
+            text-align: center;
+            color: #555;
+        }
+        /* 짝수 행 배경색 (가독성 향상) */
+        .report-table tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+    </style>
+    """
+
     email_content = f"""
-    <h3>[FSF2] CBT 사전예약 국가별 현황 리포트</h3>
-    <p><strong>발송 시간:</strong> {current_time}</p>
-    <p><strong>총 가입자 수:</strong> {df['user_count'].sum():,} 명</p>
-    <br>
-    {html_table}
-    <br>
-    <p>※ 이 메일은 Airflow에서 자동으로 발송되었습니다.</p>
+    <html>
+    <head>{style}</head>
+    <body>
+        <div class="report-container">
+            <h3>📊 [FSF2] CBT 사전예약 국가별 현황</h3>
+            
+            <div class="meta-info">
+                <p style="margin: 5px 0;"><strong>📅 발송 시간:</strong> {current_time_str}</p>
+                <p style="margin: 5px 0;"><strong>👥 총 가입자 수:</strong> <span style="color: #d35400; font-weight: bold;">{total_count:,} 명</span></p>
+            </div>
+            
+            {html_table}
+            
+            <br>
+            <p style="font-size: 11px; color: #999;">※ 이 메일은 Airflow에서 자동으로 발송되었습니다.</p>
+        </div>
+    </body>
+    </html>
     """
 
     # 메일 제목
-    subject = f"[FSF2] CBT 가입자 현황 ({datetime.now().strftime('%Y-%m-%d')})"
+    subject = f"**TEST** [FSF2] CBT 가입자 현황 ({datetime.now().strftime('%Y-%m-%d')})"
     
     # 이메일 발송
     logger.info("📧 이메일 발송 중...")
