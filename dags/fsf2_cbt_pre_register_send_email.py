@@ -16,7 +16,6 @@ from sqlalchemy import create_engine
 
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
-from airflow.utils.email import send_email # Airflow 내장 이메일 발송 함수
 
 fsf2_cbt_pre_register_etl = Dataset('fsf2_cbt_pre_register_etl')
 
@@ -194,7 +193,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='fsf2_stats_gsheet_email',
+    dag_id='fsf2_cbt_pre_register_report',
     default_args=default_args,
     description='국가별 가입자 통계 -> 구글시트 & 이메일 발송',
     schedule=[fsf2_cbt_pre_register_etl],
