@@ -186,8 +186,8 @@ def fetch_and_store_data(start_unix: Optional[int] = None):
 
     try:
 
-        logger.info("Truncating table beta_testers...")
-        session.execute(text("TRUNCATE TABLE beta_testers RESTART IDENTITY CASCADE;"))
+        logger.info("Truncating table fsf2_beta_testers...")
+        session.execute(text("TRUNCATE TABLE fsf2_beta_testers RESTART IDENTITY CASCADE;"))
 
         for index, item in enumerate(items):
             encrypted_email = item.get("email")
