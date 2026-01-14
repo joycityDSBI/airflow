@@ -206,7 +206,6 @@ def fetch_and_store_data(start_unix: Optional[int] = None):
 #     target_unix = int(sys.argv[1]) if len(sys.argv) > 1 else None
 #     fetch_and_store_data(target_unix)
 
-target_unix = int(sys.argv[1]) if len(sys.argv) > 1 else None
 
 # DAG 기본 설정
 default_args = {
@@ -228,6 +227,10 @@ with DAG(
     tags=['marketing', 'fsf2', 'cbt'],
 ) as dag:
 
+    def run_sync(**context):
+            # Airflow에서는 sys.argv 대신 context 변수나 직접 값을 넘깁니다
+            ts = int(context['data_interval_start'].timestamp())
+            fetch_and_store_data(ts)
 
     fsf2_cbt_pre_register_etl_task = PythonOperator(
         task_id='fetch_and_store_data',
