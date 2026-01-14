@@ -93,3 +93,6 @@ ipython>=8.12,<8.13  # 9.6.0은 Python 3.9+ 필요
 
 # Async
 aiohttp>=3.8,<4.0  # 4.0.0은 Python 3.9+ 필요
+
+# 복호화 라이브러리
+pycrypto>=2.6.1
