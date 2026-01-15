@@ -407,7 +407,8 @@ def generate_ua_data_in_bigquery(**context):
             """
     
     try: 
-        bq_client.query(truncate_query)
+        result = bq_client.query(truncate_query)
+        result.result()  # 쿼리 완료 대기
         print("✅ Bigquery 테이블 초기화 완료")
     except Exception as e:
         print(f"✗ Bigquery 테이블 초기화 오류: {str(e)}")
@@ -415,7 +416,9 @@ def generate_ua_data_in_bigquery(**context):
     
     try:
         print("✓ Bigquery 데이터 삽입 시작...")   
-        bq_client.query(query)
+        result = bq_client.query(query)
+        result.result()  # 쿼리 완료 대기
+
         print("✅ Bigquery 데이터 삽입 완료")
     except Exception as e:
         print(f"✗ Bigquery 데이터 삽입 오류: {str(e)}")
@@ -474,14 +477,12 @@ def generate_all_projects_reports(**context):
             job_config = bigquery.QueryJobConfig(
                 query_parameters=[bigquery.ScalarQueryParameter("project_name", "STRING", project_name)]
             )
-            print(f"[프로젝트: {project_name}] 쿼리 실행 중...")
-            print(f"쿼리: {query}")
             df = bq_client.query(query, job_config=job_config).to_dataframe()
 
             if df.empty:
                 print(f"⚠️ [WARNING] '{project_name}'에 대한 데이터가 0건입니다. (기간: 최근 3개월)")
             else:
-                print(f"✅ 데이터 조회 성공: {len(df)} 행")
+                print(f"✅ '{project_name}'의 데이터 조회 성공: {len(df)} 행")
             
             # csv_buffer = io.StringIO()
             # df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
