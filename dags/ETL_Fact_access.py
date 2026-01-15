@@ -45,8 +45,8 @@ def etl_f_common_register(target_date:list):
                 , a.PlaySeconds
                 , a.LogTime
             FROM `dataplatform-reporting.DataService.V_0160_0000_AccessLog_V` AS a
-            WHERE a.LogTime >= {start_utc}
-            AND a.LogTime < {end_utc}
+            WHERE a.LogTime >= '{start_utc}'
+            AND a.LogTime < '{end_utc}'
             AND a.AccessTypeID = 1
             )
             , TB as (
@@ -347,8 +347,8 @@ def adjust_f_common_register(target_date:list):
                 array_agg(STRUCT(game_id, world_id, auth_method_id, auth_account_name, tracker_account_id, mmp_type, device_id, ip, market_id, os_id, platform_device_type, 
                 app_id, log_time) ORDER BY log_time asc)[OFFSET(0)] AS INFO
                 from dataplatform-204306.CommonLog.Payment
-                where log_time >= {start_utc}
-                and log_time < {end_utc}
+                where log_time >= '{start_utc}'
+                and log_time < '{end_utc}'
                 group by joyple_game_code, auth_method_id, auth_account_name
             ) TA
             left join 
@@ -496,8 +496,8 @@ def etl_f_common_register_char(target_date:list):
             , a.PlaySeconds
             , a.LogTime
         FROM `dataplatform-reporting.DataService.V_0160_0000_AccessLog_V` AS a
-        WHERE a.LogTime >= {start_utc}
-        AND a.LogTime < {end_utc}
+        WHERE a.LogTime >= '{start_utc}'
+        AND a.LogTime < '{end_utc}'
         AND a.AccessTypeID = 1
         )
             SELECT 
@@ -534,8 +534,8 @@ def etl_f_common_register_char(target_date:list):
                         a.TrackerAccountName, a.TrackerTypeID, a.DeviceAccountName, a.GameAccountName,
                         a.GameSubUserName, a.ServerName, a.PlatformDeviceType, a.MarketID, a.OSID, a.IP, a.LogTime
                     FROM TA AS a
-                    WHERE a.LogTime >= {start_utc}
-                    AND a.LogTime < {end_utc}
+                    WHERE a.LogTime >= '{start_utc}'
+                    AND a.LogTime < '{end_utc}'
                     AND a.AccessTypeID = 1
                     AND a.GameID IS NOT NULL
                     AND a.WorldID           IS NOT NULL
@@ -654,8 +654,8 @@ def adjust_f_common_register_char(target_date:list):
                 array_agg(STRUCT(game_id, world_id, auth_method_id, auth_account_name, tracker_account_id, mmp_type, device_id, ip, market_id, os_id, platform_device_type, 
                 app_id, log_time, server_name) ORDER BY log_time asc)[OFFSET(0)] AS INFO
                 from dataplatform-204306.CommonLog.Payment
-                where log_time >= {start_utc}
-                and log_time < {end_utc}
+                where log_time >= '{start_utc}'
+                and log_time < '{end_utc}'
                 group by joyple_game_code, auth_method_id, auth_account_name, game_sub_user_name
             ) TA
             left join
@@ -750,8 +750,8 @@ def etl_f_common_access(target_date: list):
             , a.PlaySeconds
             , a.LogTime
         FROM `dataplatform-reporting.DataService.V_0160_0000_AccessLog_V` AS a
-        WHERE a.LogTime >= {start_utc}
-        AND a.LogTime < {end_utc}
+        WHERE a.LogTime >= '{start_utc}'
+        AND a.LogTime < '{end_utc}'
 
         UNION ALL
 
@@ -775,8 +775,8 @@ def etl_f_common_access(target_date: list):
         , 0 as PlaySeconds
         , log_time as LogTime
         FROM `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V`
-        WHERE log_time >= {start_utc}
-        AND log_time < {end_utc}
+        WHERE log_time >= '{start_utc}'
+        AND log_time < '{end_utc}'
         )
             SELECT 
                 DATE(TA.LogTime, "Asia/Seoul") as datekey
@@ -881,11 +881,13 @@ def etl_f_common_access_last_login(target_date: list):
     for td in target_date:
         target_date = td
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        kst = pytz.timezone('Asia/Seoul')
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
-        print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+
+        start_date = datetime.strptime(td, "%Y-%m-%d")
+        end_date = start_date + timedelta(days=1)
+        start_date = start_date.strftime("%Y-%m-%d") # '2014-06-10'
+        end_date = end_date.strftime("%Y-%m-%d")     # '2014-06-11'
+
+        print(f"📝 시작시간 : ", start_date, f" 📝 종료시간 : ", end_date)
 
         query = f"""
         MERGE datahub-478802.datahub.f_common_access_last_login AS target
@@ -904,7 +906,7 @@ def etl_f_common_access_last_login(target_date: list):
         UPDATE SET 
         target.last_login_datekey = source.datekey
         , target.max_game_user_level = source.max_game_user_level
-        , target.update_timestamp = CURRENT_TIMESTAMP()
+        , target.update_timestamp = CURRENT_TIMESTAMP('Asia/Seoul')
         WHEN NOT MATCHED BY target THEN
         INSERT (joyple_game_code, game_sub_user_name, auth_method_id, auth_account_name, last_login_datekey, max_game_user_level, update_timestamp)
         VALUES
@@ -915,7 +917,7 @@ def etl_f_common_access_last_login(target_date: list):
             , source.auth_account_name
             , source.datekey
             , source.max_game_user_level
-            , CURRENT_TIMESTAMP()
+            , CURRENT_TIMESTAMP('Asia/Seoul')
         )
         """
         client.query(query)

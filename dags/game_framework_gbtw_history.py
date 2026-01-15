@@ -13,6 +13,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.databricks.hooks.databricks import DatabricksHook
 from airflow.models import Variable
+from google.oauth2 import service_account
 
 def get_var(key: str, default: str = None, required: bool = False) -> str:
     """환경 변수 → Airflow Variable 순서로 조회"""
@@ -53,9 +54,35 @@ TABLE_ID = "GBTW_history"
 NOTION_API_VERSION = "2022-06-28"
 DBID = "24eea67a568181c88be2fccd76608551"
 
+# ---------------------------------------------------------
+# 2. 유틸리티 함수 (클라이언트 생성 및 검증)
+# ---------------------------------------------------------
+def get_gcp_credentials():
+    """Airflow Variable에서 GCP 자격 증명을 로드합니다."""
+    credentials_json = Variable.get('GOOGLE_CREDENTIAL_JSON')
+    cred_dict = json.loads(credentials_json)
+    if 'private_key' in cred_dict:
+        cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+    
+    # [수정] 스코프(Scopes)를 명시적으로 여러 개 추가합니다.
+    SCOPES = [
+        "https://www.googleapis.com/auth/cloud-platform",       # 기본 전체 권한
+        "https://www.googleapis.com/auth/devstorage.read_write", # GCS 업로드 필수 권한
+        "https://www.googleapis.com/auth/bigquery",             # BigQuery 권한
+        "https://www.googleapis.com/auth/drive"                 # (혹시 모를) 드라이브 권한
+    ]
+    
+    return service_account.Credentials.from_service_account_info(
+        cred_dict,
+        scopes=SCOPES
+    )
+
 def truncate_table_bq(project_id: str, dataset_id: str, table_id: str):
     """BigQuery 테이블의 모든 데이터를 삭제합니다."""
-    client = bigquery.Client(project=project_id)
+    creds = get_gcp_credentials()
+    
+    # BigQuery 클라이언트 생성
+    client = bigquery.Client(project=project_id, credentials=creds)
     table_ref = f"{project_id}.{dataset_id}.{table_id}"
     
     query = f"TRUNCATE TABLE `{table_ref}`"
@@ -76,6 +103,11 @@ def query_notion_database(notion_token, dbid, notion_version):
         "Notion-Version": notion_version,
         "Content-Type": "application/json"
     }
+
+    if notion_token:
+        print(f"🔑 Token Check: {notion_token[:4]}**** (Length: {len(notion_token)})")
+    else:
+        print("❌ Token is Empty or None!")
 
     results = []       # 조회된 데이터 저장할 리스트
     has_more = True    # 다음 페이지가 있는지 여부
@@ -102,6 +134,11 @@ def query_notion_database(notion_token, dbid, notion_version):
         "Notion-Version": notion_version,
         "Content-Type": "application/json"
     }
+
+    if notion_token:
+        print(f"🔑 Token Check: {notion_token[:4]}**** (Length: {len(notion_token)})")
+    else:
+        print("❌ Token is Empty or None!")
 
     results = []       # 조회된 데이터 저장할 리스트
     has_more = True    # 다음 페이지가 있는지 여부
@@ -181,7 +218,8 @@ def parse_flat(rows):
 ### 4> 변환된 데이터프레임을 BigQuery로 업로드
 def upload_to_bigquery(df, project_id, dataset_id, table_id):
      # BigQuery 클라이언트 생성
-    client = bigquery.Client(project=project_id)
+    creds = get_gcp_credentials()
+    client = bigquery.Client(project=project_id, credentials=creds)
 
     # 완전한 테이블 ID
     full_table_id = f"{project_id}.{dataset_id}.{table_id}"
@@ -207,7 +245,7 @@ def notion_to_bigquery():
     df.columns = df.columns.str.strip()
 
     ## 원하는 컬럼만 가져오기
-    df = df[['공개','대상 월드','패치 일자','상태','시작일','종료일','분류','제목','이벤트 카테고리','자체 결제']] ## 10개
+    df = df[['공개','대상 월드','패치 일자','상태','시작일','종료일','분류','제목','분석 카테고리','자체 결제']] ## 10개
 
     ## 컬럼명 영어로 변경
     df = df.rename(columns={
@@ -219,7 +257,7 @@ def notion_to_bigquery():
             '종료일': 'endDate',
             '분류': 'category',
             '제목': 'title',
-            '이벤트 카테고리' : 'eventCategory',
+            '분석 카테고리' : 'eventCategory',
             '자체 결제' : 'isSelfPayment'
         })
     

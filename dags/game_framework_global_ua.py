@@ -175,9 +175,6 @@ def cohort_by_country_cost(joyplegameid: int, gameidx: str, bigquery_client, buc
 ### 4> 일자별 매출에 대한 제미나이 코멘트
 def cohort_by_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
     
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     cohort_country_revenue = load_df_from_gcs(bucket, path_daily_revenue)
     cohort_country_cost = load_df_from_gcs(bucket, path_monthly_revenue)
 
@@ -329,9 +326,6 @@ def os_cost(joyplegameid: int, gameidx: str, bigquery_client, bucket, **context)
 #client = genai.Client(api_key="AIzaSyAVv2B6DM6w9jd1MxiP3PbzAEMkl97SCGY")
 def os_by_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
     
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     os_rev_df = load_df_from_gcs(bucket, path_daily_revenue)
     os_cost_df = load_df_from_gcs(bucket, path_monthly_revenue)
 
@@ -860,10 +854,14 @@ def merge_os_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **conte
 
 def country_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    current_context = get_current_context()
+    if 'task_instance' in context:
+        ti = context['task_instance']
+    else:
+        current_context = get_current_context()
+        ti = current_context['task_instance']
 
-    PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page_wraper',
+    PAGE_INFO = ti.xcom_pull(
+        task_ids='make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -1026,10 +1024,14 @@ def country_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_cli
 ## IAP+유가젬
 def os_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    current_context = get_current_context()
+    if 'task_instance' in context:
+        ti = context['task_instance']
+    else:
+        current_context = get_current_context()
+        ti = current_context['task_instance']
 
-    PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page_wraper',
+    PAGE_INFO = ti.xcom_pull(
+        task_ids='make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -1138,10 +1140,23 @@ def os_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, 
         PROJECT_ID=PROJECT_ID,
         LOCATION=LOCATION)
     blocks = md_to_notion_blocks(gemini_text)
-    notion.blocks.children.append(
-        block_id=PAGE_INFO['id'],
-        children=blocks
-    )
+
+    # [수정] 블록을 배치 단위(예: 50개)로 나누어 전송하는 로직 추가
+    batch_size = 50  # 한 번에 보낼 블록 수 (타임아웃 방지)
+    
+    print(f"📝 총 {len(blocks)}개의 블록을 {batch_size}개씩 나누어 업로드합니다.")
+
+    for i in range(0, len(blocks), batch_size):
+        batch = blocks[i:i + batch_size]
+        try:
+            notion.blocks.children.append(
+                block_id=PAGE_INFO['id'],
+                children=batch
+            )
+            print(f"   ✅ 배치 {i//batch_size + 1} 업로드 완료 ({len(batch)}개)")
+        except Exception as e:
+            print(f"   ❌ 배치 {i//batch_size + 1} 업로드 실패: {e}")
+            raise e
 
 
 # 최근 30일 기준 국가그룹별 X 결제처별 매출 쿼리
@@ -1257,9 +1272,6 @@ def country_group_to_df(joyplegameid:int, gameidx:str, bigquery_client, bucket, 
 
 
 def country_group_to_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, bucket, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     query_result = load_df_from_gcs(bucket=bucket, path=path_daily_revenue)
 
@@ -1472,10 +1484,7 @@ def merge_country_group_df_draw(joyplegameid: int, gameidx: str, bigquery_client
     """
     from google.cloud import storage
     
-    # GCS 클라이언트 및 버킷 초기화
-    client = storage.Client()
-    bucket = client.bucket("game-framework1")  # 버킷명 수정 필요
-    
+   
     # 이미지 저장 경로 가져오기 (리스트)
     img_gcs_list = country_group_df_draw(joyplegameid, gameidx, bigquery_client, bucket)
     
@@ -1498,10 +1507,14 @@ def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, st1, se
                                         bucket, headers_json, NOTION_TOKEN, NOTION_VERSION, 
                                         bucket_name: str = "game-framework1", merged_image_dir: str= "merged", **context):
 
-    current_context = get_current_context()
+    if 'task_instance' in context:
+        ti = context['task_instance']
+    else:
+        current_context = get_current_context()
+        ti = current_context['task_instance']
 
-    PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page_wraper',
+    PAGE_INFO = ti.xcom_pull(
+        task_ids='make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
@@ -1630,13 +1643,14 @@ def country_group_data_upload_to_notion(joyplegameid: int, gameidx: str, st1, se
     )
 
     # GCS 클라이언트 및 버킷 초기화
-    gcs_client = storage.Client()
-    bucket = gcs_client.bucket(bucket_name)
+    # GCS 클라이언트 및 버킷 초기화
+    # gcs_client = storage.Client()
+    # bucket = gcs_client.bucket(bucket_name)
+
     
     # GCS에서 합쳐진 이미지 목록 조회
     gcs_image_paths = []
-    blobs = gcs_client.list_blobs(
-        bucket_name,
+    blobs = bucket.list_blobs(
         prefix=f"{gameidx}/{merged_image_dir}/"
     )
 

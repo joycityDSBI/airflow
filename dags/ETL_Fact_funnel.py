@@ -53,8 +53,8 @@ def etl_f_funnel_access_first(target_date:list):   ### Device_id 기준 최초 f
                         , a.platform_device_type
                         , a.log_time
                     FROM `dataplatform-204306.CommonLog.Funnel` AS a
-                    WHERE a.log_time >= {start_utc}
-                    AND a.log_time < {end_utc}
+                    WHERE a.log_time >= '{start_utc}'
+                    AND a.log_time < '{end_utc}'
                     AND a.game_id            IS NOT NULL
                     AND a.device_id          IS NOT NULL
                     AND a.market_id          IS NOT NULL
@@ -146,8 +146,8 @@ def etl_f_funnel_access(target_date:list):
                         , step_name
                         , MIN(log_time) AS log_time
                     FROM `dataplatform-204306.CommonLog.Funnel`
-                    WHERE log_time >= {start_utc}
-                    AND log_time < {end_utc}
+                    WHERE log_time >= '{start_utc}'
+                    AND log_time < '{end_utc}'
                     AND joyple_game_code   IS NOT NULL
                     AND tracker_account_id IS NOT NULL
                     AND step_id            IS NOT NULL

@@ -88,10 +88,7 @@ def monthly_day_average_rev(joyplegameid:int, gameidx:str, bigquery_client, buck
     return saved_path
 
 ######### 월별 일 평균 매출 - 제미나이 코멘트 생성
-def monthly_day_average_rev_gemini(gameidx:str, service_sub: str, path_monthly_day_average_rev:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+def monthly_day_average_rev_gemini(gameidx:str, service_sub: str, path_monthly_day_average_rev:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, genai_client, **context):
 
     query_result5_dailyAvgRevenue = load_df_from_gcs(bucket, path_monthly_day_average_rev)
 
@@ -327,10 +324,7 @@ def rgroup_rev_total(joyplegameid:int, gameidx:str, bigquery_client, bucket, **c
 
 
 ####### 과금그룹별 총 매출 - 제미나이 코멘트 생성
-def rgroup_rev_total_gemini(gameidx:str, service_sub: str, path_rgroup_rev_DOD:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+def rgroup_rev_total_gemini(gameidx:str, service_sub: str, path_rgroup_rev_DOD:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, genai_client, **context):
 
     query_result5_monthlyRgroupRevenue = load_df_from_gcs(bucket, path_rgroup_rev_DOD)
 
@@ -492,10 +486,7 @@ def rev_cohort_year(joyplegameid:int, gameidx:str, bigquery_client, bucket, **co
     return path_regyearRevenue, path_regyearRevenue_pv2
 
 
-def rev_cohort_year_gemini(gameidx:str, service_sub: str, path_regyearRevenue_pv2:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
+def rev_cohort_year_gemini(gameidx:str, service_sub: str, path_regyearRevenue_pv2:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, bucket, genai_client, **context):
 
     path_regyearRevenue_pv2 = load_df_from_gcs(bucket, path_regyearRevenue_pv2)
 
@@ -2002,7 +1993,7 @@ def cohort_rev_table_draw(gameidx:str, path_rev_cohort_year_pv2:str, bucket, **c
 def longterm_rev_upload_notion(gameidx:str, service_sub:str, 
                                path_monthly_day_average_rev:str, 
                                MODEL_NAME:str, SYSTEM_INSTRUCTION:list,
-                               NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json,**context):
+                               NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json, genai_client,**context):
 
     current_context = get_current_context()
     
@@ -2118,7 +2109,7 @@ def longterm_rev_upload_notion(gameidx:str, service_sub:str,
 
     text = monthly_day_average_rev_gemini(gameidx=gameidx, service_sub=service_sub, 
                                           path_monthly_day_average_rev=path_monthly_day_average_rev,
-                                          MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, **context)
+                                          MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, genai_client=genai_client, **context)
     blocks = md_to_notion_blocks(text)
 
     notion.blocks.children.append(
@@ -2133,7 +2124,7 @@ def monthly_rgroup_upload_notion(gameidx:str, service_sub:str,
                                path_merge_merge_rgroup_total_rev_pu_ALL_table:str,
                                NOTION_TOKEN:str, NOTION_VERSION:str, 
                                MODEL_NAME:str, SYSTEM_INSTRUCTION:list,
-                               notion, bucket, headers_json, **context):
+                               notion, bucket, headers_json, genai_client, **context):
 
     current_context = get_current_context()
     
@@ -2275,7 +2266,7 @@ def monthly_rgroup_upload_notion(gameidx:str, service_sub:str,
 
     ## 프롬프트
     text = rgroup_rev_total_gemini(gameidx=gameidx, service_sub=service_sub, path_rgroup_rev_DOD=path_rgroup_rev_DOD, 
-                                   MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, **context)
+                                   MODEL_NAME=MODEL_NAME, SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, bucket=bucket, genai_client=genai_client, **context)
     blocks = md_to_notion_blocks(text)
     notion.blocks.children.append(
         block_id=PAGE_INFO['id'],
@@ -2289,7 +2280,7 @@ def monthly_rgroup_upload_notion(gameidx:str, service_sub:str,
 def cohort_rev_upload_notion(gameidx:str, service_sub:str, 
                                path_regyearRevenue:str, path_regyearRevenue_pv2:str,
                                MODEL_NAME:str, SYSTEM_INSTRUCTION:list,
-                               NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json, **context):
+                               NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json, genai_client, **context):
 
     current_context = get_current_context()
     
@@ -2404,7 +2395,8 @@ def cohort_rev_upload_notion(gameidx:str, service_sub:str,
                                   path_regyearRevenue_pv2=path_regyearRevenue_pv2, 
                                   MODEL_NAME=MODEL_NAME, 
                                   SYSTEM_INSTRUCTION=SYSTEM_INSTRUCTION, 
-                                  bucket=bucket
+                                  bucket=bucket,
+                                    genai_client=genai_client, **context
                                   )
     
     blocks = md_to_notion_blocks(text)

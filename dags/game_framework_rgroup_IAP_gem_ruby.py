@@ -103,8 +103,6 @@ def rev_group_rev_pu(joyplegameid: int, gameidx: str, bigquery_client, bucket, *
 
 def rev_group_rev_pu_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, rev_group_rev_pu_path, bucket, PROJECT_ID, LOCATION, **context):
 
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
     rev_group_rev_pu_data = load_df_from_gcs(bucket, rev_group_rev_pu_path)
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
@@ -314,9 +312,6 @@ def iap_gem_ruby_history(gameidx: str, bigquery_client, bucket, **context):
 
 
 def iap_gem_ruby_gemini(gameidx:str,service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_iapgemruby, path_iapgemruby_history, bucket, PROJECT_ID, LOCATION, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     query_result4_salesByPackage = load_df_from_gcs(bucket, path_iapgemruby)
     query_result4_ingameHistory = load_df_from_gcs(bucket, path_iapgemruby_history)
@@ -580,9 +575,6 @@ def ruby_df(joyplegameid: int, gameidx:str, bigquery_client, bucket, **context):
 
 
 def iap_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_iap_df, path_iapgemruby_history, bucket, PROJECT_ID, LOCATION, **context):
-    
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     iap_df = load_df_from_gcs(bucket, path_iap_df)
     iap_gem_ruby_history = load_df_from_gcs(bucket, path_iapgemruby_history)
@@ -652,9 +644,6 @@ def iap_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION
 
 
 def gem_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_gem_df, path_iapgemruby_history, bucket, PROJECT_ID, LOCATION, **context):
-    
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     gem_df = load_df_from_gcs(bucket, path_gem_df)
     iap_gem_ruby_history = load_df_from_gcs(bucket, path_iapgemruby_history)
@@ -724,8 +713,6 @@ def gem_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION
 
 
 def ruby_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_ruby_df, path_iapgemruby_history, bucket, PROJECT_ID, LOCATION, **context):
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     ruby_df = load_df_from_gcs(bucket, path_ruby_df)
     iap_gem_ruby_history = load_df_from_gcs(bucket, path_iapgemruby_history)
@@ -931,9 +918,6 @@ def weekly_iapcategory_rev(joyplegameid: int, gameidx: str, databaseschema:str, 
 
 def iapcategory_rev_df_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_weekly_iapcategory_rev, bucket, PROJECT_ID, LOCATION, **context):
 
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     weekly_iapcategory_rev = load_df_from_gcs(bucket, path_weekly_iapcategory_rev)
 
     RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
@@ -989,9 +973,6 @@ def top3_items_by_category(joyplegameid: int, gameidx:str, service_sub: str, dat
                            path_weekly_iapcategory_rev_cols, path_weekly_iapcategory_rev, bigquery_client,
                            bucket, PROJECT_ID, LOCATION, **context):
 
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-    
     weekly_iapcategory_rev_cols = load_df_from_gcs(bucket, path_weekly_iapcategory_rev_cols)
 
     if isinstance(weekly_iapcategory_rev_cols, pd.DataFrame):
@@ -1143,10 +1124,7 @@ def top3_items_by_category_gemini(gameidx:str, service_sub: str, genai_client, M
                                   path_top3_items_by_category, path_weekly_iapcategory_rev, path_iapgemruby_history,
                                   bucket, PROJECT_ID, LOCATION, **context):
 
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
     query_result4_salesByPackage_ListedCategory = load_df_from_gcs(bucket, path_top3_items_by_category)
-
 
     print(f"★★★★★★★★★★★★top3_items_by_category_gemini 에서 데이터 : ", query_result4_salesByPackage_ListedCategory.head(5))
 
@@ -1555,9 +1533,6 @@ def rgroup_top3_rev(joyplegameid:int, gameidx:str, databaseschema:str, bigquery_
 
 
 def rgroup_top3_gemini(service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_rgroup_top3_rev, path_rgroup_top3_pu, bucket, PROJECT_ID, LOCATION, **context):
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     query_result4_thisWeekSalesTop3 = load_df_from_gcs(bucket, path_rgroup_top3_rev)
     query_result4_thisWeekPUTop3 = load_df_from_gcs(bucket, path_rgroup_top3_pu)
@@ -3610,7 +3585,7 @@ def iap_gem_ruby_upload_notion(gameidx: str, joyplegameid: int, databaseschema: 
 
 
 
-def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
+def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client,
                    path_iap_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, headers_json, **context):
     
     current_context = get_current_context()
@@ -3706,9 +3681,6 @@ def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
         print(f"❌ 예기치 않은 에러: {str(e)}")
         raise
 
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     query_result4_salesByPackage_IAP = load_df_from_gcs(bucket=bucket, path=path_iap_df)
 
     resp = df_to_notion_table_under_toggle(
@@ -3719,9 +3691,6 @@ def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
         max_first_batch_rows=90,
         batch_size=100,
     )
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     blocks = md_to_notion_blocks(iap_df_gemini(service_sub=service_sub,
                                                genai_client=genai_client,
@@ -3743,7 +3712,7 @@ def iap_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
 
 
 
-def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
+def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client,
                    path_gem_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, headers_json, **context):
     
     current_context = get_current_context()
@@ -3838,10 +3807,6 @@ def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
         print(f"❌ 예기치 않은 에러: {str(e)}")
         raise
 
-###########
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     query_result4_salesByPackage_GEM = load_df_from_gcs(bucket=bucket, path=path_gem_df)
 
     resp = df_to_notion_table_under_toggle(
@@ -3872,7 +3837,7 @@ def gem_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUC
     return True
 
 
-def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
+def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client,
                    path_ruby_df:str, path_iapgemruby_history:str, PROJECT_ID: str, LOCATION:str, bucket, notion, headers_json, **context):
 
     current_context = get_current_context()
@@ -3968,9 +3933,6 @@ def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRU
         print(f"❌ 예기치 않은 에러: {str(e)}")
         raise
 
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     query_result4_salesByPackage_RUBY = load_df_from_gcs(bucket=bucket, path=path_ruby_df)
 
     resp = df_to_notion_table_under_toggle(
@@ -3981,9 +3943,6 @@ def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRU
         max_first_batch_rows=90,
         batch_size=100,
     )
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     blocks = md_to_notion_blocks(ruby_df_gemini(service_sub=service_sub,
                                                genai_client=genai_client,
@@ -4004,7 +3963,7 @@ def ruby_toggle_add(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRU
     return True
 
 
-def rgroup_top3_upload_notion(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, 
+def rgroup_top3_upload_notion(gameidx: str, service_sub:str, MODEL_NAME:str, SYSTEM_INSTRUCTION:list, genai_client,
                    path_rgroup_top3_pu:str, path_rgroup_top3_rev:str, PROJECT_ID: str, LOCATION:str, bucket, notion, headers_json, **context):
 
     current_context = get_current_context()
@@ -4182,9 +4141,6 @@ def rgroup_top3_upload_notion(gameidx: str, service_sub:str, MODEL_NAME:str, SYS
         max_first_batch_rows=90,
         batch_size=100,
     )
-
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     blocks = md_to_notion_blocks(rgroup_top3_gemini(service_sub=service_sub,
                                                genai_client=genai_client,

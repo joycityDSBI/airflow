@@ -56,6 +56,10 @@ from game_framework_util import *
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
 
+import logging
+
+# matplotlib.category의 로그 레벨을 WARNING으로 설정 (INFO 로그 무시)
+logging.getLogger('matplotlib.category').setLevel(logging.WARNING)
 
 ## 한글 폰트 설정
 setup_korean_font()
@@ -143,9 +147,6 @@ def inhouse_sales_before24_query(joyplegameid: int, gameidx: str, bigquery_clien
 ## 제미나이 프롬프트 
 def inhouses_revenue_gemini(gameidx:str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, bucket, PROJECT_ID, LOCATION, **context):
     
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     inhouse_sales = load_df_from_gcs(bucket, path_daily_revenue)
     inhouse_sales_before24 = load_df_from_gcs(bucket, path_monthly_revenue)
 
@@ -417,10 +418,14 @@ def merge_inhouse_graph(gameidx: str, gcs_path_1:str, gcs_path_2:str, bucket, **
 
 def inhouse_revenue_data_upload_to_notion(gameidx: str, st1, st2, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, NOTION_TOKEN, NOTION_VERSION,  **context):
 
-    current_context = get_current_context()
+    if 'task_instance' in context:
+        ti = context['task_instance']
+    else:
+        current_context = get_current_context()
+        ti = current_context['task_instance']
     
-    PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page_wraper',
+    PAGE_INFO = ti.xcom_pull(
+        task_ids='make_gameframework_notion_page_wraper',
         key='page_info'
     )
 

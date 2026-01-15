@@ -21,9 +21,21 @@ from airflow.sensors.base import BaseSensorOperator
 from airflow.models import Variable
 from airflow.utils.trigger_rule import TriggerRule
 from google.cloud import bigquery
+import json
+from google.oauth2 import service_account
 
 # notion_utils 모듈 임포트
 from notion_utils import update_notion_databases
+
+
+# notion_utils 모듈 임포트
+try:
+    from notion_utils import update_notion_databases
+except ImportError:
+    logging.warning("⚠️ notion_utils 모듈을 찾을 수 없습니다. 플러그인 경로를 확인하세요.")
+
+
+
 
 # ===== 설정 =====
 def get_config(key: str, default: str = None) -> str:
@@ -43,6 +55,9 @@ def get_config(key: str, default: str = None) -> str:
     except Exception:
         return default
 
+def get_var(key: str, default: str = None) -> str:
+    """환경 변수 또는 Airflow Variable 조회"""
+    return os.environ.get(key) or Variable.get(key, default_var=default)
 
 # 이메일 설정
 SMTP_HOST = get_config("SMTP_HOST", "smtp.gmail.com")
@@ -56,6 +71,7 @@ EMAIL_FROM = get_config("EMAIL_FROM", SMTP_USER)
 TARGET_PROJECT = "aibi-service"
 TARGET_DATASET = "Service_Set"
 METADATA_HASH_VAR = "bq_metadata_hash"
+CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
 COLUMN_QUERY = f"""
 SELECT
@@ -79,34 +95,23 @@ ORDER BY full_table_id, column_name
 # ===== Custom Sensor (수정됨) =====
 class BigQueryMetadataChangeSensor(BaseSensorOperator):
     """BigQuery 메타데이터 변경 감지 Sensor"""
-    
     template_fields = ('project_id', 'query', 'hash_variable')
     
-    def __init__(
-        self,
-        *,
-        project_id: str,
-        query: str,
-        hash_variable: str,
-        **kwargs
-    ):
+    def __init__(self, *, project_id: str, query: str, hash_variable: str, **kwargs):
         super().__init__(**kwargs)
         self.project_id = project_id
         self.query = query
         self.hash_variable = hash_variable
     
     def _get_variable_safely(self, key: str, default: str = None) -> str:
-        """Variable을 안전하게 가져오기 (에러 처리 포함)"""
+        # (기존 코드와 동일)
         try:
-            # Airflow 3.0+ 호환성
             try:
                 from airflow.sdk import Variable as SDKVariable
                 return SDKVariable.get(key, default)
             except ImportError:
-                # Airflow 2.x
                 return Variable.get(key, default_var=default)
-        except Exception as e:
-            logging.warning(f"⚠️ Variable '{key}' 조회 실패: {type(e).__name__}")
+        except Exception:
             return default
     
     def _set_variable_safely(self, key: str, value: str) -> bool:
@@ -120,15 +125,22 @@ class BigQueryMetadataChangeSensor(BaseSensorOperator):
             return False
     
     def poke(self, context: Dict[str, Any]) -> bool:
-        """메타데이터 변경 감지"""
         logging.info("🔍 BigQuery 메타데이터 변경 감지 시작")
         
         try:
-            bq_client = bigquery.Client(project=self.project_id)
+            # Credentials 처리 (기존 유지)
+            cred_dict = json.loads(CREDENTIALS_JSON)
+            if 'private_key' in cred_dict and '\\n' in cred_dict['private_key']:
+                cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+            
+            credentials = service_account.Credentials.from_service_account_info(
+                cred_dict, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+            
+            bq_client = bigquery.Client(project=self.project_id, credentials=credentials)
             query_job = bq_client.query(self.query)
             results = query_job.result()
             
-            # 해시 계산
             rows = []
             for row in results:
                 row_dict = dict(row)
@@ -139,60 +151,50 @@ class BigQueryMetadataChangeSensor(BaseSensorOperator):
             
             logging.info(f"📊 현재 해시: {current_hash[:16]}...")
             
-            # 이전 해시 가져오기 (안전하게)
+            # 이전 해시 가져오기
             previous_hash = self._get_variable_safely(self.hash_variable)
             
-            if previous_hash:
-                logging.info(f"📋 이전 해시: {previous_hash[:16]}...")
-            else:
-                logging.info("📋 이전 해시 없음 (초기 실행) → Variable 초기화")
-                # 초기 실행 시 current_hash를 Variable에 저장
-                self._set_variable_safely(self.hash_variable, current_hash)
+            # XCom에 현재 해시 푸시 (나중에 업데이트용)
+            context['ti'].xcom_push(key='current_hash', value=current_hash)
             
-            # 변경 감지
-            if current_hash != previous_hash:
-                logging.info("✅ 변경 감지됨 → ETL 실행")
-                context['ti'].xcom_push(key='current_hash', value=current_hash)
+            # [수정됨] 초기 실행이거나 해시가 다르면 True 반환
+            if previous_hash is None:
+                logging.info("🚀 최초 실행 감지 (이전 해시 없음) -> 실행")
+                return True
+            elif current_hash != previous_hash:
+                logging.info(f"✅ 변경 감지됨 ({previous_hash[:8]} -> {current_hash[:8]}) -> 실행")
                 return True
             else:
-                logging.info("⏸️ 변경 없음 → 대기")
+                logging.info("⏸️ 변경 없음 -> 대기")
                 return False
                 
         except Exception as e:
-            logging.error(f"🔥 Sensor 에러: {type(e).__name__} - {e}", exc_info=True)
-            # Sensor는 False를 반환하여 계속 대기
+            logging.error(f"🔥 Sensor 에러: {e}", exc_info=True)
             return False
 
 
 # ===== Task 함수들 =====
 def extract_bq_metadata(**context):
-    """BigQuery 메타데이터 추출"""
+    # (기존 로직 유지)
+    # 단, 대량 데이터일 경우 XCom 대신 GCS 사용 고려 필요
     start_ts = time.time()
-    logging.info("🚀 BigQuery 메타데이터 추출 시작 중")
-    
     try:
-        bq_client = bigquery.Client(project=TARGET_PROJECT)
-        df = bq_client.query(COLUMN_QUERY).result().to_dataframe(
-            create_bqstorage_client=False
-        )
+        cred_dict = json.loads(CREDENTIALS_JSON)
+        if 'private_key' in cred_dict and '\\n' in cred_dict['private_key']:
+             cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+        credentials = service_account.Credentials.from_service_account_info(cred_dict)
         
-        logging.info(
-            f"✅ 조회 완료: rows={len(df)}, "
-            f"tables={df['table_name'].nunique()}, "
-            f"columns={df['column_name'].nunique()}"
-        )
+        bq_client = bigquery.Client(project=TARGET_PROJECT, credentials=credentials)
         
-        # XCom에 저장
+        # DataFrame 변환
+        df = bq_client.query(COLUMN_QUERY).result().to_dataframe(create_bqstorage_client=False)
+        
         context['ti'].xcom_push(key='metadata_df', value=df.to_dict('records'))
         context['ti'].xcom_push(key='row_count', value=len(df))
-        context['ti'].xcom_push(key='table_count', value=int(df['table_name'].nunique()))
-        context['ti'].xcom_push(key='column_count', value=int(df['column_name'].nunique()))
         
-        took = time.time() - start_ts
-        logging.info(f"⏱️ 추출 소요: {took:.1f}s")
-        
+        logging.info(f"✅ 추출 완료: {len(df)} rows")
     except Exception as e:
-        logging.exception(f"🔥 메타데이터 추출 실패: {e}")
+        logging.exception(f"🔥 추출 실패: {e}")
         raise
 
 
@@ -305,6 +307,29 @@ def send_email_notification(**context):
     except Exception as e:
         logging.error(f"🔥 이메일 발송 실패: {e}")
 
+# ===== 3. [신규] 성공 후 Variable 업데이트 함수 =====
+def update_variable_after_success(**context):
+    """모든 동기화가 성공적으로 끝난 후 Variable 업데이트"""
+    ti = context['ti']
+    current_hash = ti.xcom_pull(task_ids='detect_metadata_change', key='current_hash')
+    
+    if not current_hash:
+        logging.warning("⚠️ 업데이트할 해시 값이 없습니다.")
+        return
+
+    key = METADATA_HASH_VAR
+    try:
+        # Airflow 3.0+ 호환
+        try:
+            from airflow.sdk import Variable as SDKVariable
+            SDKVariable.set(key, current_hash)
+        except ImportError:
+            Variable.set(key, current_hash)
+            
+        logging.info(f"💾 Variable 업데이트 완료: {key} = {current_hash[:16]}...")
+    except Exception as e:
+        logging.error(f"🔥 Variable 저장 실패: {e}")
+        raise
 
 # ===== DAG 정의 =====
 default_args = {
@@ -312,8 +337,8 @@ default_args = {
     'depends_on_past': False,
     'email_on_failure': False,
     'email_on_retry': False,
-    'retries': 2,
-    'retry_delay': timedelta(minutes=2),
+    'retries': 1,
+    'retry_delay': timedelta(minutes=1),
 }
 
 with DAG(
@@ -326,27 +351,34 @@ with DAG(
     tags=['bigquery', 'notion', 'metadata', 'etl'],
 ) as dag:
     
-    # Task 1: 변경 감지 Sensor
+# 1. 감지
     detect_change = BigQueryMetadataChangeSensor(
         task_id='detect_metadata_change',
         project_id=TARGET_PROJECT,
         query=COLUMN_QUERY,
         hash_variable=METADATA_HASH_VAR,
-        poke_interval=60,   # 1분마다 체크
-        timeout=300,        # 5분 타임아웃 (DAG 주기와 일치)
-        mode='poke',        # poke 모드
+        poke_interval=60,
+        timeout=300,
+        mode='poke', # Worker slot 점유가 부담되면 'reschedule' 사용
     )
     
-    # Task 2: 메타데이터 추출
+    # 2. 추출
     extract_metadata = PythonOperator(
         task_id='extract_metadata',
         python_callable=extract_bq_metadata,
     )
     
-    # Task 3: Notion 동기화
+    # 3. 동기화
     sync_notion = PythonOperator(
         task_id='sync_to_notion',
         python_callable=sync_to_notion,
+    )
+    
+    # 4. [신규] Variable 업데이트 (성공 시에만 실행)
+    update_var = PythonOperator(
+        task_id='update_hash_variable',
+        python_callable=update_variable_after_success,
+        trigger_rule=TriggerRule.ALL_SUCCESS, # 앞 단계가 모두 성공해야 실행
     )
     
     # # Task 4: 이메일 알림
@@ -357,4 +389,4 @@ with DAG(
     # )
     
     # 의존성
-    detect_change >> extract_metadata >> sync_notion ## >> send_email
+    detect_change >> extract_metadata >> sync_notion >> update_var

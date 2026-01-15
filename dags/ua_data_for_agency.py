@@ -871,7 +871,7 @@ task_authorize_gcs = PythonOperator(
     python_callable=authorize_gcs_access,
     dag=dag,
 )
-
+  
 # task_send_email = PythonOperator(
 #     task_id='send_status_email',
 #     python_callable=send_status_email,

@@ -43,9 +43,7 @@ def make_gameframework_notion_page(
         "Notion-Version": "2022-06-28"
     }
 
-    page_info = None # 초기화
-
-    # 타임존 지정
+    # try-except 블록을 제거하거나, 에러를 다시 던지도록(raise) 수정해야 Airflow가 실패를 인지함
     try: 
         kst = ZoneInfo("Asia/Seoul")
         today_kst = datetime.now(kst).date()
@@ -69,33 +67,32 @@ def make_gameframework_notion_page(
                 },
                 "프로젝트": {
                     "multi_select": [
-                        {"name": gameidx}   # 다중 선택 옵션
+                        {"name": gameidx}
                     ]
                 },
                 "리포트 종류": {
                     "multi_select": [
-                        {"name": "게임분석"}   # 다중 선택 옵션
+                        {"name": "게임분석"}
                     ]
                 }
-                # , "작성자": {
-                #     "people": [
-                #         {"id": "ce95f16a-6b6b-447d-a996-a9c5f0cc0113"},  # Notion user_id
-                #         {"id": "662575bc-731c-481c-afc7-13b2fdf5482a"}  # Notion user_id
-                #     ]
-                # }
             }
         }
 
         res = requests.post(url, headers=headers, json=data)
+        
+        # [핵심 수정 1] API 요청 실패 시 즉시 에러 발생 (Airflow가 재시도 할 수 있게 함)
+        if res.status_code != 200:
+            raise Exception(f"❌ Notion API Error ({res.status_code}): {res.text}")
 
-        if res.status_code == 200:
-            page_info = res.json() # ✅ 페이지 ID page_info["id"]
-            print(f"✅ 페이지 생성 성공 ✅ 페이지 ID : {page_info['id']}")
-        else:
-            print(f"⚠️ Notion API 에러 발생: {res.status_code} >> {res.text}")
+        # 성공 시 데이터 파싱
+        page_info = res.json()
+        page_id = page_info['id']
+        print(f"✅ 페이지 생성 성공 ✅ 페이지 ID : {page_id}")
 
+        # [핵심 수정 2] page_info가 확보된 후에 블록 추가 로직 실행
+        # 목차 제목 추가
         notion.blocks.children.append(
-            block_id=page_info["id"] ,
+            block_id=page_id,
             children=[
                 {
                     "object": "block",
@@ -115,30 +112,24 @@ def make_gameframework_notion_page(
 
         # 목차 블록 추가
         notion.blocks.children.append(
-            block_id=page_info["id"] ,
+            block_id=page_id,
             children=[
                 {
                     "object": "block",
                     "type": "table_of_contents",
                     "table_of_contents": {
-                        "color": "default"  # "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red" 가능
+                        "color": "default"
                     }
                 }
             ],
         )
         
-        if res.status_code == 200:
-            page_info = res.json()
-            print(f"✅ 페이지 생성 성공 ✅ 페이지 ID : {page_info['id']}")
-        else:
-            print(f"⚠️ 에러 발생: {res.status_code} >> {res.text}")
-
         return page_info 
+
     except Exception as e:
-        print(f"⚠️ 페이지 생성 실패: {e}")
-
-        return page_info
-
+        print(f"⚠️ 페이지 생성 프로세스 중단: {e}")
+        # [핵심 수정 3] 에러를 삼키지 말고 다시 던져서 Airflow Task를 'Failed' 상태로 만들어야 함
+        raise e
 
 
 ################# notion 페이지 생성 함수 실행 ############################

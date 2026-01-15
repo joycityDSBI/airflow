@@ -13,10 +13,11 @@ def etl_f_user_map():
         target_date = td
 
         # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        kst = pytz.timezone('Asia/Seoul')
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
-        print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+        start_date = datetime.strptime(td, "%Y-%m-%d")
+        end_date = start_date + timedelta(days=1)
+        start_date = start_date.strftime("%Y-%m-%d") # '2014-06-10'
+        end_date = end_date.strftime("%Y-%m-%d")
+        print(f"📝 시작시간 : ", start_date, f" 📝 종료시간 : ", end_date)
         print(f"■ {target_date.strftime('%Y-%m-%d')} f_user_map Batch 시작")
 
         query = f"""
@@ -166,7 +167,7 @@ def etl_f_user_map():
             SELECT datekey, joyple_game_code, auth_account_name, auth_method_id
             , IF(datekey = reg_datekey, 1, 0) AS RU
             FROM datahub-478802.datahub.f_common_access
-            where datekey >= '2025-12-01' and datekey < '2025-12-02'
+            where datekey >= '{start_date}' and datekey < '{end_date}'
             and access_type_id = 1
             group by 1,2,3,4,5
         ) AS A
@@ -181,27 +182,27 @@ def etl_f_user_map():
             adset_name, ad_name, is_retargeting, advertising_id, idfa, site_id,
             channel, CB1_media_source, CB1_campaign, CB2_media_source, CB2_campaign, CB3_media_source, CB3_campaign
             FROM datahub-478802.datahub.f_common_register
-            WHERE reg_datekey < '2025-12-02'
+            WHERE reg_datekey < '{end_date}'
         ) AS B
         ON A.joyple_game_code = B.joyple_game_code AND A.auth_method_id = B.auth_method_id AND A.auth_account_name = B.auth_account_name
         -- 당일 구매액 (IAP + 웹상점)
         LEFT OUTER JOIN
         (
             SELECT joyple_game_code, auth_account_name, auth_method_id,
-            SUM(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', revenue, 0)) as daily_total_rev,
-            SUM(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', buy_cnt, 0)) as daily_buy_cnt,
-            MAX(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', 1, 0)) as daily_pu,
+            SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', revenue, 0)) as daily_total_rev,
+            SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', buy_cnt, 0)) as daily_buy_cnt,
+            MAX(IF(datekey >= '{start_date}' AND datekey < '{end_date}', 1, 0)) as daily_pu,
             SUM(revenue) as stacked_rev,
             sum(buy_cnt) as stacked_buy_cnt,
             PERCENT_RANK() OVER (PARTITION BY joyple_game_code ORDER BY sum(revenue) DESC) AS stacked_rev_percent_rank,
-            SUM(IF(datekey >= DATE_TRUNC(DATE('2025-12-01'), MONTH) AND datekey <= LAST_DAY(DATE_TRUNC(DATE('2025-12-01'), MONTH), MONTH), revenue, 0)) as monthly_rev,
-            SUM(IF(datekey >= DATE_TRUNC(DATE_SUB(DATE('2025-12-01'), INTERVAL 1 MONTH), MONTH) AND datekey <= LAST_DAY(DATE_TRUNC(DATE_SUB(DATE('2025-12-01'), INTERVAL 1 MONTH), MONTH), MONTH), revenue, 0)) as before_monthly_rev,
-            SUM(IF(datekey >= DATE_TRUNC(DATE('2025-12-01'), YEAR) AND datekey <= LAST_DAY(DATE_TRUNC(DATE('2025-12-01'), YEAR), YEAR), revenue, 0)) as yearly_rev,
-            SUM(IF(datekey >= DATE_SUB('2025-12-01', INTERVAL 30 DAY) AND datekey < '2025-12-02', revenue, 0)) as last_30days_rev,
+            SUM(IF(datekey >= DATE_TRUNC(DATE('{start_date}'), MONTH) AND datekey <= LAST_DAY(DATE_TRUNC(DATE('{start_date}'), MONTH), MONTH), revenue, 0)) as monthly_rev,
+            SUM(IF(datekey >= DATE_TRUNC(DATE_SUB(DATE('{start_date}'), INTERVAL 1 MONTH), MONTH) AND datekey <= LAST_DAY(DATE_TRUNC(DATE_SUB(DATE('{start_date}'), INTERVAL 1 MONTH), MONTH), MONTH), revenue, 0)) as before_monthly_rev,
+            SUM(IF(datekey >= DATE_TRUNC(DATE('{start_date}'), YEAR) AND datekey <= LAST_DAY(DATE_TRUNC(DATE('{start_date}'), YEAR), YEAR), revenue, 0)) as yearly_rev,
+            SUM(IF(datekey >= DATE_SUB('{start_date}', INTERVAL 30 DAY) AND datekey < '{end_date}', revenue, 0)) as last_30days_rev,
             min(datekey) as first_payment_datekey,
-            MAX(IF(datekey < '2025-12-01', datekey, null)) as last_payment_datekey
+            MAX(IF(datekey < '{start_date}', datekey, null)) as last_payment_datekey
             FROM datahub-478802.datahub.f_common_payment
-            WHERE datekey < '2025-12-02'
+            WHERE datekey < '{end_date}'
             group by joyple_game_code, auth_account_name, auth_method_id
         ) AS C
         ON A.joyple_game_code = C.joyple_game_code AND A.auth_method_id = C.auth_method_id AND A.auth_account_name = C.auth_account_name
@@ -211,11 +212,11 @@ def etl_f_user_map():
             SELECT joyple_game_code, auth_account_name, auth_method_id,
             sum(watch_cnt) as stacked_IAA_watch_cnt,
             sum(revenue_per_user) as stacked_IAA_rev,
-            sum(IF(watch_datekey >= '2025-12-01' AND watch_datekey < '2025-12-02', watch_cnt, 0)) as daily_IAA_watch_cnt,
-            sum(IF(watch_datekey >= '2025-12-01' AND watch_datekey < '2025-12-02', revenue_per_user, 0)) as daily_IAA_rev,
-            SUM(IF(watch_datekey >= DATE_TRUNC(DATE('2025-12-01'), MONTH) AND watch_datekey <= LAST_DAY(DATE_TRUNC(DATE('2025-12-01'), MONTH), MONTH), revenue_per_user, 0)) as monthly_IAA_rev
+            sum(IF(watch_datekey >= '{start_date}' AND watch_datekey < '{end_date}', watch_cnt, 0)) as daily_IAA_watch_cnt,
+            sum(IF(watch_datekey >= '{start_date}' AND watch_datekey < '{end_date}', revenue_per_user, 0)) as daily_IAA_rev,
+            SUM(IF(watch_datekey >= DATE_TRUNC(DATE('{start_date}'), MONTH) AND watch_datekey <= LAST_DAY(DATE_TRUNC(DATE('{start_date}'), MONTH), MONTH), revenue_per_user, 0)) as monthly_IAA_rev
             FROM datahub-478802.datahub.f_IAA_auth_account_performance
-            where watch_datekey < '2025-12-02'
+            where watch_datekey < '{end_date}'
             group by joyple_game_code, auth_account_name, auth_method_id
         ) AS E
         ON A.joyple_game_code = E.joyple_game_code AND A.auth_method_id = E.auth_method_id AND A.auth_account_name = E.auth_account_name
@@ -223,12 +224,12 @@ def etl_f_user_map():
         LEFT OUTER JOIN
         (
             SELECT joyple_game_code, auth_account_name, auth_method_id
-            , SUM(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', play_seconds, 0)) as play_seconds
-            , SUM(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', access_cnt, 0)) as access_cnt
-            , MAX(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', game_user_level, null)) as daily_game_user_level
-            , COUNT(DISTINCT(IF(datekey >= DATE_SUB('2025-12-01', INTERVAL 6 DAY) AND datekey < '2025-12-02' AND access_type_id = 1, datekey, null))) as stickiness
+            , SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', play_seconds, 0)) as play_seconds
+            , SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', access_cnt, 0)) as access_cnt
+            , MAX(IF(datekey >= '{start_date}' AND datekey < '{end_date}', game_user_level, null)) as daily_game_user_level
+            , COUNT(DISTINCT(IF(datekey >= DATE_SUB('{start_date}', INTERVAL 6 DAY) AND datekey < '{end_date}' AND access_type_id = 1, datekey, null))) as stickiness
             FROM datahub-478802.datahub.f_common_access
-            where datekey >= DATE_SUB('2025-12-01', INTERVAL 6 DAY) AND datekey < '2025-12-02'
+            where datekey >= DATE_SUB('{start_date}', INTERVAL 6 DAY) AND datekey < '{end_date}'
             group by joyple_game_code, auth_account_name, auth_method_id
         ) AS F
         ON A.joyple_game_code = F.joyple_game_code AND A.auth_method_id = F.auth_method_id AND A.auth_account_name = F.auth_account_name
@@ -248,7 +249,7 @@ def etl_f_user_map():
             SELECT joyple_game_code, auth_account_name, auth_method_id
                 , count(DISTINCT game_sub_user_name) as game_sub_user_name_cnt
             FROM `datahub-478802.datahub.f_common_register_char`
-            where reg_datekey < '2025-12-02'
+            where reg_datekey < '{end_date}'
             GROUP BY joyple_game_code, auth_account_name, auth_method_id
         ) AS H
         ON A.joyple_game_code = H.joyple_game_code AND A.auth_method_id = H.auth_method_id AND A.auth_account_name = H.auth_account_name
@@ -257,8 +258,8 @@ def etl_f_user_map():
         (
             SELECT joyple_game_code, auth_method_id, auth_account_name, 
                 ARRAY_AGG(STRUCT(pg_id, platform_device_type, product_code, product_name, revenue, buy_cnt) ORDER BY datekey ASC) as products_array
-            FROM `datahub-478802.datahub.f_common_payment_total`
-            WHERE datekey >= '2025-12-01' and datekey < '2025-12-02'
+            FROM `datahub-478802.datahub.f_common_payment`
+            WHERE datekey >= '{start_date}' and datekey < '{end_date}'
             GROUP BY joyple_game_code, auth_method_id, auth_account_name
         ) AS I
         ON A.joyple_game_code = I.joyple_game_code AND A.auth_method_id = I.auth_method_id AND A.auth_account_name  = I.auth_account_name
@@ -277,11 +278,11 @@ def etl_f_user_map_char():
     for td in target_date:
         target_date = td
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        kst = pytz.timezone('Asia/Seoul')
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
-        print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+        start_date = datetime.strptime(td, "%Y-%m-%d")
+        end_date = start_date + timedelta(days=1)
+        start_date = start_date.strftime("%Y-%m-%d") # '2014-06-10'
+        end_date = end_date.strftime("%Y-%m-%d")  
+        print(f"📝 시작시간 : ", start_date, f" 📝 종료시간 : ", end_date)
 
         query = f"""
         INSERT INTO datahub-478802.datahub.f_user_map_char
@@ -431,7 +432,7 @@ def etl_f_user_map_char():
             SELECT datekey, joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name
             , MAX(IF(datekey = reg_datekey, 1, 0)) AS RU
             FROM datahub-478802.datahub.f_common_access
-            where datekey >= '2025-12-01' and datekey < '2025-12-02'
+            where datekey >= '{start_date}' and datekey < '{end_date}'
             and access_type_id = 1
             group by datekey, joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name
         ) AS A
@@ -445,26 +446,26 @@ def etl_f_user_map_char():
             , game_sub_user_reg_datekey, game_sub_user_reg_datetime
             , reg_datekey
             FROM datahub-478802.datahub.f_common_register_char
-            WHERE game_sub_user_reg_datekey < '2025-12-02'
+            WHERE game_sub_user_reg_datekey < '{end_date}'
         ) AS B
         on A.joyple_game_code = B.joyple_game_code AND A.auth_method_id = B.auth_method_id AND A.auth_account_name = B.auth_account_name AND A.game_sub_user_name = B.game_sub_user_name
         LEFT OUTER JOIN 
         (
             SELECT joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name,
-            SUM(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', revenue, 0)) as daily_total_rev,
-            SUM(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', buy_cnt, 0)) as daily_buy_cnt,
-            MAX(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', 1, 0)) as daily_pu,
+            SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', revenue, 0)) as daily_total_rev,
+            SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', buy_cnt, 0)) as daily_buy_cnt,
+            MAX(IF(datekey >= '{start_date}' AND datekey < '{end_date}', 1, 0)) as daily_pu,
             SUM(revenue) as stacked_rev,
             sum(buy_cnt) as stacked_buy_cnt,
             PERCENT_RANK() OVER (PARTITION BY joyple_game_code ORDER BY sum(revenue) DESC) AS stacked_rev_percent_rank,
-            SUM(IF(datekey >= DATE_TRUNC(DATE('2025-12-01'), MONTH) AND datekey <= LAST_DAY(DATE_TRUNC(DATE('2025-12-01'), MONTH), MONTH), revenue, 0)) as monthly_rev,
-            SUM(IF(datekey >= DATE_TRUNC(DATE_SUB(DATE('2025-12-01'), INTERVAL 1 MONTH), MONTH) AND datekey <= LAST_DAY(DATE_TRUNC(DATE_SUB(DATE('2025-12-01'), INTERVAL 1 MONTH), MONTH), MONTH), revenue, 0)) as before_monthly_rev,
-            SUM(IF(datekey >= DATE_TRUNC(DATE('2025-12-01'), YEAR) AND datekey <= LAST_DAY(DATE_TRUNC(DATE('2025-12-01'), YEAR), YEAR), revenue, 0)) as yearly_rev,
-            SUM(IF(datekey >= DATE_SUB('2025-12-01', INTERVAL 30 DAY) AND datekey < '2025-12-02', revenue, 0)) as last_30days_rev,
+            SUM(IF(datekey >= DATE_TRUNC(DATE('{start_date}'), MONTH) AND datekey <= LAST_DAY(DATE_TRUNC(DATE('{start_date}'), MONTH), MONTH), revenue, 0)) as monthly_rev,
+            SUM(IF(datekey >= DATE_TRUNC(DATE_SUB(DATE('{start_date}'), INTERVAL 1 MONTH), MONTH) AND datekey <= LAST_DAY(DATE_TRUNC(DATE_SUB(DATE('{start_date}'), INTERVAL 1 MONTH), MONTH), MONTH), revenue, 0)) as before_monthly_rev,
+            SUM(IF(datekey >= DATE_TRUNC(DATE('{start_date}'), YEAR) AND datekey <= LAST_DAY(DATE_TRUNC(DATE('{start_date}'), YEAR), YEAR), revenue, 0)) as yearly_rev,
+            SUM(IF(datekey >= DATE_SUB('{start_date}', INTERVAL 30 DAY) AND datekey < '{end_date}', revenue, 0)) as last_30days_rev,
             min(datekey) as first_payment_datekey,
-            MAX(IF(datekey < '2025-12-01', datekey, null)) as last_payment_datekey
+            MAX(IF(datekey < '{start_date}', datekey, null)) as last_payment_datekey
             FROM datahub-478802.datahub.f_common_payment
-            WHERE datekey < '2025-12-02'
+            WHERE datekey < '{end_date}'
             GROUP BY joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name
         ) AS C
         on A.joyple_game_code = C.joyple_game_code AND A.auth_method_id = C.auth_method_id AND A.auth_account_name = C.auth_account_name AND A.game_sub_user_name = C.game_sub_user_name
@@ -472,22 +473,22 @@ def etl_f_user_map_char():
         (
             SELECT joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name,
             SUM(revenue_per_user_KRW) as stacked_IAA_rev,
-            SUM(IF(watch_datekey >= '2025-12-01' AND watch_datekey < '2025-12-02', revenue_per_user_KRW, 0)) as daily_IAA_rev
+            SUM(IF(watch_datekey >= '{start_date}' AND watch_datekey < '{end_date}', revenue_per_user_KRW, 0)) as daily_IAA_rev
             FROM datahub-478802.datahub.f_IAA_auth_account_performance_joyple
-            where watch_datekey < '2025-12-02'
+            where watch_datekey < '{end_date}'
             GROUP BY joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name
         ) as D
         on A.joyple_game_code = D.joyple_game_code AND A.auth_method_id = D.auth_method_id AND A.auth_account_name = D.auth_account_name AND A.game_sub_user_name = D.game_sub_user_name
         LEFT OUTER JOIN 
         (
             SELECT joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name
-            , SUM(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', play_seconds, 0)) as play_seconds
-            , SUM(IF(datekey >= '2025-12-01' AND datekey < '2025-12-02', access_cnt, 0)) as access_cnt
+            , SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', play_seconds, 0)) as play_seconds
+            , SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', access_cnt, 0)) as access_cnt
             , MAX(game_user_level) as max_game_user_level
-            , MAX(IF(datekey < '2025-12-01' AND access_type_id = 1, datekey, null)) as last_login_datekey
-            , COUNT(DISTINCT(IF(datekey >= DATE_SUB('2025-12-01', INTERVAL 6 DAY) AND datekey < '2025-12-02' AND access_type_id = 1, datekey, null))) as stickiness
+            , MAX(IF(datekey < '{start_date}' AND access_type_id = 1, datekey, null)) as last_login_datekey
+            , COUNT(DISTINCT(IF(datekey >= DATE_SUB('{start_date}', INTERVAL 6 DAY) AND datekey < '{end_date}' AND access_type_id = 1, datekey, null))) as stickiness
             FROM datahub-478802.datahub.f_common_access
-            where datekey >= DATE_SUB('2025-12-01', INTERVAL 6 DAY) AND datekey < '2025-12-02'
+            where datekey >= DATE_SUB('{start_date}', INTERVAL 6 DAY) AND datekey < '{end_date}'
             group by joyple_game_code, auth_account_name, auth_method_id, game_sub_user_name
         ) as E
         on A.joyple_game_code = E.joyple_game_code AND A.auth_method_id = E.auth_method_id AND A.auth_account_name = E.auth_account_name AND A.game_sub_user_name = E.game_sub_user_name
@@ -496,7 +497,7 @@ def etl_f_user_map_char():
             SELECT joyple_game_code, auth_method_id, auth_account_name, game_sub_user_name,
                 ARRAY_AGG(STRUCT(pg_id, platform_device_type, product_code, product_name, revenue, buy_cnt) ORDER BY datekey ASC) as products_array
             FROM datahub-478802.datahub.f_common_payment
-            WHERE datekey >= '2025-12-01' and datekey < '2025-12-02'
+            WHERE datekey >= '{start_date}' and datekey < '{end_date}'
             GROUP BY joyple_game_code, auth_method_id, auth_account_name, game_sub_user_name
         ) AS F
         on A.joyple_game_code = F.joyple_game_code AND A.auth_method_id = F.auth_method_id AND A.auth_account_name = F.auth_account_name AND A.game_sub_user_name = F.game_sub_user_name
@@ -508,7 +509,7 @@ def etl_f_user_map_char():
             adset_name, ad_name, is_retargeting, advertising_id, idfa, site_id,
             channel, CB1_media_source, CB1_campaign, CB2_media_source, CB2_campaign, CB3_media_source, CB3_campaign, 
             FROM datahub-478802.datahub.f_common_register
-            WHERE reg_datekey < '2025-12-02'
+            WHERE reg_datekey < '{end_date}'
         ) AS G
         on A.joyple_game_code = G.joyple_game_code AND A.auth_method_id = G.auth_method_id AND A.auth_account_name = G.auth_account_name
         LEFT OUTER JOIN

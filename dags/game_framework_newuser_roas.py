@@ -847,7 +847,7 @@ def monthlyLTVgrowth_gemini(service_sub:str, path_monthlyBEP_ROAS:str, bucket, g
 
 
 ### ROAS 현황 및 KPI 표 이미지 생성
-def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_result6_monthlyROAS:str, bucket, gcs_bucket:str, **context):
+def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_result6_monthlyROAS:str, bucket, gcs_bucket:str, credentials, **context):
 
     query6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_roas_dataframe_preprocessing)
     query_result6_monthlyROAS = load_df_from_gcs(bucket=bucket, path=path_result6_monthlyROAS)
@@ -1077,7 +1077,7 @@ def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_res
             # 브라우저 닫기
             await browser.close()
 
-    def capture_image_task(html_path, gcs_bucket, gcs_path, project_id=None):
+    def capture_image_task(html_path, gcs_bucket, gcs_path, project_id=None, credentials=credentials, **context):
         """이미지를 캡처하고 GCS에 업로드"""
         import tempfile
 
@@ -1099,7 +1099,7 @@ def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_res
             
             # 3. GCS에 업로드
             print(f"Uploading to GCS: gs://{gcs_bucket}/{gcs_path}")
-            client = storage.Client(project=project_id)
+            client = storage.Client(project=project_id, credentials=credentials)
             bucket = client.bucket(gcs_bucket)
             blob = bucket.blob(gcs_path)
             blob.upload_from_filename(temp_image_path, content_type='image/png')
@@ -1120,7 +1120,7 @@ def roas_table_draw(gameidx:str, path_roas_dataframe_preprocessing:str, path_res
 
 
 ############# KPI 테이블 이미지 생성
-def kpi_table_draw(gameidx:str, path_roas_kpi:str, bucket, gcs_bucket:str, **context):
+def kpi_table_draw(gameidx:str, path_roas_kpi:str, bucket, gcs_bucket:str, credentials, **context):
 
     roas_kpi = load_df_from_gcs(bucket=bucket, path=path_roas_kpi)
 
@@ -1225,7 +1225,7 @@ def kpi_table_draw(gameidx:str, path_roas_kpi:str, bucket, gcs_bucket:str, **con
             print(f"✓ Screenshot captured")
             
             # GCS 업로드
-            client = storage.Client()
+            client = storage.Client(project=PROJECT_ID, credentials=credentials)
             bucket = client.bucket(gcs_bucket)
             blob = bucket.blob(gcs_path)
             blob.upload_from_filename(temp_image_path, content_type='image/png')
@@ -1253,10 +1253,10 @@ def kpi_table_draw(gameidx:str, path_roas_kpi:str, bucket, gcs_bucket:str, **con
 
 
 
-def roas_kpi_table_merge(gameidx:str, path_roas_dataframe_preprocessing:str, path_result6_monthlyROAS:str, path_roas_kpi:str, bucket, gcs_bucket:str, **context):
+def roas_kpi_table_merge(gameidx:str, path_roas_dataframe_preprocessing:str, path_result6_monthlyROAS:str, path_roas_kpi:str, bucket, gcs_bucket:str, credentials, **context):
 
-    p1 = roas_table_draw(gameidx, path_roas_dataframe_preprocessing, path_result6_monthlyROAS, bucket, gcs_bucket, **context)
-    p2 = kpi_table_draw(gameidx, path_roas_kpi, bucket, gcs_bucket, **context)
+    p1 = roas_table_draw(gameidx, path_roas_dataframe_preprocessing, path_result6_monthlyROAS, bucket, gcs_bucket, credentials=credentials, **context)
+    p2 = kpi_table_draw(gameidx, path_roas_kpi, bucket, gcs_bucket, credentials=credentials, **context)
 
     # 2) 이미지 열기 (투명 보존 위해 RGBA)
     blob1 = bucket.blob(p1)
@@ -1301,7 +1301,8 @@ def roas_kpi_table_merge(gameidx:str, path_roas_dataframe_preprocessing:str, pat
 
 
 def retrieve_new_user_upload_notion(gameidx:str, service_sub:str, path_monthlyBEP_ROAS:str, path_roas_kpi:str, path_roas_dataframe_preprocessing:str,
-                                    MODEL_NAME:str, SYSTEM_INSTRUCTION:list, NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json, **context):
+                                    MODEL_NAME:str, SYSTEM_INSTRUCTION:list, NOTION_TOKEN:str, NOTION_VERSION:str, notion, bucket, headers_json, 
+                                    genai_client, **context):
 
     current_context = get_current_context()
     
@@ -1405,8 +1406,6 @@ def retrieve_new_user_upload_notion(gameidx:str, service_sub:str, path_monthlyBE
     )
 
     print("■■■■■■■■■■■ monthlyBEP_ROAS 데이터프레임 가져오기 완료 ■■■■■■■■■■■")
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
 
     text = result6_ROAS_gemini(gameidx=gameidx, service_sub=service_sub, 
                                path_roas_dataframe_preprocessing=path_roas_dataframe_preprocessing,

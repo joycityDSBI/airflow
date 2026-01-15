@@ -240,9 +240,6 @@ def Daily_revenue_target_revenue_query(joyplegameid: int, gameidx: str, bigquery
 ### 4> 일자별 매출에 대한 제미나이 코멘트
 def daily_revenue_gemini(gameidx: str, service_sub: str, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION:list, path_daily_revenue, path_monthly_revenue, path_sales_goal, bucket, PROJECT_ID, LOCATION, **context):
     
-    from google.genai import Client
-    genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION)
-
     query_result1_dailySales = load_df_from_gcs(bucket, path_daily_revenue)
     query_result1_monthlySales = load_df_from_gcs(bucket, path_monthly_revenue)
     query_result1_salesGoal = load_df_from_gcs(bucket, path_sales_goal)
@@ -552,13 +549,34 @@ def merge_daily_graph(gameidx: str, daily_revenue_path, daily_revenue_yoy_path, 
 
 def daily_revenue_data_upload_to_notion(gameidx: str, st1, st2, st3, service_sub, genai_client, MODEL_NAME, SYSTEM_INSTRUCTION, notion, bucket, headers_json, **context):
 
-    current_context = get_current_context()
+    # context에서 task_instance 우선 확인
+    if 'task_instance' in context:
+        ti = context['task_instance']
+    else:
+        # Fallback
+        current_context = get_current_context()
+        ti = current_context['task_instance']
+
+    print(f"🔧 Task Instance ID: {ti.task_id}, DAG ID: {ti.dag_id}")
     
-    PAGE_INFO=current_context['task_instance'].xcom_pull(
-        task_ids = 'make_gameframework_notion_page_wraper',
+    # 1. 먼저 'page_info' 키로 시도
+    PAGE_INFO = ti.xcom_pull(
+        task_ids='make_gameframework_notion_page_wraper',
         key='page_info'
     )
 
+    # 2. 없으면 기본 키('return_value')로 재시도 (방어 로직)
+    if PAGE_INFO is None:
+        print("⚠️ 'page_info' 키 데이터 없음. 'return_value'로 재시도합니다.")
+        PAGE_INFO = ti.xcom_pull(
+            task_ids='make_gameframework_notion_page_wraper',
+            key='return_value'
+        )
+
+    # 3. 그래도 없으면 에러 발생
+    if PAGE_INFO is None:
+        raise ValueError("❌ PAGE_INFO를 찾을 수 없습니다. 앞단 Task가 정상 실행되었는지 확인하세요.")
+    
     print(f"📊 page_info type: {type(PAGE_INFO)}")
     print(f"📊 page_info: {PAGE_INFO}")
     print(f"✅ PAGE_INFO 가져오기 성공")

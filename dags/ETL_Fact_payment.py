@@ -28,8 +28,8 @@ def etl_pre_payment_deduct_user(target_date: list):
                 , AuthAccountName
                 , RegistredTime AS UpdatedTimestamp
         FROM `dataplatform-services.ServiceData.PaymentDeductUser`
-        WHERE RegistredTime >= {start_utc}
-        AND RegistredTime < {end_utc}')
+        WHERE RegistredTime >= '{start_utc}'
+        AND RegistredTime < '{end_utc}'
         AND JoypleGameID IS NOT NULL
         AND AuthMethodID IS NOT NULL
         AND AuthAccountName IS NOT NULL
@@ -80,8 +80,8 @@ def etl_pre_payment_deduct_order(target_date: list):
                 , LogTime       AS LogTimestamp
                 , RegistredTime AS UpdatedTimestamp
         FROM `dataplatform-services.ServiceData.PaymentDeductOrder` --
-            WHERE RegistredTime >= {start_utc}
-            AND RegistredTime < {end_utc}
+            WHERE RegistredTime >= '{start_utc}'
+            AND RegistredTime < '{end_utc}'
             AND JoypleGameID IS NOT NULL
             AND OrderID IS NOT NULL
             AND ProductCode IS NOT NULL
@@ -99,8 +99,8 @@ def etl_pre_payment_deduct_order(target_date: list):
         )
         WHEN NOT MATCHED BY source 
             AND (
-                target.update_timestamp >= {start_utc}
-                AND target.update_timestamp < {end_utc}
+                target.update_timestamp >= '{start_utc}'
+                AND target.update_timestamp < '{end_utc}'
                 ) THEN
         DELETE  
         ;
@@ -197,8 +197,8 @@ def etl_f_common_payment(target_date: list):
                 , a.LogTime                                            
                 , IFNULL(a.MultiQuantity, 1) AS MultiQuantity
             FROM `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V` AS a
-            WHERE a.LogTime >= {start_utc}
-                AND a.LogTime < {end_utc}
+            WHERE a.LogTime >= '{start_utc}'
+                AND a.LogTime < '{end_utc}'
             )
             , TC as (
             SELECT DATE(a.LogTime, "Asia/Seoul") as datekey
@@ -288,9 +288,14 @@ def etl_f_common_payment(target_date: list):
                        sum(price_KRW) as revenue,
                        sum(MultiQuantity) as buy_cnt
                 from `datahub-478802.datahub.pre_paymentfix_receipt_after_y24_view` as a 
+<<<<<<< HEAD
                 WHERE a.log_time >= {start_utc}
                 AND log_time < {end_utc}  
                 AND joyple_game_code in (119,123,127,129)
+=======
+                WHERE a.log_time >= '{start_utc}'
+                AND log_time < '{end_utc}'  
+>>>>>>> 046346be632510fedecd8b30c214e686f652873e
                 group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
 
             ) as source

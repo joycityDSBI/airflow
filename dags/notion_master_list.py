@@ -11,6 +11,8 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from airflow.utils.trigger_rule import TriggerRule
+import json
+from google.oauth2 import service_account
 
 
 
@@ -159,7 +161,27 @@ def upload_to_bigquery(**context):
     
     logging.info(f"📤 BigQuery 업로드 시작: {len(df)}개 행")
     
-    client = bigquery.Client(project=PROJECT_ID)
+    try:
+        credentials_json = Variable.get('GOOGLE_CREDENTIAL_JSON')
+        cred_dict = json.loads(credentials_json)
+        
+        # 2. private_key 줄바꿈 문자 처리
+        if 'private_key' in cred_dict:
+            if '\\n' in cred_dict['private_key']:
+                cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+
+        # 3. Credentials 객체 생성
+        credentials = service_account.Credentials.from_service_account_info(
+            cred_dict,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        
+        # 4. Client 생성 시 credentials 전달 (여기가 핵심!)
+        client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
+        
+    except Exception as e:
+        print(f"❌ 인증 설정 실패: {e}")
+        raise e
     job = client.load_table_from_dataframe(
         dataframe=df,
         destination=FULL_TABLE_ID,
