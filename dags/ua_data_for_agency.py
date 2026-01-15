@@ -461,13 +461,31 @@ def generate_all_projects_reports(**context):
             print(f"[프로젝트: {project_name}] 쿼리 실행 중...")
             df = bq_client.query(query, job_config=job_config).to_dataframe()
             
-            csv_buffer = io.StringIO()
+            # csv_buffer = io.StringIO()
+            # df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+            # blob_name = f"all_reports/{project_name}_{today}.csv"
+            # blob = bucket.blob(blob_name)
+            # blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8-sig")
+            # print(f"✓ GCS 업로드 완료: {blob.name}")
+
+            # 1. StringIO 대신 BytesIO(바이트 버퍼) 생성
+            csv_buffer = io.BytesIO()
+            
+            # 2. df를 csv 바이트로 변환하여 저장
+            # encoding='utf-8-sig'가 적용된 '바이트 데이터'가 버퍼에 담깁니다.
             df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+            
+            # 3. GCS 업로드 설정
             blob_name = f"all_reports/{project_name}_{today}.csv"
             blob = bucket.blob(blob_name)
-            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8-sig")
-            print(f"✓ GCS 업로드 완료: {blob.name}")
             
+            # 4. 업로드 실행
+            # csv_buffer.getvalue()는 이제 'bytes' 타입을 반환합니다.
+            # content_type은 표준 형식인 "text/csv"로 설정합니다.
+            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv")
+            
+            print(f"✓ GCS 업로드 완료 (한글 깨짐 방지 적용): {blob.name}")
+
             expiration = timedelta(hours=24)
             signed_url = blob.generate_signed_url(version="v4", expiration=expiration, method="GET")
             cell = worksheet.find(project_name)
