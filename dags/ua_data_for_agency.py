@@ -321,6 +321,19 @@ def generate_ua_data_in_bigquery(**context):
                 and perfo.AdName = inapp.AdName
                 and perfo.Agency = inapp.Agency
                 and perfo.SiteID = inapp.SiteID 
+                left join PU_table as put
+                on  perfo.JoypleGameID = put.JoypleGameID
+                and perfo.RegdateAuthAccountDateKST = put.RegdateAuthAccountDateKST
+                and perfo.AppID = put.AppID
+                and perfo.MediaSource = put.MediaSource
+                and perfo.Campaign = put.Campaign
+                and perfo.CountryCode = put.CountryCode
+                and perfo.MarketName = put.MarketName
+                and perfo.OS = put.OS
+                and perfo.AdsetName = put.AdsetName
+                and perfo.AdName = put.AdName
+                and perfo.Agency = put.Agency
+                and perfo.SiteID = put.SiteID
                 ) as a
             left join (select distinct *
                     from `dataplatform-reporting.DataService.V_0261_0000_AFCampaignRule_V`) as b
