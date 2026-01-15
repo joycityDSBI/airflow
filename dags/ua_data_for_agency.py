@@ -393,9 +393,21 @@ def generate_ua_data_in_bigquery(**context):
             from final
             """
     
-    bq_client.query(truncate_query)
-    time.sleep(5)
-    bq_client.query(query)
+    try: 
+        bq_client.query(truncate_query)
+        print("✓ Bigquery 테이블 초기화 완료")
+    except Exception as e:
+        print(f"✗ Bigquery 테이블 초기화 오류: {str(e)}")
+        raise e
+    
+    try:
+        print("✓ Bigquery 데이터 삽입 시작...")   
+        bq_client.query(query)
+        print("✓ Bigquery 데이터 삽입 완료")
+    except Exception as e:
+        print(f"✗ Bigquery 데이터 삽입 오류: {str(e)}")
+        raise e
+    
     print("=" * 80)
     print("✓ Bigquery 내 UA 데이터 생성 완료")
     print("=" * 80)
