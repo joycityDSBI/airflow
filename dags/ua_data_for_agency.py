@@ -136,10 +136,129 @@ def generate_ua_data_in_bigquery(**context):
             rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90, rev_iaa_D120, rev_iaa_D150, rev_iaa_D180,
             rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330, rev_iaa_D360, rev_iaa_D390,
             rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum, RU_D1, RU_D3, RU_D7, RU_D14,
-            RU_D30, RU_D60, RU_D90
+            RU_D30, RU_D60, RU_D90, Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90, Pu_D120, Pu_D150, Pu_D180, Pu_D210
+            , Pu_D240, Pu_D270, Pu_D300, Pu_D330, Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510
             )
 
-            with UA_perfo as (
+            with UAPerfoRowStep1
+            AS
+            (
+              SELECT a.JoypleGameID                                          AS JoypleGameID
+                    , a.AuthMethodID                                          AS AuthMethodID
+                    , a.AuthAccountName                                       AS AuthAccountName
+                    , DATE_DIFF(a.AccessDateKST,a.RegDateKST, DAY)            AS DayDiff
+                    , ROW_NUMBER() OVER (PARTITION BY a.JoypleGameID, a.AuthMethodID, a.AuthAccountName ORDER BY a.AccessDateKST ASC) AS Idx
+                    , MAX(a.PriceKRW)                                         AS PriceKRW
+              FROM (
+                SELECT  a.JoypleGameID
+                      , a.AuthMethodID
+                      , a.AuthAccountName
+                      , a.LogDateKST          AS AccessDateKST
+                      , AuthAccountRegDateKST AS RegDateKST
+                      , PriceKRW
+                FROM `dataplatform-reporting.DataService.V_0317_0000_AuthAccountPerformance_V` AS a
+                WHERE AuthAccountRegDateKST >= '2017-04-27'
+                AND DATE_DIFF(a.LogDateKST,a.AuthAccountRegDateKST, DAY) >= 0
+              ) AS a
+              GROUP BY a.JoypleGameID, a.AuthMethodID, a.AuthAccountName, a.AccessDateKST, a.RegDateKST  
+            ),
+            UAPerfoRowStep2
+            AS
+            (
+              SELECT JoypleGameID, AuthMethodID, AuthAccountName
+                  , MAX(IF(DayDiff  =                0  and pricecum > 0,  1, 0)) AS d0pu
+                  , MAX(IF(DayDiff  between 0 and    1  and pricecum > 0,  1, 0)) AS d1pu
+                  , MAX(IF(DayDiff  between 0 and    3  and pricecum > 0,  1, 0)) AS d3pu
+                  , MAX(IF(DayDiff  between 0 and    7  and pricecum > 0,  1, 0)) AS d7pu
+                  , MAX(IF(DayDiff  between 0 and   14  and pricecum > 0,  1, 0)) AS d14pu
+                  , MAX(IF(DayDiff  between 0 and   30  and pricecum > 0,  1, 0)) AS d30pu
+                  , MAX(IF(DayDiff  between 0 and   60  and pricecum > 0,  1, 0)) AS d60pu
+                  , MAX(IF(DayDiff  between 0 and   90  and pricecum > 0,  1, 0)) AS d90pu
+                  , MAX(IF(DayDiff  between 0 and  120  and pricecum > 0,  1, 0)) AS d120pu
+                  , MAX(IF(DayDiff  between 0 and  150  and pricecum > 0,  1, 0)) AS d150pu
+                  , MAX(IF(DayDiff  between 0 and  180  and pricecum > 0,  1, 0)) AS d180pu
+                  , MAX(IF(DayDiff  between 0 and  210  and pricecum > 0,  1, 0)) AS d210pu
+                  , MAX(IF(DayDiff  between 0 and  240  and pricecum > 0,  1, 0)) AS d240pu
+                  , MAX(IF(DayDiff  between 0 and  270  and pricecum > 0,  1, 0)) AS d270pu
+                  , MAX(IF(DayDiff  between 0 and  300  and pricecum > 0,  1, 0)) AS d300pu
+                  , MAX(IF(DayDiff  between 0 and  330  and pricecum > 0,  1, 0)) AS d330pu
+                  , MAX(IF(DayDiff  between 0 and  360  and pricecum > 0,  1, 0)) AS d360pu
+                  , MAX(IF(DayDiff  between 0 and  390  and pricecum > 0,  1, 0)) AS d390pu
+                  , MAX(IF(DayDiff  between 0 and  420  and pricecum > 0,  1, 0)) AS d420pu
+                  , MAX(IF(DayDiff  between 0 and  450  and pricecum > 0,  1, 0)) AS d450pu
+                  , MAX(IF(DayDiff  between 0 and  480  and pricecum > 0,  1, 0)) AS d480pu
+                  , MAX(IF(DayDiff  between 0 and  510  and pricecum > 0,  1, 0)) AS d510pu
+              FROM (
+             
+                SELECT JoypleGameID, AuthMethodID, AuthAccountName, IFNULL(DayDiff, -1) AS DayDiff, MAX(PriceKRW) AS PriceKRW, MAX(PriceCum) AS PriceCum, 1 AS Access
+                FROM (
+                  SELECT JoypleGameID, AuthMethodID, AuthAccountName
+                      , CASE WHEN b.Num = 1 THEN DayDiff ELSE null END AS DayDiff
+                      , CASE WHEN b.Num = 1 THEN PriceKRW ELSE 0 END AS PriceKRW
+                      , PriceCum
+                      , b.Num
+                  FROM (
+                    SELECT JoypleGameID, AuthMethodID, AuthAccountName, idx, DayDiff, PriceKRW
+                        , SUM(PriceKRW) OVER (PARTITION BY JoypleGameID, AuthAccountName, AuthMethodID ORDER BY idx ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as PriceCum  
+                    FROM UAPerfoRowStep1
+                  ) AS a
+                  CROSS JOIN
+                  (SELECT 1 AS NUM UNION ALL SELECT 2) AS b
+                )
+                GROUP BY JoypleGameID, AuthMethodID, AuthAccountName, IFNULL(DayDiff, -1)
+              )
+              WHERE DayDiff BETWEEN - 1 AND 510
+              GROUP BY JoypleGameID, AuthMethodID, AuthAccountName
+            )
+            , PU_table AS
+            (
+            SELECT a.JoypleGameID AS JoypleGameID
+                , RegdateDateKst AS RegdateAuthAccountDateKST, AppID, MediaSource, Campaign, CountryCode, MarketName, OS, AdsetName, AdName, Agency, SiteID
+                , Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90, Pu_D120, Pu_D150, Pu_D180
+                , Pu_D210, Pu_D240, Pu_D270, Pu_D300, Pu_D330, Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510
+            FROM (
+                SELECT a.JoypleGameID
+                    , b.AuthAccountRegDateKST AS RegdateDateKst
+                    , CASE WHEN b.CountryCode = '' OR b.CountryCode IS NULL THEN 'NULL' ELSE b.CountryCode END AS CountryCode -- 추가
+                    , CASE WHEN b.MarketName  = '' OR b.MarketName  IS NULL THEN 'NULL' ELSE b.MarketName  END AS MarketName -- 추가
+                    , b.OS
+                    , CASE WHEN b.MediaSource = '' OR b.MediaSource IS NULL THEN 'NULL' ELSE b.MediaSource END AS MediaSource
+                    , CASE WHEN b.Campaign    = '' OR b.Campaign    IS NULL THEN 'NULL' ELSE b.Campaign    END AS Campaign
+                    , CASE WHEN b.AdsetName   = '' OR b.AdsetName   IS NULL THEN 'NULL' ELSE b.AdsetName   END AS AdsetName
+                    , CASE WHEN b.AdName      = '' OR b.AdName      IS NULL THEN 'NULL' ELSE b.AdName      END AS AdName
+                    , CASE WHEN b.Agency      = '' OR b.Agency      IS NULL THEN 'NULL' ELSE b.Agency      END AS Agency
+                    , CASE WHEN b.SiteID      = '' OR b.SiteID      IS NULL THEN 'NULL' ELSE b.SiteID      END AS SiteID
+                    , CASE WHEN b.AppID       = '' OR b.AppID       IS NULL THEN 'NULL' ELSE b.AppID       END AS AppID
+                    , SUM(d0pu)   AS Pu_D0
+                    , SUM(d1pu)   AS Pu_D1
+                    , SUM(d3pu)   AS Pu_D3
+                    , SUM(d7pu)   AS Pu_D7
+                    , SUM(d14pu)  AS Pu_D14
+                    , SUM(d30pu)  AS Pu_D30
+                    , SUM(d60pu)  AS Pu_D60
+                    , SUM(d90pu)  AS Pu_D90
+                    , SUM(d120pu) AS Pu_D120
+                    , SUM(d150pu) AS Pu_D150
+                    , SUM(d180pu) AS Pu_D180
+                    , SUM(d210pu) AS Pu_D210
+                    , SUM(d240pu) AS Pu_D240
+                    , SUM(d270pu) AS Pu_D270
+                    , SUM(d300pu) AS Pu_D300
+                    , SUM(d330pu) AS Pu_D330
+                    , SUM(d360pu) AS Pu_D360    
+                    , SUM(d390pu) AS Pu_D390
+                    , SUM(d420pu) AS Pu_D420
+                    , SUM(d450pu) AS Pu_D450
+                    , SUM(d480pu) AS Pu_D480
+                    , SUM(d510pu) AS Pu_D510
+                FROM UAPerfoRowStep2 AS a
+                LEFT OUTER JOIN `dataplatform-reporting.DataService.V_0316_0000_AuthAccountInfo_V` AS b
+                ON (a.JoypleGameID = b.JoypleGameID AND a.AuthMethodID = b.AuthMethodID AND a.AuthAccountName = b.AuthAccountName)
+                GROUP BY JoypleGameID, RegdateDateKst, CountryCode, MarketName, OS, MediaSource, Campaign, AdsetName, AdName, Agency, SiteID, AppID
+            ) AS  a
+            )
+
+            , UA_perfo as (
             select c.JoypleGameName as ProJect_name, a.JoypleGameID, a.RegdateAuthAccountDateKST, a.APPID,
                 a.MediaSource, a.CamPaign
                 , b.UptdtCampaign
@@ -163,25 +282,31 @@ def generate_ua_data_in_bigquery(**context):
                 , rev_iaa_D360, rev_iaa_D390, rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum
                 , a.ru_d1, a.ru_d3, a.ru_d7, a.ru_d14, a.ru_d30, a.ru_d60, a.ru_d90
                 , a.ru_d120, a.ru_d150, a.ru_d180
+                , a.Pu_D0, a.Pu_D1, a.Pu_D3, a.Pu_D7, a.Pu_D14, a.Pu_D30, a.Pu_D60, a.Pu_D90, a.Pu_D120, a.Pu_D150, a.Pu_D180, a.Pu_D210
+                , a.Pu_D240, a.Pu_D270, a.Pu_D300, a.Pu_D330, a.Pu_D360, a.Pu_D390, a.Pu_D420, a.Pu_D450, a.Pu_D480, a.Pu_D510
                 , case  when a.campaign like '%Pirates of the Caribbean Android AU%' then 'ADNW'
                         when a.campaign like '%Pirates of the Caribbean Android KR%' then 'ADNW'
                         when a.campaign like '%Pirates of the Caribbean Android US%' then 'ADNW'
                         when a.campaign like '%Pirates of the Caribbean Android GB%' then 'ADNW'
-                        when a.campaign = 'POTC_検索' then 'ADNW' 
-                        when b.gcat is null and c.JoypleGameName ='POTC' then d.media_category 
-                        else b.mediacategory 
-                    end as mediacategory 
+                        when a.campaign = 'POTC_検索' then 'ADNW'
+                        when b.gcat is null and c.JoypleGameName ='POTC' then d.media_category
+                        else b.mediacategory
+                    end as mediacategory
                 , b.productcategory, b.media, b.mediadetail
                 , case when b.optim  = 'NONE' and a.AdsetName like '%MAIA%' then 'MAIA'
                         when b.optim  = 'NONE' and a.AdsetName like '%AEO%' then 'AEO'
                         when b.optim  = 'NONE' and a.AdsetName like '%VO%' then 'VO'
-                    else b.optim end as optim 
+                    else b.optim end as optim
                 , b.etccategory,  b.OSCAM, b.GEOCAM, datecam
                 , b.creativeno , b.device, b.settingtitle, b.landingtitle, b.adunit, b.mediation
                 , b.createyn, b.updateyn, b.ruleyn
-            from(select perfo.*, rev_iaa_D0, rev_iaa_D1, rev_iaa_D3, rev_iaa_D7, rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90
+            from
+            (
+                select perfo.*, rev_iaa_D0, rev_iaa_D1, rev_iaa_D3, rev_iaa_D7, rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90
                             , rev_iaa_D120, rev_iaa_D150, rev_iaa_D180, rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330
                             , rev_iaa_D360, rev_iaa_D390, rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum
+                            , Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90, Pu_D120, Pu_D150, Pu_D180, Pu_D210
+                            , Pu_D240, Pu_D270, Pu_D300, Pu_D330, Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510
                 from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1` as perfo
                 left join `dataplatform-reporting.DataService.T_0422_0000_UAPerformanceInAppADRaw_V1` as inapp
                 on  perfo.JoypleGameID = inapp.JoypleGameID
@@ -195,31 +320,45 @@ def generate_ua_data_in_bigquery(**context):
                 and perfo.AdsetName = inapp.AdsetName
                 and perfo.AdName = inapp.AdName
                 and perfo.Agency = inapp.Agency
-                and perfo.SiteID = inapp.SiteID 
-                ) as a
+                and perfo.SiteID = inapp.SiteID
+                left join PU_table as put
+                on  perfo.JoypleGameID = put.JoypleGameID
+                and perfo.RegdateAuthAccountDateKST = put.RegdateAuthAccountDateKST
+                and perfo.AppID = put.AppID
+                and perfo.MediaSource = put.MediaSource
+                and perfo.Campaign = put.Campaign
+                and perfo.CountryCode = put.CountryCode
+                and perfo.MarketName = put.MarketName
+                and perfo.OS = put.OS
+                and perfo.AdsetName = put.AdsetName
+                and perfo.AdName = put.AdName
+                and perfo.Agency = put.Agency
+                and perfo.SiteID = put.SiteID
+
+            ) as a
             left join (select distinct *
                     from `dataplatform-reporting.DataService.V_0261_0000_AFCampaignRule_V`) as b
             on a.appID = b.appID and a.MediaSource = b.MediaSource and a.Campaign = b.initCampaign
             left join `dataplatform-reporting.DataService.V_0200_0001_GameJoyple_V` as c
             on a.joypleGameid = c.JoypleGameid
             left join `data-science-division-216308.POTC.before_mas_campaign` as d
-            on a.campaign = d.campaign 
+            on a.campaign = d.campaign
             )
-
+           
             , final as (
-            select 
+            select
             project_name
-            , JoypleGameID as joyple_game_code 
+            , JoypleGameID as joyple_game_code
             , RegdateAuthAccountDateKST as regdate_joyple_kst
             , appid as app_id
             , gcat
-            ,CASE WHEN mediasource = 'Organic' then 'Organic' 
-                when mediasource = 'Unknown' then 'Unknown' 
-                else mediacategory 
+            ,CASE WHEN mediasource = 'Organic' then 'Organic'
+                when mediasource = 'Unknown' then 'Unknown'
+                else mediacategory
             end as media_category
-            ,CASE WHEN mediasource = 'Organic' then 'Organic' 
-                when mediasource = 'Unknown' then 'Unknown' 
-                else media 
+            ,CASE WHEN mediasource = 'Organic' then 'Organic'
+                when mediasource = 'Unknown' then 'Unknown'
+                else media
             end as media
             , mediasource as media_source
             , mediadetail as media_detail
@@ -248,11 +387,12 @@ def generate_ua_data_in_bigquery(**context):
             , rev_iaa_D120, rev_iaa_D150, rev_iaa_D180, rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330
             , rev_iaa_D360, rev_iaa_D390, rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum
             , RU_D1,RU_D3,RU_D7,RU_D14,RU_D30,RU_D60,RU_D90
+            , Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90, Pu_D120, Pu_D150, Pu_D180, Pu_D210
+                            , Pu_D240, Pu_D270, Pu_D300, Pu_D330, Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510
             from UA_perfo
             where RegdateAuthAccountDateKST >= date_add(current_date('Asia/Seoul'),interval -13 month)
             and RegdateAuthAccountDateKST <= date_add(current_date('Asia/Seoul'),interval -1 day)
             )
-
             select project_name, joyple_game_code, regdate_joyple_kst, app_id, gcat, media_category, media, media_source,
             media_detail, product_category, etc_category, optim, campaign, geo, geo_cam, market, Os, os_cam,
             fb_adset_name, fb_adgroup_name, af_siteid, agency, device, setting_title, landing_title, ad_unit,
@@ -262,7 +402,8 @@ def generate_ua_data_in_bigquery(**context):
             rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90, rev_iaa_D120, rev_iaa_D150, rev_iaa_D180,
             rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330, rev_iaa_D360, rev_iaa_D390,
             rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum, RU_D1, RU_D3, RU_D7, RU_D14,
-            RU_D30, RU_D60, RU_D90
+            RU_D30, RU_D60, RU_D90, Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90, Pu_D120, Pu_D150, Pu_D180, Pu_D210
+            , Pu_D240, Pu_D270, Pu_D300, Pu_D330, Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510
             from final
             """
     
@@ -306,7 +447,8 @@ def generate_all_projects_reports(**context):
             continue
         try:
             query = """
-                SELECT *
+                SELECT * except(  Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90, Pu_D120, Pu_D150, Pu_D180, Pu_D210
+                                , Pu_D240, Pu_D270, Pu_D300, Pu_D330, Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510)
                 FROM `datacatalog-446301.UA_Service.ru_mailing_data`
                 WHERE
                     project_name = @project_name
@@ -405,7 +547,11 @@ def generate_agency_reports(**context):
         rev_D60, rev_D90, rev_D120, rev_D150, rev_D180, rev_D210,
         rev_D240, rev_D270, rev_D300, rev_D330, rev_D360, rev_D390,
         rev_D420, rev_D450, rev_D480, rev_D510, rev_Dcum, RU_D1,
-        RU_D3, RU_D7, RU_D14, RU_D30, RU_D60, RU_D90
+        RU_D3, RU_D7, RU_D14, RU_D30, RU_D60, RU_D90, 
+        PU_D0,   PU_D1,   PU_D3,   PU_D7,   PU_D14,  PU_D30,
+        PU_D60,  PU_D90,  PU_D120, PU_D150, PU_D180, PU_D210,
+        PU_D240, PU_D270, PU_D300, PU_D330, PU_D360, PU_D390,
+        PU_D420, PU_D450, PU_D480, PU_D510
     """
     
     # 실패한 작업 추적
@@ -456,16 +602,31 @@ def generate_agency_reports(**context):
             df = bq_client.query(base_query, job_config=job_config).to_dataframe()
             
             # CSV로 변환
-            csv_buffer = io.StringIO()
+            # csv_buffer = io.StringIO()
+            # df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+            
+            # # GCS에 업로드
+            # blob_name = f"agency_reports/{pr_name}_{agency_name}_{today}.csv"
+            # blob = bucket.blob(blob_name)
+            # blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8-sig")
+
+            # print(f"✓ GCS 업로드 완료: {blob.name}")
+            
+            # 1. StringIO 대신 BytesIO 사용 (바이트 단위 처리)
+            csv_buffer = io.BytesIO()
+            
+            # 2. encoding='utf-8-sig' 적용 (Pandas가 바이트로 변환할 때 BOM을 삽입함)
             df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
             
-            # GCS에 업로드
+            # 3. GCS에 업로드 (이미 바이트 상태이므로 추가 인코딩 없이 그대로 올라감)
             blob_name = f"agency_reports/{pr_name}_{agency_name}_{today}.csv"
             blob = bucket.blob(blob_name)
-            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8-sig")
-
-            print(f"✓ GCS 업로드 완료: {blob.name}")
             
+            # 중요: content_type에 charset은 빼고 전송 (파일 자체가 이미 -sig이므로)
+            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv")
+            
+            print(f"✓ GCS 업로드 완료 (BOM 적용): {blob.name}")
+
             # 수정: Signed URL 생성 (v4 방식 명시)
             expiration = timedelta(hours=24)
             signed_url = blob.generate_signed_url(
