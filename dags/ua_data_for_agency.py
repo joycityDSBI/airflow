@@ -480,9 +480,6 @@ def generate_all_projects_reports(**context):
 
             if df.empty:
                 print(f"⚠️ [WARNING] '{project_name}'에 대한 데이터가 0건입니다. (기간: 최근 3개월)")
-                # 빈 파일이라도 업로드가 필요하다면 아래 코드를 진행하고, 
-                # 필요 없다면 continue로 건너뛰어도 됩니다.
-                # continue 
             else:
                 print(f"✅ 데이터 조회 성공: {len(df)} 행")
             
