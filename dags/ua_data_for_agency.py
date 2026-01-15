@@ -395,7 +395,7 @@ def generate_ua_data_in_bigquery(**context):
     
     try: 
         bq_client.query(truncate_query)
-        print("✓ Bigquery 테이블 초기화 완료")
+        print("✅ Bigquery 테이블 초기화 완료")
     except Exception as e:
         print(f"✗ Bigquery 테이블 초기화 오류: {str(e)}")
         raise e
@@ -403,13 +403,13 @@ def generate_ua_data_in_bigquery(**context):
     try:
         print("✓ Bigquery 데이터 삽입 시작...")   
         bq_client.query(query)
-        print("✓ Bigquery 데이터 삽입 완료")
+        print("✅ Bigquery 데이터 삽입 완료")
     except Exception as e:
         print(f"✗ Bigquery 데이터 삽입 오류: {str(e)}")
         raise e
     
     print("=" * 80)
-    print("✓ Bigquery 내 UA 데이터 생성 완료")
+    print("✅ Bigquery 내 UA 데이터 생성 완료")
     print("=" * 80)
     
 
@@ -439,13 +439,18 @@ def generate_all_projects_reports(**context):
     failed_projects = []
     total_rows = 0
     uploaded_files = []
+
+    print("=" * 80)
+    print(f"전체 프로젝트 수: {len(project_list)}")
+    print(f"프로젝트 리스트: {project_list}")
+    print("=" * 80)
     
     for project_name in project_list:
         if not project_name.strip():
             continue
         try:
             query = """
-                SELECT * except(  Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90, Pu_D120, Pu_D150, Pu_D180, Pu_D210
+                SELECT * except( Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90, Pu_D120, Pu_D150, Pu_D180, Pu_D210
                                 , Pu_D240, Pu_D270, Pu_D300, Pu_D330, Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510)
                 FROM `datacatalog-446301.UA_Service.ru_mailing_data`
                 WHERE
@@ -457,7 +462,16 @@ def generate_all_projects_reports(**context):
                 query_parameters=[bigquery.ScalarQueryParameter("project_name", "STRING", project_name)]
             )
             print(f"[프로젝트: {project_name}] 쿼리 실행 중...")
+            print(f"쿼리: {query}")
             df = bq_client.query(query, job_config=job_config).to_dataframe()
+
+            if df.empty:
+                print(f"⚠️ [WARNING] '{project_name}'에 대한 데이터가 0건입니다. (기간: 최근 3개월)")
+                # 빈 파일이라도 업로드가 필요하다면 아래 코드를 진행하고, 
+                # 필요 없다면 continue로 건너뛰어도 됩니다.
+                # continue 
+            else:
+                print(f"✅ 데이터 조회 성공: {len(df)} 행")
             
             # csv_buffer = io.StringIO()
             # df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
