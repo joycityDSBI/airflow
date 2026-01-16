@@ -232,7 +232,6 @@ def etl_f_common_payment(target_date: list):
             ON a.CurrencyCode = c.currency AND Date(a.LogTime, "Asia/Seoul") = c.datekey
             LEFT JOIN `datahub-478802.datahub.f_common_register` as d
             on CAST(a.JoypleGameID AS STRING) = CAST(d.joyple_game_code AS STRING) 
-               AND CAST(a.AuthMethodID AS STRING) = CAST(d.auth_method_id AS STRING)
                AND CAST(a.AuthAccountName AS STRING) = CAST(d.auth_account_name AS STRING)
             )
 
@@ -288,14 +287,11 @@ def etl_f_common_payment(target_date: list):
                        sum(price_KRW) as revenue,
                        sum(MultiQuantity) as buy_cnt
                 from `datahub-478802.datahub.pre_paymentfix_receipt_after_y24_view` as a 
-<<<<<<< HEAD
-                WHERE a.log_time >= {start_utc}
+                WHERE 
+                a.log_time >= {start_utc}
                 AND log_time < {end_utc}  
-                AND joyple_game_code in (119,123,127,129)
-=======
-                WHERE a.log_time >= '{start_utc}'
-                AND log_time < '{end_utc}'  
->>>>>>> 046346be632510fedecd8b30c214e686f652873e
+                AND 
+                joyple_game_code in (119,123,127,129)
                 group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
 
             ) as source
@@ -367,7 +363,7 @@ def etl_f_common_payment(target_date: list):
             source.product_name,
             source.revenue,
             source.buy_cnt
-            )
+            );
         """
         client.query(query)
         print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_payment Batch 완료")

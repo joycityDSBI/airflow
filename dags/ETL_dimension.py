@@ -52,7 +52,6 @@ with DAG(
     # 빅쿼리 클라이언트 연결
     client = bigquery.Client()
 
-
     def etl_dim_os(target_date:list):
 
         for td in target_date:
