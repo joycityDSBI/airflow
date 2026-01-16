@@ -171,6 +171,8 @@ def send_stats_email(df):
     # User Count 합계 계산
     ps5_count = df['ps5_user_count'].sum() if 'ps5_user_count' in df.columns else 0
     xbox_count = df['xbox_user_count'].sum() if 'xbox_user_count' in df.columns else 0
+
+    sheet_url = f"https://docs.google.com/spreadsheets/d/{GOOGLE_SHEET_ID}/edit#gid=0"
     
     html_table = df.to_html(index=False, border=1, justify='center')
     
@@ -227,6 +229,9 @@ def send_stats_email(df):
             
             {html_table}
             
+            <br>
+            <p style="font-size: 11px; color: #999;">원본 데이터는 하기 스프레드 시트에서 확인 가능합니다.</p>
+            <p style="font-size: 11px; color: #999;">{sheet_url}</p>
             <br>
             <p style="font-size: 11px; color: #999;">※ 이 메일은 Airflow에서 자동으로 발송되었습니다.</p>
         </div>
