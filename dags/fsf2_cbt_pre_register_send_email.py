@@ -137,15 +137,28 @@ def update_google_sheet(df):
         worksheet.clear()
         
         # ========================================================
-        # [수정] 데이터 타입 변환 (Timestamp -> String)
+        # [수정] 컬럼별 데이터 타입 처리
         # ========================================================
-        # 날짜 객체를 JSON이 이해할 수 있는 문자열로 변환합니다.
-        df_str = df.astype(str)
+        # 원본 데이터 보존을 위해 복사본 생성
+        df_upload = df.copy()
+        
+        # 숫자로 유지할 컬럼 리스트 정의
+        numeric_target_cols = ['ps5_user_count', 'xbox_user_count']
 
-        # 데이터 준비 (헤더 + 내용)
-        # gspread는 리스트의 리스트 형태로 데이터를 받습니다.
-        header = df_str.columns.values.tolist()
-        data = df_str.values.tolist()
+        for col in df_upload.columns:
+            if col in numeric_target_cols:
+                # 1. 숫자형 컬럼: 숫자로 강제 변환 후, NaN(빈값)은 0으로 채움
+                # (JSON은 NaN을 지원하지 않으므로 0 처리가 안전합니다)
+                df_upload[col] = pd.to_numeric(df_upload[col], errors='coerce').fillna(0)
+            else:
+                # 2. 나머지 컬럼: Timestamp 오류 방지를 위해 문자열로 변환
+                df_upload[col] = df_upload[col].astype(str)
+                # (선택사항) 문자열 "nan"이 보기 싫다면 빈 문자열로 치환 가능
+                # df_upload[col] = df_upload[col].replace('nan', '')
+
+        # 데이터 준비
+        header = df_upload.columns.values.tolist()
+        data = df_upload.values.tolist()
         final_data = [header] + data
         
         # 데이터 업데이트 (A1 셀부터 시작)
