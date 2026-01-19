@@ -98,15 +98,30 @@ def etl_pre_joytracking_tracker():
 	      )     
     
         """
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} pre_joytracking_tracker Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} pre_joytracking_tracker Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ pre_joytracking_tracker ETL 완료")
     return True
 
 
 
-def etl_f_tracker_install():
+def etl_f_tracker_install(target_date:list, client):
 
     for td in target_date:
         target_date = td
@@ -368,14 +383,29 @@ def etl_f_tracker_install():
             )
 
         """
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_tracker_install Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_tracker_install Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_tracker_install ETL 완료")
     return True
 
 
-def etl_f_tracker_re_engagement():
+def etl_f_tracker_re_engagement(target_date:list, client):
 
     for td in target_date:
         target_date = td
@@ -595,8 +625,23 @@ def etl_f_tracker_re_engagement():
             ON a.INFO.app_id = b.app_id
 
         """
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_tracker_re_engagement Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_tracker_re_engagement Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_tracker_re_engagement ETL 완료")
     return True
@@ -1045,7 +1090,23 @@ def etl_f_cost_campaign_rule():
                 from `datahub-478802.datahub.dim_pccampaign_list_joytracking`) as PC -- PC캠페인 캠페인 정보 수정
         on A.joyple_game_code = PC.joyple_game_code and A.campaign_name = PC.campaign_name
         """
-    client.query(truncate_query)
-    time.sleep(5)
-    client.query(query)
+    # 1. 쿼리 실행
+    truncate_query_job = client.query(truncate_query)
+    truncate_query_job.result()  # 작업 완료 대기
+    query_job = client.query(query)
+
+    try:
+        # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+        # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+        query_job.result()
+
+        # 3. 성공 시 출력
+        print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+
+    except Exception as e:
+        # 4. 실패 시 출력
+        print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+        # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+        raise e
+    
     print("✅ f_cost_campaign_rule ETL 완료")

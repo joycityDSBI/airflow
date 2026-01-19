@@ -8,7 +8,7 @@ import pytz
 client = bigquery.Client()
 
 
-def etl_f_IAA_game_sub_user_watch(target_date: list):
+def etl_f_IAA_game_sub_user_watch(target_date: list, client):
 
     for td in target_date:
         target_date = td
@@ -90,7 +90,7 @@ def etl_f_IAA_game_sub_user_watch(target_date: list):
                 , DATE(LogDate_Svr,'Asia/Seoul') AS watch_datekey
                 , CAST(UserID AS STRING)         AS game_sub_user_name
                 , COUNT(p3)                      AS watch_cnt
-            FROM ` ` 
+            FROM `dataplatform-204306.DS.T_Log_Game`
             WHERE Reason = 63001 
             AND WorldID NOT IN (6108,5555)
             AND LogDate_Svr >= '{start_utc}'
@@ -138,8 +138,23 @@ def etl_f_IAA_game_sub_user_watch(target_date: list):
         );
 
         """
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_IAA_game_sub_user_watch Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_IAA_game_sub_user_watch Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_IAA_game_sub_user_watch ETL 완료")
     return True
@@ -249,16 +264,31 @@ def etl_f_IAA_performance():
     WHERE AppName NOT LIKE 'Joyple Sample Test%'
     
     """
-    client.query(truncate_query)
-    time.sleep(5)
-    client.query(query)
+    # 1. 쿼리 실행
+    truncate_query_job = client.query(truncate_query)
+    truncate_query_job.result()  # 작업 완료 대기
+    query_job = client.query(query)
+
+    try:
+        # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+        # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+        query_job.result()
+
+        # 3. 성공 시 출력
+        print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+
+    except Exception as e:
+        # 4. 실패 시 출력
+        print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+        # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+        raise e
 
     print("✅ f_IAA_performance ETL 완료")
 
 
 
 
-def etl_f_IAA_auth_account_performance_joyple(target_date:list):
+def etl_f_IAA_auth_account_performance_joyple(target_date:list, client):
 
     for td in target_date:
         target_date = td
@@ -452,10 +482,25 @@ def etl_f_IAA_auth_account_performance_joyple(target_date:list):
             ON (a.tracker_account_id = d.tracker_account_id AND a.tracker_type_id = d.tracker_type_id)
         """
 
-        client.query(delete_query)
-        time.sleep(5)
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_IAA_auth_account_performance_joyple Batch 완료")
+        # 1. 쿼리 실행
+        truncate_query_job = client.query(delete_query)
+        truncate_query_job.result()  # 작업 완료 대기
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_IAA_auth_account_performance_joyple Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_IAA_auth_account_performance_joyple ETL 완료")
     return True
@@ -680,11 +725,25 @@ def etl_f_IAA_auth_account_performance(target_date:list):
             ;
             """
 
-        client.query(delete_query)
-        time.sleep(5)
-        client.query(query)
+        # 1. 쿼리 실행
+        truncate_query_job = client.query(delete_query)
+        truncate_query_job.result()  # 작업 완료 대기
+        query_job = client.query(query)
 
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_IAA_auth_account_performance Batch 완료")
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_IAA_auth_account_performance Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_IAA_auth_account_performance ETL 완료")
     return True

@@ -8,7 +8,7 @@ import pytz
 # 빅쿼리 클라이언트 연결
 client = bigquery.Client()
 
-def etl_f_common_register(target_date:list):
+def etl_f_common_register(target_date:list, client):
 
     for td in target_date:
         target_date = td
@@ -267,14 +267,29 @@ def etl_f_common_register(target_date:list):
             );
             """
         
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_common_register ETL 완료")
     return True
 
 
-def adjust_f_common_register(target_date:list):
+def adjust_f_common_register(target_date:list, client):
 
     for td in target_date:
         target_date = td
@@ -444,15 +459,30 @@ def adjust_f_common_register(target_date:list):
         UPDATE SET 
         target.reg_datekey = source.reg_datekey;
         """
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register_adjust Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register_adjust Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_common_register_adjust ETL 완료")
     return True
 
 
 
-def etl_f_common_register_char(target_date:list):
+def etl_f_common_register_char(target_date:list, client):
 
     for td in target_date:
         target_date = td
@@ -599,14 +629,29 @@ def etl_f_common_register_char(target_date:list):
             )
         """
 
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register_char Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register_char Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_common_register_char ETL 완료")
     return True
 
 
-def adjust_f_common_register_char(target_date:list):
+def adjust_f_common_register_char(target_date:list, client):
 
     for td in target_date:
         target_date = td
@@ -702,14 +747,29 @@ def adjust_f_common_register_char(target_date:list):
         target.reg_datekey = source.reg_datekey;
 
         """
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} adjust_common_register_char Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} adjust_common_register_char Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ adjust_common_register_char ETL 완료")
     return True
 
 
-def etl_f_common_access(target_date: list):
+def etl_f_common_access(target_date: list, client):
 
     for td in target_date:
         target_date = td
@@ -863,14 +923,29 @@ def etl_f_common_access(target_date: list):
             );
         """
 
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_access Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_access Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_common_access ETL 완료")
     return True
     
 
-def etl_f_common_access_last_login(target_date: list):
+def etl_f_common_access_last_login(target_date: list, client):
 
     for td in target_date:
         target_date = td
@@ -892,7 +967,7 @@ def etl_f_common_access_last_login(target_date: list):
                 , max(datekey) as datekey
                 , max(game_user_level) as max_game_user_level
             FROM datahub-478802.datahub.f_common_access
-            WHERE datekey >= DATE_SUB(DATE({target_date}), INTERVAL 1 DAY) AND datekey < {target_date}
+            WHERE datekey >= DATE_SUB(DATE('{target_date}'), INTERVAL 1 DAY) AND datekey < DATE('{target_date}')
             GROUP BY joyple_game_code, auth_account_name, game_sub_user_name
         ) AS source
         ON target.joyple_game_code = source.joyple_game_code AND target.auth_account_name = source.auth_account_name AND target.game_sub_user_name = source.game_sub_user_name
@@ -915,8 +990,23 @@ def etl_f_common_access_last_login(target_date: list):
             , CURRENT_TIMESTAMP()
         );
         """
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_access_last_login Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_access_last_login Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_common_access_last_login ETL 완료")
     return True

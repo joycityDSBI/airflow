@@ -1,8 +1,11 @@
 # Airflow function
+from http import client
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 from airflow.models.baseoperator import chain
+from google.oauth2 import service_account
+import json
 
 import pandas as pd
 from google.cloud import bigquery
@@ -14,6 +17,39 @@ import time
 import os
 import pytz
 
+#### Dimension table 처리 함수 불러오기
+PROJECT_ID = "data-science-division-216308"
+LOCATION = "us-central1"
+
+def get_gcp_credentials():
+    """Airflow Variable에서 GCP 자격 증명을 로드합니다."""
+    credentials_json = Variable.get('GOOGLE_CREDENTIAL_JSON')
+    cred_dict = json.loads(credentials_json)
+    if 'private_key' in cred_dict:
+        cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+    
+    # [수정] 스코프(Scopes)를 명시적으로 여러 개 추가합니다.
+    SCOPES = [
+        "https://www.googleapis.com/auth/cloud-platform",       # 기본 전체 권한
+        "https://www.googleapis.com/auth/bigquery"             # BigQuery 권한
+    ]
+    
+    return service_account.Credentials.from_service_account_info(
+        cred_dict,
+        scopes=SCOPES
+    )
+
+
+def init_clients():
+    """Task 내부에서 실행되어 필요한 클라이언트들을 생성하여 반환합니다."""
+    creds = get_gcp_credentials()
+    
+    # 1. GCP Clients
+    bq_client = bigquery.Client(project=PROJECT_ID, credentials=creds)
+    
+    return {
+        "bq_client": bq_client
+    }
 
 
 # 방법 1: 현재 KST 날짜 기준
@@ -49,10 +85,11 @@ with DAG(
     tags=['ETL', 'dim', 'bigquery'],
 ) as dag:
     
-    # 빅쿼리 클라이언트 연결
-    client = bigquery.Client()
 
     def etl_dim_os(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         for td in target_date:
             target_date = td
@@ -83,14 +120,32 @@ with DAG(
             VALUES (S.os_id, null, null, CURRENT_TIMESTAMP())
             """
 
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_os Batch 완료")
+            # 1. 쿼리 실행
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_os Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
         
         print("✅ dim_os ETL 완료")
         return True
     
 
     def etl_dim_AFC_campaign():
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         truncate_query = f"""
         TRUNCATE TABLE `datahub-478802.datahub.dim_AFC_campaign'
@@ -173,16 +228,34 @@ with DAG(
                 FROM `dataplatform-bdts.mas.v_af_campaign_rule_group`
                 ) 
         """
+        # 1. 쿼리 실행
+        truncate_query_job = client.query(truncate_query)
+        truncate_query_job.result()  # 작업 완료 대기
+        query_job = client.query(query)
 
-        client.query(truncate_query)
-        time.sleep(5)
-        client.query(query)
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
+        
         print("✅ dim_AFC_campaign ETL 완료")
         
         return True
     
 
     def etl_dim_auth_method_id(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         for td in target_date:
             target_date = td
@@ -213,8 +286,22 @@ with DAG(
             VALUES (S.auth_method_id, null, null, CURRENT_TIMESTAMP())
             """
 
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} _dim_auth_type Batch 완료")
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_auth_method_id Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
 
         print("✅ dim_AFC_campaign ETL 완료")
         
@@ -222,6 +309,9 @@ with DAG(
     
 
     def etl_dim_product_code(target_date:list):
+        
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         for td in target_date:
             target_date = td
@@ -250,13 +340,30 @@ with DAG(
             CURRENT_TIMESTAMP()
             )
             """
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_product_code Batch 완료")
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_product_code Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
+            
         print("✅ dim_product_code ETL 완료")
         return True
     
 
     def adjust_dim_product_code():
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         query = f"""
         MERGE `datahub-478802.datahub.dim_product_code` AS target
@@ -531,12 +638,31 @@ with DAG(
         , target.update_timestamp = CURRENT_TIMESTAMP()
         """
 
-        client.query(query)
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_package_kind Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
+        
         print("✅ dim_package_kind 조정 완료")
         return True
 
 
     def etl_dim_exchange_rate(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
         
         for td in target_date:
             target_date = td
@@ -599,16 +725,33 @@ with DAG(
                 INSERT (start_date, currency_code, exchange_rate, create_timestamp)
                 VALUES (S.start_date, S.currency_code, IF(S.currency_code = 'KRW', 1, S.exchange_rate), CURRENT_TIMESTAMP())
             """
-            
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_exchange_rate Batch 완료")
 
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_exchange_rate Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
+            
         print("✅ dim_exchange_rate ETL 완료")
         
         return True
 
         
     def etl_dim_game_id(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         for td in target_date:
             target_date = td
@@ -637,8 +780,22 @@ with DAG(
             VALUES (S.game_id, null, CURRENT_TIMESTAMP())
             """
 
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_game Batch 완료")
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_game Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
 
         print("✅ dim_game ETL 완료")
         
@@ -646,6 +803,9 @@ with DAG(
     
 
     def etl_dim_app_id(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         for td in target_date:
             target_date = td
@@ -675,15 +835,32 @@ with DAG(
             VALUES (S.app_id, S.joyple_game_code, S.market_id, CURRENT_TIMESTAMP())
             """
 
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_game Batch 완료")
+            query_job = client.query(query)
 
-        print("✅ dim_game ETL 완료")
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_app_id Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
+
+        print("✅ dim_app_id ETL 완료")
         
         return True
 
 
     def etl_dim_google_campaign(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         for td in target_date:
             target_date = td    
@@ -720,9 +897,22 @@ with DAG(
             )
             """
 
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_google_campaign Batch 완료")
+            query_job = client.query(query)
 
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_google_campaign Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
 
         print("✅ dim_google_campaign ETL 완료")
         
@@ -731,6 +921,10 @@ with DAG(
 
     ### etl_dim_ip4_country_code 보다는 앞에서 처리 되어야 함
     def etl_dim_ip_range():
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
+
         truncate_query = f"""
         TRUNCATE TABLE `datahub-478802.datahub.dim_ip_range`
         """
@@ -742,14 +936,33 @@ with DAG(
         FROM dataplatform-204306.PublicInformation.IP2Location
         """
 
-        client.query(truncate_query)
-        time.sleep(5)
-        client.query(query)
+        # 1. 쿼리 실행
+        truncate_query_job = client.query(truncate_query)
+        truncate_query_job.result()  # 작업 완료 대기
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
+        
         print("✅ dim_ip_range ETL 완료")
 
 
     ### etl_dim_ip4_country_code 보다는 앞에서 처리 되어야 함
     def etl_dim_ip_proxy():
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         truncate_query = f"""
         TRUNCATE TABLE `datahub-478802.datahub.dim_proxy`
@@ -762,13 +975,32 @@ with DAG(
         FROM dataplatform-204306.PublicInformation.Proxy
         """
 
-        client.query(truncate_query)
-        time.sleep(5)
-        client.query(query)
+        # 1. 쿼리 실행
+        truncate_query_job = client.query(truncate_query)
+        truncate_query_job.result()  # 작업 완료 대기
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
+        
         print("✅ dim_ip_proxy ETL 완료")
 
 
     def etl_dim_ip4_country_code(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
         
         for td in target_date:
             target_date = td
@@ -836,8 +1068,23 @@ with DAG(
                 VALUES (b.ip, b.country_code, b.create_timestamp);
                 """
             
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_ip4_country_code Batch 완료")
+            # 1. 쿼리 실행
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_ip4_country_code Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
 
         print("✅ dim_ip4_country_code ETL 완료")
         
@@ -845,6 +1092,9 @@ with DAG(
     
 
     def etl_dim_joyple_game_code(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
          
         for td in target_date:
             target_date = td
@@ -887,15 +1137,33 @@ with DAG(
             VALUES (t.joyple_game_code, game_id, null, null, null, null, t.UpdatedTimestamp, null);
             """
             
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_joyple_game_code Batch 완료")
-        
+            # 1. 쿼리 실행
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_joyple_game_code Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
+            
         print("✅ dim_joyple_game_code ETL 완료")
         
         return True
     
 
     def etl_dim_market_id(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         for td in target_date:
             target_date = td
@@ -938,15 +1206,33 @@ with DAG(
             INSERT (market_id)
             VALUES (t.market_id);
             """
-            
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_market_id Batch 완료")
+
+            # 1. 쿼리 실행
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_market_id Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
 
         print("✅ dim_market_id ETL 완료")
         
         return True
     
     def etl_dim_os_id(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         for td in target_date:
             target_date = td
@@ -991,8 +1277,23 @@ with DAG(
             VALUES (t.os_id);
             """
             
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_os_id Batch 완료")
+            # 1. 쿼리 실행
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_os_id Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
 
         print("✅ dim_os_id ETL 완료")
         
@@ -1000,6 +1301,8 @@ with DAG(
     
 
     def etl_dim_package_kind():
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
         
         truncate_query = f"""
         TRUNCATE TABLE `datahub-478802.datahub.dim_package_kind`
@@ -1133,14 +1436,33 @@ with DAG(
         AND Package_Name IS NOT NULL
         """
 
-        client.query(truncate_query)
-        time.sleep(5)
-        client.query(query)
+        # 1. 쿼리 실행
+        truncate_query_job = client.query(truncate_query)
+        truncate_query_job.result()  # 작업 완료 대기
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
+        
         print("✅ dim_package_kind ETL 완료")
 
 
     
     def etl_dim_pg_id(target_date:list):
+
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
 
         for td in target_date:
             target_date = td
@@ -1170,20 +1492,34 @@ with DAG(
             DELETE
             """
 
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_pg_id Batch 완료")
+            # 1. 쿼리 실행
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_pg_id Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
 
         print("✅ dim_pg_id ETL 완료")
 
 
     def etl_dim_IAA_app_name(target_date:list):
 
+        # 클라이언트 호출
+        client = init_clients()["bq_client"]
+
         for td in target_date:
             target_date = td
-
-            # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-            start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-            end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
 
             query=f"""
             MERGE `datahub-478802.datahub.dim_IAA_app_name` AS target
@@ -1194,7 +1530,7 @@ with DAG(
               ELSE APP.displayLabel 
               END AS app_name 
             FROM `dataplatform-bdts.ads_admob.mediation_ads` 
-            WHERE date > DATE_SUB(td, INTERVAL 7 DAY)
+            WHERE date > DATE_SUB(DATE('{target_date}'), INTERVAL 7 DAY)
             AND APP.displayLabel != 'BLESS MOBILE'
             AND AD_UNIT.displayLabel NOT IN ('DRB_MAX_AOS_RB', 'DRB_MAX_AOS_f50', 'DBR_MAX_AOS_f50') 
 
@@ -1202,13 +1538,13 @@ with DAG(
             
             SELECT DISTINCT app AS app_name
             FROM `dataplatform-bdts.ads_adx.adx_ads` 
-            WHERE date > DATE_SUB(td, INTERVAL 7 DAY)
+            WHERE date > DATE_SUB(DATE('{target_date}'), INTERVAL 7 DAY)
             
             UNION ALL
 
             SELECT DISTINCT max_ad_unit AS app_name
             FROM `dataplatform-bdts.ads_applovin.max_revenue_responses`
-            WHERE day > DATE_SUB(td, INTERVAL 7 DAY)
+            WHERE day > DATE_SUB(DATE('{target_date}'), INTERVAL 7 DAY)
             ) AS source ON target.app_name = source.app_name 
             WHEN NOT MATCHED BY target THEN
             INSERT(joyple_game_code, app_name, is_use_yn)
@@ -1220,8 +1556,23 @@ with DAG(
             ;
             """
 
-            client.query(query)
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_IAA_app_name Batch 완료")
+            # 1. 쿼리 실행
+            query_job = client.query(query)
+
+            try:
+                # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+                # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+                query_job.result()
+
+                # 3. 성공 시 출력
+                print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+                print(f"■ {target_date.strftime('%Y-%m-%d')} dim_IAA_app_name Batch 완료")
+
+            except Exception as e:
+                # 4. 실패 시 출력
+                print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+                # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+                raise e
 
         print("✅ dim_IAA_app_name ETL 완료")
 

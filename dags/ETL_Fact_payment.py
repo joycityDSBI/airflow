@@ -8,7 +8,7 @@ import pytz
 # 빅쿼리 클라이언트 연결
 client = bigquery.Client()
 
-def etl_pre_payment_deduct_user(target_date: list):
+def etl_pre_payment_deduct_user(target_date: list, client):
 
     for td in target_date:
         target_date = td
@@ -51,15 +51,30 @@ def etl_pre_payment_deduct_user(target_date: list):
         DELETE 
         """
 
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} pre_payment_deduct_user Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} pre_payment_deduct_user Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ pre_payment_deduct_user ETL 완료")
     return True
 
 
 
-def etl_pre_payment_deduct_order(target_date: list):
+def etl_pre_payment_deduct_order(target_date: list, client):
 
     for td in target_date:
         target_date = td
@@ -79,7 +94,7 @@ def etl_pre_payment_deduct_order(target_date: list):
                 , ProductCode
                 , LogTime       AS LogTimestamp
                 , RegistredTime AS UpdatedTimestamp
-        FROM `dataplatform-services.ServiceData.PaymentDeductOrder` --
+        FROM `dataplatform-services.ServiceData.PaymentDeductOrder`
             WHERE RegistredTime >= '{start_utc}'
             AND RegistredTime < '{end_utc}'
             AND JoypleGameID IS NOT NULL
@@ -106,14 +121,29 @@ def etl_pre_payment_deduct_order(target_date: list):
         ;
         """
 
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} pre_payment_deduct_order Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} pre_payment_deduct_order Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ pre_payment_deduct_order ETL 완료")
     return True
 
 
-def etl_pre_payment_info_fix():
+def etl_pre_payment_info_fix(client):
     truncate_query = f"""
     TRUNCATE TABLE `datahub-478802.datahub.pre_payment_info_fix`
     """
@@ -150,13 +180,29 @@ def etl_pre_payment_info_fix():
     FROM dataplatform-reporting.DataService.T_0141_0000_PaymentInfoFix_V -- DE팀에서 공통로그 테이블을 수정관리해주지 않으면 해당 테이블 관리필요.
     """
 
-    client.query(truncate_query)
-    time.sleep(5)
-    client.query(query)
+    # 1. 쿼리 실행
+    truncate_query_job = client.query(truncate_query)
+    truncate_query_job.result()  # 작업 완료 대기
+    query_job = client.query(query)
+
+    try:
+        # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+        # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+        query_job.result()
+
+        # 3. 성공 시 출력
+        print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+
+    except Exception as e:
+        # 4. 실패 시 출력
+        print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+        # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+        raise e
+    
     print("✅ pre_payment_info_fix ETL 완료")
 
 
-def etl_f_common_payment(target_date: list):
+def etl_f_common_payment(target_date: list, client):
 
     for td in target_date:
         target_date = td
@@ -288,8 +334,8 @@ def etl_f_common_payment(target_date: list):
                        sum(MultiQuantity) as buy_cnt
                 from `datahub-478802.datahub.pre_paymentfix_receipt_after_y24_view` as a 
                 WHERE 
-                a.log_time >= {start_utc}
-                AND log_time < {end_utc}  
+                a.log_time >= '{start_utc}'
+                AND log_time < '{end_utc}'  
                 AND 
                 joyple_game_code in (119,123,127,129)
                 group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
@@ -365,8 +411,22 @@ def etl_f_common_payment(target_date: list):
             source.buy_cnt
             );
         """
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_payment Batch 완료")
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_payment Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_common_payment ETL 완료")
     return True

@@ -8,7 +8,7 @@ import pytz
 client = bigquery.Client()
 
 
-def etl_f_funnel_access_first(target_date:list):   ### Device_id 기준 최초 funnel 데이터는 현재사용하고 있는 case 없음. -> DE팀 install 메일링 데이터에 활용.
+def etl_f_funnel_access_first(target_date:list, client):   ### Device_id 기준 최초 funnel 데이터는 현재사용하고 있는 case 없음. -> DE팀 install 메일링 데이터에 활용.
 
     for td in target_date:
         target_date = td
@@ -96,15 +96,30 @@ def etl_f_funnel_access_first(target_date:list):   ### Device_id 기준 최초 f
         );
         """
 
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_funnel_access_first Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_funnel_access_first Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_funnel_access_first ETL 완료")
     return True
 
 
 
-def etl_f_funnel_access(target_date:list):
+def etl_f_funnel_access(target_date:list, client):
 
     for td in target_date:
         target_date = td
@@ -210,8 +225,23 @@ def etl_f_funnel_access(target_date:list):
             )
         """
 
-        client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_funnel_access Batch 완료")
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {target_date.strftime('%Y-%m-%d')} f_funnel_access Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
+            raise e
     
     print("✅ f_funnel_access ETL 완료")
     return True  
