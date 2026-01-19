@@ -4,9 +4,6 @@ import time
 import os
 import pytz
 
-# 빅쿼리 클라이언트 연결
-client = bigquery.Client()
-
 
 def etl_f_IAA_game_sub_user_watch(target_date: list, client):
 

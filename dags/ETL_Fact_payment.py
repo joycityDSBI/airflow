@@ -4,9 +4,6 @@ import time
 import pytz
 
 
-    
-# 빅쿼리 클라이언트 연결
-client = bigquery.Client()
 
 def etl_pre_payment_deduct_user(target_date: list, client):
 

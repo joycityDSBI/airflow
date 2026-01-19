@@ -4,11 +4,8 @@ import time
 import pytz
 
 
-# 빅쿼리 클라이언트 연결
-client = bigquery.Client()
 
-
-def etl_pre_joytracking_tracker():
+def etl_pre_joytracking_tracker(target_date:list, client):
 
     for td in target_date:
         target_date = td

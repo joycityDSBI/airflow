@@ -4,9 +4,6 @@ import time
 import os
 import pytz
 
-# 빅쿼리 클라이언트 연결
-client = bigquery.Client()
-
 
 def etl_f_funnel_access_first(target_date:list, client):   ### Device_id 기준 최초 funnel 데이터는 현재사용하고 있는 case 없음. -> DE팀 install 메일링 데이터에 활용.
 

@@ -326,8 +326,11 @@ def etl_f_user_map_char():
             WHERE datekey >= '{start_date}' and datekey < '{end_date}' AND access_type_id = 1
             GROUP BY 1,2,3,4
         ) AS A
-        LEFT OUTER JOIN (SELECT * FROM `datahub-478802.datahub.f_common_register_char` WHERE game_sub_user_reg_datekey < '{end_date}') AS B
-            ON A.joyple_game_code = B.joyple_game_code AND A.auth_account_name = B.auth_account_name AND A.game_sub_user_name = B.game_sub_user_name
+        LEFT OUTER JOIN 
+            (
+                SELECT * FROM `datahub-478802.datahub.f_common_register_char` WHERE game_sub_user_reg_datekey < '{end_date}'
+            ) AS B
+        ON A.joyple_game_code = B.joyple_game_code AND A.auth_account_name = B.auth_account_name AND A.game_sub_user_name = B.game_sub_user_name
         LEFT OUTER JOIN (
             SELECT joyple_game_code, auth_account_name, game_sub_user_name,
                    SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', revenue, 0)) as daily_total_rev,
