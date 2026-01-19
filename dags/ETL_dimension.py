@@ -1001,7 +1001,7 @@ def etl_dim_google_campaign(**context):
 
 
 ### etl_dim_ip4_country_code 보다는 앞에서 처리 되어야 함
-def etl_dim_ip_range():
+def etl_dim_ip_range(**context):
 
     # 클라이언트 호출
     client = init_clients()["bq_client"]
@@ -1040,7 +1040,7 @@ def etl_dim_ip_range():
 
 
 ### etl_dim_ip4_country_code 보다는 앞에서 처리 되어야 함
-def etl_dim_ip_proxy():
+def etl_dim_ip_proxy(**context):
 
     # 클라이언트 호출
     client = init_clients()["bq_client"]
@@ -1428,7 +1428,7 @@ def etl_dim_os_id(**context):
     return True
 
 
-def etl_dim_package_kind():
+def etl_dim_package_kind(**context):
     # 클라이언트 호출
     client = init_clients()["bq_client"]
     
