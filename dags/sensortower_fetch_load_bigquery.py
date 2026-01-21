@@ -236,8 +236,8 @@ with DAG(
         op_kwargs={
             'total_start_str': '2023-02-01',
             'total_end_str': '2026-01-20', # 필요에 따라 수정 (예: Variable.get("TARGET_DATE"))
-            'app_id': APP_ID,
-            'token': SENSORTOWER_TOKEN
+            'APP_ID': APP_ID,
+            'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN
         }
     )
     
