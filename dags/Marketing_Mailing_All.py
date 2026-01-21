@@ -624,12 +624,12 @@ def create_graph_send_email(**kwargs):
             SELECT
                 *,
                 CASE
-                    WHEN CountryCode = 'KR' THEN '1.KR'
-                    WHEN CountryCode = 'US' THEN '2.US'
-                    WHEN CountryCode = 'JP' THEN '3.JP'
-                    WHEN CountryCode IN ('UK','FR','DE','GB') THEN '4.WEU'
-                    ELSE '5.ETC'
-                END AS geo_user_group
+                WHEN CountryCode = 'KR' THEN '4.KR'
+                WHEN CountryCode = 'US' THEN '1.US'
+                WHEN CountryCode = 'JP' THEN '2.JP'
+                WHEN CountryCode IN ('UK','FR','DE','GB') THEN '3.WEU'
+                ELSE '5.ETC'
+            END AS geo_user_group
             FROM `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
             WHERE
                 joyplegameid IN (1590,159,131,30001,30003,133)
