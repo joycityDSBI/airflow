@@ -82,6 +82,9 @@ def upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, BQ_TABLE_ID):
     job_config = bigquery.LoadJobConfig(
         autodetect=True,
         write_disposition="WRITE_TRUNCATE",
+        schema=[
+                    bigquery.SchemaField("datekey", "DATE"), # datekey는 무조건 DATE로 인식해라!
+                ]
     )
 
     try:
@@ -153,7 +156,10 @@ def sensortower_download_revenue_api(start_date, end_date, APP_ID, SENSORTOWER_T
         
     # (4) 전처리
     if 'date' in df.columns:
+        # 1. 먼저 datetime으로 변환
         df['date'] = pd.to_datetime(df['date'])
+        # 2. 시간(00:00:00)을 떼어내고 날짜(Date) 객체로 변환
+        df['date'] = df['date'].dt.date
     
     numeric_cols = ['revenue', 'downloads']
     for col in numeric_cols:
