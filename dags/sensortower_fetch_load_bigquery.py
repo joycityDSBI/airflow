@@ -230,8 +230,8 @@ with DAG(
     tags=['SensorTower', 'downloads_revenue', 'bigquery'],
 ) as dag:
 
-    fetch_data_in_weekly_batches_task = PythonOperator(
-        task_id='fetch_data_in_weekly_batches',
+    seonsortower_downloads_revenue_fetch_load_task = PythonOperator(
+        task_id='seonsortower_downloads_revenue_fetch_load',
         python_callable=fetch_data_in_weekly_batches,
         op_kwargs={
             'total_start_str': '2023-02-01',
