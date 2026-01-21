@@ -31,8 +31,8 @@ def get_var(key: str, default: str = None) -> str:
 # ==========================================
 # 1. 설정 (Airflow Variable이나 환경변수로 관리 권장)
 # ==========================================
-# EXTERNAL_API_URL = "https://freestylefootball2.com/api/pre-register/sync" # [라이브: 1월 19일 예정]
-EXTERNAL_API_URL = "https://qa-fsf2.joycity.com/api/pre-register/sync" # [QA]
+EXTERNAL_API_URL = "https://freestylefootball2.com/api/pre-register/sync" # [라이브: 1월 19일 예정]
+# EXTERNAL_API_URL = "https://qa-fsf2.joycity.com/api/pre-register/sync" # [QA]
 DATABASE_URL = "postgresql://airflow:airflow@postgres:5432/airflow"
 
 # [cite: 56] 명세서에 명시된 Key / IV
