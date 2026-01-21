@@ -129,8 +129,17 @@ def execute_bulk_upsert(session, batch_data: List[Dict]):
     if not batch_data:
         return
 
-    # 1. Insert 구문 생성
-    stmt = insert(BetaTester).values(batch_data)
+# ============================================================
+    # [수정된 부분] 중복 데이터 제거 로직 추가
+    # 이유: 한 배치 내에 동일한 email이 존재하면 CardinalityViolation 에러 발생
+    # 해결: 딕셔너리 컴프리헨션을 사용하여 email이 중복될 경우, 
+    #       리스트의 뒤쪽에 있는(최신) 데이터로 덮어씌움
+    # ============================================================
+    unique_data_map = {row['email']: row for row in batch_data}
+    clean_batch_data = list(unique_data_map.values())
+
+    # 1. Insert 구문 생성 (중복 제거된 clean_batch_data 사용)
+    stmt = insert(BetaTester).values(clean_batch_data)
 
     # 2. On Conflict (Upsert) 정의
     # email 컬럼이 중복(Conflict)되면 아래 필드들을 업데이트
