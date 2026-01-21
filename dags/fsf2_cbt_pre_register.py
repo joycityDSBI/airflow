@@ -278,7 +278,7 @@ with DAG(
     dag_id='fsf2_cbt_pre_register_etl',
     default_args=default_args,
     description='fsf2 CBT Pre-Register Data ETL',
-    schedule='10 0 * * *',
+    schedule='30 0 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['marketing', 'fsf2', 'cbt'],
