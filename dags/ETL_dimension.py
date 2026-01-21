@@ -147,7 +147,7 @@ def etl_dim_AFC_campaign(**context):
     client = init_clients()["bq_client"]
 
     truncate_query = f"""
-    TRUNCATE TABLE `datahub-478802.datahub.dim_AFC_campaign`
+    TRUNCATE TABLE `datahub-478802.datahub.dim_AFC_campaign` 
     """
 
     query = f"""
