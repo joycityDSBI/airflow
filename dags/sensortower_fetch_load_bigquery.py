@@ -28,7 +28,16 @@ BQ_TABLE_ID = 'sensorTower_downloads_revenue'
 CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
 # 가져올 게임의 unified app id (sensortower)
-APP_ID = '638ee532480da915a62f0b34'
+# 킹샷 : 67bb93ed47b43a18952ffdfc 2025/02/22
+# 화이트아웃서버아벌 : 638ee532480da915a62f0b34
+# 라스트워서바이벌 : 64075e77537c41636a8e1c58
+# 라스트z 서바이벌 슈터 : 658ea0be1fc48c4dbb3065e6
+# 타일즈 서바이버 : 67d3aaff2c328ae8e547d0ef
+# 다크워 서바이벌 : 6573c39d5c3b423d5d04560f
+
+
+
+APP_ID = '67bb93ed47b43a18952ffdfc'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
 
 
@@ -248,7 +257,7 @@ with DAG(
         task_id='seonsortower_downloads_revenue_fetch_load',
         python_callable=fetch_data_in_weekly_batches,
         op_kwargs={
-            'total_start_str': '2023-02-01',
+            'total_start_str': '2025-02-01',
             'total_end_str': '2026-01-20', # 필요에 따라 수정 (예: Variable.get("TARGET_DATE"))
             'APP_ID': APP_ID,
             'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN
