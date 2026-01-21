@@ -17,6 +17,7 @@ from ETL_Fact_access import *
 from ETL_Fact_payment import *
 from ETL_Fact_funnel import *
 from ETL_Fact_IAA import *
+from ETL_Fact_usermap import *
 
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
@@ -71,6 +72,23 @@ def calc_target_date(logical_date):
     
     return [target_dt], run_date_kst
 
+
+
+def target_date_range(start_date_str, end_date_str):
+    """날짜 데이터 백필용"""
+    # 문자열을 datetime 객체로 변환
+    start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
+    end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+    
+    date_list = []
+    current_date = start_date
+    
+    # 종료 날짜까지 하루씩 더하며 리스트에 추가
+    while current_date <= end_date:
+        date_list.append(current_date.strftime("%Y-%m-%d"))
+        current_date += timedelta(days=1)
+        
+    return date_list
 
 
     
@@ -166,6 +184,22 @@ def etl_fact_IAA(**context):
         logger.error(f"❌ etl_fact_IAA failed with error: {e}")
         raise e
 
+def etl_fact_usermap(**context):
+    logger = logging.getLogger(__name__)
+    target_date, _ = calc_target_date(context['logical_date'])
+    logger.info(f"📅 Usermap ETL Target Date: {target_date[0]}")
+
+    client = init_clients()
+    bq_client = client["bq_client"]
+    try:
+        etl_f_user_map(target_date=target_date, client=bq_client)
+        etl_f_user_map_char(target_date=target_date, client=bq_client)
+        logger.info("✅ etl_fact_usermap completed successfully")
+        return True
+    except Exception as e:
+        logger.error(f"❌ etl_fact_usermap failed with error: {e}")
+        raise e
+
 # DAG 기본 설정
 default_args = {
     'owner': 'airflow',
@@ -211,5 +245,11 @@ with DAG(
         python_callable=etl_fact_IAA,
     )
 
-    etl_fact_tracker_task >> etl_fact_access_task >> etl_fact_payment_task >> etl_fact_funnel_task >> etl_fact_IAA_task
+    etl_fact_usermap_task = PythonOperator(
+        task_id='etl_fact_usermap',
+        python_callable=etl_fact_usermap,
+    )
+
+
+    etl_fact_tracker_task >> etl_fact_access_task >> etl_fact_payment_task >> etl_fact_funnel_task >> etl_fact_IAA_task >> etl_fact_usermap_task
 

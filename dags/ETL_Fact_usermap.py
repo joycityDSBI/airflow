@@ -4,10 +4,8 @@ import time
 import pytz
 
 
-# 빅쿼리 클라이언트 연결
-client = bigquery.Client()
 
-def etl_f_user_map():
+def etl_f_user_map(target_date:list, client):
 
     for td in target_date:
         target_date = td
@@ -166,12 +164,12 @@ def etl_f_user_map():
         , I.products_array
         from
         (
-            SELECT datekey, joyple_game_code, auth_account_name, min(auth_method_id) as auth_method_id
-            , IF(datekey = reg_datekey, 1, 0) AS RU
+            SELECT datekey, joyple_game_code, auth_account_name, MIN(auth_method_id) as auth_method_id
+            , MAX(IF(datekey = reg_datekey, 1, 0)) AS RU
             FROM datahub-478802.datahub.f_common_access
             where datekey >= '{start_date}' and datekey < '{end_date}'
             and access_type_id = 1
-            group by 1,2,3,5
+            group by 1,2,3
         ) AS A
         LEFT OUTER JOIN
         (
@@ -275,7 +273,7 @@ def etl_f_user_map():
 
 
 
-def etl_f_user_map_char():
+def etl_f_user_map_char(target_date:list, client):
 
     for td in target_date:
         target_date = td
@@ -320,7 +318,7 @@ def etl_f_user_map_char():
                G.init_campaign, G.adset_name, G.ad_name, G.is_retargeting, G.advertising_id, G.idfa, G.site_id, G.channel,
                G.CB1_media_source, G.CB1_campaign, G.CB2_media_source, G.CB2_campaign, G.CB3_media_source, G.CB3_campaign
         FROM (
-            SELECT datekey, joyple_game_code, auth_account_name, game_sub_user_name, min(auth_method_id) as auth_method_id, 
+            SELECT datekey, joyple_game_code, auth_account_name, game_sub_user_name, MIN(auth_method_id) as auth_method_id, 
                    MAX(IF(datekey = reg_datekey, 1, 0)) AS RU
             FROM `datahub-478802.datahub.f_common_access`
             WHERE datekey >= '{start_date}' and datekey < '{end_date}' AND access_type_id = 1
