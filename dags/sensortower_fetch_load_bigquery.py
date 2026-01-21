@@ -161,10 +161,18 @@ def sensortower_download_revenue_api(start_date, end_date, APP_ID, SENSORTOWER_T
         # 2. 시간(00:00:00)을 떼어내고 날짜(Date) 객체로 변환
         df['date'] = df['date'].dt.date
     
-    numeric_cols = ['revenue', 'downloads']
+    numeric_cols = ['android_units', 'android_revenue', 'ipad_units', 'ipad_revenue',
+                    'iphone_units', 'iphone_revenue', 'unified_units', 'unified_revenue']
     for col in numeric_cols:
         if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+            # 1. 숫자로 변환 (에러 발생 시 NaN)
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            # 2. NaN을 0으로 채움
+            df[col] = df[col].fillna(0)
+            
+            # 3. [핵심] 정수형(int)으로 강제 변환 (소수점 버림)
+            df[col] = df[col].astype(int)
     
     column_mapping = {
         'date': 'datekey'       # 왼쪽이 현재 df 컬럼명, 오른쪽이 빅쿼리 컬럼명
