@@ -32,54 +32,46 @@ from airflow.models import Variable
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-# 재시도 로직 라이브러리
-from google.api_core import exceptions
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-
-
-
 logger = logging.getLogger(__name__)
+
 
 def get_var(key: str, default: str = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
+
 # 이메일 설정
 SMTP_SERVER = "61.43.45.137"
 SMTP_PORT = 25
-SENDER_EMAIL = 'ds_bi@joycity.com'
-SENDER_PASSWORD = get_var('SMTP_PASSWORD')
+SENDER_EMAIL = "ds_bi@joycity.com"
+SENDER_PASSWORD = get_var("SMTP_PASSWORD")
 
 # gemini 설정
-GOOGLE_CLOUD_PROJECT = 'data-science-division-216308'
-GOOGLE_CLOUD_LOCATION = 'us-central1'  #global
-CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
+GOOGLE_CLOUD_PROJECT = "data-science-division-216308"
+GOOGLE_CLOUD_LOCATION = "us-central1"  # global
+CREDENTIALS_JSON = get_var("GOOGLE_CREDENTIAL_JSON")
 
 # Notion 설정
-NOTION_TOKEN = get_var('NOTION_TOKEN')
+NOTION_TOKEN = get_var("NOTION_TOKEN")
 
 RUN_ID = datetime.now(timezone(timedelta(hours=9))).strftime("%Y%m%d")
-LABELS = {"datascience_division_service": "daily_mkt_mailing",
-          "run_id": RUN_ID,
-          "datascience_division_service_sub" : "mkt_daily_mailing_total"} ## 딕셔너리 형태로 붙일 수 있음.
+LABELS = {
+    "datascience_division_service": "daily_mkt_mailing",
+    "run_id": RUN_ID,
+    "datascience_division_service_sub": "mkt_daily_mailing_total",
+}  ## 딕셔너리 형태로 붙일 수 있음.
 print("RUN_ID=", RUN_ID, "LABEL_ID=", LABELS)
-
-gemini_retry_plicy = retry(
-    retry=retry_if_exception_type(exceptions.ResourceExhausted), # 429 에러만 재시도
-    wait=wait_exponential(multiplier=1, min=4, max=10),
-    stop=stop_after_attempt(5)
-)
 
 
 def get_email_list_from_notion(NOTION_TOKEN: str) -> list:
     """Notion 데이터베이스에서 이메일 리스트를 조회합니다."""
-    
+
     # 수신자 설정 (notion에서 불러오기)
     database_id = "2cbea67a56818058b9c1c5bf0cb3f3a4"
     headers = {
         "Authorization": f"Bearer {NOTION_TOKEN}",
         "Notion-Version": "2022-06-28",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
 
     # 쿼리 전송
@@ -89,21 +81,11 @@ def get_email_list_from_notion(NOTION_TOKEN: str) -> list:
         json={
             "filter": {
                 "or": [
-                    {
-                        "property": "Project",
-                        "select": {
-                            "equals": "ALL"
-                        }
-                    }, 
-                    {
-                        "property": "Project",
-                        "select": {
-                            "equals": "DRSG"
-                        }
-                    }
+                    {"property": "Project", "select": {"equals": "ALL"}},
+                    {"property": "Project", "select": {"equals": "DRSG"}},
                 ]
             }
-        }
+        },
     )
 
     data = response.json()
@@ -114,14 +96,16 @@ def get_email_list_from_notion(NOTION_TOKEN: str) -> list:
             email_prop = item["properties"]["Email"]
             # email이 rich_text 타입인 경우
             if email_prop.get("rich_text"):
-                email_value = "".join([text["plain_text"] for text in email_prop["rich_text"]])
+                email_value = "".join(
+                    [text["plain_text"] for text in email_prop["rich_text"]]
+                )
                 emails.append(email_value)
 
     return emails
 
-# RECIPIENT_EMAILS = get_email_list_from_notion(NOTION_TOKEN)
-RECIPIENT_EMAILS = ['seongin@joycity.com', 'nayoonkim@joycity.com']
 
+# RECIPIENT_EMAILS = get_email_list_from_notion(NOTION_TOKEN)
+RECIPIENT_EMAILS = ["seongin@joycity.com", "nayoonkim@joycity.com"]
 
 
 # client 설정 함수
@@ -129,23 +113,22 @@ def get_gcp_credentials():
     """GCP 서비스 계정 인증 정보를 생성합니다."""
     cred_dict = json.loads(CREDENTIALS_JSON)
     # 2. private_key 줄바꿈 문자 처리 (필수 체크)
-    if 'private_key' in cred_dict:
+    if "private_key" in cred_dict:
         # 만약 키 값에 \\n 문자가 그대로 들어있다면 실제 줄바꿈으로 변경
-        if '\\n' in cred_dict['private_key']:
-            cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+        if "\\n" in cred_dict["private_key"]:
+            cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
 
     # 3. 명시적으로 Service Account Credentials 생성 (google.auth.default 아님!)
     credentials = service_account.Credentials.from_service_account_info(
         cred_dict,
         scopes=[
-        "https://www.googleapis.com/auth/cloud-platform", # [필수] Vertex AI 및 대부분의 GCP 서비스 만능 키
-        "https://www.googleapis.com/auth/devstorage.read_write",
-        "https://www.googleapis.com/auth/bigquery",
-        "https://www.googleapis.com/auth/drive"
-        ]
+            "https://www.googleapis.com/auth/cloud-platform",  # [필수] Vertex AI 및 대부분의 GCP 서비스 만능 키
+            "https://www.googleapis.com/auth/devstorage.read_write",
+            "https://www.googleapis.com/auth/bigquery",
+            "https://www.googleapis.com/auth/drive",
+        ],
     )
     return credentials
-
 
 
 # 전처리 함수 list
@@ -160,13 +143,11 @@ def aggregate_kpi(df, group_cols):
         cost=("cost", "sum"),
         install=("install", "sum"),
         ru=("ru", "sum"),
-
         rev_d0=("rev_d0", "sum"),
         rev_d1=("rev_d1", "sum"),
         rev_d3=("rev_d3", "sum"),
         rev_d7=("rev_d7", "sum"),
         rev_dcum=("rev_dcum", "sum"),
-
         ru_d1=("ru_d1", "sum"),
         ru_d3=("ru_d3", "sum"),
         ru_d7=("ru_d7", "sum"),
@@ -180,25 +161,22 @@ def aggregate_kpi(df, group_cols):
             df[df[col].notna()]
             .groupby(group_cols)[["ru", "cost"]]
             .sum()
-            .rename(columns={
-                "ru": f"ru_{col}_base",
-                "cost": f"cost_{col}_base"
-            })
+            .rename(columns={"ru": f"ru_{col}_base", "cost": f"cost_{col}_base"})
         )
 
     base_d0 = mature_base("rev_d0")
     base_d1 = mature_base("rev_d1")
     base_d3 = mature_base("rev_d3")
-  #  base_d7 = mature_base("rev_d7")
+    #  base_d7 = mature_base("rev_d7")
 
     # merge
-    for base in [base_d0, base_d1, base_d3]: #, base_d7
+    for base in [base_d0, base_d1, base_d3]:  # , base_d7
         agg = agg.merge(base, on=group_cols, how="left")
 
     # --------------------
     # 3) 단가 KPI
     # --------------------
-    agg["CPI"]  = agg["cost"] / agg["install"]
+    agg["CPI"] = agg["cost"] / agg["install"]
     agg["CPRU"] = agg["cost"] / agg["ru"]
 
     # --------------------
@@ -207,7 +185,7 @@ def aggregate_kpi(df, group_cols):
     agg["D0LTV"] = agg["rev_d0"] / agg["ru_rev_d0_base"]
     agg["D1LTV"] = agg["rev_d1"] / agg["ru_rev_d1_base"]
     agg["D3LTV"] = agg["rev_d3"] / agg["ru_rev_d3_base"]
-    #agg["D7LTV"] = agg["rev_d7"] / agg["ru_rev_d7_base"]
+    # agg["D7LTV"] = agg["rev_d7"] / agg["ru_rev_d7_base"]
     agg["DcumLTV"] = agg["rev_dcum"] / agg["ru"]
 
     # --------------------
@@ -216,7 +194,7 @@ def aggregate_kpi(df, group_cols):
     agg["D0ROAS"] = agg["rev_d0"] / agg["cost_rev_d0_base"]
     agg["D1ROAS"] = agg["rev_d1"] / agg["cost_rev_d1_base"]
     agg["D3ROAS"] = agg["rev_d3"] / agg["cost_rev_d3_base"]
-    #agg["D7ROAS"] = agg["rev_d7"] / agg["cost_rev_d7_base"]
+    # agg["D7ROAS"] = agg["rev_d7"] / agg["cost_rev_d7_base"]
     agg["DcumROAS"] = agg["rev_dcum"] / agg["cost"]
 
     # --------------------
@@ -224,20 +202,23 @@ def aggregate_kpi(df, group_cols):
     # --------------------
     agg["D1RET"] = agg["ru_d1"] / agg["ru_rev_d1_base"]
     agg["D3RET"] = agg["ru_d3"] / agg["ru_rev_d3_base"]
-    #agg["D7RET"] = agg["ru_d7"] / agg["ru_rev_d7_base"]
-
+    # agg["D7RET"] = agg["ru_d7"] / agg["ru_rev_d7_base"]
 
     return agg
+
 
 def fmt_int(x):
     return f"{x:,.0f}"
 
+
 def fmt_pct(x):
     return f"{x:.2f}%"
+
 
 def fmt_delta(x):
     sign = "+" if x >= 0 else ""
     return f"{sign}{x:.2f}%"
+
 
 def build_wow_table(
     df,
@@ -245,18 +226,14 @@ def build_wow_table(
     period_col="period_7d",
     current_label="current_7d",
     prev_label="prev_7d",
-    metrics=("cost","install","ru","CPI","CPRU","D0LTV","D0ROAS"),
+    metrics=("cost", "install", "ru", "CPI", "CPRU", "D0LTV", "D0ROAS"),
     roas_cols=("D0ROAS",),
 ):
 
     # --------------------
     # 1) wide 형태로 변환
     # --------------------
-    df_wide = (
-        df
-        .set_index(list(index_cols) + [period_col])
-        .unstack(period_col)
-    )
+    df_wide = df.set_index(list(index_cols) + [period_col]).unstack(period_col)
 
     # --------------------
     # 2) 증감률 계산
@@ -313,17 +290,21 @@ def build_wow_table(
         if c in roas_cols:
             # ROAS: current/prev는 % 변환, delta는 그대로
             df_fmt[c] = [
-                fmt_delta(v) if d and isinstance(v, float)
-                else fmt_pct(v * 100) if isinstance(v, float)
-                else v
+                (
+                    fmt_delta(v)
+                    if d and isinstance(v, float)
+                    else fmt_pct(v * 100) if isinstance(v, float) else v
+                )
                 for v, d in zip(df_final[c], is_delta_row)
             ]
         else:
             # 일반 수치: current/prev는 숫자, delta는 % 변화
             df_fmt[c] = [
-                fmt_delta(v) if d and isinstance(v, float)
-                else fmt_int(v) if isinstance(v, float)
-                else v
+                (
+                    fmt_delta(v)
+                    if d and isinstance(v, float)
+                    else fmt_int(v) if isinstance(v, float) else v
+                )
                 for v, d in zip(df_final[c], is_delta_row)
             ]
 
@@ -332,25 +313,19 @@ def build_wow_table(
 
 def build_group_pivot(
     df,
-    index_cols=("game_name",),          # 행 그룹 (1차 그룹)
-    pivot_col="geo_user_group",          # 열 그룹 (2차 그룹)
-    pivot_order=None,                    # 열 그룹 순서
+    index_cols=("game_name",),  # 행 그룹 (1차 그룹)
+    pivot_col="geo_user_group",  # 열 그룹 (2차 그룹)
+    pivot_order=None,  # 열 그룹 순서
     metrics=("cost", "ru", "CPRU", "D0ROAS"),
     aggfunc="first",
-    output_pivot_first=True,             # True: [그룹 → 지표]
+    output_pivot_first=True,  # True: [그룹 → 지표]
 ):
 
     # --------------------
     # 1) pivot
     # --------------------
-    df_pivot = (
-        df
-        .pivot_table(
-            index=list(index_cols),
-            columns=pivot_col,
-            values=list(metrics),
-            aggfunc=aggfunc
-        )
+    df_pivot = df.pivot_table(
+        index=list(index_cols), columns=pivot_col, values=list(metrics), aggfunc=aggfunc
     )
     df_pivot = df_pivot.swaplevel(0, 1, axis=1)
 
@@ -358,11 +333,9 @@ def build_group_pivot(
     # 2) 컬럼 정렬 (metric → pivot)
     # --------------------
     if pivot_order is not None:
-      df_pivot = df_pivot.reindex(
-        columns=pd.MultiIndex.from_product(
-            [pivot_order, metrics]
+        df_pivot = df_pivot.reindex(
+            columns=pd.MultiIndex.from_product([pivot_order, metrics])
         )
-      )
     return df_pivot
 
 
@@ -395,19 +368,17 @@ def df_to_md(df):
     # --------------------
     # 2) 데이터 행
     # --------------------
-    rows = "\n".join(
-        "| " + " | ".join(map(str, row)) + " |"
-        for row in df.values
-    )
+    rows = "\n".join("| " + " | ".join(map(str, row)) + " |" for row in df.values)
 
     return "\n".join([header, rows])
+
 
 # 숫자 포맷팅 함수
 def format_number(value):
     """숫자에 1000단위 쉼표 추가 + HTML 이스케이프 + % 기호 방어"""
     if pd.isna(value):
-        return ''
-    
+        return ""
+
     try:
         # 숫자 타입 확인
         num = float(value)
@@ -419,93 +390,95 @@ def format_number(value):
             formatted = f"{num:,.2f}"
     except (ValueError, TypeError, OverflowError):
         formatted = str(value)
-    
+
     # [핵심 수정 1] 데이터 안에 있는 '%' 문자를 '%%'로 바꿔줍니다.
     # 이렇게 하면 나중에 혹시 % 포맷팅을 쓰더라도 에러가 나지 않습니다.
-    formatted = formatted.replace('%', '%%')
+    formatted = formatted.replace("%", "%%")
 
     # HTML 엔티티로 변환
-    formatted = formatted.replace('.', '.\u200b')
+    formatted = formatted.replace(".", ".\u200b")
     return html.escape(formatted)
+
 
 # HTML 테이블 생성 함수 : 튜플 처리 추가
 def format_table(df):
-    html_table_header = ''
-    
+    html_table_header = ""
+
     # [핵심] MultiIndex(2줄 이상 헤더) 처리
     if isinstance(df.columns, pd.MultiIndex):
         levels = df.columns.levels
         codes = df.columns.codes
-        n_levels = len(levels) # 헤더 줄 수 (보통 2줄)
+        n_levels = len(levels)  # 헤더 줄 수 (보통 2줄)
 
         for level_i in range(n_levels):
             html_table_header += '<tr class="data-title">'
-            
+
             # 현재 레벨의 컬럼들을 순회
             col_i = 0
             while col_i < len(df.columns):
                 # 현재 컬럼의 이름 가져오기
                 col_name = df.columns[col_i][level_i]
-                
+
                 # 병합(colspan)할 칸 수 계산
                 colspan = 1
                 for next_i in range(col_i + 1, len(df.columns)):
                     # 다음 컬럼이 현재 컬럼과 같은 그룹인지 확인
                     # (상위 레벨들이 모두 같고, 현재 레벨 이름도 같아야 함)
                     is_same_group = (
-                        df.columns[next_i][:level_i+1] == df.columns[col_i][:level_i+1]
+                        df.columns[next_i][: level_i + 1]
+                        == df.columns[col_i][: level_i + 1]
                     )
                     if is_same_group:
                         colspan += 1
                     else:
                         break
-                
+
                 # rowspan 계산 (하위 레벨이 비어있거나 동일한 경우 등 - 여기서는 간단히 빈칸 처리)
                 # 보통 MultiIndex에서 상위 레벨 이름 출력 후 colspan 적용
-                
+
                 # 안전한 문자열 변환 (% 기호 방어)
-                safe_col_name = str(col_name).replace('%', '%%')
-                
+                safe_col_name = str(col_name).replace("%", "%%")
+
                 # HTML 생성 (colspan 적용)
                 if colspan > 1:
                     html_table_header += f'<td colspan="{colspan}" style="text-align:center; font-weight:bold;">{safe_col_name}</td>'
                 else:
                     # 상위 레벨이 비어있지 않거나, 하위 레벨인 경우
                     html_table_header += f'<td style="text-align:center; font-weight:bold;">{safe_col_name}</td>'
-                
-                col_i += colspan # 처리한 만큼 인덱스 점프
-            
-            html_table_header += '</tr>'
-            
+
+                col_i += colspan  # 처리한 만큼 인덱스 점프
+
+            html_table_header += "</tr>"
+
     # [기존] SingleIndex(1줄 헤더) 처리
     else:
         html_table_header = '<tr class="data-title">'
         for col in df.columns:
-            safe_col = str(col).replace('%', '%%')
-            html_table_header += f'<td>{safe_col}</td>'  
-        html_table_header += '</tr>'
+            safe_col = str(col).replace("%", "%%")
+            html_table_header += f"<td>{safe_col}</td>"
+        html_table_header += "</tr>"
 
     # ---------------------------------------------------------
     # 데이터 행(Body) 생성 부분 (기존과 동일하지만 안전성 강화)
-    html_table_rows = ''
+    html_table_rows = ""
     for i, (idx, row) in enumerate(df.iterrows()):
-        row_class = 'data1' if i % 2 == 0 else 'data2'
+        row_class = "data1" if i % 2 == 0 else "data2"
         html_table_rows += f'<tr class="{row_class}">'
         for cell in row:
             # format_number 함수가 있다고 가정
             cell_value = format_number(cell)
-            html_table_rows += f'<td>{cell_value}</td>'
-        html_table_rows += '</tr>'
-        
+            html_table_rows += f"<td>{cell_value}</td>"
+        html_table_rows += "</tr>"
+
     return html_table_header, html_table_rows
 
 
 # 텍스트 파싱 함수
 def parse_response_text(response_data):
     text = response_data.text
-    first_hash_removed = text.replace('#', '', 1)
+    first_hash_removed = text.replace("#", "", 1)
 
-    return first_hash_removed.replace('#', '<br>\n*')
+    return first_hash_removed.replace("#", "<br>\n*")
 
 
 # 메일 생성 및 발송 함수
@@ -514,9 +487,12 @@ def create_graph_send_email(**kwargs):
 
     # 1. GCP 인증 정보 가져오기
     credentials = get_gcp_credentials()
-    client = bigquery.Client(project=GOOGLE_CLOUD_PROJECT
-                            #  , location='US'
-                             , credentials=credentials)
+    client = bigquery.Client(
+        project=GOOGLE_CLOUD_PROJECT
+        #  , location='US'
+        ,
+        credentials=credentials,
+    )
 
     ## 1> cohort별 전체 지표
     query = """WITH ua_perfo AS (
@@ -807,7 +783,9 @@ def create_graph_send_email(**kwargs):
 
     """
 
-    query_result_base = client.query(query, job_config=bigquery.QueryJobConfig(labels=LABELS)).to_dataframe()
+    query_result_base = client.query(
+        query, job_config=bigquery.QueryJobConfig(labels=LABELS)
+    ).to_dataframe()
     df = query_result_base.copy()
 
     # 1) 최근 7일 게임 성과
@@ -815,23 +793,58 @@ def create_graph_send_email(**kwargs):
 
     group_cols = ["game_name"]
     df_current = aggregate_kpi(current, group_cols)
-    col = ['game_name', 'cost', 'install', 'ru','CPI', 'CPRU', 'D1LTV', 'D3LTV', 'DcumLTV', 'D1RET','D3RET', 'D1ROAS', 'D3ROAS', 'DcumROAS']
+    col = [
+        "game_name",
+        "cost",
+        "install",
+        "ru",
+        "CPI",
+        "CPRU",
+        "D1LTV",
+        "D3LTV",
+        "DcumLTV",
+        "D1RET",
+        "D3RET",
+        "D1ROAS",
+        "D3ROAS",
+        "DcumROAS",
+    ]
     df_current = df_current[col]
-    
 
     # 2) 전주대비 금주 Paid 성과 비교
     Paid = df[(df["organic_paid"] == "Paid") & (df["osuser"] == "And")]
-    group_cols = ["period_7d", "game_name"]
+    group_cols = ["game_name", "period_7d"]
     df_paid_period = aggregate_kpi(Paid, group_cols)
     df_wow_paid = build_wow_table(
         df=df_paid_period,
         index_cols=("game_name",),
-        metrics=('cost', 'install', 'ru','CPI', 'CPRU', 'D0LTV', 'D1LTV', 'D3LTV', 'D1RET','D3RET', 'D0ROAS', 'D1ROAS', 'D3ROAS', ),
-        roas_cols=('D1RET','D3RET', 'D0ROAS', 'D1ROAS', 'D3ROAS', 'DcumROAS',)
+        metrics=(
+            "cost",
+            "install",
+            "ru",
+            "CPI",
+            "CPRU",
+            "D0LTV",
+            "D1LTV",
+            "D3LTV",
+            "D1RET",
+            "D3RET",
+            "D0ROAS",
+            "D1ROAS",
+            "D3ROAS",
+        ),
+        roas_cols=(
+            "D1RET",
+            "D3RET",
+            "D0ROAS",
+            "D1ROAS",
+            "D3ROAS",
+            "DcumROAS",
+        ),
     )
 
     # 3) 국가별 주요 성과 비교
-    country_order = ("1.US", "2.JP", "3.WEU",  "4.KR", "5.ETC")
+    country_order = ("1.US", "2.JP", "3.WEU", "4.KR", "5.ETC")
     group_cols = ["game_name", "geo_user_group"]
     df_geo_current = aggregate_kpi(current, group_cols)
     df_country = build_group_pivot(
@@ -839,7 +852,7 @@ def create_graph_send_email(**kwargs):
         index_cols=("game_name",),
         pivot_col="geo_user_group",
         pivot_order=country_order,
-        metrics=("cost", "ru", "CPRU", "D0ROAS")
+        metrics=("cost", "ru", "CPRU", "D0ROAS"),
     )
 
     # 4) OS별 주요 성과 비교
@@ -850,14 +863,13 @@ def create_graph_send_email(**kwargs):
         df=df_os_current,
         index_cols=("game_name",),
         pivot_col="osuser",
-        pivot_order= os_order,
-        metrics=("cost", "ru", "CPRU", "D0ROAS")
+        pivot_order=os_order,
+        metrics=("cost", "ru", "CPRU", "D0ROAS"),
     )
 
     # OS Cost 비중 계산
-    df_os[("Total", "And Cost 비중")] = (
-        df_os[("And", "cost")]
-        / (df_os[("IOS", "cost")] + df_os[("And", "cost")])
+    df_os[("Total", "And Cost 비중")] = df_os[("And", "cost")] / (
+        df_os[("IOS", "cost")] + df_os[("And", "cost")]
     )
 
     # % 포맷
@@ -879,8 +891,8 @@ def create_graph_send_email(**kwargs):
         df=df_organic_paid_current,
         index_cols=("game_name",),
         pivot_col="organic_paid",
-        pivot_order= organic_paid,
-        metrics=("ru","D0LTV", "D1LTV", "D3LTV", 'D1RET','D3RET')
+        pivot_order=organic_paid,
+        metrics=("ru", "D0LTV", "D1LTV", "D3LTV", "D1RET", "D3RET"),
     )
 
     # 5) Paid/Organic 별 주요 성과 비교
@@ -891,28 +903,26 @@ def create_graph_send_email(**kwargs):
         df=df_organic_paid_current,
         index_cols=("game_name",),
         pivot_col="organic_paid",
-        pivot_order= organic_paid,
-        metrics=("ru","D0LTV", "D1LTV", "D3LTV", 'D1RET','D3RET')
+        pivot_order=organic_paid,
+        metrics=("ru", "D0LTV", "D1LTV", "D3LTV", "D1RET", "D3RET"),
     )
     # df_organic_paid
 
     # Paid/Organic 별 RU 비중 계산
-    df_organic_paid[("Total", "RU Organic 비중")] = (
-        df_organic_paid[("Organic", "ru")]
-        / (df_organic_paid[("Paid", "ru")] + df_organic_paid[("Organic", "ru")])
-    )
+    df_organic_paid[("Total", "RU Organic 비중")] = df_organic_paid[
+        ("Organic", "ru")
+    ] / (df_organic_paid[("Paid", "ru")] + df_organic_paid[("Organic", "ru")])
 
     # % 포맷
-    df_organic_paid[("Total", "RU Organic 비중")] = df_organic_paid[("Total", "RU Organic 비중")].apply(
-        lambda x: f"{x*100:.1f}%" if pd.notna(x) else ""
-    )
+    df_organic_paid[("Total", "RU Organic 비중")] = df_organic_paid[
+        ("Total", "RU Organic 비중")
+    ].apply(lambda x: f"{x*100:.1f}%" if pd.notna(x) else "")
     # 위치 이동
     cols = list(df_organic_paid.columns)
     meta_col = ("Total", "RU Organic 비중")
     cols.insert(0, cols.pop(cols.index(meta_col)))
     df_organic_paid = df_organic_paid[cols]
     # df_organic_paid
-
 
     SYSTEM_INSTRUCTION = """
         너는 전문 마케팅 데이터 분석가야.
@@ -994,25 +1004,26 @@ def create_graph_send_email(**kwargs):
         # 설명 시 반드시 게임명을 언급해줘
         # # Paid 전체 게임별 종합 성과 분석 등 제목을 넣지 말고 작성해줘
 
-        """]
+        """,
+    ]
 
     genai_client = GeminiClient(
         vertexai=True,
-        location="global",     # genai 호출용location 변경
-        credentials=credentials
+        location="global",  # genai 호출용location 변경
+        credentials=credentials,
     )
 
     config_current_optimized = GenerateContentConfig(
         temperature=1.0,
         thinking_config=types.ThinkingConfig(include_thoughts=True),
-        system_instruction= SYSTEM_INSTRUCTION,
-        labels=LABELS
+        system_instruction=SYSTEM_INSTRUCTION,
+        labels=LABELS,
     )
 
     response_current = genai_client.models.generate_content(
-        model="gemini-3-pro-preview"   # API 호출
-        , contents = prompt_current_final
-        , config=config_current_optimized
+        model="gemini-3-pro-preview",  # API 호출
+        contents=prompt_current_final,
+        config=config_current_optimized,
     )
 
     df_organic_paid_md = df_to_md(df_organic_paid)
@@ -1054,23 +1065,24 @@ def create_graph_send_email(**kwargs):
         # 설명 시 반드시 게임명을 언급해줘
         # #게임별 Organic / Paid 성과 분석 등 제목을 넣지 말고 작성해줘
 
-        """]
+        """,
+    ]
 
     config_organic_paid_optimized = GenerateContentConfig(
         temperature=1.0,
         thinking_config=types.ThinkingConfig(include_thoughts=True),
-        system_instruction= SYSTEM_INSTRUCTION,
-        labels=LABELS
+        system_instruction=SYSTEM_INSTRUCTION,
+        labels=LABELS,
     )
 
     response_organic_paid = genai_client.models.generate_content(
-        model="gemini-3-pro-preview",   # Vertex AI 모델명
-        contents = prompt_organic_paid_final
-        ,config=config_organic_paid_optimized
+        model="gemini-3-pro-preview",  # Vertex AI 모델명
+        contents=prompt_organic_paid_final,
+        config=config_organic_paid_optimized,
     )
 
     df_wow_paid_md = df_to_md(df_wow_paid)
-    #3) 전주대비 금주 Paid 성과 비교
+    # 3) 전주대비 금주 Paid 성과 비교
     prompt_wow_paid_description = f"""
         ## 데이터 설명
         최근 1주일간 게임별 성과를 전주 대비 금주로 종합 비교한 데이터야.
@@ -1116,23 +1128,24 @@ def create_graph_send_email(**kwargs):
         # 설명 시 반드시 게임명을 언급해줘
         # # Paid 전체 게임별 종합 성과 분석 등 제목을 넣지 말고 작성해줘
 
-        """]
+        """,
+    ]
 
     config_wow_paid_optimized = GenerateContentConfig(
         temperature=1.0,
         thinking_config=types.ThinkingConfig(include_thoughts=True),
-        system_instruction= SYSTEM_INSTRUCTION,
-        labels=LABELS
+        system_instruction=SYSTEM_INSTRUCTION,
+        labels=LABELS,
     )
 
     response_wow_paid = genai_client.models.generate_content(
-        model="gemini-3-pro-preview",   # Vertex AI 모델명
-        contents = prompt_wow_paid_final
-        ,config=config_wow_paid_optimized
+        model="gemini-3-pro-preview",  # Vertex AI 모델명
+        contents=prompt_wow_paid_final,
+        config=config_wow_paid_optimized,
     )
 
     df_country_md = df_to_md(df_country)
-    #4) 국가별 주요 성과 비교
+    # 4) 국가별 주요 성과 비교
     prompt_country_description = f"""
         ## 데이터 설명
         최근 1주일간 게임별 성과를 종합 비교한 데이터야.
@@ -1166,23 +1179,24 @@ def create_graph_send_email(**kwargs):
         # 설명 시 반드시 게임명을 언급해줘
         # # Paid 전체 게임별 종합 성과 분석 등 제목을 넣지 말고 작성해줘
 
-        """]
+        """,
+    ]
 
     config_country_optimized = GenerateContentConfig(
         temperature=1.0,
         thinking_config=types.ThinkingConfig(include_thoughts=True),
-        system_instruction= SYSTEM_INSTRUCTION,
-        labels=LABELS
+        system_instruction=SYSTEM_INSTRUCTION,
+        labels=LABELS,
     )
 
     response_country = genai_client.models.generate_content(
-        model="gemini-3-pro-preview",   # Vertex AI 모델명
-        contents = prompt_country_final
-        ,config=config_country_optimized
+        model="gemini-3-pro-preview",  # Vertex AI 모델명
+        contents=prompt_country_final,
+        config=config_country_optimized,
     )
 
     df_os_md = df_to_md(df_os)
-    #5) OS 별 주요 성과 비
+    # 5) OS 별 주요 성과 비
     prompt_os_description = f"""
         ## 데이터 설명
         최근 1주일간 게임별 성과를 종합 비교한 데이터야.
@@ -1219,42 +1233,52 @@ def create_graph_send_email(**kwargs):
         # 설명 시 반드시 game_name을 언급해줘
         # # Paid 전체 게임별 종합 성과 분석 등 제목을 넣지 말고 작성해줘
 
-        """]
+        """,
+    ]
 
     config_os_optimized = GenerateContentConfig(
         temperature=1.0,
         thinking_config=types.ThinkingConfig(include_thoughts=True),
-        system_instruction= SYSTEM_INSTRUCTION,
-        labels=LABELS
+        system_instruction=SYSTEM_INSTRUCTION,
+        labels=LABELS,
     )
 
     response5 = genai_client.models.generate_content(
-        model="gemini-3-pro-preview",   # Vertex AI 모델명
-        contents = prompt_os_final
-        ,config=config_os_optimized
+        model="gemini-3-pro-preview",  # Vertex AI 모델명
+        contents=prompt_os_final,
+        config=config_os_optimized,
     )
 
-    # 날짜 가져오기 
+    # 날짜 가져오기
     kst = timezone(timedelta(hours=9))
     today = datetime.now(kst).date()
 
     # 표 변환
-    html_table_header_current, html_table_rows_current =format_table(df_current)
-    html_table_header_organic_paid, html_table_rows_organic_paid =format_table(df_organic_paid)
-    html_table_header_wow_paid, html_table_rows_wow_paid =format_table(df_wow_paid)
-    html_table_header_country, html_table_rows_country =format_table(df_country)
-    html_table_header_os, html_table_rows_os =format_table(df_os)
+    html_table_header_current, html_table_rows_current = format_table(
+        df_current.reset_index()
+    )
+    html_table_header_organic_paid, html_table_rows_organic_paid = format_table(
+        df_organic_paid.reset_index()
+    )
+    html_table_header_wow_paid, html_table_rows_wow_paid = format_table(
+        df_wow_paid.reset_index()
+    )
+    html_table_header_country, html_table_rows_country = format_table(
+        df_country.reset_index()
+    )
+    html_table_header_os, html_table_rows_os = format_table(df_os.reset_index())
 
     response_current_text = parse_response_text(response_current)
     response_organic_paid_text = parse_response_text(response_organic_paid)
     response_wow_paid_text = parse_response_text(response_wow_paid)
     response_country_text = parse_response_text(response_country)
     response5_text = parse_response_text(response5)
-    
 
     try:
         # 이메일 HTML 본문 생성 (메일 클라이언트 호환성을 위해 인라인 스타일 사용)
-        current_time = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d %H:%M:%S")
+        current_time = datetime.now(timezone(timedelta(hours=9))).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
         html_body = f"""<!DOCTYPE html>
                     <html lang="ko">
                     <head>
@@ -1502,17 +1526,17 @@ def create_graph_send_email(**kwargs):
 
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
         server.set_debuglevel(1)  # 👈 상세 로그 켜기
-        
+
         # # 인증이 필요하면
         # if SENDER_PASSWORD:
         #     server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        
+
         msg = MIMEMultipart()
-        msg['From'] = SENDER_EMAIL
-        msg['To'] = ', '.join(RECIPIENT_EMAILS)
-        msg['Subject'] = f"게임 별 메일링 통합 성과 리포트 {today}"
-        msg.attach(MIMEText(html_body, 'html'))
-        
+        msg["From"] = SENDER_EMAIL
+        msg["To"] = ", ".join(RECIPIENT_EMAILS)
+        msg["Subject"] = f"게임 별 메일링 통합 성과 리포트 {today}"
+        msg.attach(MIMEText(html_body, "html"))
+
         server.sendmail(SENDER_EMAIL, RECIPIENT_EMAILS, msg.as_string())
         server.quit()
         print("메일 발송 성공")
@@ -1537,29 +1561,29 @@ def create_graph_send_email(**kwargs):
 
     # 이메일 본문 조합
 
+
 # DAG 기본 설정
 default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'email_on_failure': False,
-    'email_on_retry': False,
-    'retries': 1,
-    'retry_delay': timedelta(seconds=15),
+    "owner": "airflow",
+    "depends_on_past": False,
+    "email_on_failure": False,
+    "email_on_retry": False,
+    "retries": 1,
+    "retry_delay": timedelta(seconds=15),
 }
 
 with DAG(
-    dag_id='Marketing_Mailing_ALL_Project',
+    dag_id="Marketing_Mailing_ALL_Project",
     default_args=default_args,
-    description='전체 프로젝트 마케팅 메일링',
-    schedule='10 5 * * *',
+    description="전체 프로젝트 마케팅 메일링",
+    schedule="10 5 * * *",
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=['marketing', 'mailing', 'Total'],
+    tags=["marketing", "mailing", "Total"],
 ) as dag:
 
-
     create_graph_send_email_task = PythonOperator(
-        task_id='create_graph_send_email',
+        task_id="create_graph_send_email",
         python_callable=create_graph_send_email,
-        dag=dag
+        dag=dag,
     )
