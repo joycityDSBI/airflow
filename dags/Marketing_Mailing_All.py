@@ -32,6 +32,12 @@ from airflow.models import Variable
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
+# 재시도 로직 라이브러리
+from google.api_core import exceptions
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+
+
 logger = logging.getLogger(__name__)
 
 def get_var(key: str, default: str = None) -> str:
@@ -57,6 +63,12 @@ LABELS = {"datascience_division_service": "daily_mkt_mailing",
           "run_id": RUN_ID,
           "datascience_division_service_sub" : "mkt_daily_mailing_total"} ## 딕셔너리 형태로 붙일 수 있음.
 print("RUN_ID=", RUN_ID, "LABEL_ID=", LABELS)
+
+gemini_retry_plicy = retry(
+    retry=retry_if_exception_type(exceptions.ResourceExhausted), # 429 에러만 재시도
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    stop=stop_after_attempt(5)
+)
 
 
 def get_email_list_from_notion(NOTION_TOKEN: str) -> list:

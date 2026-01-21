@@ -18,6 +18,10 @@ from google.genai import Client
 from google.genai import types
 from google.oauth2 import service_account
 
+# 재시도 로직 라이브러리
+from google.api_core import exceptions
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
 
 # DAG 기본 설정
 default_args = {
@@ -120,7 +124,14 @@ with DAG(
         "You must answer in Notion's Markdown format, but do not use title syntax.",
     ]
 
+    gemini_retry_plicy = retry(
+        retry=retry_if_exception_type(exceptions.ResourceExhausted), # 429 에러만 재시도
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        stop=stop_after_attempt(5)
+    )
+
     # 제미나이 paid 국가별 함수
+    @gemini_retry_plicy
     def genai_paid_geo_analytics(df, credentials):
         genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
@@ -166,6 +177,7 @@ with DAG(
     
 
     # 제미나이 organic 국가별 함수
+    @gemini_retry_plicy
     def genai_organic_geo_analytics(df, credentials):
         genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
@@ -211,6 +223,7 @@ with DAG(
 
 
     # 제미나이 Paid 전체 요약 함수
+    @gemini_retry_plicy
     def genai_paid_all_analytics(df, credentials, text_data):
         genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(
@@ -255,6 +268,7 @@ with DAG(
         return first_hash_removed.replace('#', '<br>\n*')
 
     # 제미나이 전체 유저 요약 함수
+    @gemini_retry_plicy
     def genai_organic_all_analytics(df, credentials, text_data):
         genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
         response_data = genai_client.models.generate_content(

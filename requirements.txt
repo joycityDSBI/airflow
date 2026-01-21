@@ -88,3 +88,6 @@ aiohttp>=3.8,<4.0  # 4.0.0은 Python 3.9+ 필요
 
 # 복호화 라이브러리
 pycryptodome>=3.20.0
+
+# 재시도 로직 라이브러리
+tenacity
