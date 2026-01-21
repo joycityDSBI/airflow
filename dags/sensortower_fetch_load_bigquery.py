@@ -110,7 +110,7 @@ def upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, BQ_TABLE_ID):
         merge_query = f"""
         MERGE `{target_table_id}` T
         USING `{staging_table_id}` S
-        ON T.datekey = S.datekey AND T.app_id = S.app_id
+        ON T.datekey = S.datekey AND T.app_id = S.app_id AND T.country = S.country
         
         WHEN MATCHED THEN
           UPDATE SET {update_set}
