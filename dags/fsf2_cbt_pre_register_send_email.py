@@ -35,7 +35,7 @@ GOOGLE_SHEET_ID = "1wB6_RhpTPanaONtqQD93Kd1PCWvpIv7MCfq7JCypc5k" # 시트 URL �
 TARGET_SHEET_NAME = "Sheet1" # 데이터를 넣을 시트 탭 이름
 
 # 이메일 수신자
-EMAIL_RECIPIENT = ["fc748c69.joycity.com@kr.teams.ms"]
+EMAIL_RECIPIENT = ["3b590d59.joycity.com@kr.teams.ms"] # FSF2 프로젝트 룸
 
 # SMTP 설정
 SMTP_SERVER = "61.43.45.137"
@@ -253,7 +253,7 @@ def send_stats_email(df):
     """
 
     # 메일 제목
-    subject = f"**TEST** [FSF2] CBT 가입자 현황 ({datetime.now().strftime('%Y-%m-%d')})"
+    subject = f"[FSF2] CBT 가입자 현황 ({datetime.now().strftime('%Y-%m-%d')})"
     
     # 이메일 발송
     logger.info("📧 이메일 발송 중...")
