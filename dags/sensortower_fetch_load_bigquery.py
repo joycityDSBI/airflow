@@ -37,17 +37,17 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 # 레지던트 이블 : 686fdb56b1430f9d12eda7a5
 # rise of kingdoms : 5ac2bdddcfc03208313848db
 # POTC : 58dca1bc62d7d432f50018e9
-
 # 건쉽배틀 total warfare: 5b997bca9ee67d1001967929
 
 # world war : machines conquest : 5f6d6b6a18bf063c24c5d0a0
+
 # 드래곤 엠파이어 : 625e3a06e0ba195166fbce2f
 
 
 
 
 
-APP_ID = '5b997bca9ee67d1001967929'
+APP_ID = '5f6d6b6a18bf063c24c5d0a0'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
 
 
@@ -269,7 +269,7 @@ with DAG(
         task_id='seonsortower_downloads_revenue_fetch_load',
         python_callable=fetch_data_in_weekly_batches,
         op_kwargs={
-            'total_start_str': '2018-12-01',
+            'total_start_str': '2021-01-10',
             'total_end_str': '2026-01-20', # 필요에 따라 수정 (예: Variable.get("TARGET_DATE"))
             'APP_ID': APP_ID,
             'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN

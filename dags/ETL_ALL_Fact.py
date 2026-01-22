@@ -12,12 +12,12 @@ from google.oauth2 import service_account
 
 
 #### Fact table 처리 함수 불러오기
-from ETL_Fact_tracker import *
-from ETL_Fact_access import *
-from ETL_Fact_payment import *
-from ETL_Fact_funnel import *
-from ETL_Fact_IAA import *
-from ETL_Fact_usermap import *
+from ETL_Fact_tracker import * 
+from ETL_Fact_access import * 
+from ETL_Fact_payment import * 
+from ETL_Fact_funnel import * 
+from ETL_Fact_IAA import * 
+from ETL_Fact_usermap import * 
 
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
