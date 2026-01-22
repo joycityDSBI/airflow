@@ -239,6 +239,7 @@ def fetch_data_in_weekly_batches(total_start_str: str, total_end_str: str, APP_I
         current_start = current_end + timedelta(days=1)
 
     logger.info("All batches processed successfully.")
+    print("All batches processed successfully.")
 
 
 # DAG 기본 설정
