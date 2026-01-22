@@ -37,7 +37,7 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
 
 
-APP_ID = '67d3aaff2c328ae8e547d0ef'
+APP_ID = '658ea0be1fc48c4dbb3065e6'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
 
 
@@ -258,7 +258,7 @@ with DAG(
         task_id='seonsortower_downloads_revenue_fetch_load',
         python_callable=fetch_data_in_weekly_batches,
         op_kwargs={
-            'total_start_str': '2024-10-20',
+            'total_start_str': '2025-11-01',
             'total_end_str': '2026-01-20', # 필요에 따라 수정 (예: Variable.get("TARGET_DATE"))
             'APP_ID': APP_ID,
             'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN
