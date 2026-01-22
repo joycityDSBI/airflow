@@ -104,8 +104,8 @@ def get_email_list_from_notion(NOTION_TOKEN: str) -> list:
     return emails
 
 
-# RECIPIENT_EMAILS = get_email_list_from_notion(NOTION_TOKEN)
-RECIPIENT_EMAILS = ["seongin@joycity.com", "nayoonkim@joycity.com"]
+RECIPIENT_EMAILS = get_email_list_from_notion(NOTION_TOKEN)
+# RECIPIENT_EMAILS = ["seongin@joycity.com", "nayoonkim@joycity.com"]
 
 
 # client 설정 함수
