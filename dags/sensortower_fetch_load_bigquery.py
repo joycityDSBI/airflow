@@ -37,7 +37,7 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
 
 
-APP_ID = '64075e77537c41636a8e1c58'
+APP_ID = '658ea0be1fc48c4dbb3065e6'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
 
 
@@ -197,7 +197,8 @@ def sensortower_download_revenue_api(start_date, end_date, APP_ID, SENSORTOWER_T
         raise e
 
     
-
+# start_date_str, end_date_str는 "YYYY-MM-DD" 형식의 문자열
+# start_date는 6일 전, end_date는 오늘 날짜로 설정
 def fetch_data_in_weekly_batches(total_start_str: str, total_end_str: str, APP_ID: str, SENSORTOWER_TOKEN: str):
     
     start_date = datetime.strptime(total_start_str, "%Y-%m-%d").date()
@@ -257,7 +258,7 @@ with DAG(
         task_id='seonsortower_downloads_revenue_fetch_load',
         python_callable=fetch_data_in_weekly_batches,
         op_kwargs={
-            'total_start_str': '2023-06-10',
+            'total_start_str': '2024-06-01',
             'total_end_str': '2026-01-20', # 필요에 따라 수정 (예: Variable.get("TARGET_DATE"))
             'APP_ID': APP_ID,
             'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN
