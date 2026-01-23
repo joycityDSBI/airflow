@@ -108,8 +108,8 @@ def etl_fact_tracker(**context):
 
     try:
         # etl_f_tracker_install(target_date=target_date, client=bq_client)
-        # etl_f_tracker_re_engagement(target_date=target_date, client=bq_client)
-        etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
+        ## etl_f_tracker_re_engagement(target_date=target_date, client=bq_client)
+        # etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
         etl_f_cost_campaign_rule(client=bq_client)
         logger.info("✅ etl_fact_tracker completed successfully")
         return True
@@ -130,12 +130,11 @@ def etl_fact_access(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        etl_f_common_register(target_date=target_date, client=bq_client)
-        adjust_f_common_register(target_date=target_date, client=bq_client)
-        etl_f_common_register_char(target_date=target_date, client=bq_client)
-        adjust_f_common_register_char(target_date=target_date, client=bq_client)
-        etl_f_common_access(target_date=target_date, client=bq_client)
-        etl_f_common_access_last_login(target_date=target_date, client=bq_client)
+        # etl_f_common_register(target_date=target_date, client=bq_client)
+        # adjust_f_common_register(target_date=target_date, client=bq_client)
+        # etl_f_common_register_char(target_date=target_date, client=bq_client)
+        # adjust_f_common_register_char(target_date=target_date, client=bq_client)
+        # etl_f_common_access(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_access completed successfully")
         return True
     except Exception as e:
@@ -214,14 +213,22 @@ def etl_fact_usermap(**context):
 
     client = init_clients()
     bq_client = client["bq_client"]
-    try:
-        etl_f_user_map(target_date=target_date, client=bq_client)
-        etl_f_user_map_char(target_date=target_date, client=bq_client)
-        logger.info("✅ etl_fact_usermap completed successfully")
-        return True
-    except Exception as e:
-        logger.error(f"❌ etl_fact_usermap failed with error: {e}")
-        raise e
+
+    for date in target_date:
+        logger.info(f"🔄 Processing date: {date}")
+        tsa = [date]
+
+        try:
+            etl_f_common_access_last_login(target_date=tsa, client=bq_client)
+            etl_f_user_map(target_date=tsa, client=bq_client)
+            etl_f_user_map_char(target_date=tsa, client=bq_client)
+            logger.info("✅ etl_fact_usermap completed successfully")
+            return True
+        except Exception as e:
+            logger.error(f"❌ etl_fact_usermap failed with error: {e}")
+            raise e
+
+
 
 # DAG 기본 설정
 default_args = {
