@@ -39,14 +39,22 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 # POTC : 58dca1bc62d7d432f50018e9
 # 건쉽배틀 total warfare: 5b997bca9ee67d1001967929
 # world war : machines conquest : 5f6d6b6a18bf063c24c5d0a0
-
 # 드래곤 엠파이어 : 625e3a06e0ba195166fbce2f
 
+APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
+                '638ee532480da915a62f0b34',
+                '64075e77537c41636a8e1c58',
+                '658ea0be1fc48c4dbb3065e6',
+                '67d3aaff2c328ae8e547d0ef',
+                '6573c39d5c3b423d5d04560f',
+                '686fdb56b1430f9d12eda7a5',
+                '5ac2bdddcfc03208313848db',
+                '58dca1bc62d7d432f50018e9',
+                '5b997bca9ee67d1001967929',
+                '5f6d6b6a18bf063c24c5d0a0',
+                '625e3a06e0ba195166fbce2f']
 
-
-
-
-APP_ID = '625e3a06e0ba195166fbce2f'
+# APP_ID = '625e3a06e0ba195166fbce2f'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
 
 
@@ -244,6 +252,26 @@ def fetch_data_in_weekly_batches(total_start_str: str, total_end_str: str, APP_I
     # print("All batches processed successfully.")
 
 
+
+def app_id_downloads_revenue_fetch_load(APP_ID_LIST: list, SENSORTOWER_TOKEN: str):
+
+    # 6일전 날짜를 가져오는 로직
+    today = datetime.now().date()
+    six_days_ago = today - timedelta(days=6)
+    start_date_str = six_days_ago.strftime("%Y-%m-%d")
+    end_date_str = today.strftime("%Y-%m-%d")
+
+    for APP_ID in APP_ID_LIST:
+        fetch_data_in_weekly_batches(total_start_str=start_date_str,
+                                     total_end_str=end_date_str,
+                                     APP_ID=APP_ID,
+                                     SENSORTOWER_TOKEN=SENSORTOWER_TOKEN)
+        print(f"✅ APP_ID {APP_ID} 데이터 처리 완료.")
+
+    print("✅ 전체 데이터 처리 완료.")
+    return True
+
+
 # DAG 기본 설정
 default_args = {
     'owner': 'airflow',
@@ -258,7 +286,7 @@ with DAG(
     dag_id='SENSORTOWER_downloads_revenue',
     default_args=default_args,
     description='센서타워 API를 통해 다운로드 및 매출액 데이터를 가져와 BigQuery에 적재',
-    schedule= '30 21 * * *', 
+    schedule= '30 21 * * *', # KST 06:30 AM 매일 실행 -> UTC 21:30 PM 전날 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['SensorTower', 'downloads_revenue', 'bigquery'],
@@ -266,12 +294,11 @@ with DAG(
 
     seonsortower_downloads_revenue_fetch_load_task = PythonOperator(
         task_id='seonsortower_downloads_revenue_fetch_load',
-        python_callable=fetch_data_in_weekly_batches,
+        python_callable=app_id_downloads_revenue_fetch_load,
         op_kwargs={
-            'total_start_str': '2022-10-01',
-            'total_end_str': '2026-01-20', # 필요에 따라 수정 (예: Variable.get("TARGET_DATE"))
-            'APP_ID': APP_ID,
+            'APP_ID_LIST': APP_ID_LIST,
             'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN
         }
     )
     
+
