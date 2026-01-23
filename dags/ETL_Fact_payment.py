@@ -7,14 +7,35 @@ import pytz
 
 def etl_pre_payment_deduct_user(target_date: list, client):
 
-    for td in target_date:
-        target_date = td
+    kst = pytz.timezone('Asia/Seoul')
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        kst = pytz.timezone('Asia/Seoul')
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
-        print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.pre_payment_deduct_user` AS target
@@ -73,14 +94,35 @@ def etl_pre_payment_deduct_user(target_date: list, client):
 
 def etl_pre_payment_deduct_order(target_date: list, client):
 
-    for td in target_date:
-        target_date = td
+    kst = pytz.timezone('Asia/Seoul')
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        kst = pytz.timezone('Asia/Seoul')
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
-        print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.pre_payment_deduct_order` AS target
@@ -201,14 +243,35 @@ def etl_pre_payment_info_fix(client):
 
 def etl_f_common_payment(target_date: list, client):
 
-    for td in target_date:
-        target_date = td
+    kst = pytz.timezone('Asia/Seoul')
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        kst = pytz.timezone('Asia/Seoul')
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
-        print(f"📝 시작시간 : ", start_utc, f" 📝 종료시간 : ", end_utc)
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
             -- TA는 V_0150_0000_Payment_V 를 처리한 내용
