@@ -124,7 +124,7 @@ def etl_f_funnel_access_first(target_date:list, client):   ### Device_id 기준 
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_funnel_access_first Batch 완료")
+            print(f"■ {td_str} f_funnel_access_first Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -274,7 +274,7 @@ def etl_f_funnel_access(target_date:list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_funnel_access Batch 완료")
+            print(f"■ {td_str} f_funnel_access Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력

@@ -126,8 +126,7 @@ def etl_pre_joytracking_tracker(target_date:list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} pre_joytracking_tracker Batch 완료")
-
+            print(f"■ {td_str} pre_joytracking_tracker Batch 완료")
         except Exception as e:
             # 4. 실패 시 출력
             print(f"❌ 쿼리 실행 중 에러 발생: {e}")
@@ -432,7 +431,7 @@ def etl_f_tracker_install(target_date:list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_tracker_install Batch 완료")
+            print(f"■ {td_str} f_tracker_install Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -695,7 +694,7 @@ def etl_f_tracker_re_engagement(target_date:list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_tracker_re_engagement Batch 완료")
+            print(f"■ {td_str} f_tracker_re_engagement Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력

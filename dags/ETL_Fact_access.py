@@ -296,7 +296,7 @@ def etl_f_common_register(target_date:list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register Batch 완료")
+            print(f"■ {td_str} f_common_register Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -509,7 +509,7 @@ def adjust_f_common_register(target_date:list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register_adjust Batch 완료")
+            print(f"■ {td_str} f_common_register_adjust Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -700,7 +700,7 @@ def etl_f_common_register_char(target_date:list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_register_char Batch 완료")
+            print(f"■ {td_str} f_common_register_char Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -839,7 +839,7 @@ def adjust_f_common_register_char(target_date:list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} adjust_common_register_char Batch 완료")
+            print(f"■ {td_str} adjust_common_register_char Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -1036,7 +1036,7 @@ def etl_f_common_access(target_date: list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_access Batch 완료")
+            print(f"■ {td_str} f_common_access Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -1122,7 +1122,7 @@ def etl_f_common_access_last_login(target_date: list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_access_last_login Batch 완료")
+            print(f"■ {td_str} f_common_access_last_login Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력

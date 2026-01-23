@@ -79,7 +79,7 @@ def etl_pre_payment_deduct_user(target_date: list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} pre_payment_deduct_user Batch 완료")
+            print(f"■ {td_str} pre_payment_deduct_user Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -170,7 +170,7 @@ def etl_pre_payment_deduct_order(target_date: list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} pre_payment_deduct_order Batch 완료")
+            print(f"■ {td_str} pre_payment_deduct_order Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -480,7 +480,7 @@ def etl_f_common_payment(target_date: list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_common_payment Batch 완료")
+            print(f"■ {td_str} f_common_payment Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력

@@ -166,7 +166,7 @@ def etl_f_IAA_game_sub_user_watch(target_date: list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_IAA_game_sub_user_watch Batch 완료")
+            print(f"■ {td_str} f_IAA_game_sub_user_watch Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -532,7 +532,7 @@ def etl_f_IAA_auth_account_performance_joyple(target_date:list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_IAA_auth_account_performance_joyple Batch 완료")
+            print(f"■ {td_str} f_IAA_auth_account_performance_joyple Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -796,7 +796,7 @@ def etl_f_IAA_auth_account_performance(target_date:list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} f_IAA_auth_account_performance Batch 완료")
+            print(f"■ {td_str} f_IAA_auth_account_performance Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
