@@ -91,12 +91,35 @@ def etl_dim_os(**context):
     client_init = init_clients()
     client = client_init["bq_client"]
 
-    for td in target_date:
-        target_date = td
+    kst = pytz.timezone('Asia/Seoul')
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         # ETL 작업 수행
         query = f"""
@@ -130,7 +153,7 @@ def etl_dim_os(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_os Batch 완료")
+            print(f"■ {td_str} dim_os Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -267,12 +290,35 @@ def etl_dim_auth_method_id(**context):
     client = client_init["bq_client"]
 
 
-    for td in target_date:
-        target_date = td
+    kst = pytz.timezone('Asia/Seoul')
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.dim_auth_method_id` T
@@ -304,7 +350,7 @@ def etl_dim_auth_method_id(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_auth_method_id Batch 완료")
+            print(f"■ {td_str} dim_auth_method_id Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -332,13 +378,36 @@ def etl_dim_product_code(**context):
     client_init = init_clients()
     client = client_init["bq_client"]
 
+    kst = pytz.timezone('Asia/Seoul')
 
-    for td in target_date:
-        target_date = td
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
+
         query = f"""
         MERGE `datahub-478802.datahub.dim_product_code` AS target
         USING(
@@ -369,7 +438,7 @@ def etl_dim_product_code(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_product_code Batch 완료")
+            print(f"■ {td_str} dim_product_code Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -680,7 +749,7 @@ def adjust_dim_product_code(**context):
 
         # 3. 성공 시 출력
         print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-        print(f"■ {target_date.strftime('%Y-%m-%d')} dim_package_kind Batch 완료")
+        print(f"■ {target_date} dim_package_kind Batch 완료")
 
     except Exception as e:
         # 4. 실패 시 출력
@@ -709,12 +778,35 @@ def etl_dim_exchange_rate(**context):
     client = client_init["bq_client"]
 
     
-    for td in target_date:
-        target_date = td
-    
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+    kst = pytz.timezone('Asia/Seoul')
+
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.dim_exchange_rate` T
@@ -780,7 +872,7 @@ def etl_dim_exchange_rate(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_exchange_rate Batch 완료")
+            print(f"■ {td_str} dim_exchange_rate Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -810,11 +902,35 @@ def etl_dim_game_id(**context):
     client = client_init["bq_client"]
 
 
-    for td in target_date:
-        target_date = td
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+    kst = pytz.timezone('Asia/Seoul')
+
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.dim_game_id` T
@@ -846,7 +962,7 @@ def etl_dim_game_id(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_game Batch 완료")
+            print(f"■ {td_str} dim_game Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -876,12 +992,35 @@ def etl_dim_app_id(**context):
     client = client_init["bq_client"]
 
 
-    for td in target_date:
-        target_date = td
+    kst = pytz.timezone('Asia/Seoul')
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.dim_app_id` T
@@ -913,7 +1052,7 @@ def etl_dim_app_id(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_app_id Batch 완료")
+            print(f"■ {td_str} dim_app_id Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -943,12 +1082,35 @@ def etl_dim_google_campaign(**context):
     client = client_init["bq_client"]
 
 
-    for td in target_date:
-        target_date = td    
+    kst = pytz.timezone('Asia/Seoul')
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.dim_google_campaign` AS target
@@ -987,7 +1149,7 @@ def etl_dim_google_campaign(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_google_campaign Batch 완료")
+            print(f"■ {td_str} dim_google_campaign Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -1095,11 +1257,35 @@ def etl_dim_ip4_country_code(**context):
     client = client_init["bq_client"]
 
     
-    for td in target_date:
-        target_date = td
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+    kst = pytz.timezone('Asia/Seoul')
+
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
             MERGE `datahub-478802.datahub.dim_ip4_country_code` AS a
@@ -1171,7 +1357,7 @@ def etl_dim_ip4_country_code(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_ip4_country_code Batch 완료")
+            print(f"■ {td_str} dim_ip4_country_code Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -1201,11 +1387,35 @@ def etl_dim_joyple_game_code(**context):
     client = client_init["bq_client"]
 
         
-    for td in target_date:
-        target_date = td
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+    kst = pytz.timezone('Asia/Seoul')
+
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.dim_joyple_game_code` AS a
@@ -1252,7 +1462,7 @@ def etl_dim_joyple_game_code(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_joyple_game_code Batch 완료")
+            print(f"■ {td_str} dim_joyple_game_code Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -1282,12 +1492,35 @@ def etl_dim_market_id(**context):
     client = client_init["bq_client"]
 
 
-    for td in target_date:
-        target_date = td
+    kst = pytz.timezone('Asia/Seoul')
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.dim_market_id` AS a
@@ -1334,7 +1567,7 @@ def etl_dim_market_id(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_market_id Batch 완료")
+            print(f"■ {td_str} dim_market_id Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -1362,13 +1595,35 @@ def etl_dim_os_id(**context):
     client_init = init_clients()
     client = client_init["bq_client"]
 
-    for td in target_date:
-        target_date = td
+    kst = pytz.timezone('Asia/Seoul')
 
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.dim_os_id` AS a
@@ -1415,7 +1670,7 @@ def etl_dim_os_id(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_os_id Batch 완료")
+            print(f"■ {td_str} dim_os_id Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -1604,12 +1859,35 @@ def etl_dim_pg_id(**context):
     client = client_init["bq_client"]
 
 
-    for td in target_date:
-        target_date = td
+    kst = pytz.timezone('Asia/Seoul')
 
-        # KST 00:00:00 ~ 23:59:59를 UTC로 변환
-        start_utc = target_date.replace(tzinfo=kst).astimezone(pytz.UTC)
-        end_utc = (target_date + timedelta(days=1)).replace(tzinfo=kst).astimezone(pytz.UTC)
+    for td_str in target_date:
+        # [수정 1] 문자열(String)을 datetime 객체로 변환
+        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
+            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
+        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
+        
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+        
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(pytz.UTC)
+        
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(pytz.UTC)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
         MERGE `datahub-478802.datahub.dim_pg_id` AS target
@@ -1642,7 +1920,7 @@ def etl_dim_pg_id(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_pg_id Batch 완료")
+            print(f"■ {td_str} dim_pg_id Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
@@ -1718,7 +1996,7 @@ def etl_dim_IAA_app_name(**context):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {target_date.strftime('%Y-%m-%d')} dim_IAA_app_name Batch 완료")
+            print(f"■ {target_date} dim_IAA_app_name Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
