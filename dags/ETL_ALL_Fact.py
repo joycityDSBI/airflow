@@ -163,7 +163,7 @@ def etl_fact_payment(**context):
 def etl_fact_funnel(**context):
     logger = logging.getLogger(__name__)
 
-    target_date = target_date_range("2026-01-01", "2026-01-22")  ## 백필용
+    target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -183,7 +183,7 @@ def etl_fact_funnel(**context):
 def etl_fact_IAA(**context):
     logger = logging.getLogger(__name__)
 
-    target_date = target_date_range("2026-01-01", "2026-01-22")  ## 백필용
+    target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -205,7 +205,7 @@ def etl_fact_IAA(**context):
 def etl_fact_usermap(**context):
     logger = logging.getLogger(__name__)
 
-    target_date = target_date_range("2026-01-01", "2026-01-22")  ## 백필용
+    target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
