@@ -211,9 +211,11 @@ def etl_f_funnel_access(target_date:list, client):
             LEFT OUTER JOIN `datahub-478802.datahub.f_tracker_install` as b
             on a.tracker_account_id = b.tracker_account_id AND a.tracker_type_id = b.tracker_type_id
             )  AS source 
-            ON target.joyple_game_code = source.joyple_game_code 
+            ON target.game_id = source.game_id
+            AND target.joyple_game_code = source.joyple_game_code 
             AND target.tracker_account_id = source.tracker_account_id 
             AND target.tracker_type_id = source.tracker_type_id 
+            AND target.device_id = source.device_id
             AND target.step_id = source.step_id 
             AND target.step_name = source.step_name
             WHEN MATCHED AND target.install_datekey > CAST(source.install_datekey AS DATE) - 3 THEN
