@@ -204,6 +204,8 @@ def etl_f_funnel_access(target_date:list, client):
                     AND log_time < '{end_utc}'
                     AND joyple_game_code   IS NOT NULL
                     AND tracker_account_id IS NOT NULL
+                    AND mmp_type           IS NOT NULL
+                    AND device_id          IS NOT NULL
                     AND step_id            IS NOT NULL
                     AND step_name          IS NOT NULL
                     GROUP BY joyple_game_code, game_id, tracker_account_id, mmp_type, step_id, step_name
