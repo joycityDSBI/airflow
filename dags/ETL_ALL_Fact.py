@@ -122,7 +122,6 @@ def etl_fact_access(**context):
     logger = logging.getLogger(__name__)
 
     target_date = target_date_range("2026-01-01", "2026-01-22")  ## 백필용
-    run_kst = None
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
