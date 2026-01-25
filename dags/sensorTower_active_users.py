@@ -261,7 +261,7 @@ def app_id_active_users_fetch_load(APP_ID_LIST: list, SENSORTOWER_TOKEN: str):
     end_date_str = today.strftime("%Y-%m-%d")
 
     # 마이그레이션 용 데이터 일자
-    start_date_str = '2017-04-20'
+    # start_date_str = '2017-04-20'
 
 
     for APP_ID in APP_ID_LIST:
