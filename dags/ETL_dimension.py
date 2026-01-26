@@ -2083,7 +2083,7 @@ with DAG(
     bash_task = BashOperator(
         task_id = 'bash_task',
         outlets = [ETL_dimension],
-        bash_command = 'ETL_dimension 수행 완료"'
+        bash_command = 'echo "ETL_dimension 수행 완료"'
     )
 
 chain(
