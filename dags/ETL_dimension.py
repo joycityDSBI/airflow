@@ -77,6 +77,9 @@ def calc_target_date(logical_date):
 
 def etl_dim_os(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -87,9 +90,6 @@ def etl_dim_os(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
 
     kst = pytz.timezone('Asia/Seoul')
 
@@ -275,6 +275,9 @@ def etl_dim_AFC_campaign(**context):
 
 def etl_dim_auth_method_id(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -285,10 +288,6 @@ def etl_dim_auth_method_id(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
 
     kst = pytz.timezone('Asia/Seoul')
 
@@ -363,7 +362,10 @@ def etl_dim_auth_method_id(**context):
 
 
 def etl_dim_product_code(**context):
-    
+
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -374,9 +376,6 @@ def etl_dim_product_code(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
 
     kst = pytz.timezone('Asia/Seoul')
 
@@ -452,6 +451,9 @@ def etl_dim_product_code(**context):
 
 def adjust_dim_product_code(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -462,10 +464,6 @@ def adjust_dim_product_code(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
 
     query = f"""
     MERGE `datahub-478802.datahub.dim_product_code` AS target
@@ -763,6 +761,9 @@ def adjust_dim_product_code(**context):
 
 def etl_dim_exchange_rate(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -773,10 +774,6 @@ def etl_dim_exchange_rate(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
     
     kst = pytz.timezone('Asia/Seoul')
 
@@ -887,6 +884,9 @@ def etl_dim_exchange_rate(**context):
     
 def etl_dim_game_id(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -897,9 +897,6 @@ def etl_dim_game_id(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
 
 
     kst = pytz.timezone('Asia/Seoul')
@@ -977,6 +974,9 @@ def etl_dim_game_id(**context):
 
 def etl_dim_app_id(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -988,11 +988,6 @@ def etl_dim_app_id(**context):
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
-
-    kst = pytz.timezone('Asia/Seoul')
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1067,6 +1062,9 @@ def etl_dim_app_id(**context):
 
 def etl_dim_google_campaign(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -1078,11 +1076,6 @@ def etl_dim_google_campaign(**context):
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
-
-    kst = pytz.timezone('Asia/Seoul')
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1242,6 +1235,9 @@ def etl_dim_ip_proxy(**context):
 
 def etl_dim_ip4_country_code(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -1253,11 +1249,6 @@ def etl_dim_ip4_country_code(**context):
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
-    
-    kst = pytz.timezone('Asia/Seoul')
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1372,6 +1363,9 @@ def etl_dim_ip4_country_code(**context):
 
 def etl_dim_joyple_game_code(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -1382,12 +1376,6 @@ def etl_dim_joyple_game_code(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
-        
-    kst = pytz.timezone('Asia/Seoul')
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1477,6 +1465,9 @@ def etl_dim_joyple_game_code(**context):
 
 def etl_dim_market_id(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -1487,12 +1478,6 @@ def etl_dim_market_id(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
-
-    kst = pytz.timezone('Asia/Seoul')
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1581,6 +1566,9 @@ def etl_dim_market_id(**context):
 
 def etl_dim_os_id(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -1591,11 +1579,6 @@ def etl_dim_os_id(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
-    kst = pytz.timezone('Asia/Seoul')
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1844,6 +1827,9 @@ def etl_dim_package_kind(**context):
 
 def etl_dim_pg_id(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -1854,12 +1840,6 @@ def etl_dim_pg_id(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
-
-    kst = pytz.timezone('Asia/Seoul')
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1933,6 +1913,9 @@ def etl_dim_pg_id(**context):
 
 def etl_dim_IAA_app_name(**context):
 
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+    
     logger = logging.getLogger(__name__)
     
     # [수정 1] 함수 내부에서 사용할 타임존 정의
@@ -1943,10 +1926,6 @@ def etl_dim_IAA_app_name(**context):
     
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    client_init = init_clients()
-    client = client_init["bq_client"]
-
 
     for td in target_date:
         target_date = td
