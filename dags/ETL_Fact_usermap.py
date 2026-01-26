@@ -16,7 +16,7 @@ def etl_f_user_map(target_date:list, client):
         start_date = start_date.strftime("%Y-%m-%d") # '2014-06-10'
         end_date = end_date.strftime("%Y-%m-%d")
         print(f"📝 시작시간 : ", start_date, f" 📝 종료시간 : ", end_date)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_user_map Batch 시작")
+        print(f"■ {target_date} f_user_map Batch 시작")
 
         query = f"""
         INSERT INTO datahub-478802.datahub.f_user_map
