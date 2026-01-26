@@ -1088,9 +1088,9 @@ def etl_dim_app_id(**context):
             -- T.app_id는 이미 같으므로 업데이트 불필요
             T.joyple_game_code = COALESCE(S.joyple_game_code, T.joyple_game_code),
             T.market_id = COALESCE(S.market_id, T.market_id)
-            -- create_timestamp는 최초 생성일이므로 업데이트 하지 않음 (기존 유지)
+            -- create_datetime 최초 생성일이므로 업데이트 하지 않음 (기존 유지)
         WHEN NOT MATCHED THEN 
-        INSERT (app_id, joyple_game_code, market_id, create_timestamp)
+        INSERT (app_id, joyple_game_code, market_id, create_datetime)
         VALUES (S.app_id, S.joyple_game_code, S.market_id, CURRENT_TIMESTAMP())
         """
 
