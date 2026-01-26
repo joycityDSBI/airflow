@@ -522,6 +522,7 @@ def etl_f_IAA_auth_account_performance_joyple(target_date:list, client):
 
         # 1. 쿼리 실행
         truncate_query_job = client.query(delete_query)
+        print("Delete Job started...")
         truncate_query_job.result()  # 작업 완료 대기
         query_job = client.query(query)
 
@@ -754,8 +755,8 @@ def etl_f_IAA_auth_account_performance(target_date:list, client):
                 , SUM(revenue_per_user_KRW) AS revenue_per_user_KRW
                 , "JoypleAPI"            AS FromSource
             FROM `datahub-478802.datahub.f_IAA_auth_account_performance_joyple`
-            WHERE watch_datekey >= DATE('2025-11-15', "Asia/Seoul")
-                AND watch_datekey <  DATE('2025-11-22', "Asia/Seoul")        
+            WHERE watch_datekey >= DATE('{start_utc}', "Asia/Seoul")
+                AND watch_datekey <  DATE('{end_utc}', "Asia/Seoul")      
                 AND ad_network_code != 33 
                 AND (
                         (joyple_game_code = 155   AND revenue_per_user_USD > 0)

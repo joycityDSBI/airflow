@@ -73,7 +73,7 @@ def calc_target_date(logical_date):
     return [target_dt], run_date_kst
 
 
-
+## 날짜가 포함되어 있으면 해당 날짜의 데이터를 밀어 넣게 되어 있음
 def target_date_range(start_date_str, end_date_str):
     """날짜 데이터 백필용"""
     # 문자열을 datetime 객체로 변환
@@ -251,7 +251,7 @@ with DAG(
     dag_id='ETL_ALL_Fact',
     default_args=default_args,
     description='전체 fact table에 대해서 OLAP 처리 (KST D-1 기준)',
-    schedule= '01 0 * * *', ## KST 09:01 AM 매일 실행
+    schedule= '10 0 * * *', ## KST 09:10 AM 매일 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'fact', 'bigquery'],
