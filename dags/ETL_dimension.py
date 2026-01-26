@@ -508,262 +508,265 @@ def adjust_dim_product_code(**context):
     query = f"""
     MERGE `datahub-478802.datahub.dim_product_code` AS target
     USING (
-    SELECT 
-    139 as joyple_game_code
-    , CAST(PKind AS STRING) as product_code
-    , CAST(null AS STRING) as goods_type
-    , CAST(Category AS STRING) as shop_category
-    , CAST(null AS STRING) as package_category
-    , CAST(Price AS STRING) as price
-    , CAST(PackageName AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.CFWZ_PackageInfo
+        SELECT * FROM (
+            SELECT 
+            139 as joyple_game_code
+            , CAST(PKind AS STRING) as product_code
+            , CAST(null AS STRING) as goods_type
+            , CAST(Category AS STRING) as shop_category
+            , CAST(null AS STRING) as package_category
+            , CAST(Price AS STRING) as price
+            , CAST(PackageName AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.CFWZ_PackageInfo
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    129 as joyple_game_code
-    , CAST(PACKAGE_KIND  AS STRING) as product_code
-    , CAST(null AS STRING) as goods_type
-    , CAST(Category AS STRING) as shop_category
-    , CAST(CATEGORY AS STRING) as package_category
-    , CAST(Price AS STRING) as price
-    , CAST(PACKAGE_NAME AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.GNSS_PackageInfo
+            SELECT 
+            129 as joyple_game_code
+            , CAST(PACKAGE_KIND  AS STRING) as product_code
+            , CAST(null AS STRING) as goods_type
+            , CAST(Category AS STRING) as shop_category
+            , CAST(CATEGORY AS STRING) as package_category
+            , CAST(Price AS STRING) as price
+            , CAST(PACKAGE_NAME AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.GNSS_PackageInfo
 
-    UNION ALL
+            UNION ALL
 
-    -- BLS 글로벌 버전이 맞는지 체크 필요
-    SELECT 
-    147 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_BLS
+            SELECT 
+            147 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_BLS
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    140 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_BLSKR
+            SELECT 
+            140 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_BLSKR
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    154 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_C4
+            SELECT 
+            154 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_C4
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    139 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_CFWZ
+            SELECT 
+            139 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_CFWZ
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    155 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_DRB
+            SELECT 
+            155 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_DRB
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    30003 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_DS
+            SELECT 
+            30003 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_DS
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    153 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_GBCC
+            SELECT 
+            153 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_GBCC
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    133 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_GBTW
+            SELECT 
+            133 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_GBTW
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    156 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_JTWN
+            SELECT 
+            156 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_JTWN
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    148 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_KOFS
+            SELECT 
+            148 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_KOFS
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    151 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_LOL
+            SELECT 
+            151 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_LOL
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    159 as joyple_game_code
-    , CAST(A.Package_Kind AS STRING) as product_code
-    , CAST(A.goods_type AS STRING) as goods_type
-    , CAST(A.Cat_Shop AS STRING) as shop_category
-    , CAST(A.Cat_Package AS STRING) as package_category
-    , CAST(A.Price AS STRING) as price
-    , CAST(A.Package_Name AS STRING) as product_name
-    , A.Package_Name_ENG as product_name_EN
-    , CAST(B.package_name_jp AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU as A
-    left join 
-    data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP as B
-    ON A.Package_Kind = B.Package_Kind
+            SELECT 
+            159 as joyple_game_code
+            , CAST(A.Package_Kind AS STRING) as product_code
+            , CAST(A.goods_type AS STRING) as goods_type
+            , CAST(A.Cat_Shop AS STRING) as shop_category
+            , CAST(A.Cat_Package AS STRING) as package_category
+            , CAST(A.Price AS STRING) as price
+            , CAST(A.Package_Name AS STRING) as product_name
+            , A.Package_Name_ENG as product_name_EN
+            , CAST(B.package_name_jp AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU as A
+            left join 
+            data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP as B
+            ON A.Package_Kind = B.Package_Kind
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    1590 as joyple_game_code
-    , CAST(A.Package_Kind AS STRING) as product_code
-    , CAST(A.goods_type AS STRING) as goods_type
-    , CAST(A.Cat_Shop AS STRING) as shop_category
-    , CAST(A.Cat_Package AS STRING) as package_category
-    , CAST(A.Price AS STRING) as price
-    , CAST(A.Package_Name AS STRING) as product_name
-    , A.Package_Name_ENG as product_name_EN
-    , CAST(B.package_name_jp AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU as A
-    left join 
-    data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP as B
-    ON A.Package_Kind = B.Package_Kind
+            SELECT 
+            1590 as joyple_game_code
+            , CAST(A.Package_Kind AS STRING) as product_code
+            , CAST(A.goods_type AS STRING) as goods_type
+            , CAST(A.Cat_Shop AS STRING) as shop_category
+            , CAST(A.Cat_Package AS STRING) as package_category
+            , CAST(A.Price AS STRING) as price
+            , CAST(A.Package_Name AS STRING) as product_name
+            , A.Package_Name_ENG as product_name_EN
+            , CAST(B.package_name_jp AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU as A
+            left join 
+            data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP as B
+            ON A.Package_Kind = B.Package_Kind
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    131 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_POTC
+            SELECT 
+            131 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_POTC
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    142 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_TERA
+            SELECT 
+            142 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_TERA
 
-    UNION ALL
+            UNION ALL
 
-    SELECT 
-    30001 as joyple_game_code
-    , CAST(package_kind AS STRING) as product_code
-    , CAST(goods_type AS STRING) as goods_type
-    , CAST(category_shop AS STRING) as shop_category
-    , CAST(category_package AS STRING) as package_category
-    , CAST(price AS STRING) as price
-    , CAST(package_name AS STRING) as product_name
-    , CAST(null AS STRING) as product_name_EN
-    , CAST(null AS STRING) as product_name_JP
-    FROM data-science-division-216308.PackageInfo.PackageInfo_WWM
+            SELECT 
+            30001 as joyple_game_code
+            , CAST(package_kind AS STRING) as product_code
+            , CAST(goods_type AS STRING) as goods_type
+            , CAST(category_shop AS STRING) as shop_category
+            , CAST(category_package AS STRING) as package_category
+            , CAST(price AS STRING) as price
+            , CAST(package_name AS STRING) as product_name
+            , CAST(null AS STRING) as product_name_EN
+            , CAST(null AS STRING) as product_name_JP
+            FROM data-science-division-216308.PackageInfo.PackageInfo_WWM
+        )
+        -- [핵심 수정] 중복 제거 로직 추가
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY joyple_game_code, product_code ORDER BY product_name DESC) = 1
     ) as source
     ON target.joyple_game_code = source.joyple_game_code AND target.product_code = source.product_code
     WHEN MATCHED AND target.product_name is null THEN
