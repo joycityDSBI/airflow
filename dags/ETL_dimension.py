@@ -1183,7 +1183,7 @@ def etl_dim_google_campaign(**context):
                 AND a.cmpgn_id NOT LIKE 'f%'
                 GROUP BY REGEXP_REPLACE(a.cmpgn_id, '[^0-9]', '')
         ) AS a 
-        ) AS source ON target.CampaignID = source.CampaignID AND target.CampaignName = source.CampaignName
+        ) AS source ON target.Campaign_id = source.CampaignID AND target.Campaign_name = source.CampaignName
         WHEN NOT MATCHED BY target THEN
         INSERT(Campaign_id, Campaign_name, create_timestamp)
         VALUES(
