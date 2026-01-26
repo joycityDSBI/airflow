@@ -132,11 +132,11 @@ def etl_fact_access(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        # etl_f_common_register(target_date=target_date, client=bq_client)
-        # adjust_f_common_register(target_date=target_date, client=bq_client)
-        # etl_f_common_register_char(target_date=target_date, client=bq_client)
-        # adjust_f_common_register_char(target_date=target_date, client=bq_client)
-        # etl_f_common_access(target_date=target_date, client=bq_client)
+        etl_f_common_register(target_date=target_date, client=bq_client)
+        adjust_f_common_register(target_date=target_date, client=bq_client)
+        etl_f_common_register_char(target_date=target_date, client=bq_client)
+        adjust_f_common_register_char(target_date=target_date, client=bq_client)
+        etl_f_common_access(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_access completed successfully")
         return True
     except Exception as e:
@@ -156,7 +156,7 @@ def etl_fact_payment(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        # etl_f_common_payment(target_date=target_date, client=bq_client)
+        etl_f_common_payment(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_payment completed successfully")
         return True
     except Exception as e:
@@ -176,8 +176,8 @@ def etl_fact_funnel(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        # etl_f_funnel_access_first(target_date=target_date, client=bq_client)
-        # etl_f_funnel_access(target_date=target_date, client=bq_client)
+        etl_f_funnel_access_first(target_date=target_date, client=bq_client)
+        etl_f_funnel_access(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_funnel completed successfully")
         return True
     except Exception as e:
@@ -197,10 +197,10 @@ def etl_fact_IAA(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        # etl_f_IAA_game_sub_user_watch(target_date=target_date, client=bq_client)
-        # etl_f_IAA_performance(client=bq_client)
-        # etl_f_IAA_auth_account_performance_joyple(target_date=target_date, client=bq_client)
-        # etl_f_IAA_auth_account_performance(target_date=target_date, client=bq_client)
+        etl_f_IAA_game_sub_user_watch(target_date=target_date, client=bq_client)
+        etl_f_IAA_performance(client=bq_client)
+        etl_f_IAA_auth_account_performance_joyple(target_date=target_date, client=bq_client)
+        etl_f_IAA_auth_account_performance(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_IAA completed successfully")
         return True
     except Exception as e:
@@ -251,7 +251,7 @@ with DAG(
     dag_id='ETL_ALL_Fact',
     default_args=default_args,
     description='전체 fact table에 대해서 OLAP 처리 (KST D-1 기준)',
-    schedule= '30 20 * * *', ## KST 05:30 AM 매일 실행 -> UTC 20:30 PM 전날 실행
+    schedule= '01 0 * * *', ## KST 09:01 AM 매일 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'fact', 'bigquery'],
