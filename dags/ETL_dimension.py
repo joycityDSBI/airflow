@@ -1091,14 +1091,14 @@ def etl_dim_app_id(**context):
             -- create_datetime 최초 생성일이므로 업데이트 하지 않음 (기존 유지)
         WHEN NOT MATCHED THEN 
         INSERT (app_id, joyple_game_code, market_id, create_datetime)
-        VALUES (S.app_id, S.joyple_game_code, S.market_id, CURRENT_TIMESTAMP())
+        VALUES (S.app_id, S.joyple_game_code, S.market_id, CURRENT_DATETIME("Asia/Seoul"))
         """
 
         query_job = client.query(query)
 
         try:
             # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
-            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.git 
             query_job.result()
 
             # 3. 성공 시 출력
