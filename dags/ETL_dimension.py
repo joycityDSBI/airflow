@@ -1855,7 +1855,7 @@ def etl_dim_pg_id(**context):
             AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
         ) AS source ON target.pg_id = source.pg_id
         WHEN NOT MATCHED BY target THEN
-        INSERT(pg_id, pg_name_KR, pg_name_EN, created_timestamp)
+        INSERT(pg_id, pg_name_KR, pg_name_EN, create_timestamp)
         VALUES(
             source.pg_id
             , NULL
