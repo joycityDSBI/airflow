@@ -1480,23 +1480,23 @@ def etl_dim_joyple_game_code(**context):
             SELECT a.joyple_game_code, a.game_id
                 , MAX(UpdatedTimestamp) AS UpdatedTimestamp
             FROM (
-            SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Access` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY a.joyple_game_code, a.game_id
-            UNION ALL
-            SELECT a.joyple_game_code, a.game_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Payment` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY a.joyple_game_code, a.game_id
-            UNION ALL
-            SELECT a.joyple_game_code, a.game_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Funnel` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY a.joyple_game_code, a.game_id
+                    SELECT a.joyple_game_code, a.game_id, MAX(a.log_time) AS UpdatedTimestamp
+                    FROM `dataplatform-204306.CommonLog.Access` AS a
+                    WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                        AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    GROUP BY a.joyple_game_code, a.game_id
+                    UNION ALL
+                    SELECT a.joyple_game_code, a.game_id, MAX(a.log_time) AS UpdatedTimestamp
+                    FROM `dataplatform-204306.CommonLog.Payment` AS a
+                    WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                        AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    GROUP BY a.joyple_game_code, a.game_id
+                    UNION ALL
+                    SELECT a.joyple_game_code, a.game_id, MAX(a.log_time) AS UpdatedTimestamp
+                    FROM `dataplatform-204306.CommonLog.Funnel` AS a
+                    WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                        AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    GROUP BY a.joyple_game_code, a.game_id
             ) as a
             GROUP BY a.joyple_game_code, a.game_id
         ) as t
@@ -1966,9 +1966,7 @@ def etl_dim_IAA_app_name(**context):
     print("✅ dim_IAA_app_name ETL 완료")
 
 ############ Platform Device는 별도 ETL 작업 없음
-
 ############ T_0265_0000_CostCampaignRulePreBook_V 는 필요 시 직접 입력하는 형태 (DB insert 처리)
-
 ############ special_pg 는 별도 ETL 작업 없음
 
 
@@ -1992,55 +1990,55 @@ with DAG(
     tags=['ETL', 'dim', 'bigquery'],
 ) as dag:
 
-    etl_dim_os_task = PythonOperator(
-        task_id='etl_dim_os',
-        python_callable=etl_dim_os,
-    )
+    # etl_dim_os_task = PythonOperator(
+    #     task_id='etl_dim_os',
+    #     python_callable=etl_dim_os,
+    # )
 
-    etl_dim_AFC_campaign_task = PythonOperator(
-        task_id='etl_dim_AFC_campaign',
-        python_callable=etl_dim_AFC_campaign,
-    )
+    # etl_dim_AFC_campaign_task = PythonOperator(
+    #     task_id='etl_dim_AFC_campaign',
+    #     python_callable=etl_dim_AFC_campaign,
+    # )
 
-    etl_dim_auth_method_id_task = PythonOperator(
-        task_id='etl_dim_auth_method_id',
-        python_callable=etl_dim_auth_method_id,
-    )
+    # etl_dim_auth_method_id_task = PythonOperator(
+    #     task_id='etl_dim_auth_method_id',
+    #     python_callable=etl_dim_auth_method_id,
+    # )
 
-    etl_dim_exchange_rate_task = PythonOperator(
-        task_id='etl_dim_exchange_rate',
-        python_callable=etl_dim_exchange_rate,
-    )
+    # etl_dim_exchange_rate_task = PythonOperator(
+    #     task_id='etl_dim_exchange_rate',
+    #     python_callable=etl_dim_exchange_rate,
+    # )
 
-    etl_dim_game_id_task = PythonOperator(
-        task_id='etl_dim_game_id',
-        python_callable=etl_dim_game_id,
-    )
+    # etl_dim_game_id_task = PythonOperator(
+    #     task_id='etl_dim_game_id',
+    #     python_callable=etl_dim_game_id,
+    # )
 
-    etl_dim_app_id_task = PythonOperator(
-        task_id='etl_dim_app_id',
-        python_callable=etl_dim_app_id,
-    )
+    # etl_dim_app_id_task = PythonOperator(
+    #     task_id='etl_dim_app_id',
+    #     python_callable=etl_dim_app_id,
+    # )
 
-    etl_dim_google_campaign_task = PythonOperator(
-        task_id='etl_dim_google_campaign',
-        python_callable=etl_dim_google_campaign,
-    )
+    # etl_dim_google_campaign_task = PythonOperator(
+    #     task_id='etl_dim_google_campaign',
+    #     python_callable=etl_dim_google_campaign,
+    # )
 
-    etl_dim_ip_range_task = PythonOperator(
-        task_id='etl_dim_ip_range',
-        python_callable=etl_dim_ip_range,
-    )
+    # etl_dim_ip_range_task = PythonOperator(
+    #     task_id='etl_dim_ip_range',
+    #     python_callable=etl_dim_ip_range,
+    # )
 
-    etl_dim_ip_proxy_task = PythonOperator(
-        task_id='etl_dim_ip_proxy',
-        python_callable=etl_dim_ip_proxy,
-    )
+    # etl_dim_ip_proxy_task = PythonOperator(
+    #     task_id='etl_dim_ip_proxy',
+    #     python_callable=etl_dim_ip_proxy,
+    # )
     
-    etl_dim_ip4_country_code_task = PythonOperator(
-        task_id='etl_dim_ip4_country_code',
-        python_callable=etl_dim_ip4_country_code,
-    )
+    # etl_dim_ip4_country_code_task = PythonOperator(
+    #     task_id='etl_dim_ip4_country_code',
+    #     python_callable=etl_dim_ip4_country_code,
+    # )
 
     etl_dim_joyple_game_code_task = PythonOperator(
         task_id='etl_dim_joyple_game_code',
@@ -2079,16 +2077,16 @@ with DAG(
 
 
 chain(
-    etl_dim_os_task,
-    etl_dim_AFC_campaign_task,
-    etl_dim_auth_method_id_task,
-    etl_dim_exchange_rate_task,
-    etl_dim_game_id_task,
-    etl_dim_app_id_task,
-    etl_dim_google_campaign_task,
-    etl_dim_ip_range_task,
-    etl_dim_ip_proxy_task,
-    etl_dim_ip4_country_code_task,
+    # etl_dim_os_task,
+    # etl_dim_AFC_campaign_task,
+    # etl_dim_auth_method_id_task,
+    # etl_dim_exchange_rate_task,
+    # etl_dim_game_id_task,
+    # etl_dim_app_id_task,
+    # etl_dim_google_campaign_task,
+    # etl_dim_ip_range_task,
+    # etl_dim_ip_proxy_task,
+    # etl_dim_ip4_country_code_task,
     etl_dim_joyple_game_code_task,
     etl_dim_market_id_task,
     etl_dim_package_kind_task,

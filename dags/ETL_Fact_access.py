@@ -1080,6 +1080,11 @@ def etl_f_common_access_last_login(target_date: list, client):
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
         print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
+        current_date_kst = kst.localize(current_date_obj)
+
+        # 3. Timestamp(초 단위 실수)로 변환
+        timestamp_val = current_date_kst.timestamp()
+
         query = f"""
         MERGE datahub-478802.datahub.f_common_access_last_login AS target
         USING
@@ -1098,7 +1103,7 @@ def etl_f_common_access_last_login(target_date: list, client):
         UPDATE SET 
         target.last_login_datekey = source.datekey
         , target.max_game_user_level = source.max_game_user_level
-        , target.update_timestamp = CURRENT_TIMESTAMP()
+        , target.update_timestamp = {timestamp_val}
         WHEN NOT MATCHED BY target THEN
         INSERT (joyple_game_code, game_sub_user_name, auth_method_id, auth_account_name, last_login_datekey, max_game_user_level, update_timestamp)
         VALUES
@@ -1109,7 +1114,7 @@ def etl_f_common_access_last_login(target_date: list, client):
             , source.auth_account_name
             , source.datekey
             , source.max_game_user_level
-            , CURRENT_TIMESTAMP()
+            , {timestamp_val}
         );
         """
         # 1. 쿼리 실행
