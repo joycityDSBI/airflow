@@ -1,5 +1,5 @@
 # Airflow function
-from airflow import DAG
+from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 
@@ -18,6 +18,8 @@ from ETL_Fact_payment import *
 from ETL_Fact_funnel import * 
 from ETL_Fact_IAA import * 
 from ETL_Fact_usermap import * 
+
+ETL_dimension = Dataset('ETL_dimension')
 
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
@@ -96,7 +98,7 @@ def etl_fact_tracker(**context):
     logger = logging.getLogger(__name__)
     
     # target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-23", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
     run_kst = None
 
     # 날짜 계산
@@ -123,7 +125,7 @@ def etl_fact_access(**context):
     logger = logging.getLogger(__name__)
 
     # target_date = target_date_range("2026-01-01", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-23", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -147,7 +149,7 @@ def etl_fact_payment(**context):
     logger = logging.getLogger(__name__)
 
     # target_date = target_date_range("2026-01-01", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-23", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -167,7 +169,7 @@ def etl_fact_funnel(**context):
     logger = logging.getLogger(__name__)
 
     # target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-23", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -188,7 +190,7 @@ def etl_fact_IAA(**context):
     logger = logging.getLogger(__name__)
 
     # target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-23", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -211,7 +213,7 @@ def etl_fact_usermap(**context):
     logger = logging.getLogger(__name__)
 
     # target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-23", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -251,7 +253,8 @@ with DAG(
     dag_id='ETL_ALL_Fact',
     default_args=default_args,
     description='전체 fact table에 대해서 OLAP 처리 (KST D-1 기준)',
-    schedule= '15 0 * * *', ## KST 09:15 AM 매일 실행
+    schedule='30 03 * * *',  # 매일 오전 3시 30분 실행
+    # schedule= [ETL_dimension], ################ 수정필요
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'fact', 'bigquery'],

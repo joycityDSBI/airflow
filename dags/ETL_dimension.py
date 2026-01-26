@@ -1,7 +1,7 @@
 # Airflow function
-from http import client
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
 from airflow.models import Variable
 from airflow.models.baseoperator import chain
 from google.oauth2 import service_account
@@ -16,6 +16,8 @@ from datetime import datetime, timezone, timedelta
 import time
 import os
 import pytz
+
+ETL_dimension = Dataset('ETL_dimension')
 
 #### Dimension table 처리 함수 불러오기
 PROJECT_ID = "data-science-division-216308"
@@ -1993,55 +1995,55 @@ with DAG(
     tags=['ETL', 'dim', 'bigquery'],
 ) as dag:
 
-    # etl_dim_os_task = PythonOperator(
-    #     task_id='etl_dim_os',
-    #     python_callable=etl_dim_os,
-    # )
+    etl_dim_os_task = PythonOperator(
+        task_id='etl_dim_os',
+        python_callable=etl_dim_os,
+    )
 
-    # etl_dim_AFC_campaign_task = PythonOperator(
-    #     task_id='etl_dim_AFC_campaign',
-    #     python_callable=etl_dim_AFC_campaign,
-    # )
+    etl_dim_AFC_campaign_task = PythonOperator(
+        task_id='etl_dim_AFC_campaign',
+        python_callable=etl_dim_AFC_campaign,
+    )
 
-    # etl_dim_auth_method_id_task = PythonOperator(
-    #     task_id='etl_dim_auth_method_id',
-    #     python_callable=etl_dim_auth_method_id,
-    # )
+    etl_dim_auth_method_id_task = PythonOperator(
+        task_id='etl_dim_auth_method_id',
+        python_callable=etl_dim_auth_method_id,
+    )
 
-    # etl_dim_exchange_rate_task = PythonOperator(
-    #     task_id='etl_dim_exchange_rate',
-    #     python_callable=etl_dim_exchange_rate,
-    # )
+    etl_dim_exchange_rate_task = PythonOperator(
+        task_id='etl_dim_exchange_rate',
+        python_callable=etl_dim_exchange_rate,
+    )
 
-    # etl_dim_game_id_task = PythonOperator(
-    #     task_id='etl_dim_game_id',
-    #     python_callable=etl_dim_game_id,
-    # )
+    etl_dim_game_id_task = PythonOperator(
+        task_id='etl_dim_game_id',
+        python_callable=etl_dim_game_id,
+    )
 
-    # etl_dim_app_id_task = PythonOperator(
-    #     task_id='etl_dim_app_id',
-    #     python_callable=etl_dim_app_id,
-    # )
+    etl_dim_app_id_task = PythonOperator(
+        task_id='etl_dim_app_id',
+        python_callable=etl_dim_app_id,
+    )
 
-    # etl_dim_google_campaign_task = PythonOperator(
-    #     task_id='etl_dim_google_campaign',
-    #     python_callable=etl_dim_google_campaign,
-    # )
+    etl_dim_google_campaign_task = PythonOperator(
+        task_id='etl_dim_google_campaign',
+        python_callable=etl_dim_google_campaign,
+    )
 
-    # etl_dim_ip_range_task = PythonOperator(
-    #     task_id='etl_dim_ip_range',
-    #     python_callable=etl_dim_ip_range,
-    # )
+    etl_dim_ip_range_task = PythonOperator(
+        task_id='etl_dim_ip_range',
+        python_callable=etl_dim_ip_range,
+    )
 
-    # etl_dim_ip_proxy_task = PythonOperator(
-    #     task_id='etl_dim_ip_proxy',
-    #     python_callable=etl_dim_ip_proxy,
-    # )
+    etl_dim_ip_proxy_task = PythonOperator(
+        task_id='etl_dim_ip_proxy',
+        python_callable=etl_dim_ip_proxy,
+    )
     
-    # etl_dim_ip4_country_code_task = PythonOperator(
-    #     task_id='etl_dim_ip4_country_code',
-    #     python_callable=etl_dim_ip4_country_code,
-    # )
+    etl_dim_ip4_country_code_task = PythonOperator(
+        task_id='etl_dim_ip4_country_code',
+        python_callable=etl_dim_ip4_country_code,
+    )
 
     etl_dim_joyple_game_code_task = PythonOperator(
         task_id='etl_dim_joyple_game_code',
@@ -2078,18 +2080,23 @@ with DAG(
         python_callable=adjust_dim_product_code,
     )
 
+    bash_task = BashOperator(
+        task_id = 'bash_task',
+        outlets = [ETL_dimension],
+        bash_command = 'ETL_dimension 수행 완료"'
+    )
 
 chain(
-    # etl_dim_os_task,
-    # etl_dim_AFC_campaign_task,
-    # etl_dim_auth_method_id_task,
-    # etl_dim_exchange_rate_task,
-    # etl_dim_game_id_task,
-    # etl_dim_app_id_task,
-    # etl_dim_google_campaign_task,
-    # etl_dim_ip_range_task,
-    # etl_dim_ip_proxy_task,
-    # etl_dim_ip4_country_code_task,
+    etl_dim_os_task,
+    etl_dim_AFC_campaign_task,
+    etl_dim_auth_method_id_task,
+    etl_dim_exchange_rate_task,
+    etl_dim_game_id_task,
+    etl_dim_app_id_task,
+    etl_dim_google_campaign_task,
+    etl_dim_ip_range_task,
+    etl_dim_ip_proxy_task,
+    etl_dim_ip4_country_code_task,
     etl_dim_joyple_game_code_task,
     etl_dim_market_id_task,
     etl_dim_package_kind_task,
@@ -2097,4 +2104,5 @@ chain(
     etl_dim_IAA_app_name_task,
     etl_dim_product_code_task,
     adjust_dim_product_code_task,
+    bash_task
 )
