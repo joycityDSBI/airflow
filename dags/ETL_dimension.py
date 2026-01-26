@@ -149,7 +149,9 @@ def etl_dim_os(**context):
         USING (
             SELECT
                 DISTINCT
-                os_id, null as os_name, null as os_name_lower
+                os_id, 
+                CAST(null AS STRING) as os_name, 
+                CAST(null AS STRING) as os_name_lower
             FROM `dataplatform-204306.CommonLog.Access`
             where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
             AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
