@@ -96,6 +96,7 @@ def etl_fact_tracker(**context):
     logger = logging.getLogger(__name__)
     
     target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
+    # target_date = target_date_range("2026-01-23", "2026-01-24")  ## 백필용
     run_kst = None
 
     # 날짜 계산
@@ -192,10 +193,10 @@ def etl_fact_IAA(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        etl_f_IAA_game_sub_user_watch(target_date=target_date, client=bq_client)
-        etl_f_IAA_performance(client=bq_client)
-        etl_f_IAA_auth_account_performance_joyple(target_date=target_date, client=bq_client)
-        etl_f_IAA_auth_account_performance(target_date=target_date, client=bq_client)
+        # etl_f_IAA_game_sub_user_watch(target_date=target_date, client=bq_client)
+        # etl_f_IAA_performance(client=bq_client)
+        # etl_f_IAA_auth_account_performance_joyple(target_date=target_date, client=bq_client)
+        # etl_f_IAA_auth_account_performance(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_IAA completed successfully")
         return True
     except Exception as e:
