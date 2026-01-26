@@ -352,7 +352,9 @@ def etl_dim_auth_method_id(**context):
         USING (
             SELECT
                 DISTINCT
-                auth_method_id, null as auth_type_id_KR, null as auth_type_id_EN
+                auth_method_id, 
+                CAST(null as STRING) as auth_type_id_KR, 
+                CAST(null as STRING) as auth_type_id_EN
             FROM `dataplatform-204306.CommonLog.Access`
             where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
             AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
@@ -509,13 +511,13 @@ def adjust_dim_product_code(**context):
     SELECT 
     139 as joyple_game_code
     , CAST(PKind AS STRING) as product_code
-    , null as goods_type
+    , CAST(Cnull AS STRING) as goods_type
     , CAST(Category AS STRING) as shop_category
-    , null as package_category
+    , CAST(null AS STRING) as package_category
     , CAST(Price AS STRING) as price
     , CAST(PackageName AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.CFWZ_PackageInfo
 
     UNION ALL
@@ -523,13 +525,13 @@ def adjust_dim_product_code(**context):
     SELECT 
     129 as joyple_game_code
     , CAST(PACKAGE_KIND  AS STRING) as product_code
-    , null as goods_type
-    , null as shop_category
+    , CAST(Cnull AS STRING) as goods_type
+    , CAST(Category AS STRING) as shop_category
     , CAST(CATEGORY AS STRING) as package_category
     , CAST(Price AS STRING) as price
     , CAST(PACKAGE_NAME AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.GNSS_PackageInfo
 
     UNION ALL
@@ -543,8 +545,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_BLS
 
     UNION ALL
@@ -557,8 +559,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_BLSKR
 
     UNION ALL
@@ -571,8 +573,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_C4
 
     UNION ALL
@@ -585,8 +587,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_CFWZ
 
     UNION ALL
@@ -599,8 +601,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_DRB
 
     UNION ALL
@@ -613,8 +615,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_DS
 
     UNION ALL
@@ -627,8 +629,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_GBCC
 
     UNION ALL
@@ -641,8 +643,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_GBTW
 
     UNION ALL
@@ -655,8 +657,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_JTWN
 
     UNION ALL
@@ -669,8 +671,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_KOFS
 
     UNION ALL
@@ -683,8 +685,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_LOL
 
     UNION ALL
@@ -731,8 +733,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_POTC
 
     UNION ALL
@@ -745,8 +747,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_TERA
 
     UNION ALL
@@ -759,8 +761,8 @@ def adjust_dim_product_code(**context):
     , CAST(category_package AS STRING) as package_category
     , CAST(price AS STRING) as price
     , CAST(package_name AS STRING) as product_name
-    , null as product_name_EN
-    , null as product_name_JP
+    , CAST(null AS STRING) as product_name_EN
+    , CAST(null AS STRING) as product_name_JP
     FROM data-science-division-216308.PackageInfo.PackageInfo_WWM
     ) as source
     ON target.joyple_game_code = source.joyple_game_code AND target.product_code = source.product_code
@@ -980,7 +982,7 @@ def etl_dim_game_id(**context):
         USING (
             SELECT
                 DISTINCT
-                game_id, null as game_name
+                game_id, CAST(null AS STRING) as game_name
             FROM `dataplatform-204306.CommonLog.Access`
             where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
             AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
@@ -1757,7 +1759,7 @@ def etl_dim_package_kind(**context):
         , 159          AS joyple_game_code
         , CAST(Package_Kind AS STRING) AS package_kind
         , CAST(Package_Name AS STRING) AS package_name_KR
-        , null as package_name_JP
+        , CAST(null AS STRING) AS package_name_JP
         , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
     FROM `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU`
     WHERE Package_Kind IS NOT NULL 
@@ -1766,7 +1768,7 @@ def etl_dim_package_kind(**context):
     SELECT CONCAT(CAST(159 AS STRING), "|", Package_Kind) AS UUID
         , 159             AS joyple_game_code
         , CAST(Package_Kind AS STRING) AS package_kind
-        , null AS package_name_KR
+        , CAST(null AS STRING) AS package_name_KR
         , CAST(package_name_jp AS STRING) AS package_name_JP
         , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
     FROM `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP`
@@ -1781,7 +1783,7 @@ def etl_dim_package_kind(**context):
         , 30001        AS joyple_game_code
         , CAST(Package_Kind AS STRING) AS package_kind
         , CAST(Package_Name AS STRING) AS package_name_KR
-        , null as package_name_JP
+        , CAST(null AS STRING) AS package_name_JP
         , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
     FROM `data-science-division-216308.PackageInfo.PackageInfo_WWM`
     WHERE Package_Kind IS NOT NULL 
@@ -1793,7 +1795,7 @@ def etl_dim_package_kind(**context):
         , 30003        AS joyple_game_code
         , CAST(Package_Kind AS STRING) AS package_kind
         , CAST(Package_Name AS STRING) AS package_name_KR
-        , null as package_name_JP
+        , CAST(null AS STRING) AS package_name_JP
         , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
     FROM `data-science-division-216308.PackageInfo.PackageInfo_DS`
     WHERE Package_Kind IS NOT NULL 
@@ -1805,7 +1807,7 @@ def etl_dim_package_kind(**context):
         , 131          AS joyple_game_code
         , CAST(Package_Kind AS STRING) AS package_kind
         , CAST(Package_Name AS STRING) AS package_name_KR
-        , null as package_name_JP
+        , CAST(null AS STRING) AS package_name_JP
         , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
     FROM `data-science-division-216308.PackageInfo.PackageInfo_POTC`
     WHERE Package_Kind IS NOT NULL 
@@ -1817,7 +1819,7 @@ def etl_dim_package_kind(**context):
         , 133          AS joyple_game_code
         , CAST(PKind AS STRING) AS package_kind
         , CAST(PackageName AS STRING) AS package_name_KR
-        , null as package_name_JP
+        , CAST(null AS STRING) AS package_name_JP
         , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
     FROM `data-science-division-216308.PackageInfo.GW_PackageInfo`
     WHERE PKind IS NOT NULL 
@@ -1829,7 +1831,7 @@ def etl_dim_package_kind(**context):
         , 155          AS joyple_game_code
         , CAST(Package_Kind AS STRING) AS package_kind
         , CAST(Package_Name AS STRING) AS package_name_KR
-        , null as package_name_JP
+        , CAST(null AS STRING) AS package_name_JP
         , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
     FROM `data-science-division-216308.PackageInfo.PackageInfo_DRB`
     WHERE Package_Kind IS NOT NULL 
@@ -1841,7 +1843,7 @@ def etl_dim_package_kind(**context):
         , 154          AS joyple_game_code
         , CAST(Package_Kind AS STRING) AS package_kind
         , CAST(Package_Name AS STRING) AS package_name_KR
-        , null as package_name_JP
+        , CAST(null AS STRING) AS package_name_JP
         , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
     FROM `data-science-division-216308.PackageInfo.PackageInfo_C4`
     WHERE Package_Kind IS NOT NULL 
@@ -1853,7 +1855,7 @@ def etl_dim_package_kind(**context):
         , 156          AS joyple_game_code
         , CAST(Package_Kind AS STRING) AS package_kind
         , CAST(Package_Name AS STRING) AS package_name_KR
-        , null as package_name_JP
+        , CAST(null AS STRING) AS package_name_JP
         , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
     FROM `data-science-division-216308.PackageInfo.PackageInfo_JTWN`
     WHERE Package_Kind IS NOT NULL 
@@ -1865,7 +1867,7 @@ def etl_dim_package_kind(**context):
         , 129          AS joyple_game_code
         , CAST(Package_Kind AS STRING) AS package_kind
         , CAST(Package_Name AS STRING) AS package_name_KR
-        , null as package_name_JP
+        , CAST(null AS STRING) AS package_name_JP
         , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
     FROM `data-science-division-216308.PackageInfo.GNSS_PackageInfo`
     WHERE Package_Kind IS NOT NULL 
@@ -2084,7 +2086,7 @@ with DAG(
     dag_id='ETL_dimension',
     default_args=default_args,
     description='전체 dimension table에 대해서 OLAP 처리 (KST D-1 기준)',
-    schedule= '10 00 * * *',  ## KST 09:10 AM 매일 실행
+    schedule= '01 0 * * *',  ## KST 09:10 AM 매일 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'dim', 'bigquery'],
