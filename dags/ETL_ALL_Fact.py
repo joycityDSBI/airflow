@@ -110,7 +110,7 @@ def etl_fact_tracker(**context):
         # etl_f_tracker_install(target_date=target_date, client=bq_client)
         ## etl_f_tracker_re_engagement(target_date=target_date, client=bq_client)
         # etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
-        etl_f_cost_campaign_rule(client=bq_client)
+        # etl_f_cost_campaign_rule(client=bq_client)
         logger.info("✅ etl_fact_tracker completed successfully")
         return True
     
@@ -173,7 +173,7 @@ def etl_fact_funnel(**context):
     bq_client = client["bq_client"]
     try:
         # etl_f_funnel_access_first(target_date=target_date, client=bq_client)
-        etl_f_funnel_access(target_date=target_date, client=bq_client)
+        # etl_f_funnel_access(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_funnel completed successfully")
         return True
     except Exception as e:
