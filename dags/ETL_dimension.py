@@ -145,7 +145,7 @@ def etl_dim_os(**context):
 
         # ETL 작업 수행
         query = f"""
-        MERGE `datahub-478802.datahub.dim_os` T
+        MERGE `datahub-478802.datahub.dim_os_id` T
         USING (
             SELECT
                 DISTINCT
@@ -1999,7 +1999,7 @@ def etl_dim_IAA_app_name(**context):
 ####################
     target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
     run_kst = None
-    
+
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
