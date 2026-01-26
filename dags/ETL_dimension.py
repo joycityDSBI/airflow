@@ -511,7 +511,7 @@ def adjust_dim_product_code(**context):
     SELECT 
     139 as joyple_game_code
     , CAST(PKind AS STRING) as product_code
-    , CAST(Cnull AS STRING) as goods_type
+    , CAST(null AS STRING) as goods_type
     , CAST(Category AS STRING) as shop_category
     , CAST(null AS STRING) as package_category
     , CAST(Price AS STRING) as price
@@ -525,7 +525,7 @@ def adjust_dim_product_code(**context):
     SELECT 
     129 as joyple_game_code
     , CAST(PACKAGE_KIND  AS STRING) as product_code
-    , CAST(Cnull AS STRING) as goods_type
+    , CAST(null AS STRING) as goods_type
     , CAST(Category AS STRING) as shop_category
     , CAST(CATEGORY AS STRING) as package_category
     , CAST(Price AS STRING) as price
