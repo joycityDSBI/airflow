@@ -874,12 +874,12 @@ def etl_dim_exchange_rate(**context):
             -- 3. 오늘 환율 정보가 없는 통화에 대해, 가장 최근의 환율을 가져옵니다.
             latest_known_exchange AS (
                 SELECT
-                    currency_code,
-                    ARRAY_AGG(exchange_rate ORDER BY start_date DESC LIMIT 1)[OFFSET(0)] AS exchange_rate
-                FROM `datahub-478802.datahub.dim_exchange_rate`
-                WHERE currency_code IN (SELECT currency_code FROM all_currencies)
-                AND currency_code NOT IN (SELECT currency_code FROM today_exchange)
-                GROUP BY currency_code
+                    currency as currency_code,
+                    ARRAY_AGG(exchange_rate ORDER BY datekey DESC LIMIT 1)[OFFSET(0)] AS exchange_rate
+                FROM `datahub-478802.datahub.dim_exchange`
+                WHERE currency IN (SELECT currency_code FROM all_currencies)
+                AND currency NOT IN (SELECT currency_code FROM today_exchange)
+                GROUP BY currency
             )
             -- 4. 오늘 환율 정보와, 부족분을 채운 최근 환율 정보를 합칩니다.
             SELECT
@@ -894,7 +894,7 @@ def etl_dim_exchange_rate(**context):
                 exchange_rate
             FROM latest_known_exchange
         ) S
-        ON T.datekey = S.datekey AND T.currency_code = S.currency_code
+        ON T.datekey = S.datekey AND T.currency = S.currency
         WHEN MATCHED AND T.exchange_rate IS DISTINCT FROM S.exchange_rate THEN
             UPDATE SET
                 T.exchange_rate = S.exchange_rate,
