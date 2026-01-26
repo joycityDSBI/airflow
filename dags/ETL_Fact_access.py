@@ -1076,7 +1076,7 @@ def etl_f_common_access_last_login(target_date: list, client):
         end_kst = start_kst + timedelta(days=1)
         end_utc = end_kst.astimezone(pytz.UTC)
 
-        print(f"📝 대상날짜: {td_str}")
+        print(f"📝 대상날짜 / f_common_access_last_login : {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
         print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
@@ -1089,7 +1089,7 @@ def etl_f_common_access_last_login(target_date: list, client):
                 , max(datekey) as datekey
                 , max(game_user_level) as max_game_user_level
             FROM datahub-478802.datahub.f_common_access
-            WHERE datekey >= DATE_SUB(DATE('{target_date}'), INTERVAL 1 DAY) AND datekey < DATE('{target_date}')
+            WHERE datekey >= DATE_SUB(DATE('{td_str}'), INTERVAL 1 DAY) AND datekey < DATE('{td_str}')
             GROUP BY joyple_game_code, auth_account_name, game_sub_user_name
         ) AS source
         ON target.joyple_game_code = source.joyple_game_code AND target.auth_account_name = source.auth_account_name AND target.game_sub_user_name = source.game_sub_user_name
@@ -1122,7 +1122,7 @@ def etl_f_common_access_last_login(target_date: list, client):
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {td_str} f_common_access_last_login Batch 완료")
+            print(f"■ {current_date_obj} f_common_access_last_login Batch 완료")
 
         except Exception as e:
             # 4. 실패 시 출력
