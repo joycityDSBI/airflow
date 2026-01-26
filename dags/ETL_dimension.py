@@ -850,7 +850,7 @@ def etl_dim_exchange_rate(**context):
         print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
-        MERGE `datahub-478802.datahub.dim_exchange_rate` T
+        MERGE `datahub-478802.datahub.dim_exchange` T
         USING (
             WITH
             -- 1. 오늘 날짜의 환율 정보를 가져옵니다.
@@ -883,25 +883,25 @@ def etl_dim_exchange_rate(**context):
             )
             -- 4. 오늘 환율 정보와, 부족분을 채운 최근 환율 정보를 합칩니다.
             SELECT
-                DATE('{start_utc.strftime("%Y-%m-%d")}') AS start_date,
-                currency_code,
+                DATE('{start_utc.strftime("%Y-%m-%d")}') AS datekey,
+                currency_code AS currency,
                 exchange_rate
             FROM today_exchange
             UNION ALL
             SELECT
-                DATE('{start_utc.strftime("%Y-%m-%d")}') AS start_date,
-                currency_code,
+                DATE('{start_utc.strftime("%Y-%m-%d")}') AS datekey,
+                currency_code AS currency,
                 exchange_rate
             FROM latest_known_exchange
         ) S
-        ON T.start_date = S.start_date AND T.currency_code = S.currency_code
+        ON T.datekey = S.datekey AND T.currency_code = S.currency_code
         WHEN MATCHED AND T.exchange_rate IS DISTINCT FROM S.exchange_rate THEN
             UPDATE SET
                 T.exchange_rate = S.exchange_rate,
                 T.create_timestamp = CURRENT_TIMESTAMP()
         WHEN NOT MATCHED BY TARGET THEN
-            INSERT (start_date, currency_code, exchange_rate, create_timestamp)
-            VALUES (S.start_date, S.currency_code, IF(S.currency_code = 'KRW', 1, S.exchange_rate), CURRENT_TIMESTAMP())
+            INSERT (datekey, currency, exchange_rate, create_timestamp)
+            VALUES (S.datekey, S.currency, IF(S.currency = 'KRW', 1, S.exchange_rate), CURRENT_TIMESTAMP())
         """
 
         query_job = client.query(query)
