@@ -1072,19 +1072,23 @@ def etl_dim_app_id(**context):
         query = f"""
         MERGE `datahub-478802.datahub.dim_app_id` T
         USING (
-            select distinct app_id, joyple_game_code, market_id 
-            from dataplatform-204306.CommonLog.Access 
-            where log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            SELECT app_id, joyple_game_code, market_id 
+            FROM dataplatform-204306.CommonLog.Access 
+            WHERE log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
             AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            and app_id is not null and joyple_game_code is not null and market_id is not null
+            AND app_id IS NOT NULL 
+            AND joyple_game_code IS NOT NULL 
+            AND market_id IS NOT NULL
+            -- [수정 핵심] app_id 별로 가장 최신(log_time DESC) 1건만 남김
+            QUALIFY ROW_NUMBER() OVER(PARTITION BY app_id ORDER BY log_time DESC) = 1
         ) S
-        on T.app_id = S.app_id
+        ON T.app_id = S.app_id
         WHEN MATCHED THEN
         UPDATE SET
-            T.app_id = COALESCE(S.app_id, T.app_id),
+            -- T.app_id는 이미 같으므로 업데이트 불필요
             T.joyple_game_code = COALESCE(S.joyple_game_code, T.joyple_game_code),
-            T.market_id = COALESCE(S.market_id, T.market_id),
-            T.create_timestamp = COALESCE(T.create_timestamp, CURRENT_TIMESTAMP())
+            T.market_id = COALESCE(S.market_id, T.market_id)
+            -- create_timestamp는 최초 생성일이므로 업데이트 하지 않음 (기존 유지)
         WHEN NOT MATCHED THEN 
         INSERT (app_id, joyple_game_code, market_id, create_timestamp)
         VALUES (S.app_id, S.joyple_game_code, S.market_id, CURRENT_TIMESTAMP())
