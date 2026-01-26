@@ -1849,10 +1849,10 @@ def etl_dim_pg_id(**context):
         MERGE `datahub-478802.datahub.dim_pg_id` AS target
         USING
         (
-        SELECT DISTINCT pg_id
-        FROM  `dataplatform-204306.CommonLog.Payment`
-        WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-        AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            SELECT DISTINCT pg_id
+            FROM  `dataplatform-204306.CommonLog.Payment`
+            WHERE log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+            AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
         ) AS source ON target.pg_id = source.pg_id
         WHEN NOT MATCHED BY target THEN
         INSERT(pg_id, pg_name_KR, pg_name_EN, created_timestamp)
