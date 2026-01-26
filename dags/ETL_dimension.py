@@ -1477,7 +1477,7 @@ def etl_dim_joyple_game_code(**context):
         MERGE `datahub-478802.datahub.dim_joyple_game_code` AS a
         USING
         (
-            SELECT a.joyple_game_code, a.game_id,
+            SELECT a.joyple_game_code, a.game_id
                 , MAX(UpdatedTimestamp) AS UpdatedTimestamp
             FROM (
             SELECT a.joyple_game_code, MAX(a.log_time) AS UpdatedTimestamp
@@ -1636,110 +1636,6 @@ def etl_dim_market_id(**context):
     
     return True
 
-def etl_dim_os_id(**context):
-
-    # 클라이언트 호출
-    client = init_clients()["bq_client"]
-
-    logger = logging.getLogger(__name__)
-    
-    # [수정 1] 함수 내부에서 사용할 타임존 정의
-    kst = pytz.timezone('Asia/Seoul')
-
-    # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
-
-####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
-    run_kst = None
-
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-    for td_str in target_date:
-        # [수정 1] 문자열(String)을 datetime 객체로 변환
-        # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
-        try:
-            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
-        except ValueError:
-            # 형식이 다를 경우에 대한 예외처리 (예: 시간까지 포함된 경우 등)
-            # 필요에 따라 포맷을 수정하세요 ("%Y-%m-%d %H:%M:%S")
-            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
-            continue
-
-        # [수정 2] pytz 라이브러리 사용 시 .replace(tzinfo=...) 보다는 .localize() 권장
-        # .replace는 썸머타임이나 역사적 시간대 변경을 제대로 처리 못할 수 있음
-        
-        # KST 00:00:00 설정 (localize 사용)
-        start_kst = kst.localize(current_date_obj)
-        
-        # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
-        
-        # 종료 시간 계산 (하루 뒤)
-        end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
-
-        print(f"📝 대상날짜: {td_str}")
-        print(f"   ㄴ 시작시간(UTC): {start_utc}")
-        print(f"   ㄴ 종료시간(UTC): {end_utc}")
-
-        query = f"""
-        MERGE `datahub-478802.datahub.dim_os_id` AS a
-        USING
-        (
-            SELECT a.os_id
-                , MAX(UpdatedTimestamp) AS UpdatedTimestamp
-            FROM (
-            SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Access` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY 1
-            UNION ALL
-            SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Payment` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY 1
-            UNION ALL
-            SELECT a.os_id, MAX(a.log_time) AS UpdatedTimestamp
-            FROM `dataplatform-204306.CommonLog.Funnel` AS a
-            WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-                AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
-            GROUP BY 1
-            ) as a
-            GROUP BY 1
-        ) as t
-        ON a.os_id = t.os_id
-        WHEN MATCHED THEN
-        UPDATE SET a.create_timestamp = GREATEST(a.create_timestamp, t.UpdatedTimestamp)
-        WHEN NOT MATCHED THEN
-        INSERT (os_id)
-        VALUES (t.os_id);
-        """
-        
-        # 1. 쿼리 실행
-        query_job = client.query(query)
-
-        try:
-            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
-            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
-            query_job.result()
-
-            # 3. 성공 시 출력
-            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-            print(f"■ {td_str} dim_os_id Batch 완료")
-
-        except Exception as e:
-            # 4. 실패 시 출력
-            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
-            # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
-            raise e
-
-    print("✅ dim_os_id ETL 완료")
-    
-    return True
 
 
 def etl_dim_package_kind(**context):
@@ -2156,11 +2052,6 @@ with DAG(
         python_callable=etl_dim_market_id,
     )
 
-    etl_dim_os_id_task = PythonOperator(
-        task_id='etl_dim_os_id',
-        python_callable=etl_dim_os_id,
-    )
-
     etl_dim_package_kind_task = PythonOperator(
         task_id='etl_dim_package_kind',
         python_callable=etl_dim_package_kind,
@@ -2200,7 +2091,6 @@ chain(
     etl_dim_ip4_country_code_task,
     etl_dim_joyple_game_code_task,
     etl_dim_market_id_task,
-    etl_dim_os_id_task,
     etl_dim_package_kind_task,
     etl_dim_pg_id_task,
     etl_dim_IAA_app_name_task,
