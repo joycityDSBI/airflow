@@ -1346,7 +1346,7 @@ def etl_dim_ip4_country_code(**context):
             MERGE `datahub-478802.datahub.dim_ip4_country_code` AS a
             USING
             (
-            SELECT a.IP as ip, IFNULL(c.CountryCode, b.CountryCode) AS country_code, UpdatedTimestamp AS create_timestamp
+            SELECT a.IP as ip, IFNULL(c.country_code, b.country_code) AS country_code, UpdatedTimestamp AS create_timestamp
             FROM (
                 SELECT a.IP
                     , TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(a.IP)) WHEN 4 THEN CONCAT("::ffff:", a.IP) ELSE a.IP END)) AS HexIP
