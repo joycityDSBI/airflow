@@ -16,7 +16,7 @@ def etl_f_user_map(target_date:list, client):
         start_date = start_date.strftime("%Y-%m-%d") # '2014-06-10'
         end_date = end_date.strftime("%Y-%m-%d")
         print(f"📝 시작시간 : ", start_date, f" 📝 종료시간 : ", end_date)
-        print(f"■ {target_date} f_user_map Batch 시작")
+        print(f"■ {start_date} f_user_map Batch 시작")
 
         query = f"""
         INSERT INTO datahub-478802.datahub.f_user_map
@@ -266,7 +266,7 @@ def etl_f_user_map(target_date:list, client):
         ;
         """
         client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_user_map Batch 완료")
+        print(f"■ {start_date} f_user_map Batch 완료")
     
     print("✅ f_user_map ETL 완료")
     return True
@@ -374,7 +374,7 @@ def etl_f_user_map_char(target_date:list, client):
         ) AS H ON A.joyple_game_code = H.joyple_game_code AND A.auth_account_name = H.auth_account_name AND A.game_sub_user_name = H.game_sub_user_name;
         """
         client.query(query)
-        print(f"■ {target_date.strftime('%Y-%m-%d')} f_user_map_char Batch 완료")
+        print(f"■ {start_date} f_user_map_char Batch 완료")
     
     print("✅ f_user_map_char ETL 완료")
     return True
