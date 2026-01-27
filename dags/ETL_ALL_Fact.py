@@ -111,15 +111,16 @@ def etl_fact_tracker(**context):
     bq_client = client["bq_client"]
 
     try:
-        etl_f_tracker_install(target_date=target_date, client=bq_client)
-        # etl_f_tracker_re_engagement(target_date=target_date, client=bq_client)
-        etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
-        etl_f_cost_campaign_rule(client=bq_client)
+        # etl_f_tracker_install(target_date=target_date, client=bq_client)
+        # # etl_f_tracker_re_engagement(target_date=target_date, client=bq_client)
+        # etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
+        # etl_f_cost_campaign_rule(client=bq_client)
         logger.info("✅ etl_fact_tracker completed successfully")
         return True
     
     except Exception as e:
         logger.error(f"❌ etl_fact_tracker failed with error: {e}")
+        print("error:", e)
         raise e
 
 def etl_fact_access(**context):
@@ -134,11 +135,11 @@ def etl_fact_access(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        etl_f_common_register(target_date=target_date, client=bq_client)
-        adjust_f_common_register(target_date=target_date, client=bq_client)
-        etl_f_common_register_char(target_date=target_date, client=bq_client)
-        adjust_f_common_register_char(target_date=target_date, client=bq_client)
-        etl_f_common_access(target_date=target_date, client=bq_client)
+        # etl_f_common_register(target_date=target_date, client=bq_client)
+        # adjust_f_common_register(target_date=target_date, client=bq_client)
+        # etl_f_common_register_char(target_date=target_date, client=bq_client)
+        # adjust_f_common_register_char(target_date=target_date, client=bq_client)
+        # etl_f_common_access(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_access completed successfully")
         return True
     except Exception as e:
@@ -157,7 +158,7 @@ def etl_fact_payment(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        etl_f_common_payment(target_date=target_date, client=bq_client)
+        # etl_f_common_payment(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_payment completed successfully")
         return True
     except Exception as e:
@@ -177,8 +178,8 @@ def etl_fact_funnel(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        etl_f_funnel_access_first(target_date=target_date, client=bq_client)
-        etl_f_funnel_access(target_date=target_date, client=bq_client)
+        # etl_f_funnel_access_first(target_date=target_date, client=bq_client)
+        # etl_f_funnel_access(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_funnel completed successfully")
         return True
     except Exception as e:
@@ -197,10 +198,10 @@ def etl_fact_IAA(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        etl_f_IAA_game_sub_user_watch(target_date=target_date, client=bq_client)
-        etl_f_IAA_performance(client=bq_client)
-        etl_f_IAA_auth_account_performance_joyple(target_date=target_date, client=bq_client)
-        etl_f_IAA_auth_account_performance(target_date=target_date, client=bq_client)
+        # etl_f_IAA_game_sub_user_watch(target_date=target_date, client=bq_client)
+        # etl_f_IAA_performance(client=bq_client)
+        # etl_f_IAA_auth_account_performance_joyple(target_date=target_date, client=bq_client)
+        # etl_f_IAA_auth_account_performance(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_IAA completed successfully")
         return True
     except Exception as e:
