@@ -76,6 +76,30 @@ with DAG(
         try:
             client = init_clients()
             bq_client = client["bq_client"]
+
+            # [추가 1] 조건부 서식 적용 함수 정의
+            def format_outliers(val):
+                """
+                값이 숫자이고 1 초과 또는 -1 미만인 경우 붉은색/굵게 처리
+                """
+                try:
+                    # 값이 없거나 숫자가 아닌 경우 패스
+                    if val is None:
+                        return val
+                    
+                    float_val = float(val)
+                    if float_val > 1 or float_val < -1:
+                        return f'<span style="color: red; font-weight: bold;">{val}</span>'
+                    return val
+                except (ValueError, TypeError):
+                    return val
+
+            # 서식을 적용할 대상 컬럼 리스트
+            target_cols = [
+                'um_umC_dru', 'um_fA_dru', 
+                'um_ummC_rev', 'um_fP_rev', 
+                'um_umC_dau', 'um_fA_dau'
+            ]
             
             # DAG 실행 통계 조회 쿼리
             sql_query = """
@@ -149,13 +173,17 @@ with DAG(
             result = query_job.result()
             df = result.to_dataframe()
 
-
             if len(df) == 0:
-                logger.warning("조회 결과가 없습니다")
-                return "No data"
+                html_table = "<p>No Data</p>"
+            else:
+                # [추가 2] df1에 서식 적용
+                for col in target_cols:
+                    if col in df.columns:
+                        df[col] = df[col].apply(format_outliers)
+                
+                # [수정] escape=False 추가 (HTML 태그 렌더링 허용)
+                html_table = df.to_html(index=False, border=1, classes='table table-striped', escape=False)
             
-            # HTML 테이블로 변환
-            html_table = df.to_html(index=False, border=1, classes='table table-striped')
 
             sql_query_2 = """
             WITH TA AS (
@@ -229,16 +257,16 @@ with DAG(
 
 
             if len(df2) == 0:
-                logger.warning("조회 결과가 없습니다")
-                return "No data"
+                html_table2 = "<p>No Data</p>"
+            else:
+                # [추가 3] df2에 서식 적용
+                for col in target_cols:
+                    if col in df2.columns:
+                        df2[col] = df2[col].apply(format_outliers)
+
+                # [수정] escape=False 추가
+                html_table2 = df2.to_html(index=False, border=1, classes='table table-striped', escape=False)
             
-            # HTML 테이블로 변환
-            html_table2 = df2.to_html(index=False, border=1, classes='table table-striped')
-
-
-
-
-
 
             kst = pytz.timezone('Asia/Seoul')
             # 이메일 본문 작성
