@@ -269,6 +269,10 @@ def etl_f_funnel_access(target_date:list, client):
         # """
 
         query = f"""
+
+            MERGE `datahub-478802.datahub.f_funnel_access` AS target
+            USING
+            (
               SELECT a.game_id
                   , a.joyple_game_code
                   , a.tracker_account_id
@@ -308,6 +312,60 @@ def etl_f_funnel_access(target_date:list, client):
                    )  AS a
             LEFT OUTER JOIN `datahub-478802.datahub.f_tracker_install` as b
             on a.tracker_account_id = b.tracker_account_id AND a.tracker_type_id = b.tracker_type_id
+            )  AS source 
+            ON target.game_id = source.game_id
+            AND target.joyple_game_code = source.joyple_game_code 
+            AND target.tracker_account_id = source.tracker_account_id 
+            AND target.tracker_type_id = source.tracker_type_id 
+            AND target.device_id = source.device_id
+            AND target.step_id = source.step_id 
+            AND target.step_name = source.step_name
+            WHEN MATCHED THEN
+            UPDATE SET 
+                    target.app_id = source.app_id
+                    , target.campaign = source.campaign
+                    , target.init_campaign = source.init_campaign
+                    , target.media_source = source.media_source
+                    , target.is_organic = source.is_organic
+                    , target.install_country_code = source.install_country_code
+                    , target.log_datetime = source.log_datetime
+            WHEN NOT MATCHED BY target THEN
+            INSERT (
+                game_id
+                , joyple_game_code
+                , tracker_account_id
+                , tracker_type_id
+                , install_datekey
+                , is_retargeting
+                , device_id
+                , step_id
+                , step_name
+                , app_id
+                , campaign
+                , init_campaign
+                , media_source
+                , is_organic
+                , install_country_code
+                , log_datetime
+                )
+            VALUES (
+                source.game_id
+                , source.joyple_game_code
+                , source.tracker_account_id
+                , source.tracker_type_id
+                , source.install_datekey
+                , source.is_retargeting
+                , source.device_id
+                , source.step_id
+                , source.step_name
+                , source.app_id
+                , source.campaign
+                , source.init_campaign
+                , source.media_source
+                , source.is_organic
+                , source.install_country_code
+                , source.log_datetime
+            )
         """
 
         # 1. 쿼리 실행
@@ -317,11 +375,7 @@ def etl_f_funnel_access(target_date:list, client):
             # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
             # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
             query_job.result()
-            print(query)
-
-            import pandas as pd
-            df = query_job.to_dataframe()
-            print(df.head(5))
+            print(f"📊 처리된 행 개수(Insert/Update): {query_job.num_dml_affected_rows}")
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
