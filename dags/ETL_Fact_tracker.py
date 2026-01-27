@@ -439,8 +439,52 @@ def etl_f_tracker_install(target_date:list, client):
         # """
 
         query = f"""
-        INSERT INTO `datahub-478802.datahub.f_tracker_install` 
-            (app_id,
+        MERGE `datahub-478802.datahub.f_tracker_install` as target
+        USING
+        (
+                SELECT 
+                AppID as app_id,
+                joypleGameID as joyple_game_code,
+                marketID as market_id,
+                trackerAccountID as tracker_account_id,
+                trackerTypeID as tracker_type_id,
+                BundleID as bundle_id,
+                Platform as platform,
+                CountryCode as country_code,
+                MediaSource as media_source,
+                MediaSourceCat as media_source_cat,
+                IsOrganic as is_organic,
+                Agency as agency,
+                Campaign as campaign,
+                InitCampaign as init_campaign,
+                AdsetName as adset_name,
+                AdName as ad_name,
+                IsRetargeting as is_retargeting,
+                AdvertisingID as advertising_id,
+                IDFA as idfa,
+                SiteID as site_id,
+                Channel as channel,
+                CB1MediaSource as CB1_media_source,
+                CB1Campaign as CB1_campaign,
+                CB2MediaSource as CB2_media_source,
+                CB2Campaign as CB2_campaign,
+                CB3MediaSource as CB3_media_source,
+                CB3Campaign as CB3_campaign,
+                TIMESTAMP(installTimeStamp) as install_time,
+                TIMESTAMP(installTimeStamp) as event_time,
+                'install' as event_type,
+                TrackerAccountInstallDateKST as install_datekey
+                FROM dataplatform-reporting.DataService.T_0273_0000_TrackerAccountFirst_V
+                WHERE TrackerAccountInstallDateKST = '{current_date_obj.strftime("%Y-%m-%d")}'
+        ) as source 
+        ON target.app_id = source.app_id
+        AND target.joyple_game_code = source.joyple_game_code
+        AND target.market_id = source.market_id
+        AND target.tracker_account_id = source.tracker_account_id
+        AND target.tracker_type_id = source.tracker_type_id
+        WHEN NOT MATCHED BY target THEN
+        INSERT (
+            app_id,
             joyple_game_code,
             market_id,
             tracker_account_id,
@@ -472,40 +516,46 @@ def etl_f_tracker_install(target_date:list, client):
             event_type,
             install_datekey
             )
-        SELECT 
-        AppID,
-        joypleGameID,
-        marketID,
-        trackerAccountID,
-        trackerTypeID,
-        BundleID,
-        Platform,
-        CountryCode,
-        MediaSource,
-        MediaSourceCat,
-        IsOrganic,
-        Agency,
-        Campaign,
-        InitCampaign,
-        AdsetName,
-        AdName,
-        IsRetargeting,
-        AdvertisingID,
-        IDFA,
-        SiteID,
-        Channel,
-        CB1MediaSource,
-        CB1Campaign,
-        CB2MediaSource,
-        CB2Campaign,
-        CB3MediaSource,
-        CB3Campaign,
-        TIMESTAMP(installTimeStamp) as install_time,
-        TIMESTAMP(installTimeStamp) as event_time,
-        'install' as event_type,
-        TrackerAccountInstallDateKST
-        FROM dataplatform-reporting.DataService.T_0273_0000_TrackerAccountFirst_V
-        WHERE TrackerAccountInstallDateKST = '{current_date_obj.strftime("%Y-%m-%d")}'
+            VALUES 
+            (
+                source.app_id,
+                source.joyple_game_code,
+                source.market_id,
+                source.tracker_account_id,
+                source.tracker_type_id,
+                source.bundle_id,
+                source.platform,
+                source.country_code,
+                source.media_source,
+                source.media_source_cat,
+                source.is_organic,
+                source.agency,
+                source.campaign,
+                source.init_campaign,
+                source.adset_name,
+                source.ad_name,
+                source.is_retargeting,
+                source.advertising_id,
+                source.idfa,
+                source.site_id,
+                source.channel,
+                source.CB1_media_source,
+                source.CB1_campaign,
+                source.CB2_media_source,
+                source.CB2_campaign,
+                source.CB3_media_source,
+                source.CB3_campaign,
+                source.install_time,
+                source.event_time,
+                source.event_type,
+                source.install_datekey
+            )
+        WHEN MATCHED THEN
+        UPDATE SET
+            target.install_time = source.install_time
+            , target.event_time = source.event_time
+            , target.event_type = source.event_type
+            , target.install_datekey = source.install_datekey
                 
         """
 
