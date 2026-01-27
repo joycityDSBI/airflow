@@ -1103,7 +1103,7 @@ def etl_f_common_access_last_login(target_date: list, client):
         UPDATE SET 
         target.last_login_datekey = source.datekey
         , target.max_game_user_level = source.max_game_user_level
-        , target.update_timestamp = {timestamp_val}
+        , target.update_timestamp = TIMESTAMP_SECONDS(CAST({timestamp_val} AS INT64))
         WHEN NOT MATCHED BY target THEN
         INSERT (joyple_game_code, game_sub_user_name, auth_method_id, auth_account_name, last_login_datekey, max_game_user_level, update_timestamp)
         VALUES
@@ -1114,7 +1114,7 @@ def etl_f_common_access_last_login(target_date: list, client):
             , source.auth_account_name
             , source.datekey
             , source.max_game_user_level
-            , {timestamp_val}
+            , TIMESTAMP_SECONDS(CAST({timestamp_val} AS INT64))
         );
         """
         # 1. 쿼리 실행
