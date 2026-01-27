@@ -169,10 +169,106 @@ def etl_f_funnel_access(target_date:list, client):
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
         print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
+        # query = f"""
+        #     MERGE `datahub-478802.datahub.f_funnel_access` AS target
+        #     USING
+        #     (
+        #       SELECT a.game_id
+        #           , a.joyple_game_code
+        #           , a.tracker_account_id
+        #           , a.tracker_type_id
+        #           , a.device_id
+        #           , a.step_id
+        #           , a.step_name
+        #           , b.install_datekey 
+        #           , b.install_time 
+        #           , b.app_id
+        #           , b.campaign
+        #           , b.init_campaign
+        #           , b.media_source
+        #           , b.is_organic
+        #           , b.country_code as install_country_code
+        #           , b.is_retargeting
+        #           , timestamp_add(a.log_time, interval 9 hour) AS log_datetime
+        #       FROM (
+        #             SELECT joyple_game_code
+        #                 , game_id
+        #                 , tracker_account_id
+        #                 , IFNULL(mmp_type, 1) AS tracker_type_id
+        #                 , ARRAY_AGG(device_id IGNORE NULLS ORDER BY log_time ASC LIMIT 1)[OFFSET(0)] AS device_id
+        #                 , step_id
+        #                 , step_name
+        #                 , MIN(log_time) AS log_time
+        #             FROM `dataplatform-204306.CommonLog.Funnel`
+        #             WHERE log_time >= '{start_utc}'
+        #             AND log_time < '{end_utc}'
+        #             AND joyple_game_code   IS NOT NULL
+        #             AND tracker_account_id IS NOT NULL
+        #             AND mmp_type           IS NOT NULL
+        #             AND device_id          IS NOT NULL
+        #             AND step_id            IS NOT NULL
+        #             AND step_name          IS NOT NULL
+        #             GROUP BY joyple_game_code, game_id, tracker_account_id, mmp_type, step_id, step_name
+        #            )  AS a
+        #     LEFT OUTER JOIN `datahub-478802.datahub.f_tracker_install` as b
+        #     on a.tracker_account_id = b.tracker_account_id AND a.tracker_type_id = b.tracker_type_id
+        #     )  AS source 
+        #     ON target.game_id = source.game_id
+        #     AND target.joyple_game_code = source.joyple_game_code 
+        #     AND target.tracker_account_id = source.tracker_account_id 
+        #     AND target.tracker_type_id = source.tracker_type_id 
+        #     AND target.device_id = source.device_id
+        #     AND target.step_id = source.step_id 
+        #     AND target.step_name = source.step_name
+        #     WHEN MATCHED AND target.install_datekey > CAST(source.install_datekey AS DATE) - 3 THEN
+        #     UPDATE SET 
+        #             target.app_id = source.app_id
+        #             , target.campaign = source.campaign
+        #             , target.init_campaign = source.init_campaign
+        #             , target.media_source = source.media_source
+        #             , target.is_organic = source.is_organic
+        #             , target.install_country_code = source.install_country_code
+        #             , target.log_datetime = source.log_datetime
+        #     WHEN NOT MATCHED BY target THEN
+        #     INSERT (
+        #         game_id
+        #         , joyple_game_code
+        #         , tracker_account_id
+        #         , tracker_type_id
+        #         , install_datekey
+        #         , is_retargeting
+        #         , device_id
+        #         , step_id
+        #         , step_name
+        #         , app_id
+        #         , campaign
+        #         , init_campaign
+        #         , media_source
+        #         , is_organic
+        #         , install_country_code
+        #         , log_datetime
+        #         )
+        #     VALUES (
+        #         source.game_id
+        #         , source.joyple_game_code
+        #         , source.tracker_account_id
+        #         , source.tracker_type_id
+        #         , source.install_datekey
+        #         , source.is_retargeting
+        #         , source.device_id
+        #         , source.step_id
+        #         , source.step_name
+        #         , source.app_id
+        #         , source.campaign
+        #         , source.init_campaign
+        #         , source.media_source
+        #         , source.is_organic
+        #         , source.install_country_code
+        #         , source.log_datetime
+        #     )
+        # """
+
         query = f"""
-            MERGE `datahub-478802.datahub.f_funnel_access` AS target
-            USING
-            (
               SELECT a.game_id
                   , a.joyple_game_code
                   , a.tracker_account_id
@@ -212,60 +308,6 @@ def etl_f_funnel_access(target_date:list, client):
                    )  AS a
             LEFT OUTER JOIN `datahub-478802.datahub.f_tracker_install` as b
             on a.tracker_account_id = b.tracker_account_id AND a.tracker_type_id = b.tracker_type_id
-            )  AS source 
-            ON target.game_id = source.game_id
-            AND target.joyple_game_code = source.joyple_game_code 
-            AND target.tracker_account_id = source.tracker_account_id 
-            AND target.tracker_type_id = source.tracker_type_id 
-            AND target.device_id = source.device_id
-            AND target.step_id = source.step_id 
-            AND target.step_name = source.step_name
-            WHEN MATCHED AND target.install_datekey > CAST(source.install_datekey AS DATE) - 3 THEN
-            UPDATE SET 
-                    target.app_id = source.app_id
-                    , target.campaign = source.campaign
-                    , target.init_campaign = source.init_campaign
-                    , target.media_source = source.media_source
-                    , target.is_organic = source.is_organic
-                    , target.install_country_code = source.install_country_code
-                    , target.log_datetime = source.log_datetime
-            WHEN NOT MATCHED BY target THEN
-            INSERT (
-                game_id
-                , joyple_game_code
-                , tracker_account_id
-                , tracker_type_id
-                , install_datekey
-                , is_retargeting
-                , device_id
-                , step_id
-                , step_name
-                , app_id
-                , campaign
-                , init_campaign
-                , media_source
-                , is_organic
-                , install_country_code
-                , log_datetime
-                )
-            VALUES (
-                source.game_id
-                , source.joyple_game_code
-                , source.tracker_account_id
-                , source.tracker_type_id
-                , source.install_datekey
-                , source.is_retargeting
-                , source.device_id
-                , source.step_id
-                , source.step_name
-                , source.app_id
-                , source.campaign
-                , source.init_campaign
-                , source.media_source
-                , source.is_organic
-                , source.install_country_code
-                , source.log_datetime
-            )
         """
 
         # 1. 쿼리 실행
@@ -275,6 +317,11 @@ def etl_f_funnel_access(target_date:list, client):
             # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
             # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
             query_job.result()
+            print(query)
+
+            import pandas as pd
+            df = query_job.to_dataframe()
+            print(df.head(5))
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
