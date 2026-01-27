@@ -35,7 +35,13 @@ def etl_pre_joytracking_tracker(target_date:list, client):
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
         print(f"   ㄴ 종료시간(UTC): {end_utc}")
+        
+        # Datetime to String for BigQuery
+        start_utc_str = start_utc.strftime("%Y-%m-%d %H:%M:%S")
+        end_utc_str = end_utc.strftime("%Y-%m-%d %H:%M:%S")
 
         query = f"""
         MERGE `datahub-478802.datahub.pre_joytracking_tracker` AS target
@@ -57,8 +63,8 @@ def etl_pre_joytracking_tracker(target_date:list, client):
                                      LIMIT 1
                                     )[OFFSET(0)] AS INFO         
                     FROM `dataplatform-204306.JoyTracking.lt_pop_visit_history` AS a 
-                    WHERE a.log_date >= '{start_utc}'
-                      AND a.log_date < '{end_utc}'
+                    WHERE a.log_date >= '{start_utc_str}'
+                      AND a.log_date < '{end_utc_str}'
                       AND a.tracker_id IS NOT NULL 
                       AND a.tracker_id != ''
                       AND left(a.tracker_id,16) != '0000000000000000'
@@ -168,7 +174,13 @@ def etl_f_tracker_install(target_date:list, client):
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
         print(f"   ㄴ 종료시간(UTC): {end_utc}")
+
+        # Datetime to String for BigQuery
+        start_utc_str = start_utc.strftime("%Y-%m-%d %H:%M:%S")
+        end_utc_str = end_utc.strftime("%Y-%m-%d %H:%M:%S")
 
         query = f"""
         MERGE `datahub-478802.datahub.f_tracker_install` as target
@@ -234,7 +246,7 @@ def etl_f_tracker_install(target_date:list, client):
                         , event_time                                                                                                                AS EventTime
                         , event_name                                                                                                                AS EventType
                     FROM `dataplatform-reporting.AppsflyerLog.V_LogsV2`
-                    WHERE event_time >= '{start_utc}' and event_time < '{end_utc}' AND
+                    WHERE event_time >= '{start_utc_str}' and event_time < '{end_utc_str}' AND
                         event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
                         AND event_time   >= "2019-12-19 00:48:35.827000 UTC"  
                     UNION ALL
@@ -264,7 +276,7 @@ def etl_f_tracker_install(target_date:list, client):
                         , event_time                                                                                                                AS EventTime
                         , event_name                                                                                                                AS EventType
                     FROM `dataplatform-204306.AppsflyerLog.installs_report`
-                    WHERE event_time >= '{start_utc}' and event_time < '{end_utc}' AND
+                    WHERE event_time >= '{start_utc_str}' and event_time < '{end_utc_str}' AND
                     event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
                     ) AS a
                     LEFT JOIN `datahub-478802.datahub.dim_google_campaign` AS b ON a.Campaign = b.campaign_id
@@ -440,7 +452,6 @@ def etl_f_tracker_install(target_date:list, client):
             print(f"📊 처리된 행 개수(Insert/Update): {query_job.num_dml_affected_rows}")
 
             # 3. 성공 시 출력
-            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
             print(f"■ {td_str} f_tracker_install Batch 완료")
 
         except Exception as e:
