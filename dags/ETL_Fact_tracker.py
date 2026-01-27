@@ -499,7 +499,7 @@ def etl_f_tracker_install(target_date:list, client):
                         , event_time                                                                                                                AS EventTime
                         , event_name                                                                                                                AS EventType
                     FROM `dataplatform-reporting.AppsflyerLog.V_LogsV2`
-                    WHERE event_time >= '{start_utc_str}' and event_time < '{end_utc_str}' AND
+                    WHERE event_time >= '2025-12-31 15:00:00+00:00' and event_time < '2026-01-01 15:00:00+00:00' AND
                         event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
                         AND event_time   >= "2019-12-19 00:48:35.827000 UTC"  
                     UNION ALL
@@ -529,7 +529,7 @@ def etl_f_tracker_install(target_date:list, client):
                         , event_time                                                                                                                AS EventTime
                         , event_name                                                                                                                AS EventType
                     FROM `dataplatform-204306.AppsflyerLog.installs_report`
-                    WHERE event_time >= '{start_utc_str}' and event_time < '{end_utc_str}' AND
+                    WHERE event_time >= '2025-12-31 15:00:00+00:00' and event_time < '2026-01-01 15:00:00+00:00' AND
                     event_name in ('install', 'reinstall', 're-attribution', 're-engagement')
                     ) AS a
                     LEFT JOIN `datahub-478802.datahub.dim_google_campaign` AS b ON a.Campaign = b.campaign_id
@@ -621,13 +621,16 @@ def etl_f_tracker_install(target_date:list, client):
             # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
             results = query_job.result()
             from itertools import islice
+            import pandas as pd
             # 2. 상위 5개만 잘라서 출력
             print("----- 상위 5개 행 출력 -----")
             for row in islice(results, 5):
                 # row는 Row 객체이므로 dict로 변환하면 보기 편합니다.
                 print(dict(row))
             
-
+            df = query_job.to_dataframe()
+            print("----- DataFrame 형태로 변환 후 상위 5개 행 출력 -----")
+            print(df.head(5))
             # [추가] 실제로 영향받은 행 개수 출력
             
             print(f"📊 처리된 행 개수(Insert/Update): {query_job.num_dml_affected_rows}")

@@ -105,15 +105,14 @@ def etl_fact_tracker(**context):
     # 날짜 계산
     # target_date, run_kst = calc_target_date(context['logical_date'])
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜(Target Date, D-1): {target_date[0]}")
 
     client = init_clients()
     bq_client = client["bq_client"]
 
     try:
         etl_f_tracker_install(target_date=target_date, client=bq_client)
-        # etl_f_tracker_re_engagement(target_date=target_date, client=bq_client)
-        etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
+        # # etl_f_tracker_re_engagement(target_date=target_date, client=bq_client)
+        # etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
         # etl_f_cost_campaign_rule(client=bq_client)
         logger.info("✅ etl_fact_tracker completed successfully")
         return True
