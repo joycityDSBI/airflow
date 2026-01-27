@@ -316,6 +316,8 @@ def etl_f_funnel_access(target_date:list, client):
             AND target.tracker_account_id = source.tracker_account_id 
             AND target.tracker_type_id = source.tracker_type_id 
             AND target.step_id = source.step_id 
+            AND target.step_name = source.step_name
+            AND target.game_id IS NOT DISTINCT FROM source.game_id
             WHEN MATCHED THEN
             UPDATE SET 
                     target.app_id = source.app_id
