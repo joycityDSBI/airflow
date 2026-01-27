@@ -126,14 +126,14 @@ with DAG(
             order by 1,2
             )
 
-            SELECT ta.*
-                , round(TA.total_rev - TB.total_rev,0) as usermap_usermapChar_rev
-                , round(TA.total_rev - TC.total_rev,0) as usermap_fPayment_rev
-                , round(TA.dau - TB.dau,0) as usermap_usermapChar_dau
-                , round(TA.dau - TD.dau,0) as usermap_fAccess_dau
-                , round(TA.dru - TB.dru,0) as usermap_usermapChar_dru
-                , round(TA.dru - TD.dru,0) as usermap_fAccess_dru
-                , round(TA.total_iaa_rev - TB.total_iaa_rev,0) as usermap_usermapChar_iaa_rev
+            SELECT ta.joyple_game_code, TA.datekey
+                , round(TA.total_rev - TB.total_rev,0) as um_ummC_rev
+                , round(TA.total_rev - TC.total_rev,0) as um_fP_rev
+                , round(TA.dau - TB.dau,0) as um_umC_dau
+                , round(TA.dau - TD.dau,0) as um_fA_dau
+                , round(TA.dru - TB.dru,0) as um_umC_dru
+                , round(TA.dru - TD.dru,0) as um_fA_dru
+                , round(TA.total_iaa_rev - TB.total_iaa_rev,0) as um_umC_iaa
             FROM TA 
             LEFT JOIN TB ON TA.joyple_game_code = TB.joyple_game_code AND TA.datekey = TB.datekey
             LEFT JOIN TC ON TA.joyple_game_code = TC.joyple_game_code AND TA.datekey = TC.datekey
@@ -192,17 +192,13 @@ with DAG(
                         <p>✓ 총 <strong>{len(df)}</strong>개의 DAG 실행 결과</p>
                         <p>컬럼 설명:</p>
                         <ul>
-                            <li><strong>dau:</strong> f_user_map 기준의 count(distinct auth_account_name)</li>
-                            <li><strong>dru:</strong> f_user_map 기준의 RU=1 인 경우의 count(distinct auth_account_name)</li>
-                            <li><strong>total_rev:</strong> f_user_map 기준의 sum(daily_total_rev)</li>
-                            <li><strong>total_iaa_rev:</strong> f_user_map_char 기준의 sum(daily_iaa_rev)</li>
-                            <li><strong>usermap_usermapChar_rev:</strong> f_user_map과 f_user_map_char 의 매출액 차이(daily_iaa_rev)</li>
-                            <li><strong>usermap_fPayment_rev:</strong> f_user_map과 f_payment 의 매출액 차이(daily_iaa_rev)</li>
-                            <li><strong>usermap_usermapChar_dau:</strong> f_user_map과 f_user_map_char 의 DAU 차이</li>
-                            <li><strong>usermap_fAccess_dau:</strong> f_user_map과 f_access 의 DAU 차이</li>
-                            <li><strong>usermap_usermapChar_dru:</strong> f_user_map과 f_user_map_char 의 DRU 차이</li>
-                            <li><strong>usermap_fAccess_dru:</strong> f_user_map과 f_access 의 DRU 차이</li>
-                            <li><strong>usermap_usermapChar_iaa_rev:</strong> f_user_map과 f_user_map_char 의 IAA 매출액 차이(daily_iaa_rev)</li>
+                            <li><strong>um_ummC_rev:</strong> f_user_map과 f_user_map_char 의 매출액 차이(daily_iaa_rev)</li>
+                            <li><strong>um_fP_rev:</strong> f_user_map과 f_payment 의 매출액 차이(daily_iaa_rev)</li>
+                            <li><strong>um_umC_dau:</strong> f_user_map과 f_user_map_char 의 DAU 차이</li>
+                            <li><strong>um_fA_dau:</strong> f_user_map과 f_access 의 DAU 차이</li>
+                            <li><strong>um_umC_dru:</strong> f_user_map과 f_user_map_char 의 DRU 차이</li>
+                            <li><strong>um_fA_dru:</strong> f_user_map과 f_access 의 DRU 차이</li>
+                            <li><strong>um_umC_iaa:</strong> f_user_map과 f_user_map_char 의 IAA 매출액 차이(daily_iaa_rev)</li>
                         </ul>
                         <p style="margin-top: 20px; color: #999;">
                             이 메일은 Airflow에서 자동으로 생성되었습니다.
