@@ -419,6 +419,12 @@ def etl_f_tracker_install(target_date:list, client):
                 source.event_type,
                 source.install_datekey
             )
+        WHEN MATCHED THEN
+        UPDATE SET
+            target.install_time = source.install_time
+            , target.event_time = source.event_time
+            , target.event_type = source.event_type
+            , target.install_datekey = source.install_datekey
 
         """
         # 1. 쿼리 실행
@@ -428,7 +434,7 @@ def etl_f_tracker_install(target_date:list, client):
             # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
             # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
             query_job.result()
-            
+
             # [추가] 실제로 영향받은 행 개수 출력
             print(f"📊 처리된 행 개수(Insert/Update): {query_job.num_dml_affected_rows}")
 
