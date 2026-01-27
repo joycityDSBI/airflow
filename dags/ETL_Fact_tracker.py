@@ -436,6 +436,7 @@ def etl_f_tracker_install(target_date:list, client):
             query_job.result()
 
             # [추가] 실제로 영향받은 행 개수 출력
+            print(query)
             print(f"📊 처리된 행 개수(Insert/Update): {query_job.num_dml_affected_rows}")
 
             # 3. 성공 시 출력
