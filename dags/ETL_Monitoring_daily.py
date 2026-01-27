@@ -13,6 +13,7 @@ from google.oauth2 import service_account
 import os
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import pytz
 
 
 logger = logging.getLogger(__name__)
@@ -154,7 +155,7 @@ with DAG(
             
             # HTML 테이블로 변환
             html_table = df.to_html(index=False, border=1, classes='table table-striped')
-            
+            kst = pytz.timezone('Asia/Seoul')
             # 이메일 본문 작성
             email_body = f"""
             <html>
@@ -177,7 +178,7 @@ with DAG(
                     </div>
                     
                     <div class="info-row">
-                        <strong>📅 실행 일시:</strong> {datetime.now('Asia/Seoul').strftime('%Y-%m-%d %H:%M:%S')}
+                        <strong>📅 실행 일시:</strong> {datetime.now(kst).strftime('%Y-%m-%d %H:%M:%S')}
                     </div>
                     <div class="info-row">
                         <strong>🔍 조회 기준:</strong> f_user_map, f_user_map_char, f_common_payment, f_common_access의 최근 4일치 데이터
@@ -233,7 +234,7 @@ with DAG(
             
             # 이메일 구성
             msg = MIMEMultipart('alternative')
-            msg['Subject'] = '****TEST*****[Airflow] Daily ETL Fact Report - ' + datetime.now('Asia/Seoul').strftime('%Y-%m-%d')
+            msg['Subject'] = '****TEST*****[Airflow] Daily ETL Fact Report - ' + datetime.now(kst).strftime('%Y-%m-%d')
             msg['From'] = sender_email
             msg['To'] = ', '.join(recipients)
             
