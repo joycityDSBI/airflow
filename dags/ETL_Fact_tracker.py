@@ -428,6 +428,9 @@ def etl_f_tracker_install(target_date:list, client):
             # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
             # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
             query_job.result()
+            
+            # [추가] 실제로 영향받은 행 개수 출력
+            print(f"📊 처리된 행 개수(Insert/Update): {query_job.num_dml_affected_rows}")
 
             # 3. 성공 시 출력
             print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
