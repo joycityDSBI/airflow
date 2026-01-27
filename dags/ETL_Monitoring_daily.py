@@ -143,7 +143,7 @@ with DAG(
             
             logger.info("쿼리 실행 중...")
             
-            query_job = client.query(sql_query)
+            query_job = bq_client.query(sql_query)
             result = query_job.result()
             df = result.to_dataframe()
 
