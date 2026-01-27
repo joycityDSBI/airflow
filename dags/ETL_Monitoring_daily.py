@@ -7,7 +7,7 @@ from airflow.models import Variable
 from google.cloud import bigquery
 import logging
 from datetime import datetime, timedelta
-import pytz
+
 import json
 from google.oauth2 import service_account
 import os
@@ -64,9 +64,10 @@ with DAG(
     dag_id='postgres_dag_run_monitoring',
     default_args=default_args,
     description='DAG run statistics query and email',
-    schedule='50 00 * * *',  # 매일 오전 10시 20분 실행
+    schedule='50 00 * * *',  # 매일 오전 09시 50분 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
+    tags=['ETL', 'monitoring', 'bigquery'],
 ) as dag:
 
     def query_datahub_status_send_email():
