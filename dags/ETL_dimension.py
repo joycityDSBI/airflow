@@ -812,7 +812,7 @@ def etl_dim_exchange_rate(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
+    target_date = target_date_range("2026-01-01", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
@@ -882,13 +882,13 @@ def etl_dim_exchange_rate(**context):
             )
             -- 4. 오늘 환율 정보와, 부족분을 채운 최근 환율 정보를 합칩니다.
             SELECT
-                DATE('{start_utc.strftime("%Y-%m-%d")}') AS datekey,
+                DATE('{td_str}') AS datekey,
                 currency_code AS currency,
                 exchange_rate
             FROM today_exchange
             UNION ALL
             SELECT
-                DATE('{start_utc.strftime("%Y-%m-%d")}') AS datekey,
+                DATE('{td_str}') AS datekey,
                 currency_code AS currency,
                 exchange_rate
             FROM latest_known_exchange
