@@ -98,12 +98,13 @@ def target_date_range(start_date_str, end_date_str):
     
 def etl_fact_tracker(**context):
     logger = logging.getLogger(__name__)
-    
-    target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
-    run_kst = None
+
+    ########### 백필용 데이터 처리    
+    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
+    # run_kst = None
 
     # 날짜 계산
-    # target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, run_kst = calc_target_date(context['logical_date'])
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
 
     client = init_clients()
@@ -111,7 +112,7 @@ def etl_fact_tracker(**context):
 
     try:
         etl_f_tracker_install(target_date=target_date, client=bq_client)
-        # etl_f_tracker_re_engagement(target_date=target_date, client=bq_client)
+        # etl_f_tracker_re_engagement(target_date=target_date, client=bq_client) ## 제거됨
         etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
         etl_f_cost_campaign_rule(client=bq_client)
         logger.info("✅ etl_fact_tracker completed successfully")
@@ -125,10 +126,12 @@ def etl_fact_tracker(**context):
 def etl_fact_access(**context):
     logger = logging.getLogger(__name__)
 
-    target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
+    ########### 백필용 데이터 처리    
+    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
+    # run_kst = None
 
     # 날짜 계산
-    # target_date, _ = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
     logger.info(f"📅 Access ETL Target Date: {target_date[0]}")
 
     client = init_clients()
@@ -148,10 +151,12 @@ def etl_fact_access(**context):
 def etl_fact_payment(**context):
     logger = logging.getLogger(__name__)
 
-    target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
+    ########### 백필용 데이터 처리    
+    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
+    # run_kst = None
 
     # 날짜 계산
-    # target_date, _ = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
     logger.info(f"📅 Payment ETL Target Date: {target_date[0]}")
 
     client = init_clients()
@@ -168,10 +173,10 @@ def etl_fact_payment(**context):
 def etl_fact_funnel(**context):
     logger = logging.getLogger(__name__)
 
-    target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
+    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
 
     # 날짜 계산
-    # target_date, _ = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
     logger.info(f"📅 Funnel ETL Target Date: {target_date[0]}")
 
     client = init_clients()
@@ -188,10 +193,10 @@ def etl_fact_funnel(**context):
 def etl_fact_IAA(**context):
     logger = logging.getLogger(__name__)
 
-    target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
+    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
 
     # 날짜 계산
-    # target_date, _ = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
     logger.info(f"📅 IAA ETL Target Date: {target_date[0]}")
 
     client = init_clients()
@@ -210,10 +215,10 @@ def etl_fact_IAA(**context):
 def etl_fact_usermap(**context):
     logger = logging.getLogger(__name__)
 
-    target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
+    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
 
     # 날짜 계산
-    # target_date, _ = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
     logger.info(f"📅 Usermap ETL Target Date: {target_date[0]}")
 
     client = init_clients()
@@ -250,8 +255,8 @@ with DAG(
     dag_id='ETL_ALL_Fact',
     default_args=default_args,
     description='전체 fact table에 대해서 OLAP 처리 (KST D-1 기준)',
-    schedule='30 03 * * *',  # 매일 오전 3시 30분 실행
-    # schedule= [ETL_dimension], ################ 수정필요
+    # schedule='30 03 * * *',  # 매일 오전 3시 30분 실행
+    schedule= [ETL_dimension], ################ ETL dimension DAG 완료 후 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'fact', 'bigquery'],
