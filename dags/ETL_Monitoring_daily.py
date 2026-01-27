@@ -98,7 +98,8 @@ with DAG(
             target_cols = [
                 'um_umC_dru', 'um_fA_dru', 
                 'um_ummC_rev', 'um_fP_rev', 
-                'um_umC_dau', 'um_fA_dau'
+                'um_umC_dau', 'um_fA_dau',
+                'um_fP_pu'
             ]
             
             # DAG 실행 통계 조회 쿼리
@@ -191,7 +192,8 @@ with DAG(
                 count(distinct auth_account_name) as dau,
                 count(distinct CASE WHEN RU =1 THEN auth_account_name END) as dru, 
                 CAST(sum(daily_total_rev) AS int64) as total_rev,
-                CAST(sum(daily_iaa_rev) AS int64) as total_iaa_rev
+                CAST(sum(daily_iaa_rev) AS int64) as total_iaa_rev,
+                count(distinct CASE WHEN daily_total_rev > 0 THEN auth_account_name END) as total_pu
             from `datahub-478802.datahub.f_user_map`
             -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
             where datekey >= '2026-01-01'
@@ -216,7 +218,9 @@ with DAG(
             ),
 
             TC as (
-            select joyple_game_code, datekey, sum(revenue) as total_rev
+            select joyple_game_code, datekey
+            , sum(revenue) as total_rev
+            , count(distinct auth_account_name) as total_pu
             from `datahub-478802.datahub.f_common_payment`
             -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
             where datekey >= '2026-01-01'
@@ -241,6 +245,7 @@ with DAG(
                 , round(TA.dru - TB.dru,0) as um_umC_dru
                 , round(TA.dru - TD.dru,0) as um_fA_dru
                 , round(TA.total_iaa_rev - TB.total_iaa_rev,0) as um_umC_iaa
+                , TA.total_pu - TC.total_pu as um_fP_pu
             FROM TA 
             LEFT JOIN TB ON TA.joyple_game_code = TB.joyple_game_code AND TA.datekey = TB.datekey
             LEFT JOIN TC ON TA.joyple_game_code = TC.joyple_game_code AND TA.datekey = TC.datekey
@@ -313,6 +318,7 @@ with DAG(
                             <li><strong>um_umC_dru:</strong> f_user_map과 f_user_map_char 의 DRU 차이</li>
                             <li><strong>um_fA_dru:</strong> f_user_map과 f_access 의 DRU 차이</li>
                             <li><strong>um_umC_iaa:</strong> f_user_map과 f_user_map_char 의 IAA 매출액 차이(daily_iaa_rev)</li>
+                            <li><strong>um_fP_pu:</strong> f_user_map과 f_payment 의 PU 차이</li>
                         </ul>
                         <p style="margin-top: 20px; color: #999;">
                             이 메일은 Airflow에서 자동으로 생성되었습니다.
