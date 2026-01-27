@@ -64,7 +64,7 @@ with DAG(
     dag_id='postgres_dag_run_monitoring',
     default_args=default_args,
     description='DAG run statistics query and email',
-    schedule='20 01 * * *',  # 매일 오전 10시 20분 실행
+    schedule='50 00 * * *',  # 매일 오전 10시 20분 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
 ) as dag:
