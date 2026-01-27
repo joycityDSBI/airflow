@@ -87,7 +87,8 @@ with DAG(
                 CAST(sum(daily_iaa_rev) AS int64) as total_iaa_rev
             from `datahub-478802.datahub.f_user_map`
             -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2025-12-28'
+            where datekey >= '2025-01-01'
+            AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
             )
@@ -101,7 +102,8 @@ with DAG(
                 CAST(sum(daily_iaa_rev) AS int64) as total_iaa_rev
             from `datahub-478802.datahub.f_user_map_char` as a
             -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2025-12-28'
+            where datekey >= '2025-01-01'
+            AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
             ),
@@ -110,7 +112,8 @@ with DAG(
             select joyple_game_code, datekey, sum(revenue) as total_rev
             from `datahub-478802.datahub.f_common_payment`
             -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2025-12-28'
+            where datekey >= '2025-01-01'
+            AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
             ),
@@ -121,7 +124,8 @@ with DAG(
                 count(distinct if(reg_datediff = 0, auth_account_name, null)) as dru
             from `datahub-478802.datahub.f_common_access`
             -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2025-12-28'
+            where datekey >= '2025-01-01'
+            AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
             )
@@ -155,6 +159,90 @@ with DAG(
             
             # HTML 테이블로 변환
             html_table = df.to_html(index=False, border=1, classes='table table-striped')
+
+            sql_query_2 = """
+            WITH TA AS (
+            select joyple_game_code, datekey, 
+                count(distinct auth_account_name) as dau,
+                count(distinct CASE WHEN RU =1 THEN auth_account_name END) as dru, 
+                CAST(sum(daily_total_rev) AS int64) as total_rev,
+                CAST(sum(daily_iaa_rev) AS int64) as total_iaa_rev
+            from `datahub-478802.datahub.f_user_map`
+            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
+            where datekey >= '2025-01-01'
+            AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
+            group by 1,2
+            order by 1,2
+            )
+            ,
+
+            TB AS (
+            select a.joyple_game_code, datekey,
+                count(distinct auth_account_name) as dau,
+                count(distinct CASE WHEN RU =1 THEN auth_account_name END) as dru, 
+                CAST(sum(daily_total_rev) AS int64) as total_rev,
+                CAST(sum(daily_iaa_rev) AS int64) as total_iaa_rev
+            from `datahub-478802.datahub.f_user_map_char` as a
+            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
+            where datekey >= '2025-01-01'
+            AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
+            group by 1,2
+            order by 1,2
+            ),
+
+            TC as (
+            select joyple_game_code, datekey, sum(revenue) as total_rev
+            from `datahub-478802.datahub.f_common_payment`
+            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
+            where datekey >= '2025-01-01'
+            AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
+            group by 1,2
+            order by 1,2
+            ),
+
+            TD as (
+            select joyple_game_code, datekey, 
+                count(distinct if(access_type_id = 1,auth_account_name,null)) as dau, 
+                count(distinct if(reg_datediff = 0, auth_account_name, null)) as dru
+            from `datahub-478802.datahub.f_common_access`
+            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
+            where datekey >= '2025-01-01'
+            AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
+            group by 1,2
+            order by 1,2
+            )
+
+            SELECT ta.joyple_game_code, TA.datekey
+                , round(TA.dru - TB.dru,0) as um_umC_dru
+                , round(TA.dru - TD.dru,0) as um_fA_dru
+                , round(TA.total_iaa_rev - TB.total_iaa_rev,0) as um_umC_iaa
+            FROM TA 
+            LEFT JOIN TB ON TA.joyple_game_code = TB.joyple_game_code AND TA.datekey = TB.datekey
+            LEFT JOIN TC ON TA.joyple_game_code = TC.joyple_game_code AND TA.datekey = TC.datekey
+            LEFT JOIN TD ON TA.joyple_game_code = TD.joyple_game_code AND TA.datekey = TD.datekey
+            order by joyple_game_code, datekey
+            
+            """
+
+            logger.info("2번째 쿼리 실행 중...")
+            
+            query_job = bq_client.query(sql_query_2)
+            result = query_job.result()
+            df2 = result.to_dataframe()
+
+
+            if len(df2) == 0:
+                logger.warning("조회 결과가 없습니다")
+                return "No data"
+            
+            # HTML 테이블로 변환
+            html_table2 = df2.to_html(index=False, border=1, classes='table table-striped')
+
+
+
+
+
+
             kst = pytz.timezone('Asia/Seoul')
             # 이메일 본문 작성
             email_body = f"""
@@ -187,9 +275,10 @@ with DAG(
                     
                     <h3>📈 실행 결과</h3>
                     {html_table}
+                    {html_table2}
                     
                     <div class="footer">
-                        <p>✓ 총 <strong>{len(df)}</strong>개의 DAG 실행 결과</p>
+                        <p>✓ 총 <strong>{len(df)} / {len(df2)}</strong>개의 DAG 실행 결과</p>
                         <p>컬럼 설명:</p>
                         <ul>
                             <li><strong>um_ummC_rev:</strong> f_user_map과 f_user_map_char 의 매출액 차이(daily_iaa_rev)</li>
