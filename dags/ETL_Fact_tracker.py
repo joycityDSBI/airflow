@@ -472,8 +472,6 @@ def etl_f_tracker_install(target_date:list, client):
             event_type,
             install_datekey
             )
-        VALUES  
-        (
         SELECT 
         AppID,
         joypleGameID,
@@ -508,7 +506,6 @@ def etl_f_tracker_install(target_date:list, client):
         TrackerAccountInstallDateKST
         FROM dataplatform-reporting.DataService.T_0273_0000_TrackerAccountFirst_V
         WHERE TrackerAccountInstallDateKST = '{current_date_obj}'
-        )
                 
         """
 
