@@ -505,7 +505,7 @@ def etl_f_tracker_install(target_date:list, client):
         'install' as event_type,
         TrackerAccountInstallDateKST
         FROM dataplatform-reporting.DataService.T_0273_0000_TrackerAccountFirst_V
-        WHERE TrackerAccountInstallDateKST = '{current_date_obj}'
+        WHERE TrackerAccountInstallDateKST = '{current_date_obj.strftime("%Y-%m-%d")}'
                 
         """
 
