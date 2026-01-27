@@ -106,16 +106,12 @@ def etl_dim_os(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
-
+    target_date = calc_target_date(context['logical_date'])
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
-    run_kst = None
-    
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
+
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
-    kst = pytz.timezone('Asia/Seoul')
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -313,13 +309,12 @@ def etl_dim_auth_method_id(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
-    kst = pytz.timezone('Asia/Seoul')
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -408,14 +403,13 @@ def etl_dim_product_code(**context):
 
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
     logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
-    kst = pytz.timezone('Asia/Seoul')
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -501,7 +495,7 @@ def adjust_dim_product_code(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
@@ -818,7 +812,7 @@ def etl_dim_exchange_rate(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
@@ -945,7 +939,7 @@ def etl_dim_game_id(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
@@ -1039,7 +1033,7 @@ def etl_dim_app_id(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
@@ -1135,7 +1129,7 @@ def etl_dim_google_campaign(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
@@ -1312,7 +1306,7 @@ def etl_dim_ip4_country_code(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
@@ -1444,7 +1438,7 @@ def etl_dim_joyple_game_code(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
@@ -1550,7 +1544,7 @@ def etl_dim_market_id(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
@@ -1816,7 +1810,7 @@ def etl_dim_pg_id(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
@@ -1906,7 +1900,7 @@ def etl_dim_IAA_app_name(**context):
     target_date, run_kst = calc_target_date(context['logical_date'])
 
 ####################
-    target_date = target_date_range("2026-01-21", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     run_kst = None
 
     logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")

@@ -146,10 +146,10 @@ def etl_f_user_map(target_date:list, client):
                 (
                     SELECT joyple_game_code, auth_account_name,
                     sum(watch_cnt) as stacked_IAA_watch_cnt,
-                    sum(revenue_per_user) as stacked_IAA_rev,
+                    sum(revenue_per_user_krw) as stacked_IAA_rev,
                     sum(IF(watch_datekey >= '{start_date}' AND watch_datekey < '{end_date}', watch_cnt, 0)) as daily_IAA_watch_cnt,
-                    sum(IF(watch_datekey >= '{start_date}' AND watch_datekey < '{end_date}', revenue_per_user, 0)) as daily_IAA_rev,
-                    SUM(IF(watch_datekey >= DATE_TRUNC(DATE('{start_date}'), MONTH) AND watch_datekey <= LAST_DAY(DATE_TRUNC(DATE('{start_date}'), MONTH), MONTH), revenue_per_user, 0)) as monthly_IAA_rev
+                    sum(IF(watch_datekey >= '{start_date}' AND watch_datekey < '{end_date}', revenue_per_user_krw, 0)) as daily_IAA_rev,
+                    SUM(IF(watch_datekey >= DATE_TRUNC(DATE('{start_date}'), MONTH) AND watch_datekey <= LAST_DAY(DATE_TRUNC(DATE('{start_date}'), MONTH), MONTH), revenue_per_user_krw, 0)) as monthly_IAA_rev
                     FROM datahub-478802.datahub.f_IAA_auth_account_performance
                     where watch_datekey < '{end_date}'
                     group by joyple_game_code, auth_account_name
@@ -461,8 +461,11 @@ def etl_f_user_map_char(target_date:list, client):
                     GROUP BY 1,2,3
                 ) AS C ON A.joyple_game_code = C.joyple_game_code AND A.auth_account_name = C.auth_account_name AND A.game_sub_user_name = C.game_sub_user_name
                 LEFT OUTER JOIN (
-                    SELECT joyple_game_code, auth_account_name, game_sub_user_name, SUM(revenue_per_user_KRW) as stacked_IAA_rev,
-                        SUM(IF(watch_datekey >= '{start_date}' AND watch_datekey < '{end_date}', revenue_per_user_KRW, 0)) as daily_IAA_rev
+                    SELECT joyple_game_code, 
+                            auth_account_name, 
+                            game_sub_user_name, 
+                            SUM(revenue_per_user_KRW) as stacked_IAA_rev,
+                            SUM(IF(watch_datekey >= '{start_date}' AND watch_datekey < '{end_date}', revenue_per_user_KRW, 0)) as daily_IAA_rev
                     FROM `datahub-478802.datahub.f_IAA_auth_account_performance_joyple` WHERE watch_datekey < '{end_date}'
                     GROUP BY 1,2,3
                 ) AS D ON A.joyple_game_code = D.joyple_game_code  AND A.auth_account_name = D.auth_account_name AND A.game_sub_user_name = D.game_sub_user_name
