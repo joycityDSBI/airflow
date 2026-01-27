@@ -19,10 +19,12 @@ from ETL_Fact_funnel import *
 from ETL_Fact_IAA import * 
 from ETL_Fact_usermap import * 
 
+
 ETL_dimension = Dataset('ETL_dimension')
 
 PROJECT_ID = "data-science-division-216308"
 LOCATION = "us-central1"
+
 
 def get_gcp_credentials():
     """Airflow Variable에서 GCP 자격 증명을 로드합니다."""
@@ -97,8 +99,7 @@ def target_date_range(start_date_str, end_date_str):
 def etl_fact_tracker(**context):
     logger = logging.getLogger(__name__)
     
-    # target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-01", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-01", "2026-01-05")  ## 백필용
     run_kst = None
 
     # 날짜 계산
@@ -124,8 +125,7 @@ def etl_fact_tracker(**context):
 def etl_fact_access(**context):
     logger = logging.getLogger(__name__)
 
-    # target_date = target_date_range("2026-01-01", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-01", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-01", "2026-01-05")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -148,8 +148,7 @@ def etl_fact_access(**context):
 def etl_fact_payment(**context):
     logger = logging.getLogger(__name__)
 
-    # target_date = target_date_range("2026-01-01", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-01", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-01", "2026-01-05")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -165,11 +164,11 @@ def etl_fact_payment(**context):
         logger.error(f"❌ etl_fact_payment failed with error: {e}")
         raise e
 
+
 def etl_fact_funnel(**context):
     logger = logging.getLogger(__name__)
 
-    # target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-01", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-01", "2026-01-05")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -189,8 +188,7 @@ def etl_fact_funnel(**context):
 def etl_fact_IAA(**context):
     logger = logging.getLogger(__name__)
 
-    # target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-01", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-01", "2026-01-05")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
@@ -212,8 +210,7 @@ def etl_fact_IAA(**context):
 def etl_fact_usermap(**context):
     logger = logging.getLogger(__name__)
 
-    # target_date = target_date_range("2026-01-02", "2026-01-22")  ## 백필용
-    target_date = target_date_range("2026-01-01", "2026-01-24")  ## 백필용
+    target_date = target_date_range("2026-01-01", "2026-01-05")  ## 백필용
 
     # 날짜 계산
     # target_date, _ = calc_target_date(context['logical_date'])
