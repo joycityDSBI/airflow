@@ -61,7 +61,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id='postgres_dag_run_monitoring',
+    dag_id='ETL_Fact_Monitoring_daily',
     default_args=default_args,
     description='DAG run statistics query and email',
     schedule='50 00 * * *',  # 매일 오전 09시 50분 실행
@@ -262,7 +262,7 @@ with DAG(
             
         except Exception as e:
             logger.error(f"❌ 에러 발생: {str(e)}", exc_info=True)
-            raise
+            raise e
 
 # Task 정의
 query_datahub_status_and_send_email_task = PythonOperator(
