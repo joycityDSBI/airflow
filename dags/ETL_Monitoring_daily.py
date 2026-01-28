@@ -151,8 +151,8 @@ with DAG(
             order by 1,2
             )
 
-            SELECT ta.joyple_game_code, TA.datekey
-                , round(TA.total_rev - TB.total_rev,0) as um_ummC_rev
+            SELECT ta.joyple_game_code as gameCode, TA.datekey as date
+                , round(TA.total_rev - TB.total_rev,0) as um_umC_rev
                 , round(TA.total_rev - TC.total_rev,0) as um_fP_rev
                 , round(TA.dau - TB.dau,0) as um_umC_dau
                 , round(TA.dau - TD.dau,0) as um_fA_dau
@@ -245,7 +245,7 @@ with DAG(
             order by 1,2
             )
 
-            SELECT ta.joyple_game_code, TA.datekey
+            SELECT ta.joyple_game_code as gameCode, TA.datekey as date
                 , round(TA.dru - TB.dru,0) as um_umC_dru
                 , round(TA.dru - TD.dru,0) as um_fA_dru
                 , round(TA.total_iaa_rev - TB.total_iaa_rev, 0) as um_umC_iaa
@@ -316,7 +316,7 @@ with DAG(
                         <p>✓ 총 <strong>{len(df)} / {len(df2)}</strong>개의 DAG 실행 결과</p>
                         <p>컬럼 설명:</p>
                         <ul>
-                            <li><strong>um_ummC_rev:</strong> f_user_map과 f_user_map_char 의 매출액 차이(daily_iaa_rev)</li>
+                            <li><strong>um_umC_rev:</strong> f_user_map과 f_user_map_char 의 매출액 차이(daily_iaa_rev)</li>
                             <li><strong>um_fP_rev:</strong> f_user_map과 f_payment 의 매출액 차이(daily_iaa_rev)</li>
                             <li><strong>um_umC_dau:</strong> f_user_map과 f_user_map_char 의 DAU 차이</li>
                             <li><strong>um_fA_dau:</strong> f_user_map과 f_access 의 DAU 차이</li>
