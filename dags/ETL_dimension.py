@@ -589,17 +589,35 @@ def adjust_dim_product_code(**context):
 
             UNION ALL
 
-            SELECT 
-            30003 as joyple_game_code
-            , CAST(package_kind AS STRING) as product_code
-            , CAST(goods_type AS STRING) as goods_type
-            , CAST(category_shop AS STRING) as shop_category
-            , CAST(category_package AS STRING) as package_category
-            , CAST(price AS STRING) as price
-            , CAST(package_name AS STRING) as product_name
-            , CAST(null AS STRING) as product_name_EN
-            , CAST(null AS STRING) as product_name_JP
-            FROM data-science-division-216308.PackageInfo.PackageInfo_DS
+            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP
+            from 
+            (
+            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP, sale_date_start
+            , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY sale_date_start, package_kind desc) as rn
+            from
+            (
+                SELECT
+                    30003 as joyple_game_code
+                    , code as product_code  -- UNNEST에서 풀려 나온 값
+                    , CAST(goods_type AS STRING) as goods_type
+                    , CAST(category_shop AS STRING) as shop_category
+                    , CAST(category_package AS STRING) as package_category
+                    , CAST(price AS STRING) as price
+                    , CAST(package_name AS STRING) as product_name
+                    , CAST(null AS STRING) as product_name_EN
+                    , CAST(null AS STRING) as product_name_JP
+                    , sale_date_start
+                    , package_kind
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_DS`
+                -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
+                CROSS JOIN UNNEST([
+                    CAST(package_kind AS STRING), 
+                    CAST(iap_code_google AS STRING), 
+                    CAST(iap_code_apple AS STRING)
+                ]) AS code
+            ) AS TA
+            ) AS TK
+            where rn = 1
 
             UNION ALL
 
@@ -617,17 +635,35 @@ def adjust_dim_product_code(**context):
 
             UNION ALL
 
-            SELECT 
-            133 as joyple_game_code
-            , CAST(package_kind AS STRING) as product_code
-            , CAST(goods_type AS STRING) as goods_type
-            , CAST(category_shop AS STRING) as shop_category
-            , CAST(category_package AS STRING) as package_category
-            , CAST(price AS STRING) as price
-            , CAST(package_name AS STRING) as product_name
-            , CAST(null AS STRING) as product_name_EN
-            , CAST(null AS STRING) as product_name_JP
-            FROM data-science-division-216308.PackageInfo.PackageInfo_GBTW
+            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP
+            from 
+            (
+            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP, sale_date_start
+            , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY sale_date_start, package_kind desc) as rn
+            from
+            (
+                SELECT
+                    133 as joyple_game_code
+                    , code as product_code  -- UNNEST에서 풀려 나온 값
+                    , CAST(goods_type AS STRING) as goods_type
+                    , CAST(category_shop AS STRING) as shop_category
+                    , CAST(category_package AS STRING) as package_category
+                    , CAST(price AS STRING) as price
+                    , CAST(package_name AS STRING) as product_name
+                    , CAST(null AS STRING) as product_name_EN
+                    , CAST(null AS STRING) as product_name_JP
+                    , sale_date_start
+                    , package_kind
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_GBTW`
+                -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
+                CROSS JOIN UNNEST([
+                    CAST(package_kind AS STRING), 
+                    CAST(iap_code_google AS STRING), 
+                    CAST(iap_code_apple AS STRING)
+                ]) AS code
+            ) AS TA
+            ) AS TK
+            where rn = 1
 
             UNION ALL
 
@@ -673,51 +709,106 @@ def adjust_dim_product_code(**context):
 
             UNION ALL
 
-            SELECT 
-            159 as joyple_game_code
-            , CAST(A.Package_Kind AS STRING) as product_code
-            , CAST(A.goods_type AS STRING) as goods_type
-            , CAST(A.Cat_Shop AS STRING) as shop_category
-            , CAST(A.Cat_Package AS STRING) as package_category
-            , CAST(A.Price AS STRING) as price
-            , CAST(A.Package_Name AS STRING) as product_name
-            , A.Package_Name_ENG as product_name_EN
-            , CAST(B.package_name_jp AS STRING) as product_name_JP
-            FROM data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU as A
-            left join 
-            data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP as B
-            ON A.Package_Kind = B.Package_Kind
+            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP
+            from 
+            (
+            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP, Start_Date
+            , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY Start_Date, package_kind desc) as rn
+            from
+            (
+                SELECT
+                    159 as joyple_game_code
+                    , code as product_code  -- UNNEST에서 풀려 나온 값
+                    , CAST(A.goods_type AS STRING) as goods_type
+                    , CAST(A.Cat_Shop AS STRING) as shop_category
+                    , CAST(A.Cat_Package AS STRING) as package_category
+                    , CAST(A.Price AS STRING) as price
+                    , CAST(A.Package_Name AS STRING) as product_name
+                    , A.Package_Name_ENG as product_name_EN
+                    , CAST(B.package_name_jp AS STRING) as product_name_JP
+                    , A.Start_Date
+                    , A.package_kind
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU` as A
+                left join 
+                data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP as B
+                ON A.Package_Kind = B.Package_Kind
+                -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
+                CROSS JOIN UNNEST([
+                    CAST(A.package_kind AS STRING), 
+                    CAST(A.iap_code_google AS STRING), 
+                    CAST(A.iap_code_apple AS STRING)
+                ]) AS code
+            ) AS TA
+            ) AS TK
+            where rn = 1
 
             UNION ALL
 
-            SELECT 
-            1590 as joyple_game_code
-            , CAST(A.Package_Kind AS STRING) as product_code
-            , CAST(A.goods_type AS STRING) as goods_type
-            , CAST(A.Cat_Shop AS STRING) as shop_category
-            , CAST(A.Cat_Package AS STRING) as package_category
-            , CAST(A.Price AS STRING) as price
-            , CAST(A.Package_Name AS STRING) as product_name
-            , A.Package_Name_ENG as product_name_EN
-            , CAST(B.package_name_jp AS STRING) as product_name_JP
-            FROM data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU as A
-            left join 
-            data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP as B
-            ON A.Package_Kind = B.Package_Kind
+
+            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP
+            from 
+            (
+            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP, Start_Date
+            , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY Start_Date, package_kind desc) as rn
+            from
+            (
+                SELECT
+                    1590 as joyple_game_code
+                    , code as product_code  -- UNNEST에서 풀려 나온 값
+                    , CAST(A.goods_type AS STRING) as goods_type
+                    , CAST(A.Cat_Shop AS STRING) as shop_category
+                    , CAST(A.Cat_Package AS STRING) as package_category
+                    , CAST(A.Price AS STRING) as price
+                    , CAST(A.Package_Name AS STRING) as product_name
+                    , A.Package_Name_ENG as product_name_EN
+                    , CAST(B.package_name_jp AS STRING) as product_name_JP
+                    , A.Start_Date
+                    , A.package_kind
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU` as A
+                left join 
+                data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP as B
+                ON A.Package_Kind = B.Package_Kind
+                -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
+                CROSS JOIN UNNEST([
+                    CAST(A.package_kind AS STRING), 
+                    CAST(A.iap_code_google AS STRING), 
+                    CAST(A.iap_code_apple AS STRING)
+                ]) AS code
+            ) AS TA
+            ) AS TK
+            where rn = 1
 
             UNION ALL
 
-            SELECT 
-            131 as joyple_game_code
-            , CAST(package_kind AS STRING) as product_code
-            , CAST(goods_type AS STRING) as goods_type
-            , CAST(category_shop AS STRING) as shop_category
-            , CAST(category_package AS STRING) as package_category
-            , CAST(price AS STRING) as price
-            , CAST(package_name AS STRING) as product_name
-            , CAST(null AS STRING) as product_name_EN
-            , CAST(null AS STRING) as product_name_JP
-            FROM data-science-division-216308.PackageInfo.PackageInfo_POTC
+            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP
+            from 
+            (
+            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP, sale_date_start
+            , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY sale_date_start, package_kind desc) as rn
+            from
+            (
+                SELECT
+                    131 as joyple_game_code
+                    , code as product_code  -- UNNEST에서 풀려 나온 값
+                    , CAST(goods_type AS STRING) as goods_type
+                    , CAST(category_shop AS STRING) as shop_category
+                    , CAST(category_package AS STRING) as package_category
+                    , CAST(price AS STRING) as price
+                    , CAST(package_name AS STRING) as product_name
+                    , CAST(null AS STRING) as product_name_EN
+                    , CAST(null AS STRING) as product_name_JP
+                    , sale_date_start
+                    , package_kind
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_POTC`
+                -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
+                CROSS JOIN UNNEST([
+                    CAST(package_kind AS STRING), 
+                    CAST(iap_code_google AS STRING), 
+                    CAST(iap_code_apple AS STRING)
+                ]) AS code
+            ) AS TA
+            ) AS TK
+            where rn = 1
 
             UNION ALL
 
