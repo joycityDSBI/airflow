@@ -111,9 +111,6 @@ def etl_dim_os(**context):
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
 
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
         # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
@@ -313,10 +310,6 @@ def etl_dim_auth_method_id(**context):
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     # run_kst = None
 
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
         # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
@@ -407,10 +400,6 @@ def etl_dim_product_code(**context):
     # run_kst = None
 
 
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
         # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
@@ -497,9 +486,6 @@ def adjust_dim_product_code(**context):
     ####################
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     # run_kst = None
-
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
     query = f"""
     MERGE `datahub-478802.datahub.dim_product_code` AS target
@@ -815,10 +801,6 @@ def etl_dim_exchange_rate(**context):
     # target_date = target_date_range("2026-01-01", "2026-01-26")  ## 백필용
     # run_kst = None
 
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-    
-
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
         # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
@@ -941,9 +923,6 @@ def etl_dim_game_id(**context):
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     # run_kst = None
 
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1032,9 +1011,6 @@ def etl_dim_app_id(**context):
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     # run_kst = None
-
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
 
     for td_str in target_date:
@@ -1128,9 +1104,6 @@ def etl_dim_google_campaign(**context):
     #################### 백필용 데이터 처리 
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     # run_kst = None
-
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
 
     for td_str in target_date:
@@ -1306,10 +1279,6 @@ def etl_dim_ip4_country_code(**context):
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     # run_kst = None
 
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
-
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
         # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
@@ -1438,9 +1407,6 @@ def etl_dim_joyple_game_code(**context):
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     # run_kst = None
 
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
         # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
@@ -1543,9 +1509,6 @@ def etl_dim_market_id(**context):
     ####################    백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     # run_kst = None
-
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1810,9 +1773,6 @@ def etl_dim_pg_id(**context):
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
     # run_kst = None
 
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
-
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
         # 넘어오는 날짜 형식이 'YYYY-MM-DD'라고 가정합니다.
@@ -1899,9 +1859,6 @@ def etl_dim_IAA_app_name(**context):
     # #################### 백필용 데이터 처리
 #     target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
 #     run_kst = None
-
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
-    logger.info(f"📅 처리 대상 날짜 리스트: {target_date}")
 
     for td in target_date:
         target_date = td

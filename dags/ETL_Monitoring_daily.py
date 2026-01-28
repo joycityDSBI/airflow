@@ -65,7 +65,7 @@ with DAG(
     dag_id='ETL_Fact_Monitoring_daily',
     default_args=default_args,
     description='DAG run statistics query and email',
-    schedule='50 00 * * *',  # 매일 오전 09시 50분 실행
+    schedule='50 0 * * *',  # 매일 오전 09시 50분 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'monitoring', 'bigquery'],
