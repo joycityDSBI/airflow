@@ -195,8 +195,7 @@ with DAG(
                 CAST(sum(daily_iaa_rev) AS int64) as total_iaa_rev,
                 count(distinct CASE WHEN daily_total_rev > 0 THEN auth_account_name END) as total_pu
             from `datahub-478802.datahub.f_user_map`
-            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2026-01-01'
+            where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
             AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
@@ -210,8 +209,7 @@ with DAG(
                 CAST(sum(daily_total_rev) AS int64) as total_rev,
                 CAST(sum(daily_iaa_rev) AS int64) as total_iaa_rev
             from `datahub-478802.datahub.f_user_map_char` as a
-            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2026-01-01'
+            where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
             AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
@@ -222,8 +220,7 @@ with DAG(
             , sum(revenue) as total_rev
             , count(distinct auth_account_name) as total_pu
             from `datahub-478802.datahub.f_common_payment`
-            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2026-01-01'
+            where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
             AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
@@ -234,8 +231,19 @@ with DAG(
                 count(distinct if(access_type_id = 1,auth_account_name,null)) as dau, 
                 count(distinct if(reg_datediff = 0, auth_account_name, null)) as dru
             from `datahub-478802.datahub.f_common_access`
-            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2026-01-01'
+            where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
+            AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
+            group by 1,2
+            order by 1,2
+            )
+
+            ,
+
+            TE as (
+            select joyple_game_code, watch_datekey as datekey, 
+                sum(revenue_per_user_KRW) as total_iaa_rev
+            from `datahub-478802.datahub.f_IAA_auth_account_performance_joyple`
+            where watch_datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
             AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
@@ -244,12 +252,13 @@ with DAG(
             SELECT ta.joyple_game_code, TA.datekey
                 , round(TA.dru - TB.dru,0) as um_umC_dru
                 , round(TA.dru - TD.dru,0) as um_fA_dru
-                , round(TA.total_iaa_rev - TB.total_iaa_rev,0) as um_umC_iaa
-                , TA.total_pu - TC.total_pu as um_fP_pu
+                , round(TA.total_iaa_rev - TB.total_iaa_rev, 0) as um_umC_iaa
+                , round(TE.total_iaa_rev - TA.total_iaa_rev, 0) as um_fIAA_iaa
             FROM TA 
             LEFT JOIN TB ON TA.joyple_game_code = TB.joyple_game_code AND TA.datekey = TB.datekey
             LEFT JOIN TC ON TA.joyple_game_code = TC.joyple_game_code AND TA.datekey = TC.datekey
             LEFT JOIN TD ON TA.joyple_game_code = TD.joyple_game_code AND TA.datekey = TD.datekey
+            LEFT JOIN TE ON TA.joyple_game_code = TE.joyple_game_code AND TA.datekey = TE.datekey
             order by joyple_game_code, datekey
             
             """
@@ -318,7 +327,7 @@ with DAG(
                             <li><strong>um_umC_dru:</strong> f_user_map과 f_user_map_char 의 DRU 차이</li>
                             <li><strong>um_fA_dru:</strong> f_user_map과 f_access 의 DRU 차이</li>
                             <li><strong>um_umC_iaa:</strong> f_user_map과 f_user_map_char 의 IAA 매출액 차이(daily_iaa_rev)</li>
-                            <li><strong>um_fP_pu:</strong> f_user_map과 f_payment 의 PU 차이</li>
+                            <li><strong>um_fIAA_iaa:</strong> f_user_map과 f_IAA_auth_account_performance_joyple 의 IAA 매출 차이</li>
                         </ul>
                         <p style="margin-top: 20px; color: #999;">
                             이 메일은 Airflow에서 자동으로 생성되었습니다.
