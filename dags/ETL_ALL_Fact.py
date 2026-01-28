@@ -71,10 +71,10 @@ def calc_target_date(logical_date):
     # 2. KST 기준 하루 전 날짜 계산 (Yesterday)
     target_d = run_date_kst.date() - timedelta(days=1)
     
-    # 3. datetime 객체로 변환 (00:00:00) 및 리스트화
-    target_dt = datetime.combine(target_d, datetime.min.time())
+    # 문자열로 변환하여 return 
+    target_date_str = target_d.strftime("%Y-%m-%d")
     
-    return [target_dt], run_date_kst
+    return [target_date_str], run_date_kst
 
 
 ## 날짜가 포함되어 있으면 해당 날짜의 데이터를 밀어 넣게 되어 있음
@@ -104,8 +104,7 @@ def etl_fact_tracker(**context):
     # run_kst = None
 
     # 날짜 계산
-    target_date, run_kst = calc_target_date(context['logical_date'])
-    logger.info(f"🚀 배치 실행 시점(KST): {run_kst}")
+    target_date, _ = calc_target_date(context['logical_date'])
 
     client = init_clients()
     bq_client = client["bq_client"]

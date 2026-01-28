@@ -69,10 +69,10 @@ def calc_target_date(logical_date):
     # 2. KST 기준 하루 전 날짜 계산 (Yesterday)
     target_d = run_date_kst.date() - timedelta(days=1)
     
-    # 3. datetime 객체로 변환 (00:00:00) 및 리스트화
-    target_dt = datetime.combine(target_d, datetime.min.time())
+    # 문자열로 변환하여 return 
+    target_date_str = target_d.strftime("%Y-%m-%d")
     
-    return [target_dt], run_date_kst
+    return [target_date_str], run_date_kst
 
 
 def target_date_range(start_date_str, end_date_str):
@@ -106,7 +106,7 @@ def etl_dim_os(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
     
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -304,7 +304,7 @@ def etl_dim_auth_method_id(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     ####################
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -393,7 +393,7 @@ def etl_dim_product_code(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     ####################
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -481,7 +481,7 @@ def adjust_dim_product_code(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     ####################
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -795,7 +795,7 @@ def etl_dim_exchange_rate(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-01", "2026-01-26")  ## 백필용
@@ -917,7 +917,7 @@ def etl_dim_game_id(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리 
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -1006,7 +1006,7 @@ def etl_dim_app_id(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -1099,7 +1099,7 @@ def etl_dim_google_campaign(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리 
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -1273,7 +1273,7 @@ def etl_dim_ip4_country_code(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -1401,7 +1401,7 @@ def etl_dim_joyple_game_code(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -1504,7 +1504,7 @@ def etl_dim_market_id(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     ####################    백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -1767,7 +1767,7 @@ def etl_dim_pg_id(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
@@ -1854,7 +1854,7 @@ def etl_dim_IAA_app_name(**context):
     kst = pytz.timezone('Asia/Seoul')
 
     # context에서 날짜 계산 함수 호출
-    target_date, run_kst = calc_target_date(context['logical_date'])
+    target_date, _ = calc_target_date(context['logical_date'])
 
     # #################### 백필용 데이터 처리
 #     target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
