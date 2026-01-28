@@ -65,7 +65,7 @@ with DAG(
     dag_id='ETL_Fact_Monitoring_daily',
     default_args=default_args,
     description='DAG run statistics query and email',
-    schedule='50 0 * * *',  # 매일 오전 09시 50분 실행
+    schedule='40 0 * * *',  # 매일 오전 09시 50분 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'monitoring', 'bigquery'],
@@ -111,8 +111,7 @@ with DAG(
                 CAST(sum(daily_total_rev) AS int64) as total_rev,
                 CAST(sum(daily_iaa_rev) AS int64) as total_iaa_rev
             from `datahub-478802.datahub.f_user_map`
-            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2026-01-01'
+            where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
             AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
@@ -126,8 +125,7 @@ with DAG(
                 CAST(sum(daily_total_rev) AS int64) as total_rev,
                 CAST(sum(daily_iaa_rev) AS int64) as total_iaa_rev
             from `datahub-478802.datahub.f_user_map_char` as a
-            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2026-01-01'
+            where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
             AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
@@ -136,8 +134,7 @@ with DAG(
             TC as (
             select joyple_game_code, datekey, sum(revenue) as total_rev
             from `datahub-478802.datahub.f_common_payment`
-            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2026-01-01'
+            where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
             AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
@@ -148,8 +145,7 @@ with DAG(
                 count(distinct if(access_type_id = 1,auth_account_name,null)) as dau, 
                 count(distinct if(reg_datediff = 0, auth_account_name, null)) as dru
             from `datahub-478802.datahub.f_common_access`
-            -- where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
-            where datekey >= '2026-01-01'
+            where datekey >= date_add(current_date('Asia/Seoul'), interval -4 day)
             AND joyple_game_code IN (131, 133, 159, 1590, 30001, 30003, 60009)
             group by 1,2
             order by 1,2
