@@ -99,15 +99,15 @@ def target_date_range(start_date_str, end_date_str):
 def etl_fact_tracker(**context):
     logger = logging.getLogger(__name__)
 
+    client = init_clients()
+    bq_client = client["bq_client"]
+
     ########### 백필용 데이터 처리    
     # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
     # run_kst = None
 
     # 날짜 계산
     target_date, _ = calc_target_date(context['logical_date'])
-
-    client = init_clients()
-    bq_client = client["bq_client"]
 
     try:
         etl_f_tracker_install(target_date=target_date, client=bq_client)
@@ -125,6 +125,9 @@ def etl_fact_tracker(**context):
 def etl_fact_access(**context):
     logger = logging.getLogger(__name__)
 
+    client = init_clients()
+    bq_client = client["bq_client"]
+
     ########### 백필용 데이터 처리    
     # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
     # run_kst = None
@@ -133,8 +136,6 @@ def etl_fact_access(**context):
     target_date, _ = calc_target_date(context['logical_date'])
     logger.info(f"📅 Access ETL Target Date: {target_date[0]}")
 
-    client = init_clients()
-    bq_client = client["bq_client"]
     try:
         etl_f_common_register(target_date=target_date, client=bq_client)
         adjust_f_common_register(target_date=target_date, client=bq_client)
