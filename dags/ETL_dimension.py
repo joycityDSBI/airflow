@@ -20,8 +20,8 @@ import pytz
 ETL_dimension = Dataset('ETL_dimension')
 
 #### Dimension table 처리 함수 불러오기
-PROJECT_ID = "data-science-division-216308"
-LOCATION = "us-central1"
+PROJECT_ID = "datahub-478802"
+LOCATION = "US"
 
 def get_gcp_credentials():
     """Airflow Variable에서 GCP 자격 증명을 로드합니다."""

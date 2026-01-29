@@ -22,8 +22,8 @@ from ETL_Fact_usermap import *
 
 ETL_dimension = Dataset('ETL_dimension')
 
-PROJECT_ID = "data-science-division-216308"
-LOCATION = "us-central1"
+PROJECT_ID = "datahub-478802"
+LOCATION = "US"
 
 
 def get_gcp_credentials():
