@@ -48,7 +48,7 @@ SENDER_PASSWORD = get_var("SMTP_PASSWORD")
 
 # gemini 설정
 GOOGLE_CLOUD_PROJECT = "datahub-478802"
-GOOGLE_CLOUD_LOCATION = "US"  # global
+GOOGLE_CLOUD_LOCATION = "us-central1"  # global
 CREDENTIALS_JSON = get_var("GOOGLE_CREDENTIAL_JSON")
 
 # Notion 설정

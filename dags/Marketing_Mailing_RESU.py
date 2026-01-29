@@ -113,7 +113,7 @@ with DAG(
 
 
     # 제미나이 설정
-    LOCATION = "US"
+    LOCATION = "us-central1"
     PROJECT_ID = PROJECT_ID
     MODEL_NAME = "gemini-2.5-flash"
     LABELS = {"datascience_division_service": 'marketing_mailing'}
