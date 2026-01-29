@@ -331,11 +331,18 @@ def etl_f_common_payment(target_date: list, client):
             , IFNULL(a.MultiQuantity, 1) AS MultiQuantity
             FROM TA as a
             LEFT JOIN (
-                SELECT currency, datekey, exchange_rate
-                FROM `datahub-478802.datahub.dim_exchange`
-                GROUP BY currency, datekey, exchange_rate
+                SELECT DATE('{start_utc}', "Asia/Seoul") AS datekey
+                    , currency
+                    , Info.exchange_rate as exchange_rate
+                FROM (
+                  SELECT currency, ARRAY_AGG(STRUCT(datekey, exchange_rate) ORDER BY datekey DESC LIMIT 1)[OFFSET(0)] AS Info
+                  FROM `datahub-478802.datahub.dim_exchange`
+                  WHERE datekey >= DATE('{start_utc}')
+                    AND datekey <=  DATE('{end_utc}')
+                  GROUP BY currency
+                ) AS TT
             ) AS c  
-            ON a.CurrencyCode = c.currency AND Date(a.LogTime, "Asia/Seoul") = c.datekey
+            ON a.CurrencyCode = c.currency AND Date(a.LogTime, "Asia/Seoul")  = c.datekey
             LEFT JOIN `datahub-478802.datahub.f_common_register` as d
             on CAST(a.JoypleGameID AS STRING) = CAST(d.joyple_game_code AS STRING) 
                AND CAST(a.AuthAccountName AS STRING) = CAST(d.auth_account_name AS STRING)
