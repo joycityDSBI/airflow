@@ -1,4 +1,5 @@
 # Airflow function
+from multiprocessing import context
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
@@ -107,7 +108,13 @@ def etl_fact_tracker(**context):
     # run_kst = None
 
     # 날짜 계산
-    target_date, _ = calc_target_date(context['logical_date'])
+    run_date = context.get('logical_date') or context.get('execution_date')
+
+    if not run_date:
+        raise ValueError("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+
+    # 3. 날짜 계산 함수 호출
+    target_date, _ = calc_target_date(run_date)
 
     try:
         etl_f_tracker_install(target_date=target_date, client=bq_client)
@@ -133,8 +140,13 @@ def etl_fact_access(**context):
     # run_kst = None
 
     # 날짜 계산
-    target_date, _ = calc_target_date(context['logical_date'])
-    logger.info(f"📅 Access ETL Target Date: {target_date[0]}")
+    run_date = context.get('logical_date') or context.get('execution_date')
+
+    if not run_date:
+        raise ValueError("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+
+    # 3. 날짜 계산 함수 호출
+    target_date, _ = calc_target_date(run_date)
 
     try:
         etl_f_common_register(target_date=target_date, client=bq_client)
@@ -156,8 +168,13 @@ def etl_fact_payment(**context):
     # run_kst = None
 
     # 날짜 계산
-    target_date, _ = calc_target_date(context['logical_date'])
-    logger.info(f"📅 Payment ETL Target Date: {target_date[0]}")
+    run_date = context.get('logical_date') or context.get('execution_date')
+
+    if not run_date:
+        raise ValueError("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+
+    # 3. 날짜 계산 함수 호출
+    target_date, _ = calc_target_date(run_date)
 
     client = init_clients()
     bq_client = client["bq_client"]
@@ -176,8 +193,13 @@ def etl_fact_funnel(**context):
     # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
 
     # 날짜 계산
-    target_date, _ = calc_target_date(context['logical_date'])
-    logger.info(f"📅 Funnel ETL Target Date: {target_date[0]}")
+    run_date = context.get('logical_date') or context.get('execution_date')
+
+    if not run_date:
+        raise ValueError("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+
+    # 3. 날짜 계산 함수 호출
+    target_date, _ = calc_target_date(run_date)
 
     client = init_clients()
     bq_client = client["bq_client"]
@@ -196,8 +218,13 @@ def etl_fact_IAA(**context):
     # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
 
     # 날짜 계산
-    target_date, _ = calc_target_date(context['logical_date'])
-    logger.info(f"📅 IAA ETL Target Date: {target_date[0]}")
+    run_date = context.get('logical_date') or context.get('execution_date')
+
+    if not run_date:
+        raise ValueError("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+
+    # 3. 날짜 계산 함수 호출
+    target_date, _ = calc_target_date(run_date)
 
     client = init_clients()
     bq_client = client["bq_client"]
@@ -218,8 +245,13 @@ def etl_fact_usermap(**context):
     # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
 
     # 날짜 계산
-    target_date, _ = calc_target_date(context['logical_date'])
-    logger.info(f"📅 Usermap ETL Target Date: {target_date[0]}")
+    run_date = context.get('logical_date') or context.get('execution_date')
+
+    if not run_date:
+        raise ValueError("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+
+    # 3. 날짜 계산 함수 호출
+    target_date, _ = calc_target_date(run_date)
 
     client = init_clients()
     bq_client = client["bq_client"]
