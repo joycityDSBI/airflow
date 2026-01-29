@@ -39,7 +39,7 @@ EMAIL_TO = get_config("EMAIL_TO", "your-email@example.com")
 DATASET_ID = "Account_Info"
 TABLE_ID = "RESU_account_info"
 NOTION_API_VERSION = get_config("NOTION_API_VERSION", "2022-06-28")
-FULL_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
+FULL_TABLE_ID = f"data-science-division-216308.{DATASET_ID}.{TABLE_ID}"
 
 # SMTP 설정
 SMTP_HOST = get_config("SMTP_HOST", "smtp.gmail.com")
@@ -182,6 +182,7 @@ def upload_to_bigquery(**context):
     except Exception as e:
         print(f"❌ 인증 설정 실패: {e}")
         raise e
+    
     job = client.load_table_from_dataframe(
         dataframe=df,
         destination=FULL_TABLE_ID,
