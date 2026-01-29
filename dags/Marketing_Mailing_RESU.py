@@ -51,7 +51,7 @@ with DAG(
         return os.environ.get(key) or Variable.get(key, default_var=default)
 
     # 환경 변수 설정
-    PROJECT_ID = "data-science-division-216308"
+    PROJECT_ID = "datahub-478802"
     CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
     
     # SMTP 설정
@@ -113,8 +113,8 @@ with DAG(
 
 
     # 제미나이 설정
-    LOCATION = "us-central1"
-    PROJECT_ID = "data-science-division-216308"
+    LOCATION = "US"
+    PROJECT_ID = PROJECT_ID
     MODEL_NAME = "gemini-2.5-flash"
     LABELS = {"datascience_division_service": 'marketing_mailing'}
     SYSTEM_INSTRUCTION = [

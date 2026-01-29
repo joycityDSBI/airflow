@@ -112,8 +112,8 @@ with DAG(
     # RECIPIENT_EMAILS = ['seongin@joycity.com']
 
     # 제미나이 설정
-    LOCATION = "us-central1"
-    PROJECT_ID = "datahub-478802"
+    LOCATION = "US"
+    PROJECT_ID = PROJECT_ID
     MODEL_NAME = "gemini-2.5-flash"
     LABELS = {"datascience_division_service": 'marketing_mailing'}
     SYSTEM_INSTRUCTION = [

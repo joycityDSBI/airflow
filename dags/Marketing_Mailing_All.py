@@ -47,8 +47,8 @@ SENDER_EMAIL = "ds_bi@joycity.com"
 SENDER_PASSWORD = get_var("SMTP_PASSWORD")
 
 # gemini 설정
-GOOGLE_CLOUD_PROJECT = "data-science-division-216308"
-GOOGLE_CLOUD_LOCATION = "us-central1"  # global
+GOOGLE_CLOUD_PROJECT = "datahub-478802"
+GOOGLE_CLOUD_LOCATION = "US"  # global
 CREDENTIALS_JSON = get_var("GOOGLE_CREDENTIAL_JSON")
 
 # Notion 설정
