@@ -26,7 +26,7 @@ PROJECT_ID = "datahub-478802"
 
 EMAIL_TO = get_var("EMAIL_TO", "65e43b85.joycity.com@kr.teams.ms")
 DBID = "23bea67a5681803db3c4f691c143a43d"
-TABLE_ID = f"{PROJECT_ID}.PackageInfo.PackageInfo_Notion_RESU"
+TABLE_ID = f"data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU"
 
 # SMTP 설정
 SMTP_HOST = get_var("SMTP_HOST", "smtp.gmail.com")
