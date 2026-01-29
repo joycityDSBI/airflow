@@ -19,7 +19,7 @@ import pytz
 logger = logging.getLogger(__name__)
 
 PROJECT_ID = "datahub-478802"
-LOCATION = "us-central1"
+LOCATION = "US"
 
 def get_var(key: str, default: str = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
@@ -160,7 +160,7 @@ with DAG(
             LEFT JOIN TB ON TA.joyple_game_code = TB.joyple_game_code AND TA.datekey = TB.datekey
             LEFT JOIN TC ON TA.joyple_game_code = TC.joyple_game_code AND TA.datekey = TC.datekey
             LEFT JOIN TD ON TA.joyple_game_code = TD.joyple_game_code AND TA.datekey = TD.datekey
-            order by joyple_game_code, datekey
+            order by ta.joyple_game_code, ta.datekey
             
             """
             

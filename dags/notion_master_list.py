@@ -34,7 +34,7 @@ def get_config(key: str, default: str = None) -> str:
 # 전역 설정값
 NOTION_TOKEN = get_config("NOTION_TOKEN")
 DBID = get_config("NOTION_DBID")
-PROJECT_ID = get_config("PROJECT_ID")
+PROJECT_ID = "datahub-478802"
 EMAIL_TO = get_config("EMAIL_TO", "your-email@example.com")
 DATASET_ID = "Account_Info"
 TABLE_ID = "RESU_account_info"
