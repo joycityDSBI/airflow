@@ -151,7 +151,7 @@ with DAG(
             order by 1,2
             )
 
-            SELECT ta.joyple_game_code as gameCode, TA.datekey as date
+            SELECT TA.joyple_game_code as gameCode, TA.datekey as date
                 , round(TA.total_rev - TB.total_rev,0) as um_umC_rev
                 , round(TA.total_rev - TC.total_rev,0) as um_fP_rev
                 , round(TA.dau - TB.dau,0) as um_umC_dau
@@ -160,7 +160,7 @@ with DAG(
             LEFT JOIN TB ON TA.joyple_game_code = TB.joyple_game_code AND TA.datekey = TB.datekey
             LEFT JOIN TC ON TA.joyple_game_code = TC.joyple_game_code AND TA.datekey = TC.datekey
             LEFT JOIN TD ON TA.joyple_game_code = TD.joyple_game_code AND TA.datekey = TD.datekey
-            order by ta.joyple_game_code, ta.datekey
+            order by TA.joyple_game_code, TA.datekey
             
             """
             
@@ -255,7 +255,7 @@ with DAG(
             LEFT JOIN TC ON TA.joyple_game_code = TC.joyple_game_code AND TA.datekey = TC.datekey
             LEFT JOIN TD ON TA.joyple_game_code = TD.joyple_game_code AND TA.datekey = TD.datekey
             LEFT JOIN TE ON TA.joyple_game_code = TE.joyple_game_code AND TA.datekey = TE.datekey
-            order by joyple_game_code, datekey
+            order by TA.joyple_game_code, TA.datekey
             
             """
 
