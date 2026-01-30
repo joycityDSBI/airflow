@@ -111,10 +111,12 @@ def etl_fact_tracker(**context):
     run_date = context.get('logical_date') or context.get('execution_date')
 
     if not run_date:
-        raise ValueError("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+        run_date = datetime.now()
 
     # 3. 날짜 계산 함수 호출
     target_date, _ = calc_target_date(run_date)
+    print("✅✅✅✅ Calculated target_date:", target_date[0])
 
     try:
         etl_f_tracker_install(target_date=target_date, client=bq_client)

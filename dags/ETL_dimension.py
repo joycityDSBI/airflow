@@ -21,7 +21,7 @@ ETL_dimension = Dataset('ETL_dimension')
 
 #### Dimension table 처리 함수 불러오기
 PROJECT_ID = "datahub-478802"
-LOCATION = "US"
+LOCATION = "us-central1"
 
 def get_gcp_credentials():
     """Airflow Variable에서 GCP 자격 증명을 로드합니다."""
@@ -931,7 +931,7 @@ def etl_dim_exchange_rate(**context):
                     FromCurrencyCode AS currency_code,
                     ARRAY_AGG(ExchangeRate ORDER BY BaseDate DESC LIMIT 1)[OFFSET(0)] AS exchange_rate
                 FROM `dataplatform-204306.PublicInformation.Exchange`
-                WHERE DATE(BaseDate, "Asia/Seoul") = DATE('{start_utc.strftime("%Y-%m-%d")}')
+                WHERE DATE(BaseDate, "Asia/Seoul") >= DATE('{end_utc.strftime("%Y-%m-%d")}')
                 AND ToCurrencyCode = "KRW"
                 GROUP BY 1, 2
             ),
