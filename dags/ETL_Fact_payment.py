@@ -344,8 +344,9 @@ def etl_f_common_payment(target_date: list, client):
             ) AS c  
             ON a.CurrencyCode = c.currency AND Date(a.LogTime, "Asia/Seoul")  = c.datekey
             LEFT JOIN `datahub-478802.datahub.f_common_register` as d
-            on CAST(a.JoypleGameID AS STRING) = CAST(d.joyple_game_code AS STRING) 
-               AND CAST(a.AuthAccountName AS STRING) = CAST(d.auth_account_name AS STRING)
+            on CAST(a.JoypleGameID AS STRING) = CAST(d.joyple_game_code AS STRING)
+            AND CAST(a.AuthMethodID AS STRING) = CAST(d.auth_method_id AS STRING)
+            AND CAST(a.AuthAccountName AS STRING) = CAST(d.auth_account_name AS STRING)
             )
 
                 SELECT a.datekey, 
