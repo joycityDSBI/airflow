@@ -276,3 +276,29 @@ def etl_statics_daily_kpi(**context):
     
     print("✅ statics_daily_kpi ETL 완료")
     return True
+
+
+# DAG 기본 설정
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+    'retry_delay': timedelta(seconds=15),
+}
+
+with DAG(
+    dag_id='ETL_statics',
+    default_args=default_args,
+    description='statics 데이터에 대해서 집계 처리',
+    schedule= '40 0 * * *',  
+    start_date=datetime(2025, 1, 1),
+    catchup=False,
+    tags=['ETL', 'statics', 'bigquery'],
+) as dag:
+
+    etl_statics_daily_kpi_task = PythonOperator(
+        task_id='etl_statics_daily_kpi',
+        python_callable=etl_statics_daily_kpi,
+    )
