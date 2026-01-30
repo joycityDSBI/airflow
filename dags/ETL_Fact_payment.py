@@ -374,7 +374,7 @@ def etl_f_common_payment(target_date: list, client):
                 FROM TC as a
                 LEFT OUTER JOIN datahub-478802.datahub.dim_ip4_country_code AS b
                 ON (a.ip = b.ip)
-                WHERE a.joyple_game_code in (119,123,127,129)
+                WHERE a.joyple_game_code not in (119,123,127,129)
                 group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20
 
                 union all
