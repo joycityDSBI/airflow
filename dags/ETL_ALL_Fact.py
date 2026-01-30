@@ -306,37 +306,35 @@ with DAG(
     tags=['ETL', 'fact', 'bigquery'],
 ) as dag:
 
-    # etl_fact_tracker_task = PythonOperator(
-    #     task_id='etl_fact_tracker',
-    #     python_callable=etl_fact_tracker,
-    # )
+    etl_fact_tracker_task = PythonOperator(
+        task_id='etl_fact_tracker',
+        python_callable=etl_fact_tracker,
+    )
     
-    # etl_fact_access_task = PythonOperator(
-    #     task_id='etl_fact_access',
-    #     python_callable=etl_fact_access,
-    # )
+    etl_fact_access_task = PythonOperator(
+        task_id='etl_fact_access',
+        python_callable=etl_fact_access,
+    )
         
     etl_fact_payment_task = PythonOperator(
         task_id='etl_fact_payment',
         python_callable=etl_fact_payment,
     )
 
-    # etl_fact_funnel_task = PythonOperator(
-    #     task_id='etl_fact_funnel',
-    #     python_callable=etl_fact_funnel,
-    # )
+    etl_fact_funnel_task = PythonOperator(
+        task_id='etl_fact_funnel',
+        python_callable=etl_fact_funnel,
+    )
 
-    # etl_fact_IAA_task = PythonOperator(
-    #     task_id='etl_fact_IAA',
-    #     python_callable=etl_fact_IAA,
-    # )
+    etl_fact_IAA_task = PythonOperator(
+        task_id='etl_fact_IAA',
+        python_callable=etl_fact_IAA,
+    )
 
-    # etl_fact_usermap_task = PythonOperator(
-    #     task_id='etl_fact_usermap',
-    #     python_callable=etl_fact_usermap,
-    # )
+    etl_fact_usermap_task = PythonOperator(
+        task_id='etl_fact_usermap',
+        python_callable=etl_fact_usermap,
+    )
 
 
-    # etl_fact_tracker_task >> etl_fact_access_task >> etl_fact_payment_task >> etl_fact_funnel_task >> etl_fact_IAA_task >> etl_fact_usermap_task
-
-    etl_fact_payment_task
+    etl_fact_tracker_task >> etl_fact_access_task >> etl_fact_payment_task >> etl_fact_funnel_task >> etl_fact_IAA_task >> etl_fact_usermap_task

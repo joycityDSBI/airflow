@@ -921,58 +921,58 @@ def etl_dim_exchange_rate(**context):
         print(f"   ㄴ 종료시간(UTC): {end_utc}")
 
         query = f"""
-        MERGE `datahub-478802.datahub.dim_exchange` T
-        USING (
-            WITH
-            -- 1. 오늘 날짜의 환율 정보를 가져옵니다.
-            today_exchange AS (
-                SELECT
-                    DATE(BaseDate, "Asia/Seoul") AS start_date,
-                    FromCurrencyCode AS currency_code,
-                    ARRAY_AGG(ExchangeRate ORDER BY BaseDate DESC LIMIT 1)[OFFSET(0)] AS exchange_rate
-                FROM `dataplatform-204306.PublicInformation.Exchange`
-                WHERE DATE(BaseDate, "Asia/Seoul") >= DATE('{end_utc.strftime("%Y-%m-%d")}')
-                AND ToCurrencyCode = "KRW"
-                GROUP BY 1, 2
-            ),
-            -- 2. 오늘 Payment 로그에 있는 모든 통화 코드를 가져옵니다.
-            all_currencies AS (
-                SELECT DISTINCT currency_code
-                FROM `dataplatform-204306.CommonLog.Payment`
-                WHERE log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S")}')
-                AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S")}')
-            ),
-            -- 3. 오늘 환율 정보가 없는 통화에 대해, 가장 최근의 환율을 가져옵니다.
-            latest_known_exchange AS (
-                SELECT
-                    currency as currency_code,
-                    ARRAY_AGG(exchange_rate ORDER BY datekey DESC LIMIT 1)[OFFSET(0)] AS exchange_rate
-                FROM `datahub-478802.datahub.dim_exchange`
-                WHERE currency IN (SELECT currency_code FROM all_currencies)
-                AND currency NOT IN (SELECT currency_code FROM today_exchange)
-                GROUP BY currency
-            )
-            -- 4. 오늘 환율 정보와, 부족분을 채운 최근 환율 정보를 합칩니다.
-            SELECT
-                DATE('{td_str}') AS datekey,
-                currency_code AS currency,
-                exchange_rate
-            FROM today_exchange
+        MERGE `datahub-478802.datahub.dim_exchange` AS target
+        USING
+        (
+        SELECT IFNULL(b.StateDate, a.StateDate) AS StateDateKST 
+            , IFNULL(a.CurrencyCode,  LAG(a.CurrencyCode) OVER (PARTITION BY a.CurrencyCode ORDER BY b.StateDate, a.CurrencyCode)) AS CurrencyCode
+            , IFNULL(ExchangeRate,    LAG(ExchangeRate)   OVER (PARTITION BY a.CurrencyCode ORDER BY b.StateDate, a.CurrencyCode)) AS ExchangeRate
+        FROM
+        (
+            SELECT DISTINCT StateDate, CurrencyCode
+            FROM UNNEST(GENERATE_DATE_ARRAY(DATE('{start_utc}'), DATE('{end_utc}'), INTERVAL 1 DAY)) AS StateDate
+            CROSS JOIN (
+            SELECT DISTINCT CurrencyCode 
+            FROM `dataplatform-reporting.DataService.V_0150_0000_Payment_V`
+            WHERE LogTime >= '{start_utc}'
+                AND LogTime <  '{end_utc}'
+            UNION ALL 
+            SELECT DISTINCT Currency AS  CurrencyCode
+            FROM `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
+            WHERE CmpgnDate >= DATE('{start_utc}', "Asia/Seoul")
+                AND CmpgnDate <  DATE('{end_utc}', "Asia/Seoul")
             UNION ALL
-            SELECT
-                DATE('{td_str}') AS datekey,
-                currency_code AS currency,
-                exchange_rate
-            FROM latest_known_exchange
-        ) S
-        ON T.datekey = S.datekey AND T.currency = S.currency
-        WHEN MATCHED AND T.exchange_rate IS DISTINCT FROM S.exchange_rate THEN
-            UPDATE SET
-                T.exchange_rate = S.exchange_rate,
-                T.create_timestamp = CURRENT_TIMESTAMP()
-        WHEN NOT MATCHED BY TARGET THEN
-            INSERT (datekey, currency, exchange_rate, create_timestamp)
-            VALUES (S.datekey, S.currency, IF(S.currency = 'KRW', 1, S.exchange_rate), CURRENT_TIMESTAMP())
+            SELECT DISTINCT CurrencyCode 
+            FROM `dataplatform-reporting.DataService.V_0151_0000_CommonLogPayment_V`
+            WHERE LogTime >= '{start_utc}'
+                AND LogTime <  '{end_utc}'             
+            )
+        ) AS a
+        LEFT OUTER JOIN (
+            SELECT DATE('2026-01-28 15:00:00', "Asia/Seoul") AS StateDate
+            , FromCurrencyCode AS CurrencyCode, ARRAY_AGG(ExchangeRate ORDER BY BaseDate DESC LIMIT 1)[OFFSET(0)] AS ExchangeRate
+            FROM `dataplatform-204306.PublicInformation.Exchange`
+            WHERE BaseDate >= TIMESTAMP_SUB('{start_utc}', INTERVAL 10 DAY)
+            AND BaseDate <  TIMESTAMP_ADD('{end_utc}', INTERVAL 6 HOUR)
+            AND ToCurrencyCode = "KRW"
+            GROUP BY FromCurrencyCode
+        ) as b
+        USING(StateDate, CurrencyCode)
+        WHERE a.StateDate = DATE('{start_utc}', "Asia/Seoul")
+        ) AS source ON target.datekey = source.StateDateKST And target.currency = source.CurrencyCode
+        WHEN MATCHED AND (IFNULL(target.exchange_rate, 0) <> IFNULL(source.ExchangeRate, 0)) THEN
+        UPDATE SET target.exchange_rate = IF(target.currency = "KRW", 1, source.ExchangeRate)
+                , target.create_timestamp = CURRENT_TIMESTAMP()
+        WHEN NOT MATCHED BY target THEN
+        INSERT(datekey, currency, exchange_rate, create_timestamp)
+        VALUES(
+            source.StateDateKST
+            , source.CurrencyCode
+            , IF(source.CurrencyCode = "KRW", 1, source.ExchangeRate)
+            , CURRENT_TIMESTAMP()
+        )
+        WHEN NOT MATCHED BY source AND (target.datekey = DATE('{start_utc}', "Asia/Seoul")) THEN
+        DELETE  
         """
 
         query_job = client.query(query)
