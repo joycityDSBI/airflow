@@ -150,7 +150,7 @@ def execute_bulk_upsert(session, batch_data: List[Dict]):
             "country": stmt.excluded.country,
             "cbt_code": stmt.excluded.cbt_code,
             "platform": stmt.excluded.platform,
-            "CountryCode": stmt.excluded.CountryCode,
+            "countryCode": stmt.excluded.countryCode,
             "synced_at": datetime.utcnow() # 동기화 시간 갱신
         }
     )
