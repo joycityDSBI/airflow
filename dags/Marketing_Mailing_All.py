@@ -1413,7 +1413,7 @@ def create_graph_send_email(**kwargs):
                         <table border="1" width="100%">
                             <tbody>
                                 <tr>
-                                    <td style="white-space:nowrap" class="tableTitleNew1">2. Paid / Orgainic 성과 비교</td>
+                                    <td style="white-space:nowrap" class="tableTitleNew1">2. Android Paid / Orgainic 성과 비교</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -1438,7 +1438,7 @@ def create_graph_send_email(**kwargs):
                         <table border="1" width="100%">
                             <tbody>
                                 <tr>
-                                    <td style="white-space:nowrap" class="tableTitleNew1">3. Paid 성과 비교 (전주대비 상승 / 하락 트렌드)</td>
+                                    <td style="white-space:nowrap" class="tableTitleNew1">3. Android Paid 성과 비교 (전주대비 상승 / 하락 트렌드)</td>
                                 </tr>
                             </tbody>
                         </table>
