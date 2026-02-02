@@ -61,7 +61,7 @@ def get_country_stats():
     SELECT 
         DATE(created_at) as datekey,
         country,
-        countryCode, 
+        "countryCode", 
         COUNT(DISTINCT CASE WHEN platform = 'PlayStation 5' THEN email end) as ps5_user_count,
         COUNT(DISTINCT CASE WHEN platform = 'Xbox Series X|S' THEN email end) as xbox_user_count
     FROM fsf2_beta_testers
@@ -86,11 +86,11 @@ def get_country_mail():
     # 요청하신 쿼리: 전체 기간, 국가별 Group By, Count Distinct Email
     sql = """
     SELECT 
-        countryCode, 
+        "countryCode", 
         COUNT(DISTINCT CASE WHEN platform = 'PlayStation 5' THEN email end) as ps5_user_count,
         COUNT(DISTINCT CASE WHEN platform = 'Xbox Series X|S' THEN email end) as xbox_user_count
     FROM fsf2_beta_testers
-    GROUP BY countryCode
+    GROUP BY "countryCode"
     ORDER BY 2 DESC;
     """
     
