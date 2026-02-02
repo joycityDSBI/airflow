@@ -301,12 +301,10 @@ with DAG(
         dag=dag
     )
 
-    # bash_task = BashOperator(
-    #     task_id = 'bash_task',
-    #     outlets = [fsf2_cbt_pre_register_etl],
-    #     bash_command = 'echo "producer_1 수행 완료"'
-    # )
+    bash_task = BashOperator(
+        task_id = 'bash_task',
+        outlets = [fsf2_cbt_pre_register_etl],
+        bash_command = 'echo "producer_1 수행 완료"'
+    )
 
-    # fsf2_cbt_pre_register_etl_task >> bash_task
-
-    fsf2_cbt_pre_register_etl_task
+    fsf2_cbt_pre_register_etl_task >> bash_task
