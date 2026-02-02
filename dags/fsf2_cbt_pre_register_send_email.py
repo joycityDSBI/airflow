@@ -60,12 +60,13 @@ def get_country_stats():
     sql = """
     SELECT 
         DATE(created_at) as datekey,
+        country,
         countryCode, 
         COUNT(DISTINCT CASE WHEN platform = 'PlayStation 5' THEN email end) as ps5_user_count,
         COUNT(DISTINCT CASE WHEN platform = 'Xbox Series X|S' THEN email end) as xbox_user_count
     FROM fsf2_beta_testers
-    GROUP BY 1,2
-    ORDER BY 1,2 DESC;
+    GROUP BY 1,2,3
+    ORDER BY 1,2,3 DESC;
     """
     
     try:
