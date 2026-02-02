@@ -65,6 +65,7 @@ class BetaTester(Base):
     created_at = Column(DateTime, nullable=True)
     utm_source = Column(String, nullable=True)
     utm_medium = Column(String, nullable=True)
+    countryCode = Column(String, nullable=True)
     synced_at = Column(DateTime, default=datetime.utcnow)
 
 # 테이블이 없으면 생성
@@ -149,6 +150,7 @@ def execute_bulk_upsert(session, batch_data: List[Dict]):
             "country": stmt.excluded.country,
             "cbt_code": stmt.excluded.cbt_code,
             "platform": stmt.excluded.platform,
+            "CountryCode": stmt.excluded.CountryCode,
             "synced_at": datetime.utcnow() # 동기화 시간 갱신
         }
     )
@@ -203,12 +205,14 @@ def fetch_and_store_data(start_unix: Optional[int] = None):
         for index, item in enumerate(items):
             encrypted_email = item.get("email")
             encrypted_country = item.get("country")
+            encrypted_countryCode = item.get("countryCode")
 
             if not encrypted_email or not encrypted_country:
                 continue
 
             # (1) 데이터 복호화 및 전처리
             final_country = decrypt_country(encrypted_country)
+            final_countryCode = decrypt_country(encrypted_countryCode)
             
             # 날짜 변환
             created_at_dt = None
@@ -228,6 +232,7 @@ def fetch_and_store_data(start_unix: Optional[int] = None):
                 "created_at": created_at_dt,
                 "utm_source": item.get("utm_source"),
                 "utm_medium": item.get("utm_medium"),
+                "countryCode": final_countryCode,
                 "synced_at": datetime.utcnow()
             }
             
@@ -296,10 +301,12 @@ with DAG(
         dag=dag
     )
 
-    bash_task = BashOperator(
-        task_id = 'bash_task',
-        outlets = [fsf2_cbt_pre_register_etl],
-        bash_command = 'echo "producer_1 수행 완료"'
-    )
+    # bash_task = BashOperator(
+    #     task_id = 'bash_task',
+    #     outlets = [fsf2_cbt_pre_register_etl],
+    #     bash_command = 'echo "producer_1 수행 완료"'
+    # )
 
-    fsf2_cbt_pre_register_etl_task >> bash_task
+    # fsf2_cbt_pre_register_etl_task >> bash_task
+
+    fsf2_cbt_pre_register_etl_task

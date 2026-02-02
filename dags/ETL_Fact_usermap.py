@@ -450,13 +450,15 @@ def etl_f_user_map_char(target_date:list, client):
                         SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', revenue, 0)) as daily_total_rev,
                         SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', buy_cnt, 0)) as daily_buy_cnt,
                         MAX(IF(datekey >= '{start_date}' AND datekey < '{end_date}', 1, 0)) as daily_pu,
-                        SUM(revenue) as stacked_rev, sum(buy_cnt) as stacked_buy_cnt,
+                        SUM(revenue) as stacked_rev, 
+                        sum(buy_cnt) as stacked_buy_cnt,
                         PERCENT_RANK() OVER (PARTITION BY joyple_game_code ORDER BY sum(revenue) DESC) AS stacked_rev_percent_rank,
                         SUM(IF(datekey >= DATE_TRUNC(DATE('{start_date}'), MONTH) AND datekey <= LAST_DAY(DATE_TRUNC(DATE('{start_date}'), MONTH), MONTH), revenue, 0)) as monthly_rev,
                         SUM(IF(datekey >= DATE_TRUNC(DATE_SUB(DATE('{start_date}'), INTERVAL 1 MONTH), MONTH) AND datekey <= LAST_DAY(DATE_TRUNC(DATE_SUB(DATE('{start_date}'), INTERVAL 1 MONTH), MONTH), MONTH), revenue, 0)) as before_monthly_rev,
                         SUM(IF(datekey >= DATE_TRUNC(DATE('{start_date}'), YEAR) AND datekey <= LAST_DAY(DATE_TRUNC(DATE('{start_date}'), YEAR), YEAR), revenue, 0)) as yearly_rev,
                         SUM(IF(datekey >= DATE_SUB('{start_date}', INTERVAL 30 DAY) AND datekey < '{end_date}', revenue, 0)) as last_30days_rev,
-                        min(datekey) as first_payment_datekey, MAX(IF(datekey < '{start_date}', datekey, null)) as last_payment_datekey
+                        min(datekey) as first_payment_datekey, 
+                        MAX(IF(datekey < '{start_date}', datekey, null)) as last_payment_datekey
                     FROM `datahub-478802.datahub.f_common_payment` WHERE datekey < '{end_date}'
                     GROUP BY 1,2,3
                 ) AS C ON A.joyple_game_code = C.joyple_game_code AND A.auth_account_name = C.auth_account_name AND A.game_sub_user_name = C.game_sub_user_name
