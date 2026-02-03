@@ -499,3 +499,5 @@ def etl_f_common_payment(target_date: list, client):
     
     print("✅ f_common_payment ETL 완료")
     return True
+
+

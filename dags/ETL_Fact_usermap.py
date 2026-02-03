@@ -444,7 +444,7 @@ def etl_f_user_map_char(target_date:list, client):
                     (
                         SELECT * FROM `datahub-478802.datahub.f_common_register_char` WHERE game_sub_user_reg_datekey < '{end_date}'
                     ) AS B
-                ON A.joyple_game_code = B.joyple_game_code AND A.auth_account_name = B.auth_account_name AND A.game_sub_user_name = B.game_sub_user_name
+                ON A.joyple_game_code = B.joyple_game_code AND A.auth_account_name = B.auth_account_name AND COALESCE(A.game_sub_user_name, 'NULL') = COALESCE(B.game_sub_user_name, 'NULL')
                 LEFT OUTER JOIN (
                     SELECT joyple_game_code, auth_account_name, game_sub_user_name,
                         SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', revenue, 0)) as daily_total_rev,
@@ -461,7 +461,7 @@ def etl_f_user_map_char(target_date:list, client):
                         MAX(IF(datekey < '{start_date}', datekey, null)) as last_payment_datekey
                     FROM `datahub-478802.datahub.f_common_payment` WHERE datekey < '{end_date}'
                     GROUP BY 1,2,3
-                ) AS C ON A.joyple_game_code = C.joyple_game_code AND A.auth_account_name = C.auth_account_name AND A.game_sub_user_name = C.game_sub_user_name
+                ) AS C ON A.joyple_game_code = C.joyple_game_code AND A.auth_account_name = C.auth_account_name AND COALESCE(A.game_sub_user_name, 'NULL') = COALESCE(C.game_sub_user_name, 'NULL')
                 LEFT OUTER JOIN (
                     SELECT joyple_game_code, 
                             auth_account_name, 
@@ -470,7 +470,7 @@ def etl_f_user_map_char(target_date:list, client):
                             SUM(IF(watch_datekey >= '{start_date}' AND watch_datekey < '{end_date}', revenue_per_user_KRW, 0)) as daily_IAA_rev
                     FROM `datahub-478802.datahub.f_IAA_auth_account_performance_joyple` WHERE watch_datekey < '{end_date}'
                     GROUP BY 1,2,3
-                ) AS D ON A.joyple_game_code = D.joyple_game_code  AND A.auth_account_name = D.auth_account_name AND A.game_sub_user_name = D.game_sub_user_name
+                ) AS D ON A.joyple_game_code = D.joyple_game_code  AND A.auth_account_name = D.auth_account_name AND COALESCE(A.game_sub_user_name, 'NULL') = COALESCE(D.game_sub_user_name, 'NULL')
                 LEFT OUTER JOIN (
                     SELECT joyple_game_code, auth_account_name, game_sub_user_name,
                         SUM(IF(datekey >= '{start_date}' AND datekey < '{end_date}', play_seconds, 0)) as play_seconds,
@@ -480,19 +480,19 @@ def etl_f_user_map_char(target_date:list, client):
                         COUNT(DISTINCT(IF(datekey >= DATE_SUB('{start_date}', INTERVAL 6 DAY) AND datekey < '{end_date}' AND access_type_id = 1, datekey, null))) as stickiness
                     FROM `datahub-478802.datahub.f_common_access` WHERE datekey >= DATE_SUB('{start_date}', INTERVAL 6 DAY) AND datekey < '{end_date}'
                     GROUP BY 1,2,3
-                ) AS E ON A.joyple_game_code = E.joyple_game_code AND A.auth_account_name = E.auth_account_name AND A.game_sub_user_name = E.game_sub_user_name
+                ) AS E ON A.joyple_game_code = E.joyple_game_code AND A.auth_account_name = E.auth_account_name AND COALESCE(A.game_sub_user_name, 'NULL') = COALESCE(E.game_sub_user_name, 'NULL')
                 LEFT OUTER JOIN (
                     SELECT joyple_game_code, auth_account_name, game_sub_user_name,
                         ARRAY_AGG(STRUCT(pg_id, platform_device_type, product_code, product_name, revenue, buy_cnt) ORDER BY datekey ASC) as products_array
                     FROM `datahub-478802.datahub.f_common_payment` WHERE datekey >= '{start_date}' and datekey < '{end_date}'
                     GROUP BY 1,2,3
-                ) AS F ON A.joyple_game_code = F.joyple_game_code AND A.auth_account_name = F.auth_account_name AND A.game_sub_user_name = F.game_sub_user_name
+                ) AS F ON A.joyple_game_code = F.joyple_game_code AND A.auth_account_name = F.auth_account_name AND COALESCE(A.game_sub_user_name, 'NULL') = COALESCE(F.game_sub_user_name, 'NULL')
                 LEFT OUTER JOIN (SELECT * FROM `datahub-478802.datahub.f_common_register` WHERE reg_datekey < '{end_date}') AS G
                     ON A.joyple_game_code = G.joyple_game_code AND A.auth_account_name = G.auth_account_name
                 LEFT OUTER JOIN (
                     SELECT joyple_game_code, auth_account_name, game_sub_user_name, MAX(last_login_datekey) as last_login_datekey, MAX(max_game_user_level) as max_game_user_level
                     FROM `datahub-478802.datahub.f_common_access_last_login` GROUP BY 1,2,3
-                ) AS H ON A.joyple_game_code = H.joyple_game_code AND A.auth_account_name = H.auth_account_name AND A.game_sub_user_name = H.game_sub_user_name
+                ) AS H ON A.joyple_game_code = H.joyple_game_code AND A.auth_account_name = H.auth_account_name AND COALESCE(A.game_sub_user_name, 'NULL') = COALESCE(H.game_sub_user_name, 'NULL')
         ) as source
         ON target.datekey = source.datekey
         AND target.joyple_game_code = source.joyple_game_code
