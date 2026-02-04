@@ -998,7 +998,7 @@ def etl_f_cost_campaign_rule(client):
                             ELSE false 
                         END AS pre_yn
                     , CASE WHEN game_id = 'KOFS' and country = 'JP' then 1 
-                            WHEN game_id = 'RESU' and country = 'KR' then 1
+                            WHEN game_id = 'RESU' and country IN ('KR', 'TW', 'HK', 'MO', 'ID', 'BN', 'MM', 'MN') then 1
                             ELSE 0 
                             END AS extra_process_required ## 기존 작성되어있던 extra_process_required 쿼리에 RESU 캠페인 처리 추가   
                     ,CASE
