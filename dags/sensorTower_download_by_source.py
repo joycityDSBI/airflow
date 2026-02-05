@@ -173,7 +173,8 @@ def sensortower_download_by_source_api(start_date, end_date, APP_ID, SENSORTOWER
         downloads_revenue_url = f"https://api.sensortower.com/v1/unified/downloads_by_sources?app_ids={APP_ID}&countries={COUNTRY_CODE}&date_granularity=daily&start_date={start_date}&end_date={end_date}&auth_token={SENSORTOWER_TOKEN}"
         response = requests.get(downloads_revenue_url, timeout = 120)
         data = response.json()
-
+        print(data)
+        
         # 데이터가 비어있는지 확인
         if isinstance(data, dict) and "error" in data:
             raise ValueError(f"SensorTower API Error: {data['error']}")
