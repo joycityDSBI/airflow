@@ -949,7 +949,7 @@ def etl_dim_exchange_rate(**context):
             )
         ) AS a
         LEFT OUTER JOIN (
-            SELECT DATE('2026-01-28 15:00:00', "Asia/Seoul") AS StateDate
+            SELECT DATE('{start_utc}', "Asia/Seoul") AS StateDate
             , FromCurrencyCode AS CurrencyCode, ARRAY_AGG(ExchangeRate ORDER BY BaseDate DESC LIMIT 1)[OFFSET(0)] AS ExchangeRate
             FROM `dataplatform-204306.PublicInformation.Exchange`
             WHERE BaseDate >= TIMESTAMP_SUB('{start_utc}', INTERVAL 10 DAY)
