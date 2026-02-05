@@ -168,13 +168,31 @@ def sensortower_download_by_source_api(start_date, end_date, APP_ID, SENSORTOWER
     
     client = init_clients()["bq_client"]
 
-    for COUNTRY_CODE in ['WW', 'US', 'JP', 'KR', 'DE', 'FR', 'GB']:
+    for COUNTRY_CODE in [
+            "WW", "AE", "AO", "AR", "AT", 
+            "AU", "AZ", "BE", "BG", "BR", 
+            "BY", "CA", "CH",
+            "CL", "CN", "CO", "CR", "CZ",
+            "DE", "DK", "DO", "DZ", "EC",
+            "EG", "ES", "FI", "FR", "GB",
+            "GH", "GR", "GT", "HK", "HR",
+            "HU", "ID", "IE", "IL", "IN",
+            "IT", "JP", "KE", "KR", "KW",
+            "KZ", "LB", "LK", "LT", "LU",
+            "MO", "MX", "MY", "NG", "NL",
+            "NO", "NZ", "OM", "PA", "PE",
+            "PH", "PK", "PL", "PT", "QA",
+            "RO", "RU", "SA", "SE", "SG",
+            "SI", "SK", "SV", "TH", "TN",
+            "TR", "TW", "UA", "US", "UY",
+            "UZ", "VE", "VN", "ZA"
+    ]:
     
         downloads_revenue_url = f"https://api.sensortower.com/v1/unified/downloads_by_sources?app_ids={APP_ID}&countries={COUNTRY_CODE}&date_granularity=daily&start_date={start_date}&end_date={end_date}&auth_token={SENSORTOWER_TOKEN}"
         response = requests.get(downloads_revenue_url, timeout = 120)
         data = response.json()
         print(data)
-        
+
         # 데이터가 비어있는지 확인
         if isinstance(data, dict) and "error" in data:
             raise ValueError(f"SensorTower API Error: {data['error']}")
@@ -296,6 +314,38 @@ def app_id_downloads_by_source_fetch_load(APP_ID_LIST: list, SENSORTOWER_TOKEN: 
     return True
 
 
+
+###### 마이그레이션 용
+def migration_data(APP_ID_LIST: list, SENSORTOWER_TOKEN: str, year_list: list = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]):
+
+    # 6일전 날짜를 가져오는 로직
+    month_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+    for year in year_list:
+        for month in month_list:
+            # 각 달의 시작일과 종료일 계산
+            start_date = datetime(year, month, 1).date()
+            if month == 12:
+                end_date = datetime(year + 1, 1, 1).date() - timedelta(days=1)
+            else:
+                end_date = datetime(year, month + 1, 1).date() - timedelta(days=1)
+            
+            start_date_str = start_date.strftime("%Y-%m-%d")
+            end_date_str = end_date.strftime("%Y-%m-%d")
+
+            for APP_ID in APP_ID_LIST:
+                fetch_data_in_weekly_batches(total_start_str=start_date_str,
+                                             total_end_str=end_date_str,
+                                             APP_ID=APP_ID,
+                                             SENSORTOWER_TOKEN=SENSORTOWER_TOKEN)
+                
+                print(f"✅ APP_ID {APP_ID} 데이터 처리 완료 for {start_date_str} to {end_date_str}.")
+        print(f"✅ {year} - {month} APP_ID {APP_ID} 데이터 처리 완료 ")
+
+    print("✅ 전체 데이터 처리 완료.")
+    return True
+
+
 # DAG 기본 설정
 default_args = {
     'owner': 'airflow',
@@ -316,12 +366,21 @@ with DAG(
     tags=['SensorTower', 'downloads_by_source', 'bigquery'],
 ) as dag:
 
-    seonsortower_downloads_by_source_fetch_load_task = PythonOperator(
-        task_id='seonsortower_downloads_by_source_fetch_load',
-        python_callable=app_id_downloads_by_source_fetch_load,
+    # seonsortower_downloads_by_source_fetch_load_task = PythonOperator(
+    #     task_id='seonsortower_downloads_by_source_fetch_load',
+    #     python_callable=app_id_downloads_by_source_fetch_load,
+    #     op_kwargs={
+    #         'APP_ID_LIST': APP_ID_LIST,
+    #         'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN
+    #     }
+    # )
+    
+
+    MIGRATION_seonsortower_downloads_by_source_task = PythonOperator(
+        task_id='MIGRATION_seonsortower_downloads_by_source',
+        python_callable=migration_data,
         op_kwargs={
             'APP_ID_LIST': APP_ID_LIST,
             'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN
         }
     )
-    
