@@ -315,7 +315,31 @@ def app_id_downloads_by_source_fetch_load(APP_ID_LIST: list, SENSORTOWER_TOKEN: 
 
 
 
+
+##################################################################
 ###### 마이그레이션 용
+##################################################################
+def migration_monthly_batches(total_start_str: str, total_end_str: str, APP_ID: str, SENSORTOWER_TOKEN: str):
+    
+    start_date = datetime.strptime(total_start_str, "%Y-%m-%d").date()
+    end_date = datetime.strptime(total_end_str, "%Y-%m-%d").date()    
+        
+    # 5. 문자열로 다시 변환 (API 호출용)
+    batch_start_str = start_date.strftime("%Y-%m-%d")
+    batch_end_str = end_date.strftime("%Y-%m-%d")
+
+    try:
+        sensortower_download_by_source_api(batch_start_str, batch_end_str, APP_ID, SENSORTOWER_TOKEN)
+        print(f"API 호출: {batch_start_str} ~ {batch_end_str} 수행 중...")
+        
+    except Exception as e:
+        logger.error(f"Batch {batch_start_str} ~ {batch_end_str} failed: {e}")
+        # 필요 시 여기서 raise를 하여 전체 작업을 멈출지, continue로 다음 주차로 넘어갈지 결정
+        raise e
+
+
+    logger.info("All batches processed successfully.")
+
 def migration_data(APP_ID_LIST: list, SENSORTOWER_TOKEN: str, year_list: list = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]):
 
     # 6일전 날짜를 가져오는 로직
@@ -334,7 +358,7 @@ def migration_data(APP_ID_LIST: list, SENSORTOWER_TOKEN: str, year_list: list = 
             end_date_str = end_date.strftime("%Y-%m-%d")
 
             for APP_ID in APP_ID_LIST:
-                fetch_data_in_weekly_batches(total_start_str=start_date_str,
+                migration_monthly_batches(total_start_str=start_date_str,
                                              total_end_str=end_date_str,
                                              APP_ID=APP_ID,
                                              SENSORTOWER_TOKEN=SENSORTOWER_TOKEN)
