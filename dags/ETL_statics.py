@@ -224,7 +224,7 @@ with DAG(
     dag_id='ETL_statics',
     default_args=default_args,
     description='statics 데이터에 대해서 집계 처리',
-    schedule= '30 0 * * *',  
+    schedule= '50 21 * * *',  
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'statics', 'bigquery'],
