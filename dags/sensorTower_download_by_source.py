@@ -30,8 +30,8 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
 # 가져올 게임의 unified app id (sensortower)
 # 킹샷 : 67bb93ed47b43a18952ffdfc 2025/02/22
-# 화이트아웃서버아벌 : 638ee532480da915a62f0b34
-# 라스트워서바이벌 : 64075e77537c41636a8e1c58
+# 화이트아웃서버아벌 : 638ee532480da915a62f0b34 2023/02/09
+# 라스트워서바이벌 : 64075e77537c41636a8e1c58 2026/06/20
 # 라스트z 서바이벌 슈터 : 658ea0be1fc48c4dbb3065e6
 # 타일즈 서바이버 : 67d3aaff2c328ae8e547d0ef
 # 다크워 서바이벌 : 6573c39d5c3b423d5d04560f
@@ -55,7 +55,9 @@ APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '5f6d6b6a18bf063c24c5d0a0',
                 '625e3a06e0ba195166fbce2f']
 
-APP_ID_LIST = ['67bb93ed47b43a18952ffdfc']
+APP_ID_LIST = ['638ee532480da915a62f0b34']
+LUNCHED_DATE = "2023-02-09"
+YEAR_LIST = [2023, 2024, 2025]
 
 # APP_ID = '625e3a06e0ba195166fbce2f'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
@@ -174,7 +176,7 @@ def sensortower_download_by_source_api(start_date, end_date, APP_ID, SENSORTOWER
             "WW", "AE", "AO", "AR", "AT", 
             "AU", "AZ", "BE", "BG", "BR", 
             "BY", "CA", "CH",
-            "CL", "CN", "CO", "CR", "CZ",
+            "CL", "CO", "CR", "CZ",
             "DE", "DK", "DO", "DZ", "EC",
             "EG", "ES", "FI", "FR", "GB",
             "GH", "GR", "GT", "HK", "HR",
@@ -371,6 +373,7 @@ def migration_data(APP_ID_LIST: list, SENSORTOWER_TOKEN: str, year_list: list = 
 
     # 6일전 날짜를 가져오는 로직
     month_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    game_lunched_date = LUNCHED_DATE
 
     for year in year_list:
         for month in month_list:
@@ -384,13 +387,16 @@ def migration_data(APP_ID_LIST: list, SENSORTOWER_TOKEN: str, year_list: list = 
             start_date_str = start_date.strftime("%Y-%m-%d")
             end_date_str = end_date.strftime("%Y-%m-%d")
 
-            for APP_ID in APP_ID_LIST:
-                migration_monthly_batches(total_start_str=start_date_str,
-                                             total_end_str=end_date_str,
-                                             APP_ID=APP_ID,
-                                             SENSORTOWER_TOKEN=SENSORTOWER_TOKEN)
-                
-                print(f"✅ APP_ID {APP_ID} 데이터 처리 완료 for {start_date_str} to {end_date_str}.")
+            if end_date < datetime.strptime(game_lunched_date, "%Y-%m-%d").date():
+                continue # 해당 달이 게임 출시 이전이면 스킵
+            else:
+                for APP_ID in APP_ID_LIST:
+                    migration_monthly_batches(total_start_str=start_date_str,
+                                                total_end_str=end_date_str,
+                                                APP_ID=APP_ID,
+                                                SENSORTOWER_TOKEN=SENSORTOWER_TOKEN)
+                    
+                    print(f"✅ APP_ID {APP_ID} 데이터 처리 완료 for {start_date_str} to {end_date_str}.")
         print(f"✅ {year} - {month} APP_ID {APP_ID} 데이터 처리 완료 ")
 
     print("✅ 전체 데이터 처리 완료.")
@@ -434,6 +440,6 @@ with DAG(
         op_kwargs={
             'APP_ID_LIST': APP_ID_LIST,
             'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN,
-            'year_list': [2025]
+            'year_list': YEAR_LIST
         }
     )

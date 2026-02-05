@@ -27,19 +27,12 @@ ETL_dimension = Dataset('ETL_dimension')
 PROJECT_ID = "datahub-478802"
 LOCATION = "US"
 
-
-
-
     
 def etl_fact_tracker(**context):
     logger = logging.getLogger(__name__)
 
     client = init_clients()
     bq_client = client["bq_client"]
-
-    ########### 백필용 데이터 처리    
-    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
-    # run_kst = None
 
     # 날짜 계산
     run_date = context.get('logical_date') or context.get('execution_date')
@@ -50,6 +43,13 @@ def etl_fact_tracker(**context):
 
     # 3. 날짜 계산 함수 호출
     target_date, _ = calc_target_date(run_date)
+
+    ########### 백필용 데이터 처리    
+    target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
+    run_kst = None
+
+
+
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
     try:
@@ -71,10 +71,6 @@ def etl_fact_access(**context):
     client = init_clients()
     bq_client = client["bq_client"]
 
-    ########### 백필용 데이터 처리    
-    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
-    # run_kst = None
-
     # 날짜 계산
     run_date = context.get('logical_date') or context.get('execution_date')
 
@@ -84,6 +80,11 @@ def etl_fact_access(**context):
 
     # 3. 날짜 계산 함수 호출
     target_date, _ = calc_target_date(run_date)
+
+    ########### 백필용 데이터 처리    
+    target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
+    run_kst = None
+
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
     try:
@@ -101,10 +102,6 @@ def etl_fact_access(**context):
 def etl_fact_payment(**context):
     logger = logging.getLogger(__name__)
 
-    ########### 백필용 데이터 처리    
-    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
-    # run_kst = None
-
     # 날짜 계산
     run_date = context.get('logical_date') or context.get('execution_date')
 
@@ -114,6 +111,13 @@ def etl_fact_payment(**context):
 
     # 3. 날짜 계산 함수 호출
     target_date, _ = calc_target_date(run_date)
+
+
+    ########### 백필용 데이터 처리    
+    target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
+    run_kst = None
+
+
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
     client = init_clients()
@@ -130,8 +134,6 @@ def etl_fact_payment(**context):
 def etl_fact_funnel(**context):
     logger = logging.getLogger(__name__)
 
-    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
-
     # 날짜 계산
     run_date = context.get('logical_date') or context.get('execution_date')
 
@@ -141,6 +143,13 @@ def etl_fact_funnel(**context):
 
     # 3. 날짜 계산 함수 호출
     target_date, _ = calc_target_date(run_date)
+
+
+    ########### 백필용 데이터 처리    
+    target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
+    run_kst = None
+
+
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
     client = init_clients()
@@ -157,8 +166,6 @@ def etl_fact_funnel(**context):
 def etl_fact_IAA(**context):
     logger = logging.getLogger(__name__)
 
-    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
-
     # 날짜 계산
     run_date = context.get('logical_date') or context.get('execution_date')
 
@@ -168,6 +175,11 @@ def etl_fact_IAA(**context):
 
     # 3. 날짜 계산 함수 호출
     target_date, _ = calc_target_date(run_date)
+
+    ########### 백필용 데이터 처리    
+    target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
+    run_kst = None
+
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
     client = init_clients()
@@ -186,8 +198,6 @@ def etl_fact_IAA(**context):
 def etl_fact_usermap(**context):
     logger = logging.getLogger(__name__)
 
-    # target_date = target_date_range("2026-01-06", "2026-01-26")  ## 백필용
-
     # 날짜 계산
     run_date = context.get('logical_date') or context.get('execution_date')
 
@@ -197,6 +207,11 @@ def etl_fact_usermap(**context):
 
     # 3. 날짜 계산 함수 호출
     target_date, _ = calc_target_date(run_date)
+
+    ########### 백필용 데이터 처리    
+    target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
+    run_kst = None
+
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
     client = init_clients()
