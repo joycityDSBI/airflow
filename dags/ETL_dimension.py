@@ -1956,7 +1956,7 @@ with DAG(
     dag_id='ETL_dimension',
     default_args=default_args,
     description='전체 dimension table에 대해서 OLAP 처리 (KST D-1 기준)',
-    schedule= '01 0 * * *',  ## KST 09:10 AM 매일 실행
+    schedule= '30 21 * * *',  ## KST 기준 오전 6시 30분
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'dim', 'bigquery'],
