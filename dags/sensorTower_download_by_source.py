@@ -186,25 +186,50 @@ def sensortower_download_by_source_api(start_date, end_date, APP_ID, SENSORTOWER
             "SI", "SK", "SV", "TH", "TN",
             "TR", "TW", "UA", "US", "UY",
             "UZ", "VE", "VN", "ZA"
-    ]:
+        ]:
     
         downloads_revenue_url = f"https://api.sensortower.com/v1/unified/downloads_by_sources?app_ids={APP_ID}&countries={COUNTRY_CODE}&date_granularity=daily&start_date={start_date}&end_date={end_date}&auth_token={SENSORTOWER_TOKEN}"
+        print(f"★★★★★★★★ Fetching data from SensorTower API: {downloads_revenue_url}")
         response = requests.get(downloads_revenue_url, timeout = 120)
-        data = response.json()
-        print(data)
 
-        # 데이터가 비어있는지 확인
+        # [추가 1] HTTP 요청 자체가 실패했는지 확인 (4xx, 5xx 에러 감지)
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            print(f"⚠️ HTTP Error for {COUNTRY_CODE}: {e}")
+            continue # 다음 국가로 넘어감
+
+        data = response.json()
+
+
+        # 데이터가 비어있는지 확인 (기존 로직)
         if isinstance(data, dict) and "error" in data:
-            raise ValueError(f"SensorTower API Error: {data['error']}")
+            # 에러가 치명적이지 않다면 로그만 남기고 continue 하는 것이 좋을 수 있습니다.
+            print(f"⚠️ SensorTower API Error for {COUNTRY_CODE}: {data['error']}")
+            continue
+
+        items = data.get('data', [])
         
+        if not items:
+            print(f"ℹ️ No data found for {COUNTRY_CODE}. Skipping...")
+            continue
+
         rows = []
-        for item in data['data']:
-            app_id = item['app_id']
+        for item in items:  # data['data'] 대신 안전하게 가져온 items 사용
+            app_id = item.get('app_id') # .get() 사용 권장
             country = COUNTRY_CODE
-            for entry in item['breakdown']:
+            
+            # breakdown 키도 없을 수 있으므로 방어 코드 추가
+            breakdown_list = item.get('breakdown', [])
+            
+            for entry in breakdown_list:
                 entry['app_id'] = app_id
                 entry['country'] = country
                 rows.append(entry)
+        
+        # rows가 비어있으면 다음 국가로 (빈 DataFrame 생성 방지)
+        if not rows:
+            continue
 
         df = pd.DataFrame(rows)
             
