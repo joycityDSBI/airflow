@@ -55,6 +55,8 @@ APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '5f6d6b6a18bf063c24c5d0a0',
                 '625e3a06e0ba195166fbce2f']
 
+APP_ID_LIST = ['67bb93ed47b43a18952ffdfc']
+
 # APP_ID = '625e3a06e0ba195166fbce2f'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
 
@@ -431,6 +433,7 @@ with DAG(
         python_callable=migration_data,
         op_kwargs={
             'APP_ID_LIST': APP_ID_LIST,
-            'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN
+            'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN,
+            'year_list': [2025]
         }
     )
