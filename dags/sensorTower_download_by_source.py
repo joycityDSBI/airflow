@@ -366,6 +366,7 @@ with DAG(
     tags=['SensorTower', 'downloads_by_source', 'bigquery'],
 ) as dag:
 
+    ## 실제 라이브 DAG
     # seonsortower_downloads_by_source_fetch_load_task = PythonOperator(
     #     task_id='seonsortower_downloads_by_source_fetch_load',
     #     python_callable=app_id_downloads_by_source_fetch_load,
