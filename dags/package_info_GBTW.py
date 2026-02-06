@@ -12,12 +12,12 @@ from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 
 # 사용 예시
-SPREADSHEET_ID = '1mnsTzSupPOBhtk-rZSnxk4oALPqTDGd3vkGfS7gt8z0'
-SHEET_NAME = '상품요약(신)'
+GBTW_SPREADSHEET_ID = '1mnsTzSupPOBhtk-rZSnxk4oALPqTDGd3vkGfS7gt8z0'
+GBTW_SHEET_NAME = '상품요약(신)'
 PROJECT_ID = "datahub-478802"
 LOCATION = "US"
 
-
+################### 유틸함수 #####################
 def get_var(key: str, default: str = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
@@ -55,6 +55,7 @@ def init_clients():
     }
 
 
+#################### GBTW 패키지 정보 ETL 함수 #####################
 def GBTW_get_gsheet_to_df(spreadsheet_id, sheet_name):
     # 1. 인증 설정 (서비스 계정 키 파일 경로)
 
@@ -122,7 +123,7 @@ def GBTW_get_gsheet_to_df(spreadsheet_id, sheet_name):
 
 def GBTW_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
 
-    df = GBTW_get_gsheet_to_df(SPREADSHEET_ID, SHEET_NAME)
+    df = GBTW_get_gsheet_to_df(GBTW_SPREADSHEET_ID, GBTW_SHEET_NAME)
     
     credentials = get_gcp_credentials()
     client = bigquery.Client(project=project_id, credentials=credentials)
@@ -165,7 +166,21 @@ def GBTW_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
     except Exception as e:
         print(f"❌ BigQuery 업로드 중 에러 발생: {e}")
         raise e # 에러 추적을 위해 raise 추가
-    
+
+
+#################### POTC 패키지 정보 ETL 함수 #####################
+
+
+
+
+
+
+
+
+
+
+
+# DAG 기본 설정
 default_args = {
     'owner': 'airflow',
     'retries': 1,
@@ -173,13 +188,13 @@ default_args = {
 }
 
 with DAG(
-    dag_id='ETL_Fact_Monitoring_daily',
+    dag_id='Package_Info_ETL',
     default_args=default_args,
-    description='DAG run statistics query and email',
-    schedule='20 23 * * *',  # 매일 오전 09시 50분 실행
+    description='Package Info ETL',
+    schedule='20 20 * * *',  # 매일 오전 09시 50분 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
-    tags=['ETL', 'monitoring', 'bigquery'],
+    tags=['ETL', 'package_info', 'bigquery'],
 ) as dag:
 
     GBTW_truncate_and_insert_to_bigquery_task = PythonOperator(
