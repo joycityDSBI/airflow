@@ -152,7 +152,7 @@ def GBTW_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
     for cl in to_int_list:
         df_final[cl] = df_final[cl].str.replace(r'[₩,]', '', regex=True)
         df_final[cl] = pd.to_numeric(df_final[cl], errors='coerce')
-        df_final[cl] = df_final[cl].fillna(0).astype(int)
+        df_final[cl] = df_final[cl].fillna(0).astype(str)
     
     # 3. 데이터 삽입
     try:
@@ -246,7 +246,7 @@ def POTC_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
     for cl in to_int_list:
         df_final[cl] = df_final[cl].str.replace(r'[₩,]', '', regex=True)
         df_final[cl] = pd.to_numeric(df_final[cl], errors='coerce')
-        df_final[cl] = df_final[cl].fillna(0).astype(int)
+        df_final[cl] = df_final[cl].fillna(0).astype(str)
     
     # 3. 데이터 삽입
     try:
