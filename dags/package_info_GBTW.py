@@ -19,7 +19,7 @@ POTC_SPREADSHEET_ID = '121hBk4DKpD2Wfzd59hCPUtVu7zqibmiKhxAr8UkZWJQ'
 POTC_SHEET_NAME = '메타데이터'
 
 PROJECT_ID = "datahub-478802"
-LOCATION = "us-central1"
+LOCATION = "US"
 
 ################### 유틸함수 #####################
 def get_var(key: str, default: str = None) -> str:
