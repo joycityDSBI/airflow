@@ -2,6 +2,7 @@
 from multiprocessing import context
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
+from airflow.operators.bash import BashOperator
 from airflow.models import Variable
 
 from google.cloud import bigquery
@@ -23,6 +24,7 @@ from ETL_Utils import init_clients, calc_target_date, target_date_range
 
 
 ETL_dimension = Dataset('ETL_dimension')
+ETL_ALL_Fact = Dataset('ETL_ALL_Fact')
 
 PROJECT_ID = "datahub-478802"
 LOCATION = "US"
@@ -248,7 +250,6 @@ with DAG(
     dag_id='ETL_ALL_Fact',
     default_args=default_args,
     description='전체 fact table에 대해서 OLAP 처리 (KST D-1 기준)',
-    # schedule='30 03 * * *',  # 매일 오전 3시 30분 실행
     schedule= [ETL_dimension], ################ ETL dimension DAG 완료 후 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
@@ -285,5 +286,10 @@ with DAG(
         python_callable=etl_fact_usermap,
     )
 
+    bash_task = BashOperator(
+        task_id = 'bash_task',
+        outlets = [ETL_ALL_Fact],
+        bash_command = 'echo "ETL_ALL_Fact 수행 완료"'
+    )
 
-    etl_fact_tracker_task >> etl_fact_access_task >> etl_fact_payment_task >> etl_fact_funnel_task >> etl_fact_IAA_task >> etl_fact_usermap_task
+    etl_fact_tracker_task >> etl_fact_access_task >> etl_fact_payment_task >> etl_fact_funnel_task >> etl_fact_IAA_task >> etl_fact_usermap_task >> bash_task

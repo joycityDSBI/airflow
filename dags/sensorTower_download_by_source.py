@@ -31,7 +31,7 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 # 가져올 게임의 unified app id (sensortower)
 # 킹샷 : 67bb93ed47b43a18952ffdfc 2025/02/22
 # 화이트아웃서버아벌 : 638ee532480da915a62f0b34 2023/02/09
-# 라스트워서바이벌 : 64075e77537c41636a8e1c58 2026/06/20
+# 라스트워서바이벌 : 64075e77537c41636a8e1c58 2023/06/20
 # 라스트z 서바이벌 슈터 : 658ea0be1fc48c4dbb3065e6
 # 타일즈 서바이버 : 67d3aaff2c328ae8e547d0ef
 # 다크워 서바이벌 : 6573c39d5c3b423d5d04560f
