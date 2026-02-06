@@ -661,8 +661,8 @@ with DAG(
     dag_id='ETL_statics',
     default_args=default_args,
     description='statics 데이터에 대해서 집계 처리',
-    schedule= '50 21 * * *',  
-    start_date=[ETL_ALL_Fact],
+    schedule= [ETL_ALL_Fact],  
+    start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'statics', 'bigquery'],
 ) as dag:
