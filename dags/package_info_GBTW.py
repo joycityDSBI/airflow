@@ -163,7 +163,8 @@ def GBTW_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
             destination_table=f"{dataset_id}.{table_id}",
             project_id=project_id,
             if_exists='append', 
-            progress_bar=True
+            progress_bar=True,
+            credentials=credentials
         )
         print(f"✅ {len(df_final)}행 데이터가 {table_full_id}에 성공적으로 Insert 되었습니다.")
     except Exception as e:
@@ -256,7 +257,8 @@ def POTC_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
             destination_table=f"{dataset_id}.{table_id}",
             project_id=project_id,
             if_exists='append', 
-            progress_bar=True
+            progress_bar=True,
+            credentials=credentials
         )
         print(f"✅ {len(df_final)}행 데이터가 {table_full_id}에 성공적으로 Insert 되었습니다.")
     except Exception as e:
