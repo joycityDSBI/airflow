@@ -38,7 +38,6 @@ def get_gcp_credentials():
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive',
         "https://www.googleapis.com/auth/cloud-platform",
-        "https://www.googleapis.com/auth/bigquery"
     ]
     
     return service_account.Credentials.from_service_account_info(
