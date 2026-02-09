@@ -633,8 +633,6 @@ def RESU_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
         raise e # 에러 추적을 위해 raise 추가
 
 
-
-
 # DAG 기본 설정
 default_args = {
     'owner': 'airflow',
