@@ -39,7 +39,7 @@ def etl_statics_daily_kpi(**context):
 
     target_date, _ = calc_target_date(run_date)
     #################### 백필용 데이터 처리
-    target_date = target_date_range("2026-02-06", "2026-02-08")  ## 백필용
+    # target_date = target_date_range("2026-02-06", "2026-02-08")  ## 백필용
 
     for td_str in target_date:
                
@@ -238,7 +238,7 @@ def etl_statics_weekly_kpi(**context):
 
     target_date, _ = calc_target_date(run_date)
     #################### 백필용 데이터 처리
-    target_date = target_date_range("2026-02-06", "2026-02-08")  ## 백필용
+    # target_date = target_date_range("2026-02-06", "2026-02-08")  ## 백필용
 
     for td_str in target_date:
 
@@ -458,7 +458,7 @@ def etl_statics_monthly_kpi(**context):
 
     target_date, _ = calc_target_date(run_date)
     #################### 백필용 데이터 처리
-    target_date = target_date_range("2026-02-06", "2026-02-08")  ## 백필용
+    # target_date = target_date_range("2026-02-06", "2026-02-08")  ## 백필용
 
     for td_str in target_date:
         # 1. 문자열을 date 객체로 변환
