@@ -479,7 +479,7 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
     }
     
     results = []
-    has_more = None
+    has_more = True
     next_cursor = None
 
     while has_more:
@@ -513,16 +513,16 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
     print(f"✅ 총 {len(results)}개의 데이터를 모두 가져왔습니다.")
 
     # 2. 값 추출 함수 (데이터가 없거나 None일 경우 안전하게 처리)
-    def get_text_value(prop_key):
+    def get_text_value(props, prop_key):
         """rich_text 또는 title 타입에서 텍스트 추출"""
-        prop = results.get(prop_key, {})
+        prop = props.get(prop_key, {})
         # rich_text 또는 title 키 확인
         content_list = prop.get('rich_text', []) or prop.get('title', [])
         if content_list:
             return content_list[0].get('plain_text', '')
         return ''
 
-    def get_select_name(prop_key):
+    def get_select_name(props, prop_key):
         """select 또는 status 타입에서 이름 추출"""
         prop = props.get(prop_key, {})
         # select 또는 status 키 확인
@@ -531,7 +531,7 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
             return select_obj.get('name', '')
         return ''
 
-    def get_date_start(prop_key):
+    def get_date_start(props, prop_key):
         """date 타입에서 시작일 추출"""
         prop = props.get(prop_key, {})
         date_obj = prop.get('date')
@@ -539,7 +539,7 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
             return date_obj.get('start', '')
         return ''
 
-    def get_number(prop_key):
+    def get_number(props, prop_key):
         """number 타입에서 숫자 추출"""
         prop = props.get(prop_key, {})
         return prop.get('number', 0)
@@ -551,19 +551,19 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
             
         # 3. 데이터 추출 실행
         result = {
-            "Package_Name": get_text_value('상품명'),
-            "Package_Name_ENG": get_text_value('상품명_영문'),
-            "Package_Kind": get_text_value('상품카인드'),
-            "Goods_Type": get_select_name('재화구분'),
-            "IAP_CODE_GOOGLE": get_text_value('IAP_CODE_GOOGLE'),
-            "IAP_CODE_APPLE": get_text_value('IAP_CODE_APPLE'),
-            "IAP_CODE_ONESTORE": get_text_value('IAP_CODE_ONESTORE'),
-            "Cat_Shop": get_select_name('상점 카테고리'),
-            "Cat_Package": get_select_name('상품 카테고리'),
-            "Price": get_number('가격 (￦)'),
-            "Start_Date": get_date_start('판매 시작일'),
-            "End_Date": get_date_start('판매 종료일'),
-            "Task_State": get_select_name('상태'),
+            "Package_Name": get_text_value(props, '상품명'),
+            "Package_Name_ENG": get_text_value(props, '상품명_영문'),
+            "Package_Kind": get_text_value(props, '상품카인드'),
+            "Goods_Type": get_select_name(props, '재화구분'),
+            "IAP_CODE_GOOGLE": get_text_value(props, 'IAP_CODE_GOOGLE'),
+            "IAP_CODE_APPLE": get_text_value(props, 'IAP_CODE_APPLE'),
+            "IAP_CODE_ONESTORE": get_text_value(props, 'IAP_CODE_ONESTORE'),
+            "Cat_Shop": get_select_name(props, '상점 카테고리'),
+            "Cat_Package": get_select_name(props, '상품 카테고리'),
+            "Price": get_number(props, '가격 (￦)'),
+            "Start_Date": get_date_start(props, '판매 시작일'),
+            "End_Date": get_date_start(props, '판매 종료일'),
+            "Task_State": get_select_name(props, '상태'),
             }
         list_data.append(result)
 
