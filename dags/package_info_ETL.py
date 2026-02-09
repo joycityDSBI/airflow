@@ -10,6 +10,12 @@ import pandas_gbq # 최신 방식 권장
 from datetime import datetime, timedelta
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
+import requests
+import time
+
+def get_var(key: str, default: str = None) -> str:
+    """환경 변수 또는 Airflow Variable 조회"""
+    return os.environ.get(key) or Variable.get(key, default_var=default)
 
 # 시트정보
 GBTW_SPREADSHEET_ID = '1mnsTzSupPOBhtk-rZSnxk4oALPqTDGd3vkGfS7gt8z0'
@@ -24,16 +30,15 @@ DRSG_SHEET_NAME = '메타데이터'
 WWMC_SPREADSHEET_ID = '1D7WghN05AOW6HRNscOnjW9JJ4P2-uWlGDK8bMcoAqKk'
 WWMC_SHEET_NAME = 'PACKAGE_HISTORY'
 
-
+NOTION_TOKEN = get_var("NOTION_TOKEN")
+NOTION_DATABASE_ID = "23bea67a5681803db3c4f691c143a43d"
 
 
 PROJECT_ID = "datahub-478802"
 LOCATION = "US"
 
 ################### 유틸함수 #####################
-def get_var(key: str, default: str = None) -> str:
-    """환경 변수 또는 Airflow Variable 조회"""
-    return os.environ.get(key) or Variable.get(key, default_var=default)
+
 
 def get_gcp_credentials():
     """Airflow Variable에서 GCP 자격 증명을 로드합니다."""
@@ -463,6 +468,172 @@ def WWMC_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
         raise e # 에러 추적을 위해 raise 추가
 
 
+#################### RESU 패키지 정보 ETL 함수 (NOTION DB) #####################
+def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
+    """Notion 데이터 추출"""
+    url = f"https://api.notion.com/v1/databases/{NOTION_DATABASE_ID}/query"
+    headers = {
+        "Authorization": f"Bearer {NOTION_TOKEN}",
+        "Notion-Version": get_var("NOTION_API_VERSION", "2022-06-28"),
+        "Content-Type": "application/json"
+    }
+    
+    results = []
+    next_cursor = None
+    next_cursor = None
+
+    while has_more:
+        payload = {"page_size": 100}
+        if next_cursor:
+            payload["start_cursor"] = next_cursor
+
+        # 2. API 호출
+        response = requests.post(url, headers=headers, json=payload)
+        
+        # 에러 발생 시 멈추지 않고 확인하려면 try-except 블록 고려 (여기선 단순 처리)
+        if response.status_code != 200:
+            print(f"Error: {response.status_code}, {response.text}")
+            break
+
+        data = response.json()
+
+        # 3. 데이터 저장
+        # 이번 요청으로 가져온 데이터를 전체 리스트에 추가
+        results.extend(data["results"])
+
+        # 4. 다음 루프를 위한 변수 업데이트
+        has_more = data["has_more"]        # 더 가져올 데이터가 남았는지 (True/False)
+        next_cursor = data["next_cursor"]  # 다음 데이터의 시작 위치
+
+        print(f"현재까지 수집된 데이터: {len(results)}개")
+        
+        # (선택사항) API 호출 제한(Rate Limit) 방지를 위해 아주 짧은 대기
+        time.sleep(0.1) 
+
+    print(f"✅ 총 {len(results)}개의 데이터를 모두 가져왔습니다.")
+
+    # 2. 값 추출 함수 (데이터가 없거나 None일 경우 안전하게 처리)
+    def get_text_value(prop_key):
+        """rich_text 또는 title 타입에서 텍스트 추출"""
+        prop = results.get(prop_key, {})
+        # rich_text 또는 title 키 확인
+        content_list = prop.get('rich_text', []) or prop.get('title', [])
+        if content_list:
+            return content_list[0].get('plain_text', '')
+        return ''
+
+    def get_select_name(prop_key):
+        """select 또는 status 타입에서 이름 추출"""
+        prop = props.get(prop_key, {})
+        # select 또는 status 키 확인
+        select_obj = prop.get('select') or prop.get('status')
+        if select_obj:
+            return select_obj.get('name', '')
+        return ''
+
+    def get_date_start(prop_key):
+        """date 타입에서 시작일 추출"""
+        prop = props.get(prop_key, {})
+        date_obj = prop.get('date')
+        if date_obj:
+            return date_obj.get('start', '')
+        return ''
+
+    def get_number(prop_key):
+        """number 타입에서 숫자 추출"""
+        prop = props.get(prop_key, {})
+        return prop.get('number', 0)
+    
+    list_data = []
+
+    for ps in range(0, len(results)):
+        props = results[ps].get('properties', {})
+            
+        # 3. 데이터 추출 실행
+        result = {
+            "Package_Name": get_text_value('상품명'),
+            "Package_Name_ENG": get_text_value('상품명_영문'),
+            "Package_Kind": get_text_value('상품카인드'),
+            "Goods_Type": get_select_name('재화구분'),
+            "IAP_CODE_GOOGLE": get_text_value('IAP_CODE_GOOGLE'),
+            "IAP_CODE_APPLE": get_text_value('IAP_CODE_APPLE'),
+            "IAP_CODE_ONESTORE": get_text_value('IAP_CODE_ONESTORE'),
+            "Cat_Shop": get_select_name('상점 카테고리'),
+            "Cat_Package": get_select_name('상품 카테고리'),
+            "Price": get_number('가격 (￦)'),
+            "Start_Date": get_date_start('판매 시작일'),
+            "End_Date": get_date_start('판매 종료일'),
+            "Task_State": get_select_name('상태'),
+            }
+        list_data.append(result)
+
+    df = pd.DataFrame(list_data)
+    df = df[df['Package_Kind'] != '']
+
+    return df
+
+def RESU_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
+
+    df = RESU_extract_notion_data(NOTION_TOKEN=NOTION_TOKEN, NOTION_DATABASE_ID=NOTION_DATABASE_ID)
+    credentials = get_gcp_credentials()
+    client = bigquery.Client(project=project_id, credentials=credentials)
+    table_full_id = f"{project_id}.{dataset_id}.{table_id}"
+
+    # 1. 데이터 비우기 (테이블 스키마/설정 유지)
+    truncate_query = f"TRUNCATE TABLE `{table_full_id}`"
+    client.query(truncate_query, location=LOCATION).result()
+    print(f"🗑️ {table_full_id} 데이터가 초기화되었습니다.")
+    
+    # 2. 데이터 타입 클리닝 (Parquet 변환 에러 방지)
+    df_final = df.astype(str)
+    numeric_columns = ['Package_Kind'] # 실제 숫자형 컬럼 리스트로 수정하세요
+    for col in numeric_columns:
+        if col in df_final.columns:
+            # 숫자로 변환하되, 변환 안되는 값(빈칸 등)은 NaN으로 처리 후 0으로 채움
+            df_final[col] = pd.to_numeric(df_final[col], errors='coerce').fillna(0).astype(str)
+
+    to_float_list = ['Price']
+    for cl in to_float_list:
+        df_final[cl] = df_final[cl].str.replace(r'[₩,]', '', regex=True)
+        df_final[cl] = pd.to_numeric(df_final[cl], errors='coerce')
+        df_final[cl] = df_final[cl].fillna(0).astype(float)
+
+    date_columns = ['Start_Date', 'End_Date']
+    
+    for col in date_columns:
+        if col in df_final.columns:
+            # 1. 먼저 datetime 객체로 변환 (변환할 수 없는 값은 NaT로 강제 변환)
+            df_final[col] = pd.to_datetime(df_final[col], errors='coerce')
+            
+            # 2. 'YYYY-MM-DD' 형식의 문자열로 변환 (시간 정보 제거)
+            # dt.strftime을 쓰면 NaT는 NaN이 됩니다.
+            df_final[col] = df_final[col].dt.strftime('%Y-%m-%d')
+            
+            # 3. 결측치(NaN) 처리
+            # BigQuery DATE 컬럼에 NULL로 넣기 위해 None으로 치환
+            # (주의: 날짜 컬럼은 0이나 빈 문자열 ''로 채우면 업로드 시 에러가 납니다)
+            df_final[col] = df_final[col].replace({float('nan'): None})
+            df_final[col] = df_final[col].replace({'': None})
+    
+    # 3. 데이터 삽입
+    try:
+        # TRUNCATE를 미리 했으므로 'append'를 써야 기존 스키마/파티션 설정이 유지됩니다.
+        # df.to_gbq 대신 pandas_gbq.to_gbq 사용 권장
+        pandas_gbq.to_gbq(
+            df_final,
+            destination_table=f"{dataset_id}.{table_id}",
+            project_id=project_id,
+            if_exists='append', 
+            progress_bar=True,
+            credentials=credentials
+        )
+        print(f"✅ {len(df_final)}행 데이터가 {table_full_id}에 성공적으로 Insert 되었습니다.")
+    except Exception as e:
+        print(f"❌ BigQuery 업로드 중 에러 발생: {e}")
+        raise e # 에러 추적을 위해 raise 추가
+
+
+
 
 # DAG 기본 설정
 default_args = {
@@ -525,4 +696,15 @@ with DAG(
         dag=dag,
     )
 
-    GBTW_package_info_task >> POTC_package_info_task >> DRSG_package_info_task >> WWMC_package_info_task
+    RESU_package_info_task = PythonOperator(
+        task_id='RESU_package_info_task',
+        python_callable=RESU_truncate_and_insert_to_bigquery,
+        op_kwargs={
+            "project_id": "data-science-division-216308",
+            "dataset_id": "PackageInfo",
+            "table_id": "PackageInfo_Notion_RESU"
+        },
+        dag=dag,
+    )
+
+    GBTW_package_info_task >> POTC_package_info_task >> DRSG_package_info_task >> WWMC_package_info_task >> RESU_package_info_task
