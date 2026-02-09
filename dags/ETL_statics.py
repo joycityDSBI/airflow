@@ -30,7 +30,14 @@ def etl_statics_daily_kpi(**context):
     # 클라이언트 호출
     client = init_clients()["bq_client"]
 
-    target_date, _ = calc_target_date(context['logical_date'])
+        # 날짜 계산
+    run_date = context.get('logical_date') or context.get('execution_date')
+
+    if not run_date:
+        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+        run_date = datetime.now() - timedelta(days=1)
+
+    target_date = calc_target_date(run_date)
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
 
@@ -222,7 +229,14 @@ def etl_statics_weekly_kpi(**context):
     # 클라이언트 호출
     client = init_clients()["bq_client"]
 
-    target_date, _ = calc_target_date(context['logical_date'])
+    # 날짜 계산
+    run_date = context.get('logical_date') or context.get('execution_date')
+
+    if not run_date:
+        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+        run_date = datetime.now() - timedelta(days=1)
+
+    target_date, _ = calc_target_date(run_date)
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
 
@@ -435,7 +449,14 @@ def etl_statics_monthly_kpi(**context):
     # 클라이언트 호출
     client = init_clients()["bq_client"]
 
-    target_date, _ = calc_target_date(context['logical_date'])
+    # 날짜 계산
+    run_date = context.get('logical_date') or context.get('execution_date')
+
+    if not run_date:
+        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+        run_date = datetime.now() - timedelta(days=1)
+
+    target_date, _ = calc_target_date(run_date)
     #################### 백필용 데이터 처리
     # target_date = target_date_range("2026-01-24", "2026-01-26")  ## 백필용
 
