@@ -646,7 +646,7 @@ with DAG(
     dag_id='Package_Info_ETL',
     default_args=default_args,
     description='Package Info ETL',
-    schedule='20 20 * * *',  # 매일 오전 09시 50분 실행
+    schedule='00 19 * * *',  # 매일 오전 04시 50분 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'package_info', 'bigquery'],
