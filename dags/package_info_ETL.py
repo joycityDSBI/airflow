@@ -401,8 +401,8 @@ def WWMC_get_gsheet_to_df(spreadsheet_id, sheet_name):
         "재화구분":"goods_type",
         "가격":"price",
         "애플 등급":"grade_apple",
-        "상품반영일":"sale_date_start",
-        "판매종료일":"sale_date_end",
+        "상품 반영일":"sale_date_start",
+        "판매 종료일":"sale_date_end",
         })
 
     selected_df = df[["goods_type",
