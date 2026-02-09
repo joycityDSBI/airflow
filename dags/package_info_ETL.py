@@ -479,7 +479,7 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
     }
     
     results = []
-    next_cursor = None
+    has_more = None
     next_cursor = None
 
     while has_more:
