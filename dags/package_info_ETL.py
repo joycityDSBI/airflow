@@ -11,12 +11,21 @@ from datetime import datetime, timedelta
 from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 
-# 사용 예시
+# 시트정보
 GBTW_SPREADSHEET_ID = '1mnsTzSupPOBhtk-rZSnxk4oALPqTDGd3vkGfS7gt8z0'
 GBTW_SHEET_NAME = '상품요약(신)'
 
 POTC_SPREADSHEET_ID = '121hBk4DKpD2Wfzd59hCPUtVu7zqibmiKhxAr8UkZWJQ'
 POTC_SHEET_NAME = '메타데이터'
+
+DRSG_SPREADSHEET_ID = '1CRbDxfF8pdGPxcvY-1-LHwsrN4xfXu-7LoEfce6_6-U'
+DRSG_SHEET_NAME = '메타데이터'
+
+WWMC_SPREADSHEET_ID = '1D7WghN05AOW6HRNscOnjW9JJ4P2-uWlGDK8bMcoAqKk'
+WWMC_SHEET_NAME = 'PACKAGE_HISTORY'
+
+
+
 
 PROJECT_ID = "datahub-478802"
 LOCATION = "US"
@@ -266,9 +275,192 @@ def POTC_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
         raise e # 에러 추적을 위해 raise 추가
 
 
+#################### DRSG 패키지 정보 ETL 함수 #####################
+def DRSG_get_gsheet_to_df(spreadsheet_id, sheet_name):
+
+    creds = get_gcp_credentials()
+    client = gspread.authorize(creds)
+
+    doc = client.open_by_key(spreadsheet_id)
+    sheet = doc.worksheet(sheet_name)
+    all_data = sheet.get('A:K')
+
+    if not all_data:
+        print("데이터가 없습니다.")
+        return pd.DataFrame()
+
+    header = all_data[1]
+    data = all_data[2:]
+
+    if len(header) == 1:
+        header = [f'col_{i}' for i in range(len(data[0]))]
+
+    df = pd.DataFrame(data, columns=header)
+
+    df = df.rename(columns={
+        "PackageKind":"package_kind",
+        "패키지명":"package_name",
+        "상점 카테고리":"category_shop",
+        "IAP코드(구글)":"iap_code_google",
+        "IAP코드(애플)":"iap_code_apple",
+        "상품 카테고리":"category_package",
+        "재화구분":"goods_type",
+        "가격":"price",
+        "상품반영일":"sale_date_start",
+        "판매종료일":"sale_date_end",
+        "IAP코드(원스토어)":"iap_code_one"
+        })
+
+    selected_df = df[["goods_type",
+        "category_shop",
+        "category_package",
+        "package_name",
+        "package_kind",
+        "price",
+        "iap_code_google",
+        "iap_code_apple",
+        "sale_date_start",
+        "sale_date_end"]]
+    
+    return selected_df
+
+def DRSG_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
+
+    df = DRSG_get_gsheet_to_df(DRSG_SPREADSHEET_ID, DRSG_SHEET_NAME)
+    credentials = get_gcp_credentials()
+    client = bigquery.Client(project=project_id, credentials=credentials)
+    table_full_id = f"{project_id}.{dataset_id}.{table_id}"
+
+    # 1. 데이터 비우기 (테이블 스키마/설정 유지)
+    truncate_query = f"TRUNCATE TABLE `{table_full_id}`"
+    client.query(truncate_query, location=LOCATION).result()
+    print(f"🗑️ {table_full_id} 데이터가 초기화되었습니다.")
+    
+    # 2. 데이터 타입 클리닝 (Parquet 변환 에러 방지)
+    df_final = df.astype(str)
+    numeric_columns = ['package_kind'] # 실제 숫자형 컬럼 리스트로 수정하세요
+    for col in numeric_columns:
+        if col in df_final.columns:
+            # 숫자로 변환하되, 변환 안되는 값(빈칸 등)은 NaN으로 처리 후 0으로 채움
+            df_final[col] = pd.to_numeric(df_final[col], errors='coerce').fillna(0).astype(int)
+
+    to_int_list = ['price']
+    for cl in to_int_list:
+        df_final[cl] = df_final[cl].str.replace(r'[₩,]', '', regex=True)
+        df_final[cl] = pd.to_numeric(df_final[cl], errors='coerce')
+        df_final[cl] = df_final[cl].fillna(0).astype(str)
+    
+    # 3. 데이터 삽입
+    try:
+        # TRUNCATE를 미리 했으므로 'append'를 써야 기존 스키마/파티션 설정이 유지됩니다.
+        # df.to_gbq 대신 pandas_gbq.to_gbq 사용 권장
+        pandas_gbq.to_gbq(
+            df_final,
+            destination_table=f"{dataset_id}.{table_id}",
+            project_id=project_id,
+            if_exists='append', 
+            progress_bar=True,
+            credentials=credentials
+        )
+        print(f"✅ {len(df_final)}행 데이터가 {table_full_id}에 성공적으로 Insert 되었습니다.")
+    except Exception as e:
+        print(f"❌ BigQuery 업로드 중 에러 발생: {e}")
+        raise e # 에러 추적을 위해 raise 추가
 
 
+#################### WWMC 패키지 정보 ETL 함수 #####################
+def WWMC_get_gsheet_to_df(spreadsheet_id, sheet_name):
 
+    creds = get_gcp_credentials()
+    client = gspread.authorize(creds)
+
+    doc = client.open_by_key(spreadsheet_id)
+    sheet = doc.worksheet(sheet_name)
+    all_data = sheet.get('A:O')
+
+    if not all_data:
+        print("데이터가 없습니다.")
+        return pd.DataFrame()
+
+    header = all_data[0]
+    data = all_data[1:]
+
+    if len(header) == 1:
+        header = [f'col_{i}' for i in range(len(data[0]))]
+
+    df = pd.DataFrame(data, columns=header)
+
+    df = df.rename(columns={
+        "Pkind":"package_kind",
+        "PACKAGE_NAME":"package_name",
+        "CATEGORY":"category_shop",
+        "PRODUCTCODE_aos":"iap_code_google",
+        "PRODUCTCODE_ios":"iap_code_apple",
+        "GROUP":"category_package",
+        "PRODUCTCODE_onestore":"iap_code_one",
+        "재화구분":"goods_type",
+        "가격":"price",
+        "애플 등급":"grade_apple",
+        "상품반영일":"sale_date_start",
+        "판매종료일":"sale_date_end",
+        })
+
+    selected_df = df[["goods_type",
+        "category_shop",
+        "category_package",
+        "package_name",
+        "package_kind",
+        "price",
+        "iap_code_google",
+        "iap_code_apple",
+        "iap_code_one",
+        "sale_date_start",
+        "sale_date_end"]]
+    
+    return selected_df
+
+def WWMC_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
+
+    df = WWMC_get_gsheet_to_df(WWMC_SPREADSHEET_ID, WWMC_SHEET_NAME)
+    credentials = get_gcp_credentials()
+    client = bigquery.Client(project=project_id, credentials=credentials)
+    table_full_id = f"{project_id}.{dataset_id}.{table_id}"
+
+    # 1. 데이터 비우기 (테이블 스키마/설정 유지)
+    truncate_query = f"TRUNCATE TABLE `{table_full_id}`"
+    client.query(truncate_query, location=LOCATION).result()
+    print(f"🗑️ {table_full_id} 데이터가 초기화되었습니다.")
+    
+    # 2. 데이터 타입 클리닝 (Parquet 변환 에러 방지)
+    df_final = df.astype(str)
+    numeric_columns = ['package_kind'] # 실제 숫자형 컬럼 리스트로 수정하세요
+    for col in numeric_columns:
+        if col in df_final.columns:
+            # 숫자로 변환하되, 변환 안되는 값(빈칸 등)은 NaN으로 처리 후 0으로 채움
+            df_final[col] = pd.to_numeric(df_final[col], errors='coerce').fillna(0).astype(int)
+
+    to_int_list = ['price']
+    for cl in to_int_list:
+        df_final[cl] = df_final[cl].str.replace(r'[₩,]', '', regex=True)
+        df_final[cl] = pd.to_numeric(df_final[cl], errors='coerce')
+        df_final[cl] = df_final[cl].fillna(0).astype(str)
+    
+    # 3. 데이터 삽입
+    try:
+        # TRUNCATE를 미리 했으므로 'append'를 써야 기존 스키마/파티션 설정이 유지됩니다.
+        # df.to_gbq 대신 pandas_gbq.to_gbq 사용 권장
+        pandas_gbq.to_gbq(
+            df_final,
+            destination_table=f"{dataset_id}.{table_id}",
+            project_id=project_id,
+            if_exists='append', 
+            progress_bar=True,
+            credentials=credentials
+        )
+        print(f"✅ {len(df_final)}행 데이터가 {table_full_id}에 성공적으로 Insert 되었습니다.")
+    except Exception as e:
+        print(f"❌ BigQuery 업로드 중 에러 발생: {e}")
+        raise e # 에러 추적을 위해 raise 추가
 
 
 
@@ -311,4 +503,26 @@ with DAG(
         dag=dag,
     )
 
-    GBTW_package_info_task >> POTC_package_info_task
+    DRSG_package_info_task = PythonOperator(
+        task_id='DRSG_package_info_task',
+        python_callable=DRSG_truncate_and_insert_to_bigquery,
+        op_kwargs={
+            "project_id": "data-science-division-216308",
+            "dataset_id": "PackageInfo",
+            "table_id": "PackageInfo_DS"
+        },
+        dag=dag,
+    )
+
+    WWMC_package_info_task = PythonOperator(
+        task_id='WWMC_package_info_task',
+        python_callable=WWMC_truncate_and_insert_to_bigquery,
+        op_kwargs={
+            "project_id": "data-science-division-216308",
+            "dataset_id": "PackageInfo",
+            "table_id": "PackageInfo_WWM"
+        },
+        dag=dag,
+    )
+
+    GBTW_package_info_task >> POTC_package_info_task >> DRSG_package_info_task >> WWMC_package_info_task
