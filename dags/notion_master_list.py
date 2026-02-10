@@ -322,3 +322,5 @@ with DAG(
     # Task 의존성
     query_task >> transform_task >> load_task
     # [query_task, transform_task, load_task] >> prepare_email_task >> send_email_task
+
+    

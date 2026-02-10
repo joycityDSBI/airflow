@@ -25,9 +25,9 @@ WWMC_SHEET_NAME = 'TEST_ACCOUNT'
 DRSG_SPREADSHEET_ID = '1CRbDxfF8pdGPxcvY-1-LHwsrN4xfXu-7LoEfce6_6-U'
 DRSG_SHEET_NAME = 'TEST_ACCOUNT'
 
-## POTC는 시트 잠금으로 진행 불가
+## POTC는 시트 잠금으로 진행 불가 > 잠금 해제
 POTC_SPREADSHEET_ID = '16nZ8P-cxlARLoHwtXxDCr_awpqi9mCKG1R2s9AyYKkk'
-POTC_SHEET_NAME = 'TEST_ACCOUNT' ### 시트가 잠금이 된 상태
+POTC_SHEET_NAME = '빅쿼리(지원대상)' 
 
 GBTW_SPREADSHEET_ID = '1kLyYB1xZUzj1VPq8u123gMrWtB4GGYsVhGMQYft-b30'
 GBTW_SHEET_NAME_1 = 'GW 1,2월드 마스터즈 관리'
@@ -513,6 +513,77 @@ def GBTW_merge_to_bigquery(project_id, dataset_id, table_id):
 
 
 
+#################### POTC 인하우스 계정 ETL 함수 #####################
+def POTC_from_spreadsheet_df(spreadsheet_id, sheet_name):
+
+    creds = get_gcp_credentials()
+    client = gspread.authorize(creds)
+
+    doc = client.open_by_key(spreadsheet_id)
+    sheet = doc.worksheet(sheet_name)
+    all_data = sheet.get('A:D')
+
+    if not all_data:
+        print("데이터가 없습니다.")
+        return pd.DataFrame()
+
+    header = all_data[1]
+    data = all_data[2:]
+
+    if len(header) == 1:
+        header = [f'col_{i}' for i in range(len(data[0]))]
+
+    df = pd.DataFrame(data, columns=header)
+
+    df = df.rename(columns={
+        "빌드":"build",
+        "회원번호(Userkey) ":"userkey",
+        "계정번호(UserID)":"charid",
+        "구분":"class",
+        })
+
+    selected_df = df[["build",
+                      "userkey",
+                      "charid",
+                      "class",
+                      ]]
+    
+    return selected_df
+
+
+def POTC_merge_to_bigquery(project_id, dataset_id, table_id):
+
+    df = POTC_from_spreadsheet_df(POTC_SPREADSHEET_ID, POTC_SHEET_NAME)
+    credentials = get_gcp_credentials()
+    client = bigquery.Client(project=project_id, credentials=credentials)
+    table_full_id = f"{project_id}.{dataset_id}.{table_id}"
+
+    # 1. 데이터 비우기 (테이블 스키마/설정 유지)
+    truncate_query = f"TRUNCATE TABLE `{table_full_id}`"
+    client.query(truncate_query, location=LOCATION).result()
+    print(f"🗑️ {table_full_id} 데이터가 초기화되었습니다.")
+    
+    # 2. 데이터 타입 클리닝 (Parquet 변환 에러 방지)
+    df_final = df.astype(str)
+    
+    # 3. 데이터 삽입
+    try:
+        # TRUNCATE를 미리 했으므로 'append'를 써야 기존 스키마/파티션 설정이 유지됩니다.
+        # df.to_gbq 대신 pandas_gbq.to_gbq 사용 권장
+        pandas_gbq.to_gbq(
+            df_final,
+            destination_table=f"{dataset_id}.{table_id}",
+            project_id=project_id,
+            if_exists='append', 
+            progress_bar=True,
+            credentials=credentials
+        )
+        print(f"✅ {len(df_final)}행 데이터가 {table_full_id}에 성공적으로 Insert 되었습니다.")
+    except Exception as e:
+        print(f"❌ BigQuery 업로드 중 에러 발생: {e}")
+        raise e # 에러 추적을 위해 raise 추가
+
+
 
 
 # DAG 기본 설정
@@ -565,6 +636,17 @@ with DAG(
         dag=dag,
     )
 
+    POTC_inhouse_account_task = PythonOperator(
+        task_id='POTC_inhouse_account_task',
+        python_callable=POTC_merge_to_bigquery,
+        op_kwargs={
+            "project_id": "data-science-division-216308",
+            "dataset_id": "Account_Info",
+            "table_id": "POTC_account_info"
+        },
+        dag=dag,
+    )
+
     # ETL Tasks
     RESU_query_task = PythonOperator(
         task_id='query_notion_database',
@@ -581,4 +663,4 @@ with DAG(
         python_callable=upload_to_bigquery,
     )
 
-    WWMC_inhouse_account_task >> DRSG_inhouse_account_task >> GBTW_inhouse_account_task >> RESU_query_task >> RESU_transform_task >> RESU_load_task
+    WWMC_inhouse_account_task >> DRSG_inhouse_account_task >> GBTW_inhouse_account_task >> POTC_inhouse_account_task >> RESU_query_task >> RESU_transform_task >> RESU_load_task
