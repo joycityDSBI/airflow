@@ -12,6 +12,12 @@ from airflow import DAG, Dataset
 from airflow.operators.python import PythonOperator
 import requests
 import time
+import logging
+
+def get_var(key: str, default: str = None) -> str:
+    """환경 변수 또는 Airflow Variable 조회"""
+    return os.environ.get(key) or Variable.get(key, default_var=default)
+
 
 WWMC_SPREADSHEET_ID = '1D7WghN05AOW6HRNscOnjW9JJ4P2-uWlGDK8bMcoAqKk'
 WWMC_SHEET_NAME = 'TEST_ACCOUNT'
@@ -19,6 +25,7 @@ WWMC_SHEET_NAME = 'TEST_ACCOUNT'
 DRSG_SPREADSHEET_ID = '1CRbDxfF8pdGPxcvY-1-LHwsrN4xfXu-7LoEfce6_6-U'
 DRSG_SHEET_NAME = 'TEST_ACCOUNT'
 
+## POTC는 시트 잠금으로 진행 불가
 POTC_SPREADSHEET_ID = '16nZ8P-cxlARLoHwtXxDCr_awpqi9mCKG1R2s9AyYKkk'
 POTC_SHEET_NAME = 'TEST_ACCOUNT' ### 시트가 잠금이 된 상태
 
@@ -28,6 +35,12 @@ GBTW_SHEET_NAME_2 = 'GW 3월드 마스터즈 관리'
 GBTW_SHEET_NAME_3 = 'GW 외주사 마스터즈 관리'
 GBTW_SHEET_NAME_4 = '비정상 이용자 제재 조치'
 
+NOTION_TOKEN = get_var("NOTION_TOKEN")
+DBID = get_var("NOTION_DBID")
+DATASET_ID = "Account_Info"
+TABLE_ID = "RESU_account_info"
+NOTION_API_VERSION = get_var("NOTION_API_VERSION", "2022-06-28")
+FULL_TABLE_ID = f"data-science-division-216308.{DATASET_ID}.{TABLE_ID}"
 
 PROJECT_ID = "datahub-478802"
 LOCATION = "US"
@@ -67,6 +80,129 @@ def init_clients():
     }
 
 
+#################### RESU account info 가져오기 #######################
+def extract_property_value(value):
+    """Notion 속성값 추출"""
+    prop_type = value["type"]
+    mapping = {
+        "title": lambda v: v.get("title", [{}])[0].get("text", {}).get("content"),
+        "rich_text": lambda v: v.get("rich_text", [{}])[0].get("text", {}).get("content"),
+        "select": lambda v: v.get("select", {}).get("name"),
+        "multi_select": lambda v: [m["name"] for m in v.get("multi_select", [])],
+        "status": lambda v: v.get("status", {}).get("name"),
+        "date": lambda v: v.get("date", {}).get("start"),
+        "checkbox": lambda v: v.get("checkbox"),
+        "number": lambda v: v.get("number"),
+    }
+    try:
+        return mapping.get(prop_type, lambda v: None)(value)
+    except:
+        return None
+    
+def query_notion_database(**context):
+    """Notion 데이터베이스에서 데이터 조회"""
+    url = f"https://api.notion.com/v1/databases/{DBID}/query"
+    headers = {
+        "Authorization": f"Bearer {NOTION_TOKEN}",
+        "Notion-Version": NOTION_API_VERSION,
+        "Content-Type": "application/json"
+    }
+
+    results = []
+    has_more = True
+    next_cursor = None
+
+    logging.info(f"🔍 Notion 데이터베이스 조회 시작: {DBID}")
+    
+    while has_more:
+        payload = {"start_cursor": next_cursor} if next_cursor else {}
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        results.extend(data["results"])
+        has_more = data.get("has_more", False)
+        next_cursor = data.get("next_cursor")
+
+    logging.info(f"✅ Notion 데이터 조회 완료: {len(results)}개 행")
+    
+    context['task_instance'].xcom_push(key='notion_raw_data', value=results)
+    return len(results)
+
+
+def parse_and_transform_data(**context):
+    """Notion 데이터 파싱 및 변환"""
+    ti = context['task_instance']
+    rows = ti.xcom_pull(task_ids='query_notion_database', key='notion_raw_data')
+    
+    logging.info(f"📊 데이터 파싱 시작: {len(rows)}개 행")
+    
+    # 데이터 파싱
+    parsed = []
+    for row in rows:
+        row_data = {"notion_page_id": row.get("id")}
+        props = row.get("properties", {})
+        for key, value in props.items():
+            row_data[key] = extract_property_value(value)
+        parsed.append(row_data)
+    
+    # DataFrame 생성 및 변환
+    df = pd.DataFrame(parsed)
+    print(df.head(5))
+    df.columns = df.columns.str.strip()
+    df = df[['UserKey', 'UserID', '구분']]
+    df = df.assign(build='RESU').rename(
+        columns={'UserKey': 'userKey', 'UserID': 'charid', '구분': 'class'}
+    )
+    
+    logging.info(f"✅ 데이터 변환 완료: {len(df)}개 행, {len(df.columns)}개 컬럼")
+    
+    ti.xcom_push(key='transformed_data', value=df.to_dict('records'))
+    return len(df)
+
+def upload_to_bigquery(**context):
+    """BigQuery에 데이터 업로드"""
+    ti = context['task_instance']
+    data_dict = ti.xcom_pull(task_ids='parse_and_transform_data', key='transformed_data')
+    df = pd.DataFrame(data_dict)
+    
+    logging.info(f"📤 BigQuery 업로드 시작: {len(df)}개 행")
+    
+    try:
+        credentials_json = Variable.get('GOOGLE_CREDENTIAL_JSON')
+        cred_dict = json.loads(credentials_json)
+        
+        # 2. private_key 줄바꿈 문자 처리
+        if 'private_key' in cred_dict:
+            if '\\n' in cred_dict['private_key']:
+                cred_dict['private_key'] = cred_dict['private_key'].replace('\\n', '\n')
+
+        # 3. Credentials 객체 생성
+        credentials = service_account.Credentials.from_service_account_info(
+            cred_dict,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        
+        # 4. Client 생성 시 credentials 전달 (여기가 핵심!)
+        client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
+        
+    except Exception as e:
+        print(f"❌ 인증 설정 실패: {e}")
+        raise e
+    
+    job = client.load_table_from_dataframe(
+        dataframe=df,
+        destination=FULL_TABLE_ID,
+        job_config=bigquery.LoadJobConfig(
+            write_disposition="WRITE_TRUNCATE",
+            autodetect=True
+        )
+    )
+    job.result()
+    
+    logging.info(f"✅ BigQuery 테이블 업로드 완료: {FULL_TABLE_ID}")
+    
+    ti.xcom_push(key='result', value={'table': FULL_TABLE_ID, 'rows': len(df)})
+    return len(df)
 
 #################### WWMC 인하우스 계정 ETL 함수 #####################
 def WWMC_from_spreadsheet_df(spreadsheet_id, sheet_name):
@@ -429,4 +565,20 @@ with DAG(
         dag=dag,
     )
 
-    WWMC_inhouse_account_task >> DRSG_inhouse_account_task >> GBTW_inhouse_account_task
+    # ETL Tasks
+    RESU_query_task = PythonOperator(
+        task_id='query_notion_database',
+        python_callable=query_notion_database,
+    )
+    
+    RESU_transform_task = PythonOperator(
+        task_id='parse_and_transform_data',
+        python_callable=parse_and_transform_data,
+    )
+    
+    RESU_load_task = PythonOperator(
+        task_id='upload_to_bigquery',
+        python_callable=upload_to_bigquery,
+    )
+
+    WWMC_inhouse_account_task >> DRSG_inhouse_account_task >> GBTW_inhouse_account_task >> RESU_query_task >> RESU_transform_task >> RESU_load_task
