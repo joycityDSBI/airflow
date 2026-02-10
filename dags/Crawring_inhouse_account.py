@@ -32,8 +32,9 @@ GBTW_SHEET_NAME_4 = '비정상 이용자 제재 조치'
 PROJECT_ID = "datahub-478802"
 LOCATION = "US"
 
-################### 유틸함수 #####################
 
+
+################### 유틸함수 #####################
 
 def get_gcp_credentials():
     """Airflow Variable에서 GCP 자격 증명을 로드합니다."""
@@ -53,7 +54,6 @@ def get_gcp_credentials():
         cred_dict,
         scopes=SCOPES
     )
-
 
 def init_clients():
     """Task 내부에서 실행되어 필요한 클라이언트들을 생성하여 반환합니다."""
