@@ -94,7 +94,7 @@ def WWMC_from_spreadsheet_df(spreadsheet_id, sheet_name):
         "build":"build",
         "userkey":"userkey",
         "charid":"charid",
-        "class":"type"
+        "type":"class"
         })
 
     selected_df = df[["build",
@@ -162,11 +162,11 @@ def DRSG_from_spreadsheet_df(spreadsheet_id, sheet_name):
     df = pd.DataFrame(data, columns=header)
 
     df = df.rename(columns={
-        "build":"빌드",
-        "worldid":"서버명",
-        "charid":"계정번호",
-        "class":"구분",
-        "userkey":"회원번호"
+        "빌드":"build",
+        "서버명":"worldid",
+        "계정번호":"charid",
+        "구분":"class",
+        "회원번호":"userkey"
         })
 
     selected_df = df[["build",
@@ -236,9 +236,9 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
     df1 = pd.DataFrame(data, columns=header)
 
     df1 = df1.rename(columns={
-        "userkey":"회원번호(Userkey)",
-        "charid":"계정번호(UserID)",
-        "class":"구분"
+        "회원번호(Userkey)":"userkey",
+        "계정번호(UserID)":"charid",
+        "구분":"class"
         })
     df1['build'] = 'WWM'
     
@@ -259,9 +259,9 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
     df2 = pd.DataFrame(data, columns=header)
 
     df2 = df2.rename(columns={
-        "userkey":"회원번호(Userkey)",
-        "charid":"계정번호(UserID)",
-        "class":"구분"
+        "회원번호(Userkey)":"userkey",
+        "계정번호(UserID)":"charid",
+        "구분":"class"
         })
     df2['build'] = 'WWM'
 
@@ -283,9 +283,9 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
     df3 = pd.DataFrame(data, columns=header)
 
     df3 = df3.rename(columns={
-        "userkey":"회원번호(Userkey)",
-        "charid":"계정번호(UserID)",
-        "class":"구분"
+        "회원번호(Userkey)":"userkey",
+        "계정번호(UserID)":"charid",
+        "구분":"class"
         })
     df3['build'] = 'WWM'
 
@@ -307,9 +307,9 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
     df4 = pd.DataFrame(data, columns=header)
 
     df4 = df4.rename(columns={
-        "userkey":"회원번호",
-        "charid":"제독번호",
-        "class":"제재 처리 유형"
+        "회원번호":"userkey",
+        "제독번호":"charid",
+        "제재 처리 유형":"class"
         })
     df4['build'] = 'WWM'
 
