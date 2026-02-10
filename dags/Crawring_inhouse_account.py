@@ -240,9 +240,9 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
         "계정번호(UserID)":"charid",
         "구분":"class"
         })
-    df1['build'] = 'WWM'
+    df1['world'] = 'GBTW'
 
-    selected_df1 = df1[["build",
+    selected_df1 = df1[["world",
                     "userkey",
                     "charid",
                     "class"
@@ -269,9 +269,9 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
         "계정번호(UserID)":"charid",
         "구분":"class"
         })
-    df2['build'] = 'WWM'
+    df2['world'] = 'GBTW'
 
-    selected_df2 = df2[["build",
+    selected_df2 = df2[["world",
                 "userkey",
                 "charid",
                 "class"
@@ -299,9 +299,9 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
         "계정번호(UserID)":"charid",
         "구분":"class"
         })
-    df3['build'] = 'WWM'
+    df3['world'] = 'GBTW'
 
-    selected_df3 = df3[["build",
+    selected_df3 = df3[["world",
             "userkey",
             "charid",
             "class"
@@ -329,9 +329,9 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
         "제독번호":"charid",
         "제재 처리 유형":"class"
         })
-    df4['build'] = 'WWM'
+    df4['world'] = 'GBTW'
 
-    selected_df4 = df4[["build",
+    selected_df4 = df4[["world",
         "userkey",
         "charid",
         "class"
