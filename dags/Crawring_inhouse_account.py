@@ -236,7 +236,7 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
     df1 = pd.DataFrame(data, columns=header)
 
     df1 = df1.rename(columns={
-        "회원번호(Userkey)":"userkey",
+        "회원번호(Userkey) ":"userkey",
         "계정번호(UserID)":"charid",
         "구분":"class"
         })
@@ -265,7 +265,7 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
     df2 = pd.DataFrame(data, columns=header)
 
     df2 = df2.rename(columns={
-        "회원번호(Userkey)":"userkey",
+        "회원번호(Userkey) ":"userkey",
         "계정번호(UserID)":"charid",
         "구분":"class"
         })
@@ -295,7 +295,7 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
     df3 = pd.DataFrame(data, columns=header)
 
     df3 = df3.rename(columns={
-        "회원번호(Userkey)":"userkey",
+        "회원번호(Userkey) ":"userkey",
         "계정번호(UserID)":"charid",
         "구분":"class"
         })
