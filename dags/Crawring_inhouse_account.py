@@ -241,6 +241,12 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
         "구분":"class"
         })
     df1['build'] = 'WWM'
+
+    selected_df1 = df1[["build",
+                    "userkey",
+                    "charid",
+                    "class"
+                    ]]
     
     #### 시트 2 : GW 3월드 마스터즈 관리
     sheet2 = doc.worksheet(sheet_name_2)
@@ -264,6 +270,12 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
         "구분":"class"
         })
     df2['build'] = 'WWM'
+
+    selected_df2 = df2[["build",
+                "userkey",
+                "charid",
+                "class"
+                ]]
 
 
     #### 시트 3 : GW 외주사 마스터즈 관리
@@ -289,6 +301,12 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
         })
     df3['build'] = 'WWM'
 
+    selected_df3 = df3[["build",
+            "userkey",
+            "charid",
+            "class"
+            ]]
+
 
     #### 시트 4 : 비정상 이용자 제재 조치
     sheet4 = doc.worksheet(sheet_name_4)
@@ -313,8 +331,14 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
         })
     df4['build'] = 'WWM'
 
+    selected_df4 = df4[["build",
+        "userkey",
+        "charid",
+        "class"
+        ]]
 
-    selected_df = pd.concat([df1, df2, df3, df4], ignore_index=True)
+
+    selected_df = pd.concat([selected_df1, selected_df2, selected_df3, selected_df4], ignore_index=True)
     
     return selected_df
 
