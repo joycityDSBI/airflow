@@ -22,6 +22,12 @@ DRSG_SHEET_NAME = 'TEST_ACCOUNT'
 POTC_SPREADSHEET_ID = '16nZ8P-cxlARLoHwtXxDCr_awpqi9mCKG1R2s9AyYKkk'
 POTC_SHEET_NAME = 'TEST_ACCOUNT' ### 시트가 잠금이 된 상태
 
+GBTW_SPREADSHEET_ID = '1kLyYB1xZUzj1VPq8u123gMrWtB4GGYsVhGMQYft-b30'
+GBTW_SHEET_NAME_1 = 'GW 1,2월드 마스터즈 관리'
+GBTW_SHEET_NAME_2 = 'GW 3월드 마스터즈 관리'
+GBTW_SHEET_NAME_3 = 'GW 외주사 마스터즈 관리'
+GBTW_SHEET_NAME_4 = '비정상 이용자 제재 조치'
+
 
 PROJECT_ID = "datahub-478802"
 LOCATION = "US"
@@ -206,49 +212,116 @@ def DRSG_merge_to_bigquery(project_id, dataset_id, table_id):
         raise e # 에러 추적을 위해 raise 추가
 
 
-#################### POTC 인하우스 계정 ETL 함수 #####################
-def POTC_from_spreadsheet_df(spreadsheet_id, sheet_name):
+#################### GBTW 인하우스 계정 ETL 함수 #####################
+def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_name_3, sheet_name_4):
 
     creds = get_gcp_credentials()
     client = gspread.authorize(creds)
 
+    #### 시트 1 : GW 1,2월드 마스터즈 관리
     doc = client.open_by_key(spreadsheet_id)
-    sheet = doc.worksheet(sheet_name)
-    all_data = sheet.get('A:E')
+    sheet1 = doc.worksheet(sheet_name_1)
+    all_data_1 = sheet1.get('C:E')
 
-    if not all_data:
+    if not all_data_1:
         print("데이터가 없습니다.")
         return pd.DataFrame()
 
-    header = all_data[0]
-    data = all_data[1:]
+    header = all_data_1[1]
+    data = all_data_1[2:]
 
     if len(header) == 1:
         header = [f'col_{i}' for i in range(len(data[0]))]
 
-    df = pd.DataFrame(data, columns=header)
+    df1 = pd.DataFrame(data, columns=header)
 
-    df = df.rename(columns={
-        "build":"빌드",
-        "worldid":"서버명",
-        "charid":"계정번호",
-        "class":"구분",
-        "userkey":"회원번호"
+    df1 = df1.rename(columns={
+        "userkey":"회원번호(Userkey)",
+        "charid":"계정번호(UserID)",
+        "class":"구분"
         })
+    df1['build'] = 'WWM'
+    
+    #### 시트 2 : GW 3월드 마스터즈 관리
+    sheet2 = doc.worksheet(sheet_name_2)
+    all_data_2 = sheet2.get('C:E')
 
-    selected_df = df[["build",
-                      "userkey",
-                      "charid",
-                      "class",
-                      "worldid"
-                      ]]
+    if not all_data_2:
+        print("데이터가 없습니다.")
+        return pd.DataFrame()
+
+    header = all_data_2[1]
+    data = all_data_2[2:]
+
+    if len(header) == 1:
+        header = [f'col_{i}' for i in range(len(data[0]))]
+    
+    df2 = pd.DataFrame(data, columns=header)
+
+    df2 = df2.rename(columns={
+        "userkey":"회원번호(Userkey)",
+        "charid":"계정번호(UserID)",
+        "class":"구분"
+        })
+    df2['build'] = 'WWM'
+
+
+    #### 시트 3 : GW 외주사 마스터즈 관리
+    sheet3 = doc.worksheet(sheet_name_3)
+    all_data_3 = sheet3.get('C:E')
+
+    if not all_data_3:
+        print("데이터가 없습니다.")
+        return pd.DataFrame()
+
+    header = all_data_3[1]
+    data = all_data_3[2:]
+
+    if len(header) == 1:
+        header = [f'col_{i}' for i in range(len(data[0]))]
+    
+    df3 = pd.DataFrame(data, columns=header)
+
+    df3 = df3.rename(columns={
+        "userkey":"회원번호(Userkey)",
+        "charid":"계정번호(UserID)",
+        "class":"구분"
+        })
+    df3['build'] = 'WWM'
+
+
+    #### 시트 4 : 비정상 이용자 제재 조치
+    sheet4 = doc.worksheet(sheet_name_4)
+    all_data_4 = sheet4.get('C:E')
+
+    if not all_data_4:
+        print("데이터가 없습니다.")
+        return pd.DataFrame()
+
+    header = all_data_4[0]
+    data = all_data_4[1:]
+
+    if len(header) == 1:
+        header = [f'col_{i}' for i in range(len(data[0]))]
+    
+    df4 = pd.DataFrame(data, columns=header)
+
+    df4 = df4.rename(columns={
+        "userkey":"회원번호",
+        "charid":"제독번호",
+        "class":"제재 처리 유형"
+        })
+    df4['build'] = 'WWM'
+
+
+    selected_df = pd.concat([df1, df2, df3, df4], ignore_index=True)
     
     return selected_df
 
 
-def POTC_merge_to_bigquery(project_id, dataset_id, table_id):
+def GBTW_merge_to_bigquery(project_id, dataset_id, table_id):
 
-    df = DRSG_from_spreadsheet_df(POTC_SPREADSHEET_ID, POTC_SHEET_NAME)
+    df = GBTW_from_spreadsheet_df(GBTW_SPREADSHEET_ID, GBTW_SHEET_NAME_1, GBTW_SHEET_NAME_2, GBTW_SHEET_NAME_3, GBTW_SHEET_NAME_4)
     credentials = get_gcp_credentials()
     client = bigquery.Client(project=project_id, credentials=credentials)
     table_full_id = f"{project_id}.{dataset_id}.{table_id}"
@@ -282,7 +355,6 @@ def POTC_merge_to_bigquery(project_id, dataset_id, table_id):
 
 
 
-
 # DAG 기본 설정
 default_args = {
     'owner': 'airflow',
@@ -311,4 +383,26 @@ with DAG(
         dag=dag,
     )
 
-    WWMC_inhouse_account_task
+    DRSG_inhouse_account_task = PythonOperator(
+        task_id='DRSG_inhouse_account_task',
+        python_callable=DRSG_merge_to_bigquery,
+        op_kwargs={
+            "project_id": "data-science-division-216308",
+            "dataset_id": "Account_Info",
+            "table_id": "DS_account_info"
+        },
+        dag=dag,
+    )
+
+    GBTW_inhouse_account_task = PythonOperator(
+        task_id='GBTW_inhouse_account_task',
+        python_callable=GBTW_merge_to_bigquery,
+        op_kwargs={
+            "project_id": "data-science-division-216308",
+            "dataset_id": "Account_Info",
+            "table_id": "GW_account_info"
+        },
+        dag=dag,
+    )
+
+    WWMC_inhouse_account_task >> DRSG_inhouse_account_task >> GBTW_inhouse_account_task
