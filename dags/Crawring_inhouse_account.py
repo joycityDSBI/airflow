@@ -100,7 +100,7 @@ def WWMC_from_spreadsheet_df(spreadsheet_id, sheet_name):
     selected_df = df[["build",
                       "userkey",
                       "charid",
-                      "type"
+                      "class"
                       ]]
     
     return selected_df
