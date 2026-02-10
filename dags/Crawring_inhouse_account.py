@@ -310,7 +310,7 @@ def GBTW_from_spreadsheet_df(spreadsheet_id, sheet_name_1, sheet_name_2, sheet_n
 
     #### 시트 4 : 비정상 이용자 제재 조치
     sheet4 = doc.worksheet(sheet_name_4)
-    all_data_4 = sheet4.get('C:E')
+    all_data_4 = sheet4.get('A:F')
 
     if not all_data_4:
         print("데이터가 없습니다.")
