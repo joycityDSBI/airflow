@@ -553,7 +553,7 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
         result = {
             "Package_Name": get_text_value(props, '상품명'),
             "Package_Name_ENG": get_text_value(props, '상품명_영문'),
-            "ShopeBaseKind": get_text_value(props, 'ShopeBaseKind'),
+            "ShopBaseKind": get_text_value(props, 'ShopBaseKind'),
             "Package_Kind": get_text_value(props, '상품카인드'),
             "Goods_Type": get_select_name(props, '재화구분'),
             "IAP_CODE_GOOGLE": get_text_value(props, 'IAP_CODE_GOOGLE'),
@@ -569,23 +569,23 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
         list_data.append(result)
 
     df = pd.DataFrame(list_data)
-    print(df["ShopeBaseKind", "Package_Kind"].head(5))
+    print(df["ShopBaseKind", "Package_Kind"].head(5))
 
     # 컬럼 가공 전 빈 값 처리 (안전성 강화)
-    df["ShopeBaseKind"] = df["ShopeBaseKind"].fillna("")
+    df["ShopBaseKind"] = df["ShopBaseKind"].fillna("")
     df["Package_Kind"] = df["Package_Kind"].fillna("")
     
     # 조건부 가공
     df["Package_Kind"] = df.apply(
-        lambda x: f"{x['ShopeBaseKind']}_{x['Package_Kind']}" if x['ShopeBaseKind'] and x['Package_Kind'] else x['Package_Kind'], 
+        lambda x: f"{x['ShopBaseKind']}_{x['Package_Kind']}" if x['ShopBaseKind'] and x['Package_Kind'] else x['Package_Kind'], 
         axis=1
     )
     print("조건부 가공 후 데이터 확인")
-    print(df["ShopeBaseKind", "Package_Kind"].head(5))
+    print(df["ShopBaseKind", "Package_Kind"].head(5))
     
     # 불필요 행 제거 및 컬럼 삭제
     df = df[df['Package_Kind'] != '']
-    df = df.drop(columns=['ShopeBaseKind'])
+    df = df.drop(columns=['ShopBaseKind'])
 
     return df
 
