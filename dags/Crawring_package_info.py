@@ -569,6 +569,8 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
         list_data.append(result)
 
     df = pd.DataFrame(list_data)
+    print(df.head(5))
+
     # 컬럼 가공 전 빈 값 처리 (안전성 강화)
     df["ShopeBaseKind"] = df["ShopeBaseKind"].fillna("")
     df["Package_Kind"] = df["Package_Kind"].fillna("")
@@ -578,6 +580,8 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
         lambda x: f"{x['ShopeBaseKind']}_{x['Package_Kind']}" if x['ShopeBaseKind'] and x['Package_Kind'] else x['Package_Kind'], 
         axis=1
     )
+    print("조건부 가공 후 데이터 확인")
+    print(df.head(5))
     
     # 불필요 행 제거 및 컬럼 삭제
     df = df[df['Package_Kind'] != '']
