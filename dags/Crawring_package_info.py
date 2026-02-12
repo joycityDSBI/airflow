@@ -553,6 +553,7 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
         result = {
             "Package_Name": get_text_value(props, '상품명'),
             "Package_Name_ENG": get_text_value(props, '상품명_영문'),
+            "ShopeBaseKind": get_text_value(props, 'ShopeBaseKind'),
             "Package_Kind": get_text_value(props, '상품카인드'),
             "Goods_Type": get_select_name(props, '재화구분'),
             "IAP_CODE_GOOGLE": get_text_value(props, 'IAP_CODE_GOOGLE'),
@@ -568,7 +569,9 @@ def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
         list_data.append(result)
 
     df = pd.DataFrame(list_data)
+    df["Package_Kind"] = df["ShopeBaseKind"] + "_" + df["Package_Kind"]
     df = df[df['Package_Kind'] != '']
+    df = df.drop(columns=['ShopeBaseKind'])
 
     return df
 
