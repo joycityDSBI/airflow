@@ -603,11 +603,6 @@ def RESU_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
     
     # 2. 데이터 타입 클리닝 (Parquet 변환 에러 방지)
     df_final = df.astype(str)
-    numeric_columns = ['Package_Kind'] # 실제 숫자형 컬럼 리스트로 수정하세요
-    for col in numeric_columns:
-        if col in df_final.columns:
-            # 숫자로 변환하되, 변환 안되는 값(빈칸 등)은 NaN으로 처리 후 0으로 채움
-            df_final[col] = pd.to_numeric(df_final[col], errors='coerce').fillna(0).astype(str)
 
     to_float_list = ['Price']
     for cl in to_float_list:
