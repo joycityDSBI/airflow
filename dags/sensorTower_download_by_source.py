@@ -55,7 +55,7 @@ APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '5f6d6b6a18bf063c24c5d0a0',
                 '625e3a06e0ba195166fbce2f']
 
-APP_ID_LIST = ['686fdb56b1430f9d12eda7a5']
+APP_ID_LIST = ['6573c39d5c3b423d5d04560f']
 LUNCHED_DATE = "2024-05-19"
 YEAR_LIST = [2024, 2025]
 
