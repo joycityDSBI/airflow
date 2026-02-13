@@ -373,7 +373,8 @@ with DAG(
                 when CountryCode = 'JP' then '2.JP'
                 when CountryCode in ('UK','FR','DE','GB') then '3.WEU'
                 when CountryCode = 'KR' then '4.KR'
-                else '5.ETC' end as geo_user_group 
+                when CountryCode = 'TW' then '5.TW'
+                else '6.ETC' end as geo_user_group 
             from(select *
                 from `dataplatform-reporting.DataService.T_0420_0000_UAPerformanceRaw_V1`
                 where JoypleGameID in (1590,159)
@@ -395,7 +396,8 @@ with DAG(
                 when CountryCode = 'JP' then '2.JP'
                 when CountryCode in ('UK','FR','DE','GB') then '3.WEU'
                 when CountryCode = 'KR' then '4.KR'
-                else '5.ETC' end as geo_user_group 
+                when CountryCode = 'TW' then '5.TW'
+                else '6.ETC' end as geo_user_group 
                 from  `dataplatform-reporting.DataService.V_0410_0000_CostCampaignRule_V`
                 where joyplegameid in (1590,159)
                 and cmpgndate >='2025-11-18'
@@ -587,12 +589,14 @@ with DAG(
             df_all_jp = df_all_geo[df_all_geo['Country'] == '2.JP']
             df_all_weu = df_all_geo[df_all_geo['Country'] == '3.WEU']
             df_all_kr = df_all_geo[df_all_geo['Country'] == '4.KR']
-            df_all_etc = df_all_geo[df_all_geo['Country'] == '5.ETC']
+            df_all_tw = df_all_geo[df_all_geo['Country'] == '5.TW']
+            df_all_etc = df_all_geo[df_all_geo['Country'] == '6.ETC']
 
             html_table_header_all_us, html_table_rows_all_us = format_table(df_all_us)
             html_table_header_all_jp, html_table_rows_all_jp = format_table(df_all_jp)
             html_table_header_all_weu, html_table_rows_all_weu = format_table(df_all_weu)
             html_table_header_all_kr, html_table_rows_all_kr = format_table(df_all_kr)
+            html_table_header_all_tw, html_table_rows_all_tw = format_table(df_all_tw)
             html_table_header_all_etc, html_table_rows_all_etc = format_table(df_all_etc)
 
 
@@ -673,12 +677,14 @@ with DAG(
             df_non_jp = df_non_geo[df_non_geo['Country'] == '2.JP']
             df_non_weu = df_non_geo[df_non_geo['Country'] == '3.WEU']
             df_non_kr = df_non_geo[df_non_geo['Country'] == '4.KR']
+            df_non_tw = df_non_geo[df_non_geo['Country'] == '5.TW']         
             df_non_etc = df_non_geo[df_non_geo['Country'] == '5.ETC']
 
             html_table_header_non_us, html_table_rows_non_us = format_table(df_non_us)
             html_table_header_non_jp, html_table_rows_non_jp = format_table(df_non_jp)
             html_table_header_non_weu, html_table_rows_non_weu = format_table(df_non_weu)
             html_table_header_non_kr, html_table_rows_non_kr = format_table(df_non_kr)
+            html_table_header_non_tw, html_table_rows_non_tw = format_table(df_non_tw)
             html_table_header_non_etc, html_table_rows_non_etc = format_table(df_non_etc)
 
 
@@ -688,16 +694,18 @@ with DAG(
             genai_all_jp = genai_paid_geo_analytics(df_all_jp, credentials)
             genai_all_weu = genai_paid_geo_analytics(df_all_weu, credentials)
             genai_all_kr = genai_paid_geo_analytics(df_all_kr, credentials)
+            genai_all_tw = genai_paid_geo_analytics(df_all_tw, credentials)
             genai_all_etc = genai_paid_geo_analytics(df_all_etc, credentials)
-            genai_all = genai_paid_all_analytics(df_all, credentials, genai_all_us + genai_all_jp + genai_all_weu + genai_all_kr + genai_all_etc)
+            genai_all = genai_paid_all_analytics(df_all, credentials, genai_all_us + genai_all_jp + genai_all_weu + genai_all_kr + genai_all_tw + genai_all_etc)
             
             print("📧 Paid 유저에 대한 제미나이 분석 완료")
             genai_non_us = genai_organic_geo_analytics(df_non_us, credentials)
             genai_non_jp = genai_organic_geo_analytics(df_non_jp, credentials)
             genai_non_weu = genai_organic_geo_analytics(df_non_weu, credentials)
             genai_non_kr = genai_organic_geo_analytics(df_non_kr, credentials)
+            genai_non_tw = genai_organic_geo_analytics(df_non_tw, credentials)
             genai_non_etc = genai_organic_geo_analytics(df_non_etc, credentials)
-            genai_non = genai_organic_all_analytics(df_non, credentials, genai_non_us + genai_non_jp + genai_non_weu + genai_non_kr + genai_non_etc)
+            genai_non = genai_organic_all_analytics(df_non, credentials, genai_non_us + genai_non_jp + genai_non_weu + genai_non_kr + genai_non_tw + genai_non_etc)
             print("📧 Organic 포함 전체 유저에 대한 제미나이 분석 완료")
 
             print("✅ 제미나이 해석 완료!")
@@ -938,6 +946,31 @@ with DAG(
                             <table border="1" width="100%">
                                 <tbody>
                                     <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(TW) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non_tw)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_non_tw}
+                                    {html_table_rows_non_tw}
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_non_tw}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
                                         <td style="white-space:nowrap" class="tableTitleNew1">전체 유저(ETC) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_non_etc)}</td>
                                     </tr>
                                 </tbody>
@@ -1082,6 +1115,31 @@ with DAG(
                                     <tr>
                                         <td style="white-space:nowrap" class="tableTitleNewgenai">
                                         {genai_all_kr}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNew1">Android Paid User(TW) 조회 기간: {two_weeks_ago} ~ {yesterday} | 총 행 수: {len(df_all_tw)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    {html_table_header_all_tw}
+                                    {html_table_rows_all_tw}
+                                </tbody>
+                            </table>
+
+                            <table border="1" width="100%">
+                                <tbody>
+                                    <tr>
+                                        <td style="white-space:nowrap" class="tableTitleNewgenai">
+                                        {genai_all_tw}
                                         </td>
                                     </tr>
                                 </tbody>
