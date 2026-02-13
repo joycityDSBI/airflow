@@ -202,7 +202,7 @@ def insert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, BQ_TABLE_ID):
 
         insert_query = f"""
         INSERT INTO `{target_table_id}`
-        SELECT app_id, country, datekey, organic_abs, organic_browse_abs, browser_abs, paid_abs, paid_search_abs, organic_frac,
+        SELECT app_id, country, datekey, organic_abs, organic_browse_abs, organic_search_abs, browser_abs, paid_abs, paid_search_abs, organic_frac,
         organic_browse_frac, organic_search_frac, browser_frac, paid_frac, paid_search_frac
         FROM `{staging_table_id}`
         """
