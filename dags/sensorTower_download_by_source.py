@@ -37,10 +37,10 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 # 다크워 서바이벌 : 6573c39d5c3b423d5d04560f 2024/05/19
 # 레지던트 이블 : 686fdb56b1430f9d12eda7a5 2025/09/01
 # rise of kingdoms : 5ac2bdddcfc03208313848db 2018/05/24
-# POTC : 58dca1bc62d7d432f50018e9
-# 건쉽배틀 total warfare: 5b997bca9ee67d1001967929
-# world war : machines conquest : 5f6d6b6a18bf063c24c5d0a0
-# 드래곤 엠파이어 : 625e3a06e0ba195166fbce2f
+# POTC : 58dca1bc62d7d432f50018e9 2017/05/10
+# 건쉽배틀 total warfare: 5b997bca9ee67d1001967929 2018/12/11
+# world war : machines conquest : 5f6d6b6a18bf063c24c5d0a0 2021/01/18
+# 드래곤 엠파이어 : 625e3a06e0ba195166fbce2f 2023/01/05
 
 APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '638ee532480da915a62f0b34',
@@ -55,9 +55,9 @@ APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '5f6d6b6a18bf063c24c5d0a0',
                 '625e3a06e0ba195166fbce2f']
 
-APP_ID_LIST = ['6573c39d5c3b423d5d04560f']
-LUNCHED_DATE = "2024-05-19"
-YEAR_LIST = [2024, 2025]
+APP_ID_LIST = ['686fdb56b1430f9d12eda7a5']
+LUNCHED_DATE = "2025-09-01"
+YEAR_LIST = [2025]
 
 # APP_ID = '625e3a06e0ba195166fbce2f'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
@@ -164,6 +164,61 @@ def upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, BQ_TABLE_ID):
         # [수정 4] 일관된 ID로 삭제 시도
         print(f"Dropping staging table: {staging_table_id}")
         client.delete_table(staging_table_id, not_found_ok=True)
+
+
+
+#### insert 문으로 교체한 경우
+def insert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, BQ_TABLE_ID):
+
+    if df.empty:
+        print("No data to upsert.")
+        return
+
+    # [수정 1] 타임스탬프 고정 (변수 재사용)
+    timestamp = int(time.time())
+    target_table_id = f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_ID}"
+    staging_table_name = f"temp_staging_{timestamp}"
+    staging_table_id = f"{PROJECT_ID}.{BQ_DATASET_ID}.{staging_table_name}"
+
+    # 2. 데이터프레임을 임시 테이블에 적재
+    job_config = bigquery.LoadJobConfig(
+        autodetect=True,
+        write_disposition="WRITE_TRUNCATE",
+        schema=[
+                    bigquery.SchemaField("datekey", "DATE"), # datekey는 무조건 DATE로 인식해라!
+                ]
+    )
+
+    try:
+        # 테이블 적재 (이때 테이블이 생성됨)
+        load_job = client.load_table_from_dataframe(df, staging_table_id, job_config=job_config)
+        load_job.result() # 대기
+        
+        # [수정 2] 적재 후 만료 시간 업데이트
+        # 이미 생성된 테이블 객체를 가져와서 만료 시간만 업데이트
+        table = client.get_table(staging_table_id)
+        table.expires = datetime.utcnow() + timedelta(hours=1)
+        client.update_table(table, ["expires"]) # BigQuery에 반영
+
+        insert_query = f"""
+        INSERT INTO `{target_table_id}`
+        SELECT app_id, country, datekey, organic_abs, organic_browse_abs, browser_abs, paid_abs, paid_search_abs, organic_frac,
+        organic_browse_frac, organic_search_frac, browser_frac, paid_frac, paid_serarch_frac
+        FROM `{staging_table_id}`
+        """
+
+        query_job = client.query(insert_query)
+        query_job.result()
+        
+    except Exception as e:
+        print(f"Upsert Failed: {e}")
+        raise e
+
+    finally:
+        # [수정 4] 일관된 ID로 삭제 시도
+        print(f"Dropping staging table: {staging_table_id}")
+        client.delete_table(staging_table_id, not_found_ok=True)
+
 
 
 
@@ -277,9 +332,8 @@ def sensortower_download_by_source_api(start_date, end_date, APP_ID, SENSORTOWER
         df.rename(columns=column_mapping, inplace=True)
 
         try:
-            print("Upserting data to BigQuery...")
-            upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, BQ_TABLE_ID)
-            print("Data upserted successfully.")
+            ## 수정 : upsert_to_bigquery 에서 insert_to_bigquery 로 변경
+            insert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, BQ_TABLE_ID)
         except Exception as e:
             print(f"Error during upsert: {e}")
             raise e
@@ -371,7 +425,6 @@ def migration_monthly_batches(total_start_str: str, total_end_str: str, APP_ID: 
 
 def migration_data(APP_ID_LIST: list, SENSORTOWER_TOKEN: str, year_list: list = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]):
 
-    # 6일전 날짜를 가져오는 로직
     month_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     game_lunched_date = LUNCHED_DATE
 
