@@ -57,7 +57,7 @@ def calc_target_date(logical_date):
     run_date_kst = logical_date.replace(tzinfo=utc).astimezone(kst)
     
     # 2. KST 기준 하루 전 날짜 계산 (Yesterday)
-    target_d = run_date_kst.date()
+    target_d = run_date_kst.date() - timedelta(days=1)
     
     # 문자열로 변환하여 return 
     target_date_str = target_d.strftime("%Y-%m-%d")

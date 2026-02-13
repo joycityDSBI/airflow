@@ -44,11 +44,11 @@ def etl_fact_tracker(**context):
         run_date = datetime.now()
 
     # 3. 날짜 계산 함수 호출
-    target_date, _ = calc_target_date(run_date)
+    # target_date, _ = calc_target_date(run_date)
 
     ########### 백필용 데이터 처리    
-    # target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
-    # run_kst = None
+    target_date = target_date_range("2026-02-03", "2026-02-12")  ## 백필용
+    run_kst = None
 
 
 
@@ -81,11 +81,11 @@ def etl_fact_access(**context):
         run_date = datetime.now()
 
     # 3. 날짜 계산 함수 호출
-    target_date, _ = calc_target_date(run_date)
+    # target_date, _ = calc_target_date(run_date)
 
     ########### 백필용 데이터 처리    
-    # target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
-    # run_kst = None
+    target_date = target_date_range("2026-02-03", "2026-02-12")  ## 백필용
+    run_kst = None
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
@@ -112,12 +112,12 @@ def etl_fact_payment(**context):
         run_date = datetime.now()
 
     # 3. 날짜 계산 함수 호출
-    target_date, _ = calc_target_date(run_date)
+    # target_date, _ = calc_target_date(run_date)
 
 
     ########### 백필용 데이터 처리    
-    # target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
-    # run_kst = None
+    target_date = target_date_range("2026-02-03", "2026-02-12")  ## 백필용
+    run_kst = None
 
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
@@ -144,12 +144,12 @@ def etl_fact_funnel(**context):
         run_date = datetime.now()
 
     # 3. 날짜 계산 함수 호출
-    target_date, _ = calc_target_date(run_date)
+    # target_date, _ = calc_target_date(run_date)
 
 
     ########### 백필용 데이터 처리    
-    # target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
-    # run_kst = None
+    target_date = target_date_range("2026-02-03", "2026-02-12")  ## 백필용
+    run_kst = None
 
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
@@ -176,11 +176,11 @@ def etl_fact_IAA(**context):
         run_date = datetime.now()
 
     # 3. 날짜 계산 함수 호출
-    target_date, _ = calc_target_date(run_date)
+    # target_date, _ = calc_target_date(run_date)
 
     ########### 백필용 데이터 처리    
-    # target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
-    # run_kst = None
+    target_date = target_date_range("2026-02-03", "2026-02-12")  ## 백필용
+    run_kst = None
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
@@ -208,11 +208,11 @@ def etl_fact_usermap(**context):
         run_date = datetime.now()
 
     # 3. 날짜 계산 함수 호출
-    target_date, _ = calc_target_date(run_date)
+    # target_date, _ = calc_target_date(run_date)
 
     ########### 백필용 데이터 처리    
-    # target_date = target_date_range("2026-01-30", "2026-02-04")  ## 백필용
-    # run_kst = None
+    target_date = target_date_range("2026-02-03", "2026-02-12")  ## 백필용
+    run_kst = None
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
