@@ -851,7 +851,7 @@ def etl_f_cost_campaign_rule(client):
     """
 
     query = f"""
-        INSERT INTO `datahub-478802.datahub.f_cost_campaign_rule`
+      INSERT INTO `datahub-478802.datahub.f_cost_campaign_rule`
         (
         joyple_game_code
         , upload_timestamp
@@ -893,50 +893,27 @@ def etl_f_cost_campaign_rule(client):
         , mediation
         , pre_yn
         , pre_cate
-        , class
+        -- , class ### class 삭제 처리해야함.
         , media_group
         , target_group  
         )
 
         WITH CostCampaignRule
         AS (
-        SELECT a.*
+        SELECT a.* 
                 , Category                                                        AS pre_cat
-                , campaign_start_date                                               AS cmpgn_start
-                , campaign_end_date                                                AS cmpgn_end
-                , cost_start_date                                                   AS pre_date
-                , CASE WHEN game_id = 'KOFS' AND country = 'JP' THEN 1 ELSE 0 END AS extra_process_required
-                , CASE WHEN Etc_Category = 'L&F' THEN '6.ETC'
-                    WHEN 
-                    (Media_Category IN ('ADNW','AppleSA.Self') AND media NOT IN ('Mistplay') AND Class LIKE '%tROAS%') OR
-                    (Media_Category IN ('Facebook' ,'Facebook-Gaming','Facebook-Playable','Facebook-Re' ,'Mytarget.Self') AND Class in('VO','VO(MinROAS)') ) OR
-                    (Media_Category IN ('Google','Google-Re') AND Etc_Category NOT IN ('GoldAccel') AND Class LIKE '%tROAS%') OR  -- MediaCategory = 'Google'에서 MediaCategory IN ('Google','Google-Re')으로 변경
-                    (Media_Category IN ('Facebook' ,'Facebook-Gaming','Facebook-Playable','Facebook-Re' ,'Mytarget.Self', 'Google', 'Google-Re') AND Class IN ('CEO(HVU)','GFS(HVU)') ) THEN '1.UA-HVU'
-                    WHEN 
-                    (Media_Category IN ('ADNW','AppleSA.Self') AND (Class LIKE '%tRET%' OR Class LIKE '%tROAS%' OR Class  in('CPA','CPC','CPM', 'CPC_Retargeting', 'CPM_AEO(Level)','CPM_AEO(Purchase)','CPM_CEO(Pecan)' )) ) OR 
-                    (Media_Category in( 'Facebook' ,'Facebook-Gaming','Facebook-Playable','Facebook-Re' ,'Mytarget.Self') AND Class in('AEO(Level)','AEO','AEO(Gem)','CEO','CEO(Pecan)','CEO(Model)','CEO(Action)') ) OR
-                    (Media_Category IN ('Google','Google-Re') AND (Class in('tCPA_ETC','tCPA_Purchase','tCPA','tCPA(GFS)_ETC') OR Class LIKE '%tROAS%')) OR  -- MediaCategory = 'Google'에서 MediaCategory IN ('Google','Google-Re')으로 변경
-                    (Media_Category IN ( 'Facebook' ,'Facebook-Gaming','Facebook-Playable','Facebook-Re' ,'Mytarget.Self','Google', 'Google-Re') AND Class IN ('CEO(VU)','GFS(VU)') ) THEN '2.UA-VU'        
-                    WHEN 
-                    (Media_Category IN ('ADNW','AppleSA.Self' )  AND (Class IN ('nCPI','nCPA') OR Class LIKE '%tCPI%')) OR
-                    (Media_Category IN ('Facebook' ,'Facebook-Gaming','Facebook-Playable','Facebook-Re' ,'Mytarget.Self') AND Class in('MAIA','MAIE' ,'Linkclick','NONE') ) OR
-                    (Media_Category IN ('Google','Google-Re') AND Class in('tCPI_ETC','tCPI','tCPI-Adv_ETC','tCPI-Adv_Purchase','NONE','ARO') ) OR   -- MediaCategory = 'Google'에서 MediaCategory IN ('Google','Google-Re')으로 변경
-                    (Media_Category IN ('Facebook' ,'Facebook-Gaming','Facebook-Playable','Facebook-Re' ,'Mytarget.Self','Google', 'Google-Re')) AND Class IN ('CEO(Install)','GFS(Install)') THEN '3.UA-Install'
-                    WHEN Media_Category = 'Restricted' THEN '4.UA-Restricted'
-                    ELSE '6.ETC'
-                END AS Target_Group ### 기존 작성되어있던 Targetgroup 쿼리에 Google-Re 캠페인, L&F 캠페인 처리 추가
-                
+                , Campaign_Start_Date                                               AS cmpgn_start
+                , Campaign_End_Date                                                 AS cmpgn_end
+                , Cost_Start_Date                                                   AS pre_date
                 , CASE WHEN cmpgn_nm LIKE '%Credit%' THEN 0
                     ELSE cost_currency 
-                END AS cost_currency_uptdt ## 기존컬럼인 CostUptdt 삭제 후 -> 삭제해도 다른테이블에 영향 없음 
-                                            ## Cost_currency 테이블에 Credit 캠페인 비용을 0 으로 처리한
-                                            ## CostCurrencyUptdt 컬럼 생성
+                END AS cost_currency_uptdt 
         FROM (SELECT upload_time
                     , cmpgn_dt
                     , gcat
                     , CASE WHEN game_id in ('MTSG','DS') THEN 'DS' 
                             when game_id in ('JT', 'JTWN') Then 'JTWN'
-                            ELSE game_id end as game_id -- 게임 약어 혼용으로 인한 변경 처리, MAS 시스템에서 게임명 입력을 누락한 케이스
+                            ELSE game_id end as game_id -- mas cost 테이블 수정되면 삭제해도되는 쿼리
                     , joyple_game_code AS JoypleGameID
                     , country
                     , currency
@@ -961,7 +938,7 @@ def etl_f_cost_campaign_rule(client):
                             when game_id = 'POTC' and cmpgn_nm = 'FR_ALL_FB-Branding_LAL_Awareness_220525' and cmpgn_dt between '2022-05-25' and '2022-06-08' then 'FR_ALL_FB-Branding_LAL_Awareness_Credit_220525'
                             when game_id = 'POTC' and cmpgn_nm = 'UK_ALL_FB-Branding_LAL_Awareness_220525' and cmpgn_dt between '2022-05-25' and '2022-06-08' then 'UK_ALL_FB-Branding_LAL_Awareness_Credit_220525'
                             when game_id = 'POTC' and cmpgn_nm = 'US_ALL_FB-Branding_LAL_Awareness_220525' and cmpgn_dt between '2022-05-25' and '2022-06-08' then 'US_ALL_FB-Branding_LAL_Awareness_Credit_220525'
-                        else cmpgn_nm end as cmpgn_nm ## 기존 CostUptdt 있던 하드코딩을 cmpgn_nm에서 하드코딩하는 것으로 변경
+                        else cmpgn_nm end as cmpgn_nm -- mas cost 테이블 수정되면 삭제해도되는 쿼리
                     , cmpgn_id
                     , adset_nm
                     , adset_id
@@ -979,15 +956,15 @@ def etl_f_cost_campaign_rule(client):
                     , optim2 as optim
                     , etc_category
                     , os
-                    , IF(location = 'UK', 'GB', location) AS location
+                    , IF(location = 'UK', 'GB', location) AS location -- mas cost 테이블 수정되면 삭제해도되는 쿼리
                     , creative_no
                     , device
                     , setting_title
                     , landing_title
                     , ad_unit
                     , mediation
-                    , impressions ## 기존 데사실 Cost 테이블에 있지만 없는 컬럼 추가 
-                    , clicks ## ## 기존 데사실 Cost 테이블에 있지만 없는 컬럼 추가 
+                    , impressions
+                    , clicks 
                     , CASE WHEN media_category LIKE '%-Pre'   THEN true
                             WHEN media_category LIKE '%-Pre-%' THEN true
                             WHEN media_category LIKE 'Pre-%'   THEN true
@@ -996,324 +973,319 @@ def etl_f_cost_campaign_rule(client):
                             WHEN media_category IN ('Preregister','Update-Preregister','Update -Preregister','Google-ACP') THEN true
                             WHEN media IN ('GL-PC-UpdatePre','GL-PC-Pre','FB-PC-UpdatePre','FB-PC-Pre') THEN true  -- 210923 수정한 부분
                             ELSE false 
-                        END AS pre_yn
+                        END AS pre_yn   -- 계속 유지가 되어야함.
                     , CASE WHEN game_id = 'KOFS' and country = 'JP' then 1 
                             WHEN game_id = 'RESU' and country IN ('KR', 'TW', 'HK', 'MO', 'ID', 'BN', 'MM', 'MN') then 1
                             ELSE 0 
-                            END AS extra_process_required ## 기존 작성되어있던 extra_process_required 쿼리에 RESU 캠페인 처리 추가   
-                    ,CASE
-                        WHEN etc_category = 'L&F' THEN CONCAT(optim,'_L&F')
-                        WHEN media_category = 'ADNW' AND (optim IS NULL OR optim = '구분없음') THEN product_category
-                        WHEN media_category = 'ADNW' THEN CONCAT(product_category,'_',optim)
-                        WHEN media_category in( 'Facebook' ,'Facebook-Gaming','Facebook-Playable','Facebook-Re') THEN optim2        
-                        WHEN media_category = 'AppleSA.Self'   THEN product_category
-                        WHEN media_category = 'Mytarget.Self'   THEN optim
-                        WHEN media_category in ('Google','Google-Re') AND (etc_category IS NULL OR etc_category = '구분없음') THEN optim
-                        WHEN media_category in ('Google','Google-Re') AND etc_category = 'Purchase' THEN CONCAT(optim,'_',etc_category)
-                        WHEN media_category in ('Google','Google-Re') AND etc_category != 'Purchase' THEN CONCAT(optim,'_ETC')
-                    ELSE '구분없음'
-                    END AS class
-                    , CASE WHEN media_category = 'Google'                 THEN 'Google'
-                        WHEN media_category = 'Facebook'               THEN 'FB'
-                        WHEN media_category = 'ADNW'                   THEN 'ADNW'
-                        WHEN LOWER(gcat) in ('organic','unknown')   THEN 'Organic'
-                        ELSE 'Other' 
-                    END AS media_group
-            FROM (select * ,
+                            END AS extra_process_required -- 향후 pre_cost_campaign_rule_pre_book 테이블에 country 추가되면 삭제해야할 로직
+                    , CASE WHEN media_category in ('Google', 'Google-ACP', 'Google-PC', 'Google-Re')                 THEN 'Google'
+                            WHEN media_category in ('Facebook', 'Facebook-3rd', 'Facebook-Gaming', 'Facebook-PC', 'Facebook-Playable', 'Facebook-Re') THEN 'FB'
+                            WHEN media_category in ('ADNW','ADNW-Re')                   THEN 'ADNW'
+                            WHEN LOWER(gcat) in ('organic','unknown')   THEN 'Organic'
+                            ELSE 'Other' 
+                    END AS media_group  -- 각 빅미디어 모든 매체카테고리 추가
+                    , case when etc_category = 'L&F' then '그룹없음'
+                            when (media_category = 'Facebook' and gcat = 'UA' and product_category is null and optim = 'NONE' and optim2 = 'VO') then 'UA-HVU'
+                            when (media_category = 'Facebook' and gcat = 'UA' and product_category is null and optim = 'NONE' and optim2 = 'MAIA') then 'UA-Install'
+                            when (media_category = 'Facebook' and gcat = 'UA' and product_category is null and optim = 'NONE' and optim2 = 'AEO') then 'UA-VU'
+                            when (media_category = 'Mytarget.Self' and gcat = 'UA' and product_category is null and optim = 'MAIA') then 'UA-Install'
+                            when (optim in ('CEO(Pecan)', 'CEO(Model)'))  then 'UA-VU'
+                    else target_group 
+                    end as target_group -- mas cost 테이블 수정되면 삭제해도되는 쿼리
+            FROM (select * except(gcat) ,
+                        case when media_category = 'YoutubeBranding' then 'Branding' else gcat -- 로직 수정 필요(과거 데이터 뿐만 아니라 신규 데이터에도 적용필요)
+                              end as gcat,
                         case when optim  = 'NONE' and adset_nm like '%MAIA%' then 'MAIA'
                             when  optim  = 'NONE' and   adset_nm like '%AEO%' then 'AEO'
                             when  optim  = 'NONE' and  adset_nm like '%VO%' then 'VO'
-                        else optim end as optim2 ## optim 'NONE' 값인 Case 수정 로직 추가
-                from `dataplatform-bdts.mas.cost_campaign_rule_game`) AS a
+                        else optim end as optim2 -- mas cost 테이블 수정되면 삭제해도되는 쿼리
+                    from (select A.*, B.joyple_game_code
+                        from `dataplatform-bdts.mas.v_cost_campaign_rule_group` as a
+                        LEFT  JOIN `dataplatform-bdts.mas.game_id` AS B
+                        ON A.game_id = B.game_id
+                        )   
+                )
             ) AS a
             LEFT OUTER JOIN `datahub-478802.datahub.pre_cost_campaign_rule_pre_book` AS c 
             ON (pre_yn = true AND a.JoypleGameID = c.joyple_game_code AND a.cmpgn_dt between campaign_start_date AND campaign_end_date and a.extra_process_required = c.extra_process_required)
-        )
-        ,
-        T_Final 
-        AS 
-        (
-        -- 사전예약이 아닌 원래 데이터들
-        SELECT JoypleGameID            AS joyple_game_code
-            , upload_time             AS upload_timestamp
-            , cmpgn_dt                
-            , gcat                    
-            , game_id                 
-            , country                 AS country_code
-            , currency                
-            , cost                    
-            , cost_currency_uptdt     
-            , currency_rate           
-            , cost_currency           
-            , cmpgn_nm                AS campaign_name
-            , cmpgn_id                AS campaign_id
-            , adset_nm                AS adset_name
-            , adset_id                
-            , ad_nm                   AS ad_name
-            , ad_id                   AS ad_id
-            , impressions             
-            , clicks                  
-            , mas_cmpgn_yn            
-            , creat_dt                AS create_timestamp
-            , uptdt_dt                AS update_timestamp
-            , upload_agent            
-            , user_id                 
-            , media_category          
-            , product_category        
-            , media                   
-            , media_detail            
-            , optim                   
-            , etc_category            
-            , os                      
-            , location                
-            , creative_no             
-            , device                  
-            , setting_title           
-            , landing_title           
-            , ad_unit                 
-            , mediation               
-            , pre_yn                  
-            , 'NULL'                  AS pre_cate
-            , class                   
-            , media_group             
-            , target_group                 
-        FROM CostCampaignRule 
-        WHERE pre_yn = false
-        
-        UNION ALL -- 사전예약 전처리 데이터
-        
-        SELECT a.JoypleGameID          AS joyple_game_code
-            , upload_time             AS upload_timestamp
-            , CostStartDateInterval   AS cmpgn_dt
-            , gcat                    
-            , a.game_id               AS game_id
-            , country                 AS country_code
-            , currency                
-            , cost_d                  AS cost
-            , costcurrencyuptdt_d     AS cost_currency_uptdt   
-            , currency_rate           
-            , cost_currency_d         AS cost_currency
-            , cmpgn_nm                AS campaign_name
-            , cmpgn_id                AS campaign_id
-            , adset_nm                AS adset_name
-            , adset_id                AS adset_id
-            , ad_nm                   AS ad_name
-            , ad_id                   AS ad_id
-            , impressions             
-            , clicks                  
-            , mas_cmpgn_yn            
-            , creat_dt                AS create_timestamp
-            , uptdt_dt                AS update_timestamp
-            , upload_agent            
-            , user_id                 
-            , media_category          
-            , product_category        
-            , media                   
-            , media_detail            
-            , optim                   
-            , etc_category            
-            , os                      
-            , location                
-            , creative_no             
-            , device                  
-            , setting_title           
-            , landing_title           
-            , ad_unit                 
-            , mediation               
-            , pre_yn                  
-            , a.pre_cat               AS pre_cate
-            , class                   
-            , media_group             
-            , target_group                       
-        FROM (
-            SELECT JoypleGameID
-                , upload_time
-                , gcat
-                , game_id
-                , country
-                , currency
-                , currency_rate
-                , cmpgn_nm
-                , cmpgn_id
-                , adset_nm
-                , adset_id
-                , ad_nm
-                , ad_id
-                , impressions    
-                , clicks         
-                , mas_cmpgn_yn
-                , creat_dt
-                , uptdt_dt
-                , upload_agent
-                , user_id
-                , media_category
-                , product_category
-                , media
-                , media_detail
-                , optim
-                , etc_category
-                , os
-                , location
-                , creative_no
-                , device
-                , setting_title
-                , landing_title
-                , ad_unit
-                , mediation
-                , pre_yn
-                , pre_cat
-                , pre_date
-                , sum(cost_currency) / 7 AS cost_currency_d
-                , sum(cost) / 7          AS cost_d
-                , sum(cost_currency_uptdt) / 7    AS costcurrencyuptdt_d
-                , class                   
-                , media_group             
-                , target_group                         
-            FROM CostCampaignRule 
-            WHERE pre_cat is not null
-            group by JoypleGameID
-                    , upload_time
-                    , gcat
-                    , game_id
-                    , country
-                    , currency
-                    , currency_rate
-                    , cmpgn_nm
-                    , cmpgn_id
-                    , adset_nm
-                    , adset_id
-                    , ad_nm
-                    , ad_id
-                    , impressions 
-                    , clicks      
-                    , mas_cmpgn_yn
-                    , creat_dt
-                    , uptdt_dt
-                    , upload_agent
-                    , user_id
-                    , media_category
-                    , product_category
-                    , media
-                    , media_detail
-                    , optim
-                    , etc_category
-                    , os
-                    , location
-                    , creative_no
-                    , device
-                    , setting_title
-                    , landing_title
-                    , ad_unit
-                    , mediation
-                    , pre_yn
-                    , pre_cat
-                    , pre_date
-                    , class
-                    , media_group
-                    , target_group
-        ) AS a
-        LEFT OUTER JOIN  
-        (
-            SELECT joyple_game_code, category, cost_start_date, CostStartDateInterval
-            FROM `datahub-478802.datahub.pre_cost_campaign_rule_pre_book`
-                , unnest(generate_date_array(date(cost_start_date), date_add(date(cost_start_date), interval 6 day),interval 1 day)) AS CostStartDateInterval
-        ) AS b 
-        ON (a.JoypleGameID = b.joyple_game_code AND a.pre_cat = b.category AND a.pre_date = b.cost_start_date) 
-        
-        UNION ALL -- 사전예약 캠페인이긴 하나 처리가 안 된 것들
-        
-        SELECT JoypleGameID          AS joyple_game_code
-            , upload_time           AS upload_timestamp
-            , cmpgn_dt              
-            , gcat                  
-            , game_id               
-            , country               AS country_code
-            , currency              
-            , cost                  
-            , cost_currency_uptdt   
-            , currency_rate         
-            , cost_currency         
-            , cmpgn_nm              AS campaign_name
-            , cmpgn_id              AS campaign_id
-            , adset_nm              AS adset_name
-            , adset_id              AS adset_id
-            , ad_nm                 AS ad_name
-            , ad_id                 AS ad_id
-            , impressions           
-            , clicks                
-            , mas_cmpgn_yn          
-            , creat_dt              AS create_timestamp
-            , uptdt_dt              AS update_timestamp
-            , upload_agent          
-            , user_id               
-            , media_category        
-            , product_category      
-            , media                 
-            , media_detail          
-            , optim                 
-            , etc_category          
-            , os                    
-            , location              
-            , creative_no           
-            , device                
-            , setting_title         
-            , landing_title         
-            , ad_unit               
-            , mediation             
-            , pre_yn                
-            , 'NULL'                AS pre_cate
-            , class                 
-            , media_group           
-            , target_group                
-        FROM CostCampaignRule 
-        WHERE pre_yn = true 
-            AND pre_cat is null
-        )
+        ),
+         T_Final 
+         AS 
+         (
+         -- 사전예약이 아닌 원래 데이터들
+         SELECT JoypleGameID            AS joyple_game_code
+             , upload_time             AS upload_timestamp
+             , cmpgn_dt                
+             , gcat                    
+             , game_id                 
+             , country                 AS country_code
+             , currency                
+             , cost                    
+             , cost_currency_uptdt     
+             , currency_rate           
+             , cost_currency           
+             , cmpgn_nm                AS campaign_name
+             , cmpgn_id                AS campaign_id
+             , adset_nm                AS adset_name
+             , adset_id                
+             , ad_nm                   AS ad_name
+             , ad_id                   AS ad_id
+             , impressions             
+             , clicks                  
+             , mas_cmpgn_yn            
+             , creat_dt                AS create_timestamp
+             , uptdt_dt                AS update_timestamp
+             , upload_agent            
+             , user_id                 
+             , media_category          
+             , product_category        
+             , media                   
+             , media_detail            
+             , optim                   
+             , etc_category            
+             , os                      
+             , location                
+             , creative_no             
+             , device                  
+             , setting_title           
+             , landing_title           
+             , ad_unit                 
+             , mediation               
+             , pre_yn                  
+             , 'NULL'                  AS pre_cate       
+             , media_group             
+             , target_group                 
+         FROM CostCampaignRule 
+         WHERE pre_yn = false
 
-        SELECT joyple_game_code
-            , upload_timestamp
-            , cmpgn_dt
-            , gcat
-            , game_id
-            , IF(country_code = 'UK', 'GB', country_code) AS country_code
-            , currency
-            , cost
-            , cost_currency_uptdt
-            , currency_rate
-            , cost_currency
-            , campaign_name
-            , campaign_id
-            , adset_name
-            , adset_id
-            , ad_name
-            , ad_id
-            , impressions
-            , clicks
-            , mas_cmpgn_yn
-            , create_timestamp
-            , update_timestamp
-            , upload_agent
-            , user_id
-            , media_category
-            , product_category
-            , media
-            , media_detail
-            , optim
-            , etc_category
-            , os
-            , location
-            , creative_no
-            , device
-            , setting_title
-            , landing_title
-            , ad_unit
-            , mediation
-            , pre_yn
-            , pre_cate
-            , class
-            , media_group
-            , target_group     
-        FROM T_Final
+         UNION ALL -- 사전예약 전처리 데이터
+
+         SELECT a.JoypleGameID          AS joyple_game_code
+              , upload_time             AS upload_timestamp
+              , CostStartDateInterval   AS cmpgn_dt
+              , gcat                    
+              , a.game_id               AS game_id
+              , country                 AS country_code
+              , currency                
+              , cost_d                  AS cost
+              , costcurrencyuptdt_d     AS cost_currency_uptdt   
+              , currency_rate           
+              , cost_currency_d         AS cost_currency
+              , cmpgn_nm                AS campaign_name
+              , cmpgn_id                AS campaign_id
+              , adset_nm                AS adset_name
+              , adset_id                AS adset_id
+              , ad_nm                   AS ad_name
+              , ad_id                   AS ad_id
+              , impressions             
+              , clicks                  
+              , mas_cmpgn_yn            
+              , creat_dt                AS create_timestamp
+              , uptdt_dt                AS update_timestamp
+              , upload_agent            
+              , user_id                 
+              , media_category          
+              , product_category        
+              , media                   
+              , media_detail            
+              , optim                   
+              , etc_category            
+              , os                      
+              , location                
+              , creative_no             
+              , device                  
+              , setting_title           
+              , landing_title           
+              , ad_unit                 
+              , mediation               
+              , pre_yn                  
+              , a.pre_cat               AS pre_cate        
+              , media_group             
+              , target_group                       
+         FROM (
+             SELECT JoypleGameID
+                 , upload_time
+                 , gcat
+                 , game_id
+                 , country
+                 , currency
+                 , currency_rate
+                 , cmpgn_nm
+                 , cmpgn_id
+                 , adset_nm
+                 , adset_id
+                 , ad_nm
+                 , ad_id
+                 , impressions    
+                 , clicks         
+                 , mas_cmpgn_yn
+                 , creat_dt
+                 , uptdt_dt
+                 , upload_agent
+                 , user_id
+                 , media_category
+                 , product_category
+                 , media
+                 , media_detail
+                 , optim
+                 , etc_category
+                 , os
+                 , location
+                 , creative_no
+                 , device
+                 , setting_title
+                 , landing_title
+                 , ad_unit
+                 , mediation
+                 , pre_yn
+                 , pre_cat
+                 , pre_date
+                 , sum(cost_currency) / 7 AS cost_currency_d
+                 , sum(cost) / 7          AS cost_d
+                 , sum(cost_currency_uptdt) / 7    AS costcurrencyuptdt_d            
+                 , media_group             
+                 , target_group                         
+             FROM CostCampaignRule 
+             WHERE pre_cat is not null
+             group by JoypleGameID
+                     , upload_time
+                     , gcat
+                     , game_id
+                     , country
+                     , currency
+                     , currency_rate
+                     , cmpgn_nm
+                     , cmpgn_id
+                     , adset_nm
+                     , adset_id
+                     , ad_nm
+                     , ad_id
+                     , impressions 
+                     , clicks      
+                     , mas_cmpgn_yn
+                     , creat_dt
+                     , uptdt_dt
+                     , upload_agent
+                     , user_id
+                     , media_category
+                     , product_category
+                     , media
+                     , media_detail
+                     , optim
+                     , etc_category
+                     , os
+                     , location
+                     , creative_no
+                     , device
+                     , setting_title
+                     , landing_title
+                     , ad_unit
+                     , mediation
+                     , pre_yn
+                     , pre_cat
+                     , pre_date
+                     , media_group
+                     , target_group
+         ) AS a
+         LEFT OUTER JOIN  
+         (
+             SELECT joyple_game_code, category, cost_start_date, CostStartDateInterval
+             FROM `datahub-478802.datahub.pre_cost_campaign_rule_pre_book`
+                 , unnest(generate_date_array(date(cost_start_date), date_add(date(cost_start_date), interval 6 day),interval 1 day)) AS CostStartDateInterval
+         ) AS b 
+         ON (a.JoypleGameID = b.joyple_game_code AND a.pre_cat = b.category AND a.pre_date = b.cost_start_date) 
+
+         UNION ALL -- 사전예약 캠페인이긴 하나 처리가 안 된 것들
+
+         SELECT JoypleGameID          AS joyple_game_code
+             , upload_time           AS upload_timestamp
+             , cmpgn_dt              
+             , gcat                  
+             , game_id               
+             , country               AS country_code
+             , currency              
+             , cost                  
+             , cost_currency_uptdt   
+             , currency_rate         
+             , cost_currency         
+             , cmpgn_nm              AS campaign_name
+             , cmpgn_id              AS campaign_id
+             , adset_nm              AS adset_name
+             , adset_id              AS adset_id
+             , ad_nm                 AS ad_name
+             , ad_id                 AS ad_id
+             , impressions           
+             , clicks                
+             , mas_cmpgn_yn          
+             , creat_dt              AS create_timestamp
+             , uptdt_dt              AS update_timestamp
+             , upload_agent          
+             , user_id               
+             , media_category        
+             , product_category      
+             , media                 
+             , media_detail          
+             , optim                 
+             , etc_category          
+             , os                    
+             , location              
+             , creative_no           
+             , device                
+             , setting_title         
+             , landing_title         
+             , ad_unit               
+             , mediation             
+             , pre_yn                
+             , 'NULL'                AS pre_cate          
+             , media_group           
+             , target_group                
+         FROM CostCampaignRule 
+         WHERE pre_yn = true 
+             AND pre_cat is null
+         )
+         SELECT joyple_game_code
+             , upload_timestamp
+             , cmpgn_dt
+             , gcat
+             , game_id
+             , IF(country_code = 'UK', 'GB', country_code) AS country_code ## 계속 남아야함.
+             , currency
+             , cost
+             , cost_currency_uptdt
+             , currency_rate
+             , cost_currency
+             , campaign_name
+             , campaign_id
+             , adset_name
+             , adset_id
+             , ad_name
+             , ad_id
+             , impressions
+             , clicks
+             , mas_cmpgn_yn
+             , create_timestamp
+             , update_timestamp
+             , upload_agent
+             , user_id
+             , media_category
+             , product_category
+             , media
+             , media_detail
+             , optim
+             , etc_category
+             , os
+             , location
+             , creative_no
+             , device
+             , setting_title
+             , landing_title
+             , ad_unit
+             , mediation
+             , pre_yn
+             , pre_cate
+             , media_group
+             , target_group     
+         FROM T_Final
 
         """
     # 1. 쿼리 실행
