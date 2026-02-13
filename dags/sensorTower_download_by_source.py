@@ -35,8 +35,8 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 # 라스트z 서바이벌 슈터 : 658ea0be1fc48c4dbb3065e6 2024/06/07
 # 타일즈 서바이버 : 67d3aaff2c328ae8e547d0ef 2024/11/01
 # 다크워 서바이벌 : 6573c39d5c3b423d5d04560f 2024/05/19
-# 레지던트 이블 : 686fdb56b1430f9d12eda7a5
-# rise of kingdoms : 5ac2bdddcfc03208313848db
+# 레지던트 이블 : 686fdb56b1430f9d12eda7a5 2025/09/01
+# rise of kingdoms : 5ac2bdddcfc03208313848db 2018/05/24
 # POTC : 58dca1bc62d7d432f50018e9
 # 건쉽배틀 total warfare: 5b997bca9ee67d1001967929
 # world war : machines conquest : 5f6d6b6a18bf063c24c5d0a0
