@@ -1004,7 +1004,7 @@ def etl_f_cost_campaign_rule(client):
                         LEFT  JOIN `dataplatform-bdts.mas.game_id` AS B
                         ON A.game_id = B.game_id
                         )   
-                )
+                ) 
             ) AS a
             LEFT OUTER JOIN `datahub-478802.datahub.pre_cost_campaign_rule_pre_book` AS c 
             ON (pre_yn = true AND a.JoypleGameID = c.joyple_game_code AND a.cmpgn_dt between campaign_start_date AND campaign_end_date and a.extra_process_required = c.extra_process_required)
