@@ -55,7 +55,9 @@ APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '58dca1bc62d7d432f50018e9',
                 '5b997bca9ee67d1001967929',
                 '5f6d6b6a18bf063c24c5d0a0',
-                '625e3a06e0ba195166fbce2f']
+                '625e3a06e0ba195166fbce2f',
+                '5cf092a745e8be7323fffd0d'
+                ]
 
 APP_ID_LIST = ['5f6d6b6a18bf063c24c5d0a0']
 LUNCHED_DATE = "2021-01-18"

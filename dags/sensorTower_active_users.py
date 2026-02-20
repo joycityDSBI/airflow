@@ -40,6 +40,7 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 # 건쉽배틀 total warfare: 5b997bca9ee67d1001967929
 # world war : machines conquest : 5f6d6b6a18bf063c24c5d0a0
 # 드래곤 엠파이어 : 625e3a06e0ba195166fbce2f
+# SOS : 5cf092a745e8be7323fffd0d 2019/08/01
 
 APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '638ee532480da915a62f0b34',
@@ -52,7 +53,9 @@ APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '58dca1bc62d7d432f50018e9',
                 '5b997bca9ee67d1001967929',
                 '5f6d6b6a18bf063c24c5d0a0',
-                '625e3a06e0ba195166fbce2f']
+                '625e3a06e0ba195166fbce2f',
+                '5cf092a745e8be7323fffd0d'
+                ]
 
 # APP_ID = '625e3a06e0ba195166fbce2f'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
