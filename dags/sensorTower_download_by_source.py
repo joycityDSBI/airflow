@@ -42,6 +42,8 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 # world war : machines conquest : 5f6d6b6a18bf063c24c5d0a0 2021/01/18
 # 드래곤 엠파이어 : 625e3a06e0ba195166fbce2f 2023/01/05
 
+# SOS : 5cf092a745e8be7323fffd0d 2019/08/01
+
 APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '638ee532480da915a62f0b34',
                 '64075e77537c41636a8e1c58',
@@ -55,9 +57,9 @@ APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '5f6d6b6a18bf063c24c5d0a0',
                 '625e3a06e0ba195166fbce2f']
 
-APP_ID_LIST = ['5b997bca9ee67d1001967929']
-LUNCHED_DATE = "2024-07-01"
-YEAR_LIST = [2024, 2025]
+APP_ID_LIST = ['5f6d6b6a18bf063c24c5d0a0']
+LUNCHED_DATE = "2021-01-18"
+YEAR_LIST = [2021, 2022, 2023, 2024, 2025]
 
 # APP_ID = '625e3a06e0ba195166fbce2f'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
