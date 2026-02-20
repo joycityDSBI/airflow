@@ -61,9 +61,9 @@ def get_var(key: str, default: str = None, required: bool = False) -> str:
     return None
 
 
-# NOTION_DATABASE_ID = get_var('NOTION_DB_ID_INJOY_MONITORINGDATA_CONSUMER', "230ea67a568180c591fee27d4e90e001")
+NOTION_DATABASE_ID = get_var('NOTION_DB_ID_INJOY_MONITORINGDATA_CONSUMER', "230ea67a568180c591fee27d4e90e001")
 ## 복제 DB에 사용 시
-NOTION_DATABASE_ID = "30dea67a56818034bb5ae80442f5b0d6"
+# NOTION_DATABASE_ID = "30dea67a56818034bb5ae80442f5b0d6"
 
 def get_notion_headers():
     """Notion API 헤더 생성"""
