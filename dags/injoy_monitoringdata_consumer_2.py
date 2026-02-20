@@ -61,7 +61,9 @@ def get_var(key: str, default: str = None, required: bool = False) -> str:
     return None
 
 
-NOTION_DATABASE_ID = get_var('NOTION_DB_ID_INJOY_MONITORINGDATA_CONSUMER', "230ea67a568180c591fee27d4e90e001")
+# NOTION_DATABASE_ID = get_var('NOTION_DB_ID_INJOY_MONITORINGDATA_CONSUMER', "230ea67a568180c591fee27d4e90e001")
+## 복제 DB에 사용 시
+NOTION_DATABASE_ID = "30dea67a56818034bb5ae80442f5b0d6"
 
 def get_notion_headers():
     """Notion API 헤더 생성"""
@@ -74,10 +76,28 @@ def get_notion_headers():
 
 def generate_row_key(row: dict) -> str:
     """고유 키 생성: 사용자_스페이스id_대화id_메시지id"""
-    user = str(row.get('사용자', '')).strip()
-    space_id = str(row.get('스페이스id', '')).strip()
-    convo_id = str(row.get('대화id', '')).strip()
-    msg_id = str(row.get('메시지id', '')).strip()
+    
+    def clean_key_value(val) -> str:
+        # 1. Null, NaN, None 처리 -> 빈 문자열로 통일
+        if pd.isna(val) or val is None:
+            return ""
+        
+        s = str(val).strip()
+        
+        # 2. 파이썬이 'nan' 이라는 문자열로 만들어버린 경우 방어
+        if s.lower() == 'nan':
+            return ""
+            
+        # 3. Pandas 실수형 변환 방어 (예: 1234.0 -> 1234)
+        if s.endswith('.0'):
+            s = s[:-2]
+            
+        return s
+
+    user = clean_key_value(row.get('사용자'))
+    space_id = clean_key_value(row.get('스페이스id'))
+    convo_id = clean_key_value(row.get('대화id'))
+    msg_id = clean_key_value(row.get('메시지id'))
     
     return f"{user}_{space_id}_{convo_id}_{msg_id}"
 
@@ -309,6 +329,12 @@ def transform_data(**context):
         "event_time_kst": "질문날짜"
     })
     print("🔄 컬럼명을 Notion DB에 맞게 변경했습니다.")
+
+    # 중복된 키가 있다면 가장 마지막(최신) 데이터 하나만 남기기
+    df_renamed = df_renamed.drop_duplicates(
+        subset=["사용자", "스페이스id", "대화id", "메시지id"], 
+        keep="last"
+    )
     
     # 날짜 형식 변환
     s = pd.to_datetime(df_renamed['질문날짜'], errors='coerce')
@@ -334,6 +360,17 @@ def transform_data(**context):
     print("=" * 50)
     
     # XCom으로 전달
+    # [핵심 수정 2] Key로 사용되는 컬럼들의 데이터 타입 엄격 통제
+    def safe_string_convert(val):
+        if pd.isna(val):
+            return ""
+        s = str(val)
+        return s[:-2] if s.endswith('.0') else s  # 1234.0 -> 1234 로 정리
+
+    key_columns = ["사용자", "스페이스id", "대화id", "메시지id"]
+    for col in key_columns:
+        df_renamed[col] = df_renamed[col].apply(safe_string_convert)
+
     context['ti'].xcom_push(key='transformed_data', value=df_renamed.to_json(orient='records', date_format='iso'))
 
 
@@ -401,6 +438,10 @@ def load_to_notion(**context):
             
             if not res.ok:
                 print(f"    ❌ 추가 실패! (Key: {key}) - 에러: {res.text}")
+            else:
+                # [핵심 수정 1] 성공 시 existing_keys에 추가하여 동일 배치 내 중복 방지
+                existing_keys.add(key)
+                print(f"    ✅ 추가 성공! (Key: {key})")
             
             time.sleep(0.3)
 
