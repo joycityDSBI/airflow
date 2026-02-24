@@ -59,9 +59,8 @@ APP_ID_LIST = ['67bb93ed47b43a18952ffdfc',
                 '5cf092a745e8be7323fffd0d'
                 ]
 
-APP_ID_LIST = ['5cf092a745e8be7323fffd0d']
-LUNCHED_DATE = "2019-08-01"
-YEAR_LIST = [2019, 2020, 2021, 2022, 2003, 2024, 2025]
+
+YEAR_LIST = [2026]
 
 # APP_ID = '625e3a06e0ba195166fbce2f'
 SENSORTOWER_TOKEN = get_var('SENSORTOWER_TOKEN')
@@ -429,8 +428,8 @@ def migration_monthly_batches(total_start_str: str, total_end_str: str, APP_ID: 
 
 def migration_data(APP_ID_LIST: list, SENSORTOWER_TOKEN: str, year_list: list = [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]):
 
-    month_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-    game_lunched_date = LUNCHED_DATE
+    month_list = [1, 2]
+    game_lunched_date = '2026-01-01'
 
     for year in year_list:
         for month in month_list:
