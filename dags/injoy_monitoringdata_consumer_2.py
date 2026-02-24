@@ -146,8 +146,12 @@ def build_properties_payload(row_data: dict) -> dict:
             else:
                 properties[key] = {"rich_text": [{"text": {"content": content}}]}
 
-        elif key in ["status", "error_type", "feedback_rating"]:
-            properties[key] = {"select": {"name": str(value or "")}}
+        elif key in ["status", "error_type", "feedback_rating", "스페이스명"]:
+            # 선택(Select) 속성은 값이 비어있을 때 빈 문자열("")을 보내면 에러가 날 수 있습니다.
+            # 따라서 값이 있는 경우에만 select payload를 생성하도록 안전하게 처리하는 것이 좋습니다.
+            val_str = str(value or "").strip()
+            if val_str:
+                properties[key] = {"select": {"name": val_str}}
 
         elif key in ['row_count', 'auto_regenerate_count']:
             try:
