@@ -336,7 +336,7 @@ def sensortower_download_by_source_api(start_date, end_date, APP_ID, SENSORTOWER
 
         try:
             ## 수정 : upsert_to_bigquery 에서 insert_to_bigquery 로 변경
-            insert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, BQ_TABLE_ID)
+            upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, BQ_TABLE_ID)
         except Exception as e:
             print(f"Error during upsert: {e}")
             raise e
@@ -492,10 +492,9 @@ with DAG(
 
     MIGRATION_seonsortower_downloads_by_source_task = PythonOperator(
         task_id='MIGRATION_seonsortower_downloads_by_source',
-        python_callable=migration_data,
+        python_callable=app_id_downloads_by_source_fetch_load,
         op_kwargs={
             'APP_ID_LIST': APP_ID_LIST,
-            'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN,
-            'year_list': YEAR_LIST
+            'SENSORTOWER_TOKEN': SENSORTOWER_TOKEN
         }
     )
