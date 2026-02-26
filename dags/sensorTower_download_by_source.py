@@ -473,7 +473,7 @@ with DAG(
     dag_id='SENSORTOWER_downloads_by_source',
     default_args=default_args,
     description='센서타워 API를 통해 소스별 다운로드 데이터를 가져와 BigQuery에 적재',
-    schedule= '0 22 * * *',
+    schedule= '0 18 * * *',
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['SensorTower', 'downloads_by_source', 'bigquery'],
