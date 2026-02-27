@@ -13,6 +13,7 @@ from googleapiclient.discovery import build
 from google.cloud import bigquery
 from datetime import datetime, timedelta, timezone
 from google.oauth2 import service_account
+import json
 
 
 
@@ -366,7 +367,8 @@ def youtube_FSF2_etl():
     df_views_by_age_gender = fetch_combined_data_viewer(ana_svc, '2025-01-01', end_date) # 여긴 start_date 고정 (누적 데이터)
     df_comments = get_all_comments_with_api_key(video_map)
     
-    bq_creds = service_account.Credentials.from_service_account_info(CREDENTIALS_JSON)
+    creds_dict = json.loads(CREDENTIALS_JSON) if isinstance(CREDENTIALS_JSON, str) else CREDENTIALS_JSON
+    bq_creds = service_account.Credentials.from_service_account_info(creds_dict)
     client = bigquery.Client(project=PROJECT_ID, credentials=bq_creds)
     
     upsert_to_bigquery(client, df_views_by_video, PROJECT_ID, DATASET_ID, views_by_video_id_table_id)
