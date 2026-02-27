@@ -35,7 +35,7 @@ SCOPES = [
 PROJECT_ID = 'datahub-478802'
 LOCATION = 'US'
 
-DATASET_ID = 'datahub'
+DATASET_ID = 'external_data'
 views_by_video_id_table_id = 'youtube_FSF2_views_by_video_id'
 views_by_age_gender_table_id = 'youtube_FSF2_views_by_age_gender'
 comments_table_id = 'youtube_FSF2_comments'
