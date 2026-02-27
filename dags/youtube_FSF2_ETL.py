@@ -259,14 +259,21 @@ def upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, TABLE_ID):
     staging_table_name = f"temp_staging_{timestamp}"
     staging_table_id = f"{PROJECT_ID}.{BQ_DATASET_ID}.{staging_table_name}"
 
-    # 2. 데이터프레임을 임시 테이블에 적재
-    job_config = bigquery.LoadJobConfig(
-        autodetect=True,
-        write_disposition="WRITE_TRUNCATE",
-        schema=[
-                    bigquery.SchemaField("datekey", "DATE"), # datekey는 무조건 DATE로 인식해라!
-                ]
-    )
+    if TABLE_ID == 'youtube_FSF2_comments':
+        # 댓글 테이블은 datekey가 없으므로 스키마 명시 제외 (자동 감지 활용)
+        job_config = bigquery.LoadJobConfig(
+            autodetect=True,
+            write_disposition="WRITE_TRUNCATE"
+        )
+    else:
+        # 나머지 테이블은 기존처럼 datekey를 DATE 타입으로 강제
+        job_config = bigquery.LoadJobConfig(
+            autodetect=True,
+            write_disposition="WRITE_TRUNCATE",
+            schema=[
+                bigquery.SchemaField("datekey", "DATE"),
+            ]
+        )
 
     try:
         print(f"Loading data to staging table: {staging_table_id}...")
