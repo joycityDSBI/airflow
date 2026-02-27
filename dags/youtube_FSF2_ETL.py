@@ -20,8 +20,10 @@ def get_var(key: str, default: str = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
-TOKEN_FILE = "/home/devadmin/airflow/youtube_token.json"
-CLIENT_SECRETS_FILE = "/home/devadmin/airflow/youtube_analytics_api_credential.json"
+DAG_FOLDER = os.path.dirname(os.path.realpath(__file__))
+TOKEN_FILE = os.path.join(DAG_FOLDER, "youtube_token.json")
+CLIENT_SECRETS_FILE = os.path.join(DAG_FOLDER, "youtube_analytics_api_credential.json")
+
 API_KEY = get_var("YOUTUBE_ANALYTICS_API_KEY")
 
 SCOPES = [
