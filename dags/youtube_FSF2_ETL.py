@@ -366,6 +366,17 @@ def youtube_FSF2_etl():
     df_views_by_video = fetch_combined_data(ana_svc, video_map, start_date, end_date)
     df_views_by_age_gender = fetch_combined_data_viewer(ana_svc, '2025-01-01', end_date) # 여긴 start_date 고정 (누적 데이터)
     df_comments = get_all_comments_with_api_key(video_map)
+
+    if not df_views_by_video.empty:
+        df_views_by_video['views'] = pd.to_numeric(df_views_by_video['views'], errors='coerce').fillna(0).astype(int)
+        df_views_by_video['likes'] = pd.to_numeric(df_views_by_video['likes'], errors='coerce').fillna(0).astype(int)
+        df_views_by_video['comments'] = pd.to_numeric(df_views_by_video['comments'], errors='coerce').fillna(0).astype(int)
+        df_views_by_video['shares'] = pd.to_numeric(df_views_by_video['shares'], errors='coerce').fillna(0).astype(int)
+
+    if not df_comments.empty:
+        df_comments['like_count'] = pd.to_numeric(df_comments['like_count'], errors='coerce').fillna(0).astype(int)
+        df_comments['video_id'] = df_comments['video_id'].astype(str)
+        df_comments['comment_id'] = df_comments['comment_id'].astype(str)
     
     creds_dict = json.loads(CREDENTIALS_JSON) if isinstance(CREDENTIALS_JSON, str) else CREDENTIALS_JSON
     bq_creds = service_account.Credentials.from_service_account_info(creds_dict)
