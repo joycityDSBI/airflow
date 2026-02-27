@@ -374,29 +374,33 @@ def youtube_FSF2_etl():
         df_views_by_video['shares'] = pd.to_numeric(df_views_by_video['shares'], errors='coerce').fillna(0).astype(int)
 
     if not df_views_by_age_gender.empty:
-        # viewer_percentage는 소수점이 포함된 숫자이므로 float으로 변환
+        # 소수점 데이터이므로 float으로 변환 후 NaN은 0.0 처리
         df_views_by_age_gender['viewer_percentage'] = pd.to_numeric(df_views_by_age_gender['viewer_percentage'], errors='coerce').fillna(0.0).astype(float)
-        # 다른 문자열 컬럼들도 명시적으로 string 고정
         df_views_by_age_gender['age_group'] = df_views_by_age_gender['age_group'].astype(str)
         df_views_by_age_gender['gender'] = df_views_by_age_gender['gender'].astype(str)
+        df_views_by_age_gender['datekey'] = pd.to_datetime(df_views_by_age_gender['datekey']).dt.date
 
+    # 2. 댓글 데이터 타입 정리
     if not df_comments.empty:
+        # 좋아요 수는 정수형으로 변환
         df_comments['like_count'] = pd.to_numeric(df_comments['like_count'], errors='coerce').fillna(0).astype(int)
-        df_comments['video_id'] = df_comments['video_id'].astype(str)
-        df_comments['comment_id'] = df_comments['comment_id'].astype(str)
+        df_comments['published_at'] = pd.to_datetime(df_comments['published_at'], errors='coerce').astype(timedelta).dt.tz_localize('UTC') # 타임존 명시적으로 UTC로 고정
+        # 문자열 컬럼들은 명시적으로 object가 아닌 string으로 고정
+        for col in ['video_id', 'video_title', 'comment_id', 'author', 'text']:
+            df_comments[col] = df_comments[col].astype(str)
     
     creds_dict = json.loads(CREDENTIALS_JSON) if isinstance(CREDENTIALS_JSON, str) else CREDENTIALS_JSON
     bq_creds = service_account.Credentials.from_service_account_info(creds_dict)
     client = bigquery.Client(project=PROJECT_ID, credentials=bq_creds)
     
     upsert_to_bigquery(client, df_views_by_video, PROJECT_ID, DATASET_ID, views_by_video_id_table_id)
-    print("Views by video ID upserted.")
+    print("✅ Views by video ID upserted.")
     
     upsert_to_bigquery(client, df_views_by_age_gender, PROJECT_ID, DATASET_ID, views_by_age_gender_table_id)
-    print("Views by age/gender upserted.")
+    print("✅ Views by age/gender upserted.")
     
     upsert_to_bigquery(client, df_comments, PROJECT_ID, DATASET_ID, comments_table_id)
-    print("Comments upserted.")
+    print("✅ Comments upserted.")
 
 
 
