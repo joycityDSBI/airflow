@@ -149,41 +149,47 @@ def fetch_combined_data(analytics_service, video_map, start_date, end_date):
 
 
 # 시청자 성별/연령대 데이터 조회. 누적 값 기준 viewerPercentage
-def fetch_combined_data_viewer(analytics_service, start_date, end_date):
+def fetch_combined_data_viewer_per_video(analytics_service, video_map, start_date, end_date):
     all_data = []
-    # 재시도를 위한 루프 (최대 3번)
-    for attempt in range(3):
-        try:
-            request = analytics_service.reports().query(
-            ids="channel==MINE",
-            startDate=start_date,
-            endDate=end_date,
-            metrics="viewerPercentage",
-            dimensions="ageGroup,gender",
-            sort="ageGroup,gender"
-            )
-            response = request.execute()
-            
-            if 'rows' in response:
-                for row in response['rows']:
-                    all_data.append(row)
-            
-            time.sleep(0.3) # 평소보다 조금 더 여유를 둡니다
-            break # 성공 시 재시도 루프 탈출
-            
-        except Exception as e:
-            if "500" in str(e) and attempt < 2:
-                print(f"   ㄴ 서버 에러 발생. {attempt+1}차 재시도 중...")
-                time.sleep(2) # 500 에러 시에는 조금 길게 쉽니다
-            else:
-                print(f"에러 발생: {e}")
-                break # 3번 다 실패하면 다음 영상으로 이동
+    
+    for v_id, v_title in video_map.items():
+        print(f"인구통계 조회 중: {v_title} ({v_id})")
+        
+        # 재시도를 위한 루프 (최대 3번)
+        for attempt in range(3):
+            try:
+                request = analytics_service.reports().query(
+                    ids="channel==MINE",
+                    startDate=start_date,
+                    endDate=end_date,
+                    metrics="viewerPercentage",
+                    dimensions="ageGroup,gender",
+                    sort="ageGroup,gender",
+                    filters=f"video=={v_id}"  # 특정 영상으로 필터링
+                )
+                response = request.execute()
+                
+                if 'rows' in response:
+                    for row in response['rows']:
+                        # video_id와 video_title을 함께 저장하여 식별 가능하게 함
+                        all_data.append([v_id, v_title] + row)
+                
+                time.sleep(0.3) 
+                break 
+                
+            except Exception as e:
+                if "500" in str(e) and attempt < 2:
+                    print(f"   ㄴ 서버 에러 발생. {attempt+1}차 재시도 중...")
+                    time.sleep(2)
+                else:
+                    print(f"에러 발생 ({v_id}): {e}")
+                    break
 
-    columns = ['age_group', 'gender', 'viewer_percentage']
+    # 컬럼명에 video_id와 title 추가
+    columns = ['video_id', 'video_title', 'age_group', 'gender', 'viewer_percentage']
     df = pd.DataFrame(all_data, columns=columns)
     df['datekey'] = end_date
     return df
-
 
 
 ## 전체 비디오 댓글 수집 (API 키 방식)
@@ -371,7 +377,7 @@ def youtube_FSF2_etl():
     start_date = '2025-01-01' # 마이그레이션을 위해 일단 고정값으로 변경 (누적 데이터)
     
     df_views_by_video = fetch_combined_data(ana_svc, video_map, start_date, end_date)
-    df_views_by_age_gender = fetch_combined_data_viewer(ana_svc, '2025-01-01', end_date) # 여긴 start_date 고정 (누적 데이터)
+    df_views_by_age_gender = fetch_combined_data_viewer_per_video(ana_svc, video_map, '2025-01-01', end_date) # 여긴 start_date 고정 (누적 데이터)
     df_comments = get_all_comments_with_api_key(video_map)
 
     if not df_views_by_video.empty:
@@ -385,6 +391,8 @@ def youtube_FSF2_etl():
         df_views_by_age_gender['viewer_percentage'] = pd.to_numeric(df_views_by_age_gender['viewer_percentage'], errors='coerce').fillna(0.0).astype(float)
         df_views_by_age_gender['age_group'] = df_views_by_age_gender['age_group'].astype(str)
         df_views_by_age_gender['gender'] = df_views_by_age_gender['gender'].astype(str)
+        df_views_by_age_gender['video_id'] = df_views_by_age_gender['video_id'].astype(str)
+        df_views_by_age_gender['video_title'] = df_views_by_age_gender['video_title'].astype(str)
         df_views_by_age_gender['datekey'] = pd.to_datetime(df_views_by_age_gender['datekey']).dt.date
 
     # 2. 댓글 데이터 타입 정리
