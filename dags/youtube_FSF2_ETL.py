@@ -381,10 +381,19 @@ def youtube_FSF2_etl():
         df_views_by_age_gender['datekey'] = pd.to_datetime(df_views_by_age_gender['datekey']).dt.date
 
     # 2. 댓글 데이터 타입 정리
+
     if not df_comments.empty:
-        # 좋아요 수는 정수형으로 변환
+    # 1. 날짜형으로 변환 (유튜브 API는 이미 UTC 기반 ISO 형식이므로 바로 인식 가능)
+        df_comments['published_at'] = pd.to_datetime(df_comments['published_at'], errors='coerce')
+        
+        # 2. 타임존이 없는 경우에만 UTC 부여 (이미 있다면 처리 안함)
+        if df_comments['published_at'].dt.tz is None:
+            df_comments['published_at'] = df_comments['published_at'].dt.tz_localize('UTC')
+        else:
+            df_comments['published_at'] = df_comments['published_at'].dt.tz_convert('UTC')
+        
         df_comments['like_count'] = pd.to_numeric(df_comments['like_count'], errors='coerce').fillna(0).astype(int)
-        df_comments['published_at'] = pd.to_datetime(df_comments['published_at'], errors='coerce').astype(timedelta).dt.tz_localize('UTC') # 타임존 명시적으로 UTC로 고정
+        
         # 문자열 컬럼들은 명시적으로 object가 아닌 string으로 고정
         for col in ['video_id', 'video_title', 'comment_id', 'author', 'text']:
             df_comments[col] = df_comments[col].astype(str)
