@@ -373,6 +373,13 @@ def youtube_FSF2_etl():
         df_views_by_video['comments'] = pd.to_numeric(df_views_by_video['comments'], errors='coerce').fillna(0).astype(int)
         df_views_by_video['shares'] = pd.to_numeric(df_views_by_video['shares'], errors='coerce').fillna(0).astype(int)
 
+    if not df_views_by_age_gender.empty:
+        # viewer_percentage는 소수점이 포함된 숫자이므로 float으로 변환
+        df_views_by_age_gender['viewer_percentage'] = pd.to_numeric(df_views_by_age_gender['viewer_percentage'], errors='coerce').fillna(0.0).astype(float)
+        # 다른 문자열 컬럼들도 명시적으로 string 고정
+        df_views_by_age_gender['age_group'] = df_views_by_age_gender['age_group'].astype(str)
+        df_views_by_age_gender['gender'] = df_views_by_age_gender['gender'].astype(str)
+
     if not df_comments.empty:
         df_comments['like_count'] = pd.to_numeric(df_comments['like_count'], errors='coerce').fillna(0).astype(int)
         df_comments['video_id'] = df_comments['video_id'].astype(str)
