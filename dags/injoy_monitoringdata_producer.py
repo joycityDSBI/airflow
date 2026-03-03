@@ -539,10 +539,18 @@ def get_message_details(**context):
                     # [Step 2] 데이터 일괄 삽입 (executemany)
                     print(f" 2️⃣ 스테이징 테이블에 데이터 삽입 중 ({len(df_staging)} rows)...")
                     cols_str = ", ".join(target_columns)
-                    placeholders = ", ".join(["%s"] * len(target_columns))
-                    insert_query = f"INSERT INTO {staging_table} ({cols_str}) VALUES ({placeholders})"
+                    placeholders = []
+                    for col in target_columns:
+                        if col in ["group_name", "questions"]:
+                            # 배열 컬럼은 파이썬에서 JSON String으로 보낸 뒤 DB에서 ARRAY로 변환
+                            placeholders.append("from_json(?, 'array<string>')")
+                        else:
+                            placeholders.append("?")
                     
-                    # DataFrame을 파이썬 리스트 형태로 변환하여 전송
+                    placeholders_str = ", ".join(placeholders)
+                    insert_query = f"INSERT INTO {staging_table} ({cols_str}) VALUES ({placeholders_str})"
+                    
+                    # 리스트 형태로 변환하여 전송
                     data_to_insert = df_staging.values.tolist()
                     cursor.executemany(insert_query, data_to_insert)
 
