@@ -405,16 +405,21 @@ def get_message_details(**context):
                 else:
                     content = str(content_raw) if content_raw is not None else None
 
-                # Query, description, question 처리
+                # Query, description, question 안전한 처리 (IndexError 방지)
                 attachments = data.get("attachments", [])
-                if attachments and isinstance(attachments, list):
-                    query = attachments[0].get("query", {}).get("query", None)
-                    description = attachments[0].get("query", {}).get("description", None)
-                    if attachments[0].get("suggested_questions", {}).get("questions"):
-                        questions = attachments[0].get("suggested_questions", {}).get("questions", [])
-                    elif attachments[1].get("suggested_questions", {}).get("questions"):
-                        questions = attachments[1].get("suggested_questions", {}).get("questions", [])
+                query, description, questions = None, None, None
 
+                if attachments and isinstance(attachments, list):
+                    if len(attachments) > 0:
+                        query = attachments[0].get("query", {}).get("query", None)
+                        description = attachments[0].get("query", {}).get("description", None)
+
+                    # 리스트 길이에 상관없이 안전하게 questions 찾기
+                    for att in attachments:
+                        found_qs = att.get("suggested_questions", {}).get("questions")
+                        if found_qs:
+                            questions = found_qs
+                            break # 찾으면 즉시 반복 종료
                 else:
                     query = None
                     description = None
