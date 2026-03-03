@@ -158,19 +158,20 @@ def extract_load_joyple_response():
     # staging 테이블로 데이터 적재 (WRITE_TRUNCATE)
     timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
     temp_staging_table = f"{TABLE_ID}_{timestamp_str}"
+    TEMP_TABLE = f"{PROJECT_ID}.{DATASET_ID}.{temp_staging_table}"
 
     try:
         # 3. 데이터 업로드 (테이블이 없으면 자동 생성됨)
         # WRITE_TRUNCATE: 테이블이 있으면 비우고 넣고, 없으면 새로 만듭니다.
         job_config = bigquery.LoadJobConfig(write_disposition="WRITE_TRUNCATE")
-        load_job = client.load_table_from_dataframe(df, temp_staging_table, job_config=job_config)
+        load_job = client.load_table_from_dataframe(df, TEMP_TABLE, job_config=job_config)
         load_job.result()
-        print(f"[{datetime.now()}] 스테이징 테이블 생성 및 업로드 완료: {temp_staging_table}")
+        print(f"[{datetime.now()}] 스테이징 테이블 생성 및 업로드 완료: {TEMP_TABLE}")
 
         # 4. MERGE 쿼리를 통한 Upsert 처리
         merge_sql = f"""
             MERGE `{FINAL_TABLE}` T
-            USING `{temp_staging_table}` S
+            USING `{TEMP_TABLE}` S
             ON T.response_id = S.response_id
             WHEN MATCHED THEN
               UPDATE SET 
@@ -263,19 +264,20 @@ def extract_load_joyple_question_info():
     # staging 테이블로 데이터 적재 (WRITE_TRUNCATE)
     timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
     temp_staging_table = f"{TABLE_ID}_{timestamp_str}"
+    TEMP_TABLE = f"{PROJECT_ID}.{DATASET_ID}.{temp_staging_table}"
 
     try:
         # 3. 데이터 업로드 (테이블이 없으면 자동 생성됨)
         # WRITE_TRUNCATE: 테이블이 있으면 비우고 넣고, 없으면 새로 만듭니다.
         job_config = bigquery.LoadJobConfig(write_disposition="WRITE_TRUNCATE")
-        load_job = client.load_table_from_dataframe(df, temp_staging_table, job_config=job_config)
+        load_job = client.load_table_from_dataframe(df, TEMP_TABLE, job_config=job_config)
         load_job.result()
-        print(f"[{datetime.now()}] 스테이징 테이블 생성 및 업로드 완료: {temp_staging_table}")
+        print(f"[{datetime.now()}] 스테이징 테이블 생성 및 업로드 완료: {TEMP_TABLE}")
 
         # 4. MERGE 쿼리를 통한 Upsert 처리
         merge_sql = f"""
             MERGE `{FINAL_TABLE}` T
-            USING `{temp_staging_table}` S
+            USING `{TEMP_TABLE}` S
                 ON T.survey_list_id = S.survey_list_id 
                 AND T.question_info_id = S.question_info_id 
                 AND T.common_info_id = S.common_info_id 
