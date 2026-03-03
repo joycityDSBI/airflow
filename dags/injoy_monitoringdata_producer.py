@@ -285,12 +285,12 @@ def get_message_details(**context):
         cursor.execute(f"""
             CREATE TABLE {staging_table} (
                 space_id STRING, conversation_id STRING, message_id STRING, 
-                user_id STRING, user_name STRING, api_response STRING
+                user_id STRING, user_name STRING, user_email STRING, api_response STRING
             )
         """)
         
         # executemany를 사용하여 대량 삽입 (내부적으로 최적화된 벌크 삽입 수행)
-        insert_sql = f"INSERT INTO {staging_table} VALUES (?, ?, ?, ?, ?, ?)"
+        insert_sql = f"INSERT INTO {staging_table} VALUES (?, ?, ?, ?, ?, ?, ?)"
         cursor.executemany(insert_sql, values_to_insert)
 
         # 3. 단 한 번의 MERGE 쿼리로 타겟 테이블 업데이트
@@ -304,6 +304,7 @@ def get_message_details(**context):
                 UPDATE SET 
                     target.user_id = source.user_id,
                     target.user_name = source.user_name,
+                    target.user_email = source.user_email,
                     target.api_response = source.api_response
             WHEN NOT MATCHED THEN
                 INSERT *;
