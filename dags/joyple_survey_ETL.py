@@ -276,7 +276,7 @@ def extract_load_joyple_question_info():
             A.answer_limit,
             CAST(A.answer_required_yn AS SIGNED) AS answer_required_yn,
             CAST(A.multi_answer_yn AS SIGNED) AS multi_answer_yn,
-            CAST(C.first_party_data_collect_yn AS SIGNED) AS first_party_data_collect_yn,
+            CAST(A.first_party_data_collect_yn AS SIGNED) AS first_party_data_collect_yn,
             CAST(A.del_yn AS SIGNED) AS del_yn,
             A.lang,
             A.question,
