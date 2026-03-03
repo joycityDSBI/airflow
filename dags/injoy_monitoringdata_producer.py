@@ -489,7 +489,19 @@ def get_message_details(**context):
     
     print("📌 df_target 컬럼 목록:", df_target.columns.tolist())
     print(f"✅ 메시지 상세 정보 수집 완료: {len(df_target)} rows")
-    print("✅ df_target 데이터 head 3 : ", df_target.head(3))
+    # --- 🌟 여기서부터 교체 ---
+    print(f"✅ 메시지 상세 정보 수집 완료: {len(df_target)} rows")
+    
+    # Pandas의 출력 제한을 일시적으로 해제하여 모든 데이터를 로그에 찍습니다.
+    import pandas as pd
+    with pd.option_context(
+        'display.max_rows', None,         # 모든 행 출력
+        'display.max_columns', None,      # 모든 열 출력
+        'display.max_colwidth', None,     # 긴 텍스트(content 등) 중간에 ... 으로 잘리지 않게 설정
+        'display.width', 1000             # 줄바꿈 최소화
+    ):
+        print("✅ df_target 전체 데이터 확인 (잘림 없음):\n", df_target)
+    # ---------------------------
     
     if not df_target.empty:
         from databricks import sql
@@ -514,12 +526,26 @@ def get_message_details(**context):
         # 3️⃣ 필요한 컬럼만 추출
         df_staging = df_target[target_columns].copy()
 
-        # 4️⃣ 데이터 클렌징 (JSON 변환 제거, 순수 리스트 유지)
+        # 4️⃣ 🌟 데이터 클렌징 (리스트 데이터 완벽 보호)
         df_staging["auto_regenerate_count"] = df_staging["auto_regenerate_count"].astype(str).replace({'nan': None, 'None': None, '<NA>': None})
         
-        # Pandas의 NaN 값을 완벽하게 파이썬 None으로 변환 (SQL의 NULL 처리를 위함)
-        # 리스트 타입 컬럼이 섞여 있을 때 안전하게 None으로 덮어쓰는 방법입니다.
-        df_staging = df_staging.astype(object).where(pd.notnull(df_staging), None)
+        # [기존 문제가 되던 df_staging.where(...) 코드는 삭제합니다!]
+
+        # SQL에 넣을 데이터를 한 줄씩 안전하게 변환합니다.
+        data_to_insert = []
+        for row in df_staging.itertuples(index=False, name=None):
+            cleaned_row = []
+            for val in row:
+                # 1. 값이 리스트(ARRAY)인 경우 절대 건드리지 않고 그대로 넣음
+                if isinstance(val, list):
+                    cleaned_row.append(val)
+                # 2. 값이 결측치(NaN, NaT 등)인 경우 SQL의 NULL 처리를 위해 파이썬 None으로 변환
+                elif pd.isna(val):
+                    cleaned_row.append(None)
+                # 3. 그 외 일반 문자열이나 숫자는 그대로 넣음
+                else:
+                    cleaned_row.append(val)
+            data_to_insert.append(cleaned_row)
 
         try:
             print("🔄 Databricks 연결 및 적재 작업 시작...")
@@ -535,16 +561,13 @@ def get_message_details(**context):
                     cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
                     cursor.execute(f"CREATE TABLE {staging_table} AS SELECT * FROM {target_table} WHERE 1=0")
 
-                    # [Step 2] 데이터 일괄 삽입 (전부 ? 로 통일)
-                    print(f" 2️⃣ 스테이징 테이블에 데이터 삽입 중 ({len(df_staging)} rows)...")
+                    # [Step 2] 데이터 일괄 삽입
+                    print(f" 2️⃣ 스테이징 테이블에 데이터 삽입 중 ({len(data_to_insert)} rows)...")
                     cols_str = ", ".join(target_columns)
-                    
-                    # 🌟 핵심: ARRAY 든 STRING 이든 커넥터가 알아서 해주므로 모두 ? 로 사용
                     placeholders = ", ".join(["?"] * len(target_columns))
                     insert_query = f"INSERT INTO {staging_table} ({cols_str}) VALUES ({placeholders})"
                     
-                    # DataFrame을 리스트 형태로 변환하여 전송
-                    data_to_insert = df_staging.values.tolist()
+                    # 🌟 안전하게 변환된 data_to_insert 사용
                     cursor.executemany(insert_query, data_to_insert)
 
                     # [Step 3] MERGE INTO 수행
