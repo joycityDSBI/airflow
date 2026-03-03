@@ -495,40 +495,59 @@ def get_message_details(**context):
         from databricks import sql
         import numpy as np
 
-        # 1. 데이터 클렌징 (NaN 처리)
-        # SQL에 들어갈 때 에러를 방지하기 위해 NaN은 None으로 변환합니다.
-        df_target = df_target.replace({np.nan: None})
-        
-        staging_table = "datahub.injoy_ops_schema.injoy_monitoring_api_message_details_staging"
         target_table = "datahub.injoy_ops_schema.injoy_monitoring_api_message_details"
+        staging_table = f"{target_table}_staging"
+
+        # 1️⃣ 타겟 테이블과 완벽히 동일한 컬럼 리스트 정의 (순서 유지)
+        target_columns = [
+            "user_email", "user_id", "space_id", "conversation_id", "message_id", 
+            "user_name", "content", "query", "statement_id", "group_name", 
+            "space_name", "row_count", "status", "description", "questions", 
+            "auto_regenerate_count", "error", "error_type", "feedback_rating"
+        ]
+
+        # 2️⃣ df_target에 없는 타겟 컬럼이 있다면 None으로 채우기 (에러 방지)
+        for col in target_columns:
+            if col not in df_target.columns:
+                df_target[col] = None
+
+        # 3️⃣ 필요한 컬럼만 타겟 테이블 순서에 맞춰 추출 (필터링)
+        df_staging = df_target[target_columns].copy()
+
+        # 4️⃣ 데이터 타입 클렌징 및 결측치 처리
+        # auto_regenerate_count는 테이블 구조상 STRING이므로 문자로 형변환
+        df_staging["auto_regenerate_count"] = df_staging["auto_regenerate_count"].astype(str).replace({'nan': None, 'None': None, '<NA>': None})
+        
+        # Pandas의 NaN, NaT 등을 SQL에 넣기 위해 파이썬 None으로 일괄 변환
+        df_staging = df_staging.replace({np.nan: None})
 
         try:
-            # 기존 사용하시던 커넥션 방식 그대로 활용
+            print("🔄 Databricks 연결 및 적재 작업 시작...")
             with sql.connect(
                 server_hostname=config['instance'].replace('https://', ''),
                 http_path=Variable.get('databricks_http_path'),
                 access_token=config['token']
             ) as conn:
                 with conn.cursor() as cursor:
-                    # 1️⃣ 스테이징 테이블 생성 및 데이터 삽입
-                    print(f" 1️⃣ 스테이징 테이블 초기화 중...: {staging_table}")
                     
-                    # 기존 스테이징 테이블 삭제 후 타겟과 동일한 구조로 생성
+                    # [Step 1] 스테이징 테이블 초기화 (타겟 테이블 구조 복사)
+                    print(f" 1️⃣ 스테이징 테이블 생성 중: {staging_table}")
                     cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
+                    # 타겟 테이블과 완벽히 동일한 스키마(ARRAY 타입 등 포함)로 껍데기만 생성
                     cursor.execute(f"CREATE TABLE {staging_table} AS SELECT * FROM {target_table} WHERE 1=0")
 
-                    # 데이터 삽입을 위한 values 생성
-                    cols = ", ".join(df_target.columns)
-                    placeholders = ", ".join(["%s"] * len(df_target.columns))
-                    insert_query = f"INSERT INTO {staging_table} ({cols}) VALUES ({placeholders})"
+                    # [Step 2] 데이터 일괄 삽입 (executemany)
+                    print(f" 2️⃣ 스테이징 테이블에 데이터 삽입 중 ({len(df_staging)} rows)...")
+                    cols_str = ", ".join(target_columns)
+                    placeholders = ", ".join(["%s"] * len(target_columns))
+                    insert_query = f"INSERT INTO {staging_table} ({cols_str}) VALUES ({placeholders})"
                     
-                    # 리스트 형태로 변환하여 일괄 삽입 (executemany)
-                    data_to_insert = df_target.values.tolist()
+                    # DataFrame을 파이썬 리스트 형태로 변환하여 전송
+                    data_to_insert = df_staging.values.tolist()
                     cursor.executemany(insert_query, data_to_insert)
-                    print(f" ✅ 스테이징 테이블 데이터 삽입 완료 ({len(df_target)} rows)")
 
-                    # 2️⃣ MERGE INTO 수행
-                    print(f" 2️⃣ 타겟 테이블로 MERGE 수행 중...: {target_table}")
+                    # [Step 3] MERGE INTO 쿼리 실행
+                    print(" 3️⃣ 타겟 테이블에 MERGE 수행 중...")
                     merge_sql = f"""
                     MERGE INTO {target_table} AS target
                     USING {staging_table} AS source
@@ -541,11 +560,12 @@ def get_message_details(**context):
                       INSERT *
                     """
                     cursor.execute(merge_sql)
-                    print(" ✅ MERGE 작업 완료!")
+                    print("✅ MERGE 작업 완료!")
 
-                    # 3️⃣ 스테이징 테이블 삭제 (정리)
+                    # [Step 4] 스테이징 테이블 정리
+                    print(" 4️⃣ 스테이징 테이블 정리 중...")
                     cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
-                    print(" 3️⃣ 스테이징 테이블 정리 완료.")
+                    print("✅ Databricks 최종 적재 프로세스 완료!")
 
         except Exception as e:
             print(f"❌ 데이터 적재/MERGE 중 오류 발생: {e}")
