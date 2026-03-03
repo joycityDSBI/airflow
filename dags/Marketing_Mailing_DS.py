@@ -125,8 +125,9 @@ with DAG(
 
     gemini_retry_plicy = retry(
         retry=retry_if_exception_type(exceptions.ResourceExhausted), # 429 에러만 재시도
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        stop=stop_after_attempt(5)
+        wait=wait_exponential(multiplier=2, min=15, max=180),
+        stop=stop_after_attempt(5),
+        reraise=True
     )
 
     # 제미나이 paid 국가별 함수
