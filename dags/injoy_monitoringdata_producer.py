@@ -11,6 +11,7 @@ import numpy as np
 import json
 import pyspark
 from airflow.operators.bash import BashOperator
+from databricks import sql
 
 injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
 
@@ -196,7 +197,7 @@ def extract_audit_logs(**context):
 
             # XCom으로 Key 리스트 전달
             context['ti'].xcom_push(key='merge_key_list', value=merge_key_list)
-            print(f"✅ MERGE 완료 및 {len(merge_key_list)}개의 Key 리스트 XCom 저장 완료")
+            print(f"✅ MERGE 완료 및 {len(merge_key_list)}개의 Key 리스트 XCom 저장 완료") ## 수정필요. space_id, conversation_id, message_id 수집된
 
     finally:
         cursor.close()
@@ -204,404 +205,122 @@ def extract_audit_logs(**context):
 
     return len(merge_key_list)
 
-
-def get_user_groups(**context):
-    """
-    Task 2: SCIM API로 그룹 및 사용자 정보 수집
-    """
-    config = get_databricks_config()
-    headers = {"Authorization": f"Bearer {config['token']}"}
-    
-    # Step 1: 그룹 전체 목록 조회
-    group_url = f"https://{config['instance']}/api/2.0/preview/scim/v2/Groups"
-    group_resp = requests.get(group_url, headers=headers)
-    
-    if group_resp.status_code != 200:
-        raise Exception(f"그룹 조회 실패: {group_resp.status_code} - {group_resp.text}")
-    
-    groups = group_resp.json().get("Resources", [])
-    print(f"⏭️ 전체 그룹 리스트: {groups}")
-    
-    # Step 2: 각 그룹의 구성원 수집 (exclude_groups 제외)
-    user_group_list = []
-    
-    for g in groups:
-        group_name = g.get("displayName", "")
-        group_id = g.get("id", "")
-        
-        # exclude_groups에 포함된 그룹은 건너뛰기
-        if group_name in exclude_groups:
-            print(f"⏭️ 제외된 그룹 건너뛰기: {group_name}")
-            continue
-        
-        group_detail_url = f"https://{config['instance']}/api/2.0/preview/scim/v2/Groups/{group_id}"
-        detail_resp = requests.get(group_detail_url, headers=headers)
-        
-        if detail_resp.status_code != 200:
-            print(f"⚠️ 그룹 상세 조회 실패 (group_id={group_id}): {detail_resp.status_code}")
-            continue
-        
-        group_detail = detail_resp.json()
-        members = group_detail.get("members", [])
-        
-        for m in members:
-            user_id = m.get("value")
-            if user_id:
-                user_group_list.append({"user_id": user_id, "group_name": group_name})
-    
-    # Step 3: DataFrame으로 변환 및 그룹핑
-    if not user_group_list:
-        print("⚠️ 수집된 사용자-그룹 매핑이 없습니다.")
-        df_user_groups = pd.DataFrame(columns=["user_id", "group_name"])
-    else:
-        df_user_groups = pd.DataFrame(user_group_list).drop_duplicates()
-        
-        df_user_groups = (
-            df_user_groups
-            .groupby("user_id")["group_name"]
-            .apply(lambda x: sorted(set(x)))
-            .reset_index()
-        )
-    
-    print(f"✅ 사용자 그룹 정보 수집 완료: {len(df_user_groups)} users")
-
-    # XCom으로 데이터 전달
-    context['ti'].xcom_push(key='df_user_groups', value=df_user_groups.to_json(orient='split'))
-    
-    return len(df_user_groups)
-
-def enrich_with_groups(**context):
-    """
-    Task 3: Audit log에 그룹 정보 병합
-    """
-    ti = context['ti']
-    
-    # XCom에서 데이터 가져오기
-    # 1. XCom에서 리스트 데이터 그대로 가져오기
-    merge_keys = ti.xcom_pull(task_ids='extract_audit_logs', key='merge_key_list')
-    df_audit = pd.DataFrame(merge_keys)
-    df_user_groups = pd.read_json(StringIO(ti.xcom_pull(task_ids='get_user_groups', key='df_user_groups')), orient='split')
-    
-    # merge 컬럼 type 일치
-    df_audit["user_id"] = df_audit["user_id"].astype(str)
-    df_user_groups["user_id"] = df_user_groups["user_id"].astype(str)
-
-    # 병합
-    df_audit_with_group = df_audit.merge(df_user_groups, on="user_id", how="left")
-    
-    # group_name이 NaN인 행 제거
-    df_audit_with_group = df_audit_with_group.dropna(subset=["group_name"])
-    
-    print(f"✅ 그룹 정보 병합 완료: {len(df_audit_with_group)} rows")
-    print(f"✅ 사용자 그룹 리스트:")
-    for _, row in df_audit_with_group.iterrows():
-        print(f"  - {row['user_email']} ({row['user_id']})")
-    
-    context['ti'].xcom_push(key='df_audit_with_group', value=df_audit_with_group.to_json(orient='split', date_format='iso'))
-    
-    return len(df_audit_with_group)
-
-def get_space_info(**context):
-    """
-    Task 4: Genie API로 스페이스 정보 수집
-    """
-    config = get_databricks_config()
-    headers = {"Authorization": f"Bearer {config['token']}"}
-    
-    # 스페이스 목록 조회
-    spaces_url = f"https://{config['instance']}/api/2.0/genie/spaces"
-    resp = requests.get(spaces_url, headers=headers)
-    
-    if resp.status_code != 200:
-        print(f"⚠️ 스페이스 목록 조회 실패: {resp.status_code}")
-        space_id_to_name = {}
-    else:
-        spaces = resp.json().get("spaces", [])
-        space_df = pd.DataFrame([
-            {"space_id": s.get("space_id"), "space_name": s.get("title")}
-            for s in spaces
-        ])
-        space_id_to_name = dict(zip(space_df["space_id"], space_df["space_name"]))
-    
-    print(f"✅ 스페이스 정보 수집 완료: {len(space_id_to_name)} spaces")
-    
-    context['ti'].xcom_push(key='space_id_to_name', value=space_id_to_name)
-    
-    return len(space_id_to_name)
-
 def get_message_details(**context):
     """
-    Task 5: Genie API로 메시지 상세 정보 수집
+    Task 2: Genie API로 메시지 상세 정보 수집 -> Databricks 테이블에 저장.
     """
     ti = context['ti']
     config = get_databricks_config()
+    
+    # 1. 데이터 가져오기
+    merge_key_list = ti.xcom_pull(task_ids='extract_audit_logs', key='merge_key_list')
+    
+    if not merge_key_list:
+        print("ℹ️ 처리할 메시지 키(Key) 데이터가 없습니다.")
+        return 0
+
     headers = {"Authorization": f"Bearer {config['token']}"}
-    
-    # 데이터 가져오기
-    df_audit_with_group = pd.read_json(StringIO(ti.xcom_pull(task_ids='enrich_with_groups', key='df_audit_with_group')), orient='split')
-    space_id_to_name = ti.xcom_pull(task_ids='get_space_info', key='space_id_to_name')
-    
-    # 스페이스 이름 추가
-    df_audit_with_group["space_name"] = df_audit_with_group["space_id"].map(space_id_to_name)
-    
-    # group_name이 리스트 형태이므로 any로 체크
-    def should_exclude(group_list):
-        if isinstance(group_list, list):
-            return any(g in exclude_groups for g in group_list)
-        return False
-    
-    df_target = df_audit_with_group[~df_audit_with_group["group_name"].apply(should_exclude)].copy()
-    
-    # 메시지 상세 정보 수집
-    contents = []
-    queries = []
-    statement_ids = []
-    row_counts = []
-    statuses = []
-    descriptions = []
-    questionss = []
-    auto_regenerate_counts = []
-    errors = []
-    error_types = []
-    feedback_ratings = []
-    
-    total_rows = len(df_target)
-    print(f"🔄 메시지 상세 정보 수집 시작: {total_rows} rows")
-    
-    for idx, row in df_target.iterrows():
-        if idx % 100 == 0:
-            print(f"  Progress: {idx}/{total_rows}")
+    instance_host = config['instance'].replace('https://', '')
+    api_results = []
+
+
+    # 2. 각 Key를 순회하며 API 호출
+    for row in merge_key_list:
+        space_id = row['space_id']
+        conversation_id = row['conversation_id']
+        message_id = row['message_id']
         
-        space_id = row["space_id"]
-        conversation_id = row["conversation_id"]
-        message_id = row["message_id"]
-        
-        if None in [space_id, conversation_id, message_id]:
-            contents.append(None)
-            queries.append(None)
-            statement_ids.append(None)
-            row_counts.append(None)
-            statuses.append(None)
-            descriptions.append(None)
-            questionss.append(None)
-            auto_regenerate_counts.append(None)
-            errors.append(None)
-            error_types.append(None)
-            feedback_ratings.append(None)
-            continue
-        
-        url = f"https://{config['instance']}/api/2.0/genie/spaces/{space_id}/conversations/{conversation_id}/messages/{message_id}"
+        url = f"https://{instance_host}/api/2.0/genie/spaces/{space_id}/conversations/{conversation_id}/messages/{message_id}"
         
         try:
-            resp = requests.get(url, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                
-                # Content 처리
-                content_raw = data.get("content")
-                print(f"⚠️ content 내용 : {content_raw}")
-                if isinstance(content_raw, str):
-                    content = content_raw.replace("\n", " ")
-                else:
-                    content = str(content_raw) if content_raw is not None else None
-
-                # Query, description, question 안전한 처리 (IndexError 방지)
-                attachments = data.get("attachments", [])
-                query, description, questions = None, None, None
-
-                if attachments and isinstance(attachments, list):
-                    if len(attachments) > 0:
-                        query = attachments[0].get("query", {}).get("query", None)
-                        description = attachments[0].get("query", {}).get("description", None)
-
-                    # 리스트 길이에 상관없이 안전하게 questions 찾기
-                    for att in attachments:
-                        found_qs = att.get("suggested_questions", {}).get("questions")
-                        if found_qs:
-                            questions = found_qs
-                            break # 찾으면 즉시 반복 종료
-                else:
-                    query = None
-                    description = None
-                    question = None
-                
-                # Statement ID 처리
-                query_result = data.get("query_result")
-                if query_result and isinstance(query_result, dict):
-                    statement_id = data.get("query_result", {}).get("statement_id")
-                    row_count = data.get("query_result", {}).get("row_count")
-                else:
-                    statement_id = None
-                    row_count = None
-
-                if isinstance(data.get("status"), str):
-                    status = data.get("status")
-                else:
-                    status = None
-
-                if isinstance(data.get("auto_regenerate_count"), int):
-                    auto_regenerate_count = data.get("auto_regenerate_count")
-                else:
-                    auto_regenerate_count = None
-
-                error_info = data.get("error", {})
-                if error_info and isinstance(error_info, dict):
-                    error = error_info.get("error")
-                    error_type = error_info.get("type")
-                else:
-                    error = None
-                    error_type = None
-
-                feedback_info = data.get("feedback", {})
-                if feedback_info and isinstance(feedback_info, dict):
-                    feedback_rating = feedback_info.get("rating")
-                else:
-                    feedback_rating = None
-
-                print(f"⚠️ questions 내용 : {questions}")
-                
-            else:
-                content, query, description, statement_id, row_count, status, questions, auto_regenerate_count, error, error_type, feedback_rating = None, None, None, None, None, None, None, None, None, None, None
-                
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()  # 200 OK가 아닐 경우 에러 발생
+            
+            # 응답받은 JSON을 문자열 형태로 변환하여 저장
+            api_json_str = json.dumps(response.json(), ensure_ascii=False)
+            
+            api_results.append({
+                "space_id": space_id,
+                "conversation_id": conversation_id,
+                "message_id": message_id,
+                "user_id": row.get('user_id'),
+                "user_name": row.get('user_name'),
+                "user_email": row.get('user_email'),
+                "api_response": api_json_str
+            })
         except Exception as e:
-            print(f"❌ 예외 발생 ({idx}행): {e}")
-            content, query, description, statement_id, row_count, status, questions, auto_regenerate_count, error, error_type, feedback_rating = None, None, None, None, None, None, None, None, None, None, None
+            print(f"❌ API 호출 실패 (message_id: {message_id}): {e}") ## 수정필요. space_id, conversation_id, message_id 수집된
+            # 에러가 나더라도 다른 메시지는 계속 처리할 수 있도록 pass
+
+    if not api_results:
+        print("ℹ️ API 호출 성공 데이터가 없어 적재를 건너뜁니다.")
+        return 0
+
+    # 3. Databricks 테이블에 결과 저장 (MERGE INTO 구문 활용)
+    if api_results:
+    # 1. 리스트를 Pandas DataFrame으로 변환
+        df_api = pd.DataFrame(api_results)
+
+        connection = sql.connect(
+            server_hostname=instance_host,
+            http_path=Variable.get('databricks_http_path'),
+            access_token=config['token']
+        )
+
+    try:
+        cursor = connection.cursor()
         
-        contents.append(content)
-        queries.append(query)
-        statement_ids.append(statement_id)
-        row_counts.append(row_count)
-        statuses.append(status)
-        descriptions.append(description)
-        questionss.append(questions)
-        auto_regenerate_counts.append(auto_regenerate_count)
-        errors.append(error)
-        error_types.append(error_type)
-        feedback_ratings.append(feedback_rating)
-    
-    # 데이터 추가
-    df_target['content'] = contents
-    df_target['query'] = queries
-    df_target['statement_id'] = statement_ids
-    df_target['row_count'] = row_counts
-    df_target['status'] = statuses ## select type
-    df_target['description'] = descriptions
-    df_target['questions'] = questionss
-    df_target['auto_regenerate_count'] = auto_regenerate_counts
-    df_target['error'] = errors
-    df_target['error_type'] = error_types ## select type
-    df_target['feedback_rating'] = feedback_ratings ## select type
-    
-    print("📌 df_target 컬럼 목록:", df_target.columns.tolist())
-    print(f"✅ 메시지 상세 정보 수집 완료: {len(df_target)} rows")
-    # --- 🌟 여기서부터 교체 ---
-    print(f"✅ 메시지 상세 정보 수집 완료: {len(df_target)} rows")
-    
-    # Pandas의 출력 제한을 일시적으로 해제하여 모든 데이터를 로그에 찍습니다.
-    with pd.option_context(
-        'display.max_rows', None,         # 모든 행 출력
-        'display.max_columns', None,      # 모든 열 출력
-        'display.max_colwidth', None,     # 긴 텍스트(content 등) 중간에 ... 으로 잘리지 않게 설정
-        'display.width', 1000             # 줄바꿈 최소화
-    ):
-        print("✅ df_target 전체 데이터 확인 (잘림 없음):\n", df_target)
-    # ---------------------------
-    
-    if not df_target.empty:
-        from databricks import sql
-        import numpy as np
-
-        target_table = "datahub.injoy_ops_schema.injoy_monitoring_api_message_details"
-        staging_table = f"{target_table}_staging"
-
-        # 1️⃣ 타겟 테이블과 완벽히 동일한 컬럼 리스트 정의 (순서 유지)
-        target_columns = [
-            "user_email", "user_id", "space_id", "conversation_id", "message_id", 
-            "user_name", "content", "query", "statement_id", "group_name", 
-            "space_name", "row_count", "status", "description", "questions", 
-            "auto_regenerate_count", "error", "error_type", "feedback_rating"
-        ]
-
-        # 2️⃣ df_target에 없는 타겟 컬럼이 있다면 None으로 채우기
-        for col in target_columns:
-            if col not in df_target.columns:
-                df_target[col] = None
-
-        # 3️⃣ 필요한 컬럼만 추출
-        df_staging = df_target[target_columns].copy()
-
-        # 4️⃣ 🌟 데이터 클렌징 (리스트 데이터 완벽 보호)
-        df_staging["auto_regenerate_count"] = df_staging["auto_regenerate_count"].astype(str).replace({'nan': None, 'None': None, '<NA>': None})
+        # 2. 임시 스테이징 테이블(또는 임시 뷰) 생성
+        # Databricks에서 대량 데이터를 처리할 때 가장 빠른 방법 중 하나입니다.
+        staging_table = "datahub.injoy_ops_schema.temp_genie_api_staging"
         
-        # [기존 문제가 되던 df_staging.where(...) 코드는 삭제합니다!]
+        # 스테이징 테이블 초기화 (있다면 삭제 후 생성)
+        cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
+        
+        # 데이터를 튜플 형태로 변환하여 한 번에 삽입 (Bulk insert)
+        # 컬럼 순서: space_id, conversation_id, message_id, user_id, user_name, api_response
+        values_to_insert = [tuple(x) for x in df_api.values]
+        
+        # 테이블 생성
+        cursor.execute(f"""
+            CREATE TABLE {staging_table} (
+                space_id STRING, conversation_id STRING, message_id STRING, 
+                user_id STRING, user_name STRING, api_response STRING
+            )
+        """)
+        
+        # executemany를 사용하여 대량 삽입 (내부적으로 최적화된 벌크 삽입 수행)
+        insert_sql = f"INSERT INTO {staging_table} VALUES (?, ?, ?, ?, ?, ?)"
+        cursor.executemany(insert_sql, values_to_insert)
 
-        # SQL에 넣을 데이터를 한 줄씩 안전하게 변환합니다.
-        data_to_insert = []
-        for row in df_staging.itertuples(index=False, name=None):
-            cleaned_row = []
-            for val in row:
-                # 1. 값이 리스트(ARRAY)인 경우 절대 건드리지 않고 그대로 넣음
-                if isinstance(val, list):
-                    cleaned_row.append(val)
-                # 2. 값이 결측치(NaN, NaT 등)인 경우 SQL의 NULL 처리를 위해 파이썬 None으로 변환
-                elif pd.isna(val):
-                    cleaned_row.append(None)
-                # 3. 그 외 일반 문자열이나 숫자는 그대로 넣음
-                else:
-                    cleaned_row.append(val)
-            data_to_insert.append(cleaned_row)
+        # 3. 단 한 번의 MERGE 쿼리로 타겟 테이블 업데이트
+        final_merge_query = f"""
+            MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_api_message_details AS target
+            USING {staging_table} AS source
+            ON target.space_id = source.space_id 
+               AND target.conversation_id = source.conversation_id 
+               AND target.message_id = source.message_id
+            WHEN MATCHED THEN
+                UPDATE SET 
+                    target.user_id = source.user_id,
+                    target.user_name = source.user_name,
+                    target.api_response = source.api_response
+            WHEN NOT MATCHED THEN
+                INSERT *;
+        """
+        cursor.execute(final_merge_query)
+        
+        # 임시 테이블 삭제
+        cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
+        
+        print(f"✅ {len(api_results)}건의 데이터를 단일 MERGE로 성공적으로 처리했습니다.")
+        
+    finally:
+        cursor.close()
+        connection.close()
 
-        try:
-            print("🔄 Databricks 연결 및 적재 작업 시작...")
-            with sql.connect(
-                server_hostname=config['instance'].replace('https://', ''),
-                http_path=Variable.get('databricks_http_path'),
-                access_token=config['token']
-            ) as conn:
-                with conn.cursor() as cursor:
-                    
-                    # [Step 1] 스테이징 테이블 초기화
-                    print(f" 1️⃣ 스테이징 테이블 생성 중: {staging_table}")
-                    cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
-                    cursor.execute(f"CREATE TABLE {staging_table} AS SELECT * FROM {target_table} WHERE 1=0")
-
-                    # [Step 2] 데이터 일괄 삽입
-                    print(f" 2️⃣ 스테이징 테이블에 데이터 삽입 중 ({len(data_to_insert)} rows)...")
-                    cols_str = ", ".join(target_columns)
-                    placeholders = ", ".join(["?"] * len(target_columns))
-                    insert_query = f"INSERT INTO {staging_table} ({cols_str}) VALUES ({placeholders})"
-                    
-                    # 🌟 안전하게 변환된 data_to_insert 사용
-                    cursor.executemany(insert_query, data_to_insert)
-
-                    # [Step 3] MERGE INTO 수행
-                    print(" 3️⃣ 타겟 테이블에 MERGE 수행 중...")
-                    merge_sql = f"""
-                    MERGE INTO {target_table} AS target
-                    USING {staging_table} AS source
-                    ON target.space_id = source.space_id
-                       AND target.conversation_id = source.conversation_id
-                       AND target.message_id = source.message_id
-                    WHEN MATCHED THEN
-                      UPDATE SET *
-                    WHEN NOT MATCHED THEN
-                      INSERT *
-                    """
-                    cursor.execute(merge_sql)
-                    print("✅ MERGE 작업 완료!")
-
-                    # [Step 4] 스테이징 테이블 삭제
-                    print(" 4️⃣ 스테이징 테이블 정리 중...")
-                    cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
-                    print("✅ Databricks 최종 적재 프로세스 완료!")
-
-        except Exception as e:
-            print(f"❌ 데이터 적재/MERGE 중 오류 발생: {e}")
-            raise e
-    else:
-        print("⚠️ MERGE할 데이터가 없습니다 (df_target이 비어 있음).")
-
-
+    return len(api_results)
+ 
 # Task 정의
 # bash_task = BashOperator(
 #     task_id = 'bash_task',
@@ -623,30 +342,12 @@ task1 = PythonOperator(
 )
 
 task2 = PythonOperator(
-    task_id='get_user_groups',
-    python_callable=get_user_groups,
-    dag=dag,
-)
-
-task3 = PythonOperator(
-    task_id='enrich_with_groups',
-    python_callable=enrich_with_groups,
-    dag=dag,
-)
-
-task4 = PythonOperator(
-    task_id='get_space_info',
-    python_callable=get_space_info,
-    dag=dag,
-)
-
-task5 = PythonOperator(
     task_id='get_message_details',
     python_callable=get_message_details,
     dag=dag,
 )
 
 
+
 # Task 의존성 설정
-task0 >> [task1, task2] >> task3
-[task3, task4] >> task5 ## >> task6 >> bash_task
+task0 >> task1 >> task2
