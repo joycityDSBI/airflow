@@ -196,7 +196,52 @@ def extract_load_joyple_response():
                 T.question_order = S.question_order,
                 T.question_card_uid = S.question_card_uid
             WHEN NOT MATCHED THEN
-              INSERT ROW
+              INSERT (
+                response_id,
+                survey_list_id,
+                question_info_id,
+                option_id,
+                response,
+                other_yn,
+                respondent_id,
+                created_date,
+                game_code,
+                joyple_userkey,
+                game_userkey,
+                country,
+                game_grade_code,
+                subjective_yn,
+                answer_limit,
+                answer_required_yn,
+                multi_answer_yn,
+                lang,
+                question
+                question_order,
+                question_card_uid
+                )
+                VALUES (
+                S.response_id,
+                S.survey_list_id,
+                S.question_info_id,
+                S.option_id,
+                S.response,
+                S.other_yn,
+                S.respondent_id,
+                S.created_date,
+                S.game_code,
+                S.joyple_userkey,
+                S.game_userkey,
+                S.country,
+                S.game_grade_code,
+                S.subjective_yn,
+                S.answer_limit,
+                S.answer_required_yn,
+                S.multi_answer_yn,
+                S.lang,
+                S.question,
+                S.question_order,
+                S.question_card_uid
+                )
         """
         
         query_job = client.query(merge_sql)
@@ -304,7 +349,52 @@ def extract_load_joyple_question_info():
                 T.option_order = S.option_order,
                 T.option_group_uid = S.option_group_uid
             WHEN NOT MATCHED THEN
-              INSERT ROW 
+              INSERT (
+                response_id,
+                survey_list_id,
+                question_info_id,
+                option_id,
+                response,
+                other_yn,
+                respondent_id,
+                created_date,
+                game_code,
+                joyple_userkey,
+                game_userkey,
+                country,
+                game_grade_code,
+                subjective_yn,
+                answer_limit,
+                answer_required_yn,
+                multi_answer_yn,
+                lang,
+                question,
+                question_order,
+                question_card_uid
+              )
+              VALUES (
+                  S.response_id, 
+                  S.survey_list_id, 
+                  S.question_info_id, 
+                  S.option_id, 
+                  S.response, 
+                  S.other_yn, 
+                  S.respondent_id, 
+                  S.created_date, 
+                  S.game_code, 
+                  S.joyple_userkey, 
+                  S.game_userkey, 
+                  S.country, 
+                  S.game_grade_code, 
+                  S.subjective_yn, 
+                  S.answer_limit, 
+                  S.answer_required_yn, 
+                  S.multi_answer_yn, 
+                  S.lang, 
+                  S.question, 
+                  S.question_order, 
+                  S.question_card_uid
+              )
         """
         
         query_job = client.query(merge_sql)
