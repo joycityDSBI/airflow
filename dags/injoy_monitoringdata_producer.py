@@ -506,20 +506,20 @@ def get_message_details(**context):
             "auto_regenerate_count", "error", "error_type", "feedback_rating"
         ]
 
-        # 2️⃣ df_target에 없는 타겟 컬럼이 있다면 None으로 채우기 (에러 방지)
+        # 2️⃣ df_target에 없는 타겟 컬럼이 있다면 None으로 채우기
         for col in target_columns:
             if col not in df_target.columns:
                 df_target[col] = None
 
-        # 3️⃣ 필요한 컬럼만 타겟 테이블 순서에 맞춰 추출 (필터링)
+        # 3️⃣ 필요한 컬럼만 추출
         df_staging = df_target[target_columns].copy()
 
-        # 4️⃣ 데이터 타입 클렌징 및 결측치 처리
-        # auto_regenerate_count는 테이블 구조상 STRING이므로 문자로 형변환
+        # 4️⃣ 데이터 클렌징 (JSON 변환 제거, 순수 리스트 유지)
         df_staging["auto_regenerate_count"] = df_staging["auto_regenerate_count"].astype(str).replace({'nan': None, 'None': None, '<NA>': None})
         
-        # Pandas의 NaN, NaT 등을 SQL에 넣기 위해 파이썬 None으로 일괄 변환
-        df_staging = df_staging.replace({np.nan: None})
+        # Pandas의 NaN 값을 완벽하게 파이썬 None으로 변환 (SQL의 NULL 처리를 위함)
+        # 리스트 타입 컬럼이 섞여 있을 때 안전하게 None으로 덮어쓰는 방법입니다.
+        df_staging = df_staging.astype(object).where(pd.notnull(df_staging), None)
 
         try:
             print("🔄 Databricks 연결 및 적재 작업 시작...")
@@ -530,31 +530,24 @@ def get_message_details(**context):
             ) as conn:
                 with conn.cursor() as cursor:
                     
-                    # [Step 1] 스테이징 테이블 초기화 (타겟 테이블 구조 복사)
+                    # [Step 1] 스테이징 테이블 초기화
                     print(f" 1️⃣ 스테이징 테이블 생성 중: {staging_table}")
                     cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
-                    # 타겟 테이블과 완벽히 동일한 스키마(ARRAY 타입 등 포함)로 껍데기만 생성
                     cursor.execute(f"CREATE TABLE {staging_table} AS SELECT * FROM {target_table} WHERE 1=0")
 
-                    # [Step 2] 데이터 일괄 삽입 (executemany)
+                    # [Step 2] 데이터 일괄 삽입 (전부 ? 로 통일)
                     print(f" 2️⃣ 스테이징 테이블에 데이터 삽입 중 ({len(df_staging)} rows)...")
                     cols_str = ", ".join(target_columns)
-                    placeholders = []
-                    for col in target_columns:
-                        if col in ["group_name", "questions"]:
-                            # 배열 컬럼은 파이썬에서 JSON String으로 보낸 뒤 DB에서 ARRAY로 변환
-                            placeholders.append("from_json(?, 'array<string>')")
-                        else:
-                            placeholders.append("?")
                     
-                    placeholders_str = ", ".join(placeholders)
-                    insert_query = f"INSERT INTO {staging_table} ({cols_str}) VALUES ({placeholders_str})"
+                    # 🌟 핵심: ARRAY 든 STRING 이든 커넥터가 알아서 해주므로 모두 ? 로 사용
+                    placeholders = ", ".join(["?"] * len(target_columns))
+                    insert_query = f"INSERT INTO {staging_table} ({cols_str}) VALUES ({placeholders})"
                     
-                    # 리스트 형태로 변환하여 전송
+                    # DataFrame을 리스트 형태로 변환하여 전송
                     data_to_insert = df_staging.values.tolist()
                     cursor.executemany(insert_query, data_to_insert)
 
-                    # [Step 3] MERGE INTO 쿼리 실행
+                    # [Step 3] MERGE INTO 수행
                     print(" 3️⃣ 타겟 테이블에 MERGE 수행 중...")
                     merge_sql = f"""
                     MERGE INTO {target_table} AS target
@@ -570,7 +563,7 @@ def get_message_details(**context):
                     cursor.execute(merge_sql)
                     print("✅ MERGE 작업 완료!")
 
-                    # [Step 4] 스테이징 테이블 정리
+                    # [Step 4] 스테이징 테이블 삭제
                     print(" 4️⃣ 스테이징 테이블 정리 중...")
                     cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
                     print("✅ Databricks 최종 적재 프로세스 완료!")
