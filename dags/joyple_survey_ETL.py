@@ -82,7 +82,7 @@ def extract_load_joyple_survey_list():
             temp_save_yn,
             del_yn,
             promotion_id
-        FROM target_table 
+        FROM joycity_survey.joyple_survey_list 
     """
     df = pd.read_sql(query, conn)
     conn.close()
@@ -97,7 +97,7 @@ def extract_load_joyple_survey_list():
     job_config = bigquery.LoadJobConfig(write_disposition="WRITE_TRUNCATE")
     load_job = client.load_table_from_dataframe(df, FINAL_TABLE, job_config=job_config)
     load_job.result()  # 완료 대기
-    print(f"Loaded {df.shape[0]} rows to staging table.")
+    print(f"✅ WRITE_TRUNCATE {FINAL_TABLE} 업로드 완료.")
 
 
 ## 유저 응답 데이터에 대해서 최근 일주일간의 데이터를 가져온 뒤 upsert 처리
@@ -209,7 +209,7 @@ def extract_load_joyple_response():
     finally:
         # 5. 작업이 성공하든 실패하든 스테이징 테이블 삭제
         client.delete_table(temp_staging_table, not_found_ok=True)
-        print(f"[{datetime.now()}] 스테이징 테이블 삭제 완료.")
+        print(f"[{datetime.now()}] {FINAL_TABLE} 스테이징 테이블 삭제 완료.")
 
 
 ## 사용자 질문지 데이터를 가져온 뒤 upsert 처리. 전체 데이터를 가져온 뒤 upsert 처리
@@ -306,7 +306,7 @@ def extract_load_joyple_question_info():
         
         query_job = client.query(merge_sql)
         query_job.result()
-        print(f"[{datetime.now()}] 최종 테이블 Upsert 완료.")
+        print(f"[{datetime.now()}] {FINAL_TABLE} 최종 테이블 Upsert 완료.")
 
     except Exception as e:
         print(f"오류 발생: {e}")
