@@ -332,8 +332,9 @@ def get_message_details(**context):
     config = get_databricks_config()
     headers = {"Authorization": f"Bearer {config['token']}"}
     
-    # 데이터 가져오기
-    df_audit_with_group = pd.read_json(StringIO(ti.xcom_pull(task_ids='enrich_with_groups', key='df_audit_with_group')), orient='split')
+    # XCom에서 데이터 가져오기
+    merge_keys = ti.xcom_pull(task_ids='extract_audit_logs', key='merge_key_list')
+    df_audit = pd.DataFrame(merge_keys)
     space_id_to_name = ti.xcom_pull(task_ids='get_space_info', key='space_id_to_name')
     
     # 스페이스 이름 추가
