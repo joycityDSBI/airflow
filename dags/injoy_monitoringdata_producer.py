@@ -487,65 +487,68 @@ def get_message_details(**context):
     df_target['error_type'] = error_types ## select type
     df_target['feedback_rating'] = feedback_ratings ## select type
     
+    print("📌 df_target 컬럼 목록:", df_target.columns.tolist())
     print(f"✅ 메시지 상세 정보 수집 완료: {len(df_target)} rows")
     print("✅ df_target 데이터 head 3 : ", df_target.head(3))
     
     if not df_target.empty:
-        print("🔄 Databricks MERGE 작업 시작...")
+        from databricks import sql
+        import numpy as np
+
+        # 1. 데이터 클렌징 (NaN 처리)
+        # SQL에 들어갈 때 에러를 방지하기 위해 NaN은 None으로 변환합니다.
+        df_target = df_target.replace({np.nan: None})
         
+        staging_table = "datahub.injoy_ops_schema.injoy_monitoring_api_message_details_staging"
         target_table = "datahub.injoy_ops_schema.injoy_monitoring_api_message_details"
-        staging_table = f"{target_table}_staging" # 임시 스테이징 테이블
-        
-        # DataFrame의 NaN, None 값을 SQL 호환을 위해 처리
-        df_target = df_target.where(pd.notnull(df_target), None)
 
         try:
-            # SQLAlchemy 연동이 되어 있다면 df_target.to_sql() 을 쓰는 것이 가장 편리합니다.
-            # 아래는 SQLAlchemy 엔진(engine)이 준비되어 있다고 가정한 코드입니다.
-            # (만약 databricks-sql-connector를 직접 쓴다면 executemany 등을 활용해야 합니다.)
-            from sqlalchemy import create_engine
-            
-            # Databricks SQLAlchemy URI 생성 (Airflow Connection을 가져와도 됨)
-            # http_path는 Databricks SQL Warehouse 또는 Cluster의 연결 정보 탭에서 확인 가능합니다.
-            db_uri = f"databricks://token:{config['token']}@{config['instance']}?http_path={config.get('http_path', 'YOUR_HTTP_PATH')}"
-            engine = create_engine(db_uri)
+            # 기존 사용하시던 커넥션 방식 그대로 활용
+            with sql.connect(
+                server_hostname=config['instance'].replace('https://', ''),
+                http_path=Variable.get('databricks_http_path'),
+                access_token=config['token']
+            ) as conn:
+                with conn.cursor() as cursor:
+                    # 1️⃣ 스테이징 테이블 생성 및 데이터 삽입
+                    print(f" 1️⃣ 스테이징 테이블 초기화 중...: {staging_table}")
+                    
+                    # 기존 스테이징 테이블 삭제 후 타겟과 동일한 구조로 생성
+                    cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
+                    cursor.execute(f"CREATE TABLE {staging_table} AS SELECT * FROM {target_table} WHERE 1=0")
 
-            # 1. Staging 테이블에 데이터 삽입 (기존 데이터 덮어쓰기)
-            print(" 1️⃣ 스테이징 테이블에 데이터 적재 중...")
-            df_target.to_sql(
-                name="injoy_monitoring_api_message_details_staging", 
-                con=engine, 
-                schema="datahub.injoy_ops_schema", 
-                if_exists="replace", 
-                index=False
-            )
+                    # 데이터 삽입을 위한 values 생성
+                    cols = ", ".join(df_target.columns)
+                    placeholders = ", ".join(["%s"] * len(df_target.columns))
+                    insert_query = f"INSERT INTO {staging_table} ({cols}) VALUES ({placeholders})"
+                    
+                    # 리스트 형태로 변환하여 일괄 삽입 (executemany)
+                    data_to_insert = df_target.values.tolist()
+                    cursor.executemany(insert_query, data_to_insert)
+                    print(f" ✅ 스테이징 테이블 데이터 삽입 완료 ({len(df_target)} rows)")
 
-            # 2. MERGE INTO 쿼리 실행
-            print(" 2️⃣ 타겟 테이블에 MERGE 수행 중...")
-            merge_query = f"""
-            MERGE INTO {target_table} AS target
-            USING {staging_table} AS source
-            ON target.space_id = source.space_id
-               AND target.conversation_id = source.conversation_id
-               AND target.message_id = source.message_id
-            WHEN MATCHED THEN
-              UPDATE SET *
-            WHEN NOT MATCHED THEN
-              INSERT *
-            """
-            
-            with engine.begin() as connection:
-                connection.execute(merge_query)
-                
-            # 3. (선택) 스테이징 테이블 삭제
-            print(" 3️⃣ 스테이징 테이블 정리 중...")
-            with engine.begin() as connection:
-                connection.execute(f"DROP TABLE IF EXISTS {staging_table}")
-                
-            print("✅ Databricks MERGE 작업 완료!")
+                    # 2️⃣ MERGE INTO 수행
+                    print(f" 2️⃣ 타겟 테이블로 MERGE 수행 중...: {target_table}")
+                    merge_sql = f"""
+                    MERGE INTO {target_table} AS target
+                    USING {staging_table} AS source
+                    ON target.space_id = source.space_id
+                       AND target.conversation_id = source.conversation_id
+                       AND target.message_id = source.message_id
+                    WHEN MATCHED THEN
+                      UPDATE SET *
+                    WHEN NOT MATCHED THEN
+                      INSERT *
+                    """
+                    cursor.execute(merge_sql)
+                    print(" ✅ MERGE 작업 완료!")
+
+                    # 3️⃣ 스테이징 테이블 삭제 (정리)
+                    cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
+                    print(" 3️⃣ 스테이징 테이블 정리 완료.")
 
         except Exception as e:
-            print(f"❌ MERGE 작업 중 오류 발생: {e}")
+            print(f"❌ 데이터 적재/MERGE 중 오류 발생: {e}")
             raise e
     else:
         print("⚠️ MERGE할 데이터가 없습니다 (df_target이 비어 있음).")
