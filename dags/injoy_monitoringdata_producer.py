@@ -277,8 +277,10 @@ def enrich_with_groups(**context):
     ti = context['ti']
     
     # XCom에서 데이터 가져오기
-    
-    df_audit = pd.read_json(StringIO(ti.xcom_pull(task_ids='extract_audit_logs', key='merge_key_list')), orient='split')
+    # 1. XCom에서 리스트 데이터 그대로 가져오기
+    merge_keys = ti.xcom_pull(task_ids='extract_audit_logs', key='merge_key_list')
+    df_audit = pd.DataFrame(merge_keys)
+
     df_user_groups = pd.read_json(StringIO(ti.xcom_pull(task_ids='get_user_groups', key='df_user_groups')), orient='split')
     
     # 병합
@@ -332,15 +334,9 @@ def get_message_details(**context):
     config = get_databricks_config()
     headers = {"Authorization": f"Bearer {config['token']}"}
     
-    # XCom에서 데이터 가져오기
-    # 1. XCom에서 리스트 데이터 그대로 가져오기
-    merge_keys = ti.xcom_pull(task_ids='extract_audit_logs', key='merge_key_list')
-    
-    # 2. StringIO나 read_json 없이 바로 데이터프레임으로 변환!
-    df_audit = pd.DataFrame(merge_keys)
-    
-    # (참고) 아래 코드는 JSON 문자열로 넘어오기 때문에 원래 쓰시던 방식 그대로 두시면 됩니다.
-    df_user_groups = pd.read_json(StringIO(ti.xcom_pull(task_ids='get_user_groups', key='df_user_groups')), orient='split')
+    # 데이터 가져오기
+    df_audit_with_group = pd.read_json(StringIO(ti.xcom_pull(task_ids='enrich_with_groups', key='df_audit_with_group')), orient='split')
+    space_id_to_name = ti.xcom_pull(task_ids='get_space_info', key='space_id_to_name')
     
     # 스페이스 이름 추가
     df_audit_with_group["space_name"] = df_audit_with_group["space_id"].map(space_id_to_name)
