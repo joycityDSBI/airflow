@@ -215,7 +215,7 @@ def extract_load_joyple_response():
                 answer_required_yn,
                 multi_answer_yn,
                 lang,
-                question
+                question,
                 question_order,
                 question_card_uid
                 )
