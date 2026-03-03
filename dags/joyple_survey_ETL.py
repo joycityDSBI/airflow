@@ -118,7 +118,7 @@ def extract_load_joyple_response():
             , A.question_info_id
             , A.option_id
             , A.response
-            , A.other_yn
+            , CAST(A.other_yn AS SIGNED) AS other_yn
             , A.respondent_id
             , A.created_date
             , B.game_code
@@ -126,10 +126,10 @@ def extract_load_joyple_response():
             , B.game_userkey
             , B.country
             , B.game_grade_code
-            , C.subjective_yn
+            , CAST(C.subjective_yn AS SIGNED) AS subjective_yn
             , C.answer_limit
-            , C.answer_required_yn
-            , C.multi_answer_yn
+            , CAST(C.answer_required_yn AS SIGNED) AS answer_required_yn
+            , CAST(C.multi_answer_yn AS SIGNED) AS multi_answer_yn
             , C.lang
             , C.question
             , C.question_order
@@ -272,15 +272,15 @@ def extract_load_joyple_question_info():
             A.common_info_id,
             B.option_id,
             A.created_date,
-            A.subjective_yn,
+            CAST(A.subjective_yn AS SIGNED) AS subjective_yn,
             A.answer_limit,
-            A.answer_required_yn,
-            A.multi_answer_yn,
-            A.first_party_data_collect_yn,
-            A.del_yn,
+            CAST(A.answer_required_yn AS SIGNED) AS answer_required_yn,
+            CAST(A.multi_answer_yn AS SIGNED) AS multi_answer_yn,
+            CAST(C.first_party_data_collect_yn AS SIGNED) AS first_party_data_collect_yn,
+            CAST(A.del_yn AS SIGNED) AS del_yn,
             A.lang,
             A.question,
-            A.other_yn,
+            CAST(A.other_yn AS SIGNED) AS other_yn,
             A.question_order,
             A.question_card_uid,
             B.question_option,
