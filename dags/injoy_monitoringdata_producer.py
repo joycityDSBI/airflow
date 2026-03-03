@@ -103,11 +103,11 @@ def extract_audit_logs(**context):
             action_name,
             request_params,
             response.result,
-            CAST(event_time AS TIMESTAMP) AS event_time_kst
+            CAST(event_time AS TIMESTAMP) + INTERNAL 9 HOURS AS event_time_kst
         FROM system.access.audit
         WHERE service_name = 'aibiGenie'
             AND action_name IN ('createConversationMessage', 'updateConversationMessageFeedback', 'getMessageQueryResult')
-            AND DATE(event_time) >= CURRENT_DATE - INTERVAL 1 DAYS
+            AND DATE(event_time) >= CURRENT_DATE - INTERVAL 120 DAYS
             AND DATE(event_time) < CURRENT_DATE - INTERVAL 0 DAYS
     ),
 
