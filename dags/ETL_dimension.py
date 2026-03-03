@@ -124,13 +124,35 @@ def etl_dim_AFC_campaign(**context):
 
     query = f"""
     INSERT INTO  `datahub-478802.datahub.dim_AFC_campaign`
-    (app_id, media_source, init_campaign, Gcat, uptdt_campaign, media_category,
-     product_category, media, media_detail, optim, etc_category, os_cam, geo_cam, date_cam, 
-     creative_no, device, setting_title, landing_title, ad_unit, mediation, create_YN, 
-     update_YN, rule_YN, target_group, media_group, upload_timestamp)
+    (app_id, 
+     media_source, 
+     init_campaign, 
+     Gcat, 
+     uptdt_campaign, 
+     media_category,
+     product_category, 
+     media, 
+     media_detail, 
+     optim, 
+     etc_category, 
+     os_cam, 
+     geo_cam, 
+     date_cam, 
+     creative_no, 
+     device, 
+     setting_title, 
+     landing_title, 
+     ad_unit, 
+     mediation, 
+     create_YN, 
+     update_YN, 
+     rule_YN, 
+     target_group, 
+     media_group, 
+     upload_timestamp)
     
     SELECT DISTINCT
-                    app_id                                    
+                  app_id                                    
                 , NORMALIZE(media_source, NFC)            AS media_source
                 , NORMALIZE(init_campaign, NFC)           AS init_campaign
                 , gcat                                    AS gcat
@@ -153,7 +175,7 @@ def etl_dim_AFC_campaign(**context):
                 , create_yn                               AS create_yn
                 , update_yn                               AS update_yn
                 , rule_yn                                 AS rule_yn
-                , target_group                            AS target_group
+                , if(gcat IN ('Organic','Unknown'),'Organic',target_group)  AS target_group
                 , CASE WHEN media_category in ('Google', 'Google-ACP', 'Google-PC', 'Google-Re') THEN 'Google'
                         WHEN media_category in ('Facebook', 'Facebook-3rd', 'Facebook-Gaming', 'Facebook-PC', 'Facebook-Playable', 'Facebook-Re') THEN 'FB'
                         WHEN media_category in ('ADNW','ADNW-Re')                   THEN 'ADNW'
@@ -187,16 +209,7 @@ def etl_dim_AFC_campaign(**context):
                 , init_campaign
                 , uptdt_campaign
                 , upload_time
-                , case  
-                        when etc_category = 'L&F' then '그룹없음'
-                        when (media_category = 'Mytarget.Self' and gcat = 'UA' and product_category is null and optim = 'MAIA') then 'UA-Install'
-                        when lower(trim(media_source)) = 'organic' then 'Organic'
-                        -- 현재 모두 install로 남고 있지만 데이터 수정하면 제대로 남을 예정 - ad_name 컬럼이 없어서 대응을 못함.
-                        --    when (media_category = 'Facebook' and gcat = 'UA' and product_category is null and optim = 'NONE' and optim2 = 'VO') then 'UA-HVU'
-                        --    when (media_category = 'Facebook' and gcat = 'UA' and product_category is null and optim = 'NONE' and optim2 = 'MAIA') then 'UA-Install'
-                        --    when (media_category = 'Facebook' and gcat = 'UA' and product_category is null and optim = 'NONE' and optim2 = 'AEO') then 'UA-VU' 
-                        else target_group
-                    end as target_group -- 데이터 처리 전까지만 하드코딩 대응 수정된 이후에 하드코딩은 삭제 예정       
+                , target_group       
             FROM `dataplatform-bdts.mas.v_af_campaign_rule_group`
             ) 
     """
