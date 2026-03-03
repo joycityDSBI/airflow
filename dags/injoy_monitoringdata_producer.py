@@ -30,9 +30,9 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id='injoy_monitoringdata_producer v2',
+    dag_id='injoy_monitoringdata_producer_ver2',
     default_args=default_args,
-    description='Process Databricks audit logs for aibiGenie v2',
+    description='Process Databricks audit logs for aibiGenie ver2 modifing',
     schedule='5 0 * * *',  # 매일 아침 9시 실행
     start_date=datetime(2025, 1, 1),
     catchup=False,
@@ -177,6 +177,7 @@ def extract_audit_logs(**context):
 
     try:
             # MERGE 실행
+            cursor = connection.cursor()
             cursor.execute(merge_query)
 
             # 2. 이번 배치에서 처리된 Key 리스트만 별도로 추출하여 XCom에 저장
