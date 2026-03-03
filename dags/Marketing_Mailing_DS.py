@@ -1,6 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from google.cloud import bigquery
 from google.auth.transport.requests import Request
 import google.auth
@@ -682,19 +682,42 @@ with DAG(
             # 제미나이 해석 추가
             print("📧 제미나이 해석 추가 진행 중 ...")
             genai_all_us = genai_paid_geo_analytics(df_all_us, credentials)
+            time.sleep(20)
+            print("📧 Paid US 유저에 대한 제미나이 분석 완료")
             genai_all_jp = genai_paid_geo_analytics(df_all_jp, credentials)
+            time.sleep(20)
+            print("📧 Paid JP 유저에 대한 제미나이 분석 완료")
             genai_all_weu = genai_paid_geo_analytics(df_all_weu, credentials)
+            time.sleep(20)
+            print("📧 Paid WEU 유저에 대한 제미나이 분석 완료")
             genai_all_kr = genai_paid_geo_analytics(df_all_kr, credentials)
+            time.sleep(20)
+            print("📧 Paid KR 유저에 대한 제미나이 분석 완료")
             genai_all_etc = genai_paid_geo_analytics(df_all_etc, credentials)
+            time.sleep(20)
+            print("📧 Paid ETC 유저에 대한 제미나이 분석 완료")
             genai_all = genai_paid_all_analytics(df_all, credentials, genai_all_us + genai_all_jp + genai_all_weu + genai_all_kr + genai_all_etc)
+            time.sleep(20)
+            print("📧 Paid 전체 유저에 대한 제미나이 분석 완료")
             
             print("📧 Paid 유저에 대한 제미나이 분석 완료")
             genai_non_us = genai_organic_geo_analytics(df_non_us, credentials)
+            time.sleep(20)
+            print("📧 Organic US 유저에 대한 제미나이 분석 완료")
             genai_non_jp = genai_organic_geo_analytics(df_non_jp, credentials)
+            time.sleep(20)
+            print("📧 Organic JP 유저에 대한 제미나이 분석 완료")
             genai_non_weu = genai_organic_geo_analytics(df_non_weu, credentials)
+            time.sleep(20)
+            print("📧 Organic WEU 유저에 대한 제미나이 분석 완료")
             genai_non_kr = genai_organic_geo_analytics(df_non_kr, credentials)
+            time.sleep(20)
+            print("📧 Organic KR 유저에 대한 제미나이 분석 완료")
             genai_non_etc = genai_organic_geo_analytics(df_non_etc, credentials)
+            time.sleep(20)
+            print("📧 Organic ETC 유저에 대한 제미나이 분석 완료")
             genai_non = genai_organic_all_analytics(df_non, credentials, genai_non_us + genai_non_jp + genai_non_weu + genai_non_kr + genai_non_etc)
+            time.sleep(20)
             print("📧 Organic 포함 전체 유저에 대한 제미나이 분석 완료")
 
             print("✅ 제미나이 해석 완료!")
