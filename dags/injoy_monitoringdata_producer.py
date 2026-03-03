@@ -177,6 +177,7 @@ def extract_audit_logs(**context):
 
     try:
             # MERGE 실행
+            cursor = connection.cursor()
             cursor.execute(merge_query)
 
             # 2. 이번 배치에서 처리된 Key 리스트만 별도로 추출하여 XCom에 저장
