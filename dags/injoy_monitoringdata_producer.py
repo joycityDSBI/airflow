@@ -280,9 +280,12 @@ def enrich_with_groups(**context):
     # 1. XCom에서 리스트 데이터 그대로 가져오기
     merge_keys = ti.xcom_pull(task_ids='extract_audit_logs', key='merge_key_list')
     df_audit = pd.DataFrame(merge_keys)
-
     df_user_groups = pd.read_json(StringIO(ti.xcom_pull(task_ids='get_user_groups', key='df_user_groups')), orient='split')
     
+    # merge 컬럼 type 일치
+    df_audit["user_id"] = df_audit["user_id"].astype(str)
+    df_user_groups["user_id"] = df_user_groups["user_id"].astype(str)
+
     # 병합
     df_audit_with_group = df_audit.merge(df_user_groups, on="user_id", how="left")
     
