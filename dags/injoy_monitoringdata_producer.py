@@ -30,7 +30,7 @@ default_args = {
 }
 
 dag = DAG(
-    dag_id='injoy_monitoringdata_producer_v2',
+    dag_id='injoy_monitoringdata_producer_ver2',
     default_args=default_args,
     description='Process Databricks audit logs for aibiGenie v2',
     schedule='5 0 * * *',  # 매일 아침 9시 실행
