@@ -146,12 +146,15 @@ def extract_audit_logs(**context):
     SELECT 
         a.* EXCEPT(event_time_kst), 
         b.feedback_rating, 
-        a.event_time_kst 
+        a.event_time_kst,
+        c.user_name 
     FROM message_tb AS a
     LEFT JOIN feedback_rb AS b
         ON a.space_id = b.space_id
         AND a.conversation_id = b.conversation_id
         AND a.message_id = b.message_id
+    LEFT JOIN (SELECT DISTINCT email,user_name from datahub.injoy_ops_schema.user_permission_snapshot) AS C
+        ON a.user_email = C.email
     """
     cursor = connection.cursor()
     cursor.execute(query)
