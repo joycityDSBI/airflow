@@ -493,7 +493,6 @@ def get_message_details(**context):
     print(f"✅ 메시지 상세 정보 수집 완료: {len(df_target)} rows")
     
     # Pandas의 출력 제한을 일시적으로 해제하여 모든 데이터를 로그에 찍습니다.
-    import pandas as pd
     with pd.option_context(
         'display.max_rows', None,         # 모든 행 출력
         'display.max_columns', None,      # 모든 열 출력
