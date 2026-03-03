@@ -112,7 +112,7 @@ with DAG(
     # RECIPIENT_EMAILS = ['seongin@joycity.com']
 
     # 제미나이 설정
-    LOCATION = "us-west1" #"us-central1"
+    LOCATION_LIST = ["us-central1", "us-west1", "asia-northeast1", "europe-west1"]
     PROJECT_ID = PROJECT_ID
     MODEL_NAME = "gemini-2.5-flash"
     LABELS = {"datascience_division_service": 'marketing_mailing'}
@@ -131,9 +131,34 @@ with DAG(
     )
 
     # 제미나이 paid 국가별 함수
-    @gemini_retry_plicy
     def genai_paid_geo_analytics(df, credentials):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
+        last_exception = None
+        
+        # 리전 리스트를 하나씩 순회
+        for loc in LOCATION_LIST:
+            try:
+                print(f"📧 현재 시도 리전: {loc}")
+                
+                # 실제 호출 부분 (내부 함수 호출)
+                result = inner_genai_paid_geo_analytics(df, credentials, loc)
+                return result
+                
+            except exceptions.ResourceExhausted as e:
+                print(f"⚠️ {loc} 리전 할당량 초과. 다음 리전으로 전환합니다...")
+                last_exception = e
+                t_sleep.sleep(5) # 리전 전환 전 짧은 대기
+                continue
+            except Exception as e:
+                print(f"❌ 예상치 못한 에러 발생 ({loc}): {e}")
+                raise e
+                
+        # 모든 리전 실패 시
+        print("🚫 모든 리전의 할당량이 소진되었습니다.")
+        raise last_exception
+
+    @gemini_retry_plicy
+    def inner_genai_paid_geo_analytics(df, credentials, location):
+        genai_client = Client(vertexai=True, project=PROJECT_ID, location=location, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -177,9 +202,34 @@ with DAG(
     
 
     # 제미나이 organic 국가별 함수
-    @gemini_retry_plicy
     def genai_organic_geo_analytics(df, credentials):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
+        last_exception = None
+        
+        # 리전 리스트를 하나씩 순회
+        for loc in LOCATION_LIST:
+            try:
+                print(f"📧 현재 시도 리전: {loc}")
+                
+                # 실제 호출 부분 (내부 함수 호출)
+                result = inner_genai_organic_geo_analytics(df, credentials, loc)
+                return result
+                
+            except exceptions.ResourceExhausted as e:
+                print(f"⚠️ {loc} 리전 할당량 초과. 다음 리전으로 전환합니다...")
+                last_exception = e
+                t_sleep.sleep(5) # 리전 전환 전 짧은 대기
+                continue
+            except Exception as e:
+                print(f"❌ 예상치 못한 에러 발생 ({loc}): {e}")
+                raise e
+                
+        # 모든 리전 실패 시
+        print("🚫 모든 리전의 할당량이 소진되었습니다.")
+        raise last_exception
+    
+    @gemini_retry_plicy
+    def inner_genai_organic_geo_analytics(df, credentials, location):
+        genai_client = Client(vertexai=True, project=PROJECT_ID, location=location, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -223,9 +273,34 @@ with DAG(
 
 
     # 제미나이 Paid 전체 요약 함수
-    @gemini_retry_plicy
     def genai_paid_all_analytics(df, credentials, text_data):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
+        last_exception = None
+        
+        # 리전 리스트를 하나씩 순회
+        for loc in LOCATION_LIST:
+            try:
+                print(f"📧 현재 시도 리전: {loc}")
+                
+                # 실제 호출 부분 (내부 함수 호출)
+                result = inner_genai_paid_all_analytics(df, credentials, text_data, loc)
+                return result
+                
+            except exceptions.ResourceExhausted as e:
+                print(f"⚠️ {loc} 리전 할당량 초과. 다음 리전으로 전환합니다...")
+                last_exception = e
+                t_sleep.sleep(5) # 리전 전환 전 짧은 대기
+                continue
+            except Exception as e:
+                print(f"❌ 예상치 못한 에러 발생 ({loc}): {e}")
+                raise e
+                
+        # 모든 리전 실패 시
+        print("🚫 모든 리전의 할당량이 소진되었습니다.")
+        raise last_exception
+    
+    @gemini_retry_plicy
+    def inner_genai_paid_all_analytics(df, credentials, text_data, location):
+        genai_client = Client(vertexai=True, project=PROJECT_ID, location=location, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
@@ -268,9 +343,35 @@ with DAG(
         return first_hash_removed.replace('#', '<br>\n*')
 
     # 제미나이 전체 유저 요약 함수
-    @gemini_retry_plicy
     def genai_organic_all_analytics(df, credentials, text_data):
-        genai_client = Client(vertexai=True,project=PROJECT_ID,location=LOCATION, credentials=credentials)
+        last_exception = None
+        
+        # 리전 리스트를 하나씩 순회
+        for loc in LOCATION_LIST:
+            try:
+                print(f"📧 현재 시도 리전: {loc}")
+                
+                # 실제 호출 부분 (내부 함수 호출)
+                result = inner_genai_organic_all_analytics(df, credentials, text_data, loc)
+                return result
+                
+            except exceptions.ResourceExhausted as e:
+                print(f"⚠️ {loc} 리전 할당량 초과. 다음 리전으로 전환합니다...")
+                last_exception = e
+                t_sleep.sleep(5) # 리전 전환 전 짧은 대기
+                continue
+            except Exception as e:
+                print(f"❌ 예상치 못한 에러 발생 ({loc}): {e}")
+                raise e
+                
+        # 모든 리전 실패 시
+        print("🚫 모든 리전의 할당량이 소진되었습니다.")
+        raise last_exception
+    
+
+    @gemini_retry_plicy
+    def inner_genai_organic_all_analytics(df, credentials, text_data, location):
+        genai_client = Client(vertexai=True, project=PROJECT_ID, location=location, credentials=credentials)
         response_data = genai_client.models.generate_content(
             model=MODEL_NAME,
             contents = f"""
