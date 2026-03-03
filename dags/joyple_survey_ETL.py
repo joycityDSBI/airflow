@@ -157,21 +157,21 @@ def extract_load_joyple_response():
 
     # staging 테이블로 데이터 적재 (WRITE_TRUNCATE)
     timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
-    temp_staging_table = f"{TABLE_ID}_{timestamp_str}"
-    TEMP_TABLE = f"{PROJECT_ID}.{DATASET_ID}.{temp_staging_table}"
+    temp_staging_table_name = f"{TABLE_ID}_{timestamp_str}"
+    TEMP_TABLE_FULL_ID = f"{PROJECT_ID}.{DATASET_ID}.{temp_staging_table_name}"
 
     try:
         # 3. 데이터 업로드 (테이블이 없으면 자동 생성됨)
         # WRITE_TRUNCATE: 테이블이 있으면 비우고 넣고, 없으면 새로 만듭니다.
         job_config = bigquery.LoadJobConfig(write_disposition="WRITE_TRUNCATE")
-        load_job = client.load_table_from_dataframe(df, TEMP_TABLE, job_config=job_config)
+        load_job = client.load_table_from_dataframe(df, TEMP_TABLE_FULL_ID, job_config=job_config)
         load_job.result()
-        print(f"[{datetime.now()}] 스테이징 테이블 생성 및 업로드 완료: {TEMP_TABLE}")
+        print(f"[{datetime.now()}] 스테이징 테이블 생성 및 업로드 완료: {TEMP_TABLE_FULL_ID}")
 
         # 4. MERGE 쿼리를 통한 Upsert 처리
         merge_sql = f"""
             MERGE `{FINAL_TABLE}` T
-            USING `{TEMP_TABLE}` S
+            USING `{TEMP_TABLE_FULL_ID}` S
             ON T.response_id = S.response_id
             WHEN MATCHED THEN
               UPDATE SET 
@@ -196,7 +196,7 @@ def extract_load_joyple_response():
                 T.question_order = S.question_order,
                 T.question_card_uid = S.question_card_uid
             WHEN NOT MATCHED THEN
-              INSERT ROW AS PARTITION
+              INSERT ROW
         """
         
         query_job = client.query(merge_sql)
@@ -209,8 +209,8 @@ def extract_load_joyple_response():
 
     finally:
         # 5. 작업이 성공하든 실패하든 스테이징 테이블 삭제
-        client.delete_table(temp_staging_table, not_found_ok=True)
-        print(f"[{datetime.now()}] {FINAL_TABLE} 스테이징 테이블 삭제 완료.")
+        client.delete_table(TEMP_TABLE_FULL_ID, not_found_ok=True)
+        print(f"[{datetime.now()}] {TEMP_TABLE_FULL_ID} 스테이징 테이블 삭제 완료.")
 
 
 ## 사용자 질문지 데이터를 가져온 뒤 upsert 처리. 전체 데이터를 가져온 뒤 upsert 처리
@@ -263,21 +263,22 @@ def extract_load_joyple_question_info():
 
     # staging 테이블로 데이터 적재 (WRITE_TRUNCATE)
     timestamp_str = datetime.now().strftime("%Y%m%d%H%M%S")
-    temp_staging_table = f"{TABLE_ID}_{timestamp_str}"
-    TEMP_TABLE = f"{PROJECT_ID}.{DATASET_ID}.{temp_staging_table}"
+    temp_staging_table_name = f"{TABLE_ID}_{timestamp_str}"
+    # 반드시 전체 경로(Full Path)를 사용해야 합니다.
+    TEMP_TABLE_FULL_ID = f"{PROJECT_ID}.{DATASET_ID}.{temp_staging_table_name}"
 
     try:
         # 3. 데이터 업로드 (테이블이 없으면 자동 생성됨)
         # WRITE_TRUNCATE: 테이블이 있으면 비우고 넣고, 없으면 새로 만듭니다.
         job_config = bigquery.LoadJobConfig(write_disposition="WRITE_TRUNCATE")
-        load_job = client.load_table_from_dataframe(df, TEMP_TABLE, job_config=job_config)
+        load_job = client.load_table_from_dataframe(df, TEMP_TABLE_FULL_ID, job_config=job_config)
         load_job.result()
-        print(f"[{datetime.now()}] 스테이징 테이블 생성 및 업로드 완료: {TEMP_TABLE}")
+        print(f"[{datetime.now()}] 스테이징 테이블 생성 및 업로드 완료: {TEMP_TABLE_FULL_ID}")
 
         # 4. MERGE 쿼리를 통한 Upsert 처리
         merge_sql = f"""
             MERGE `{FINAL_TABLE}` T
-            USING `{TEMP_TABLE}` S
+            USING `{TEMP_TABLE_FULL_ID}` S
                 ON T.survey_list_id = S.survey_list_id 
                 AND T.question_info_id = S.question_info_id 
                 AND T.common_info_id = S.common_info_id 
@@ -303,12 +304,12 @@ def extract_load_joyple_question_info():
                 T.option_order = S.option_order,
                 T.option_group_uid = S.option_group_uid
             WHEN NOT MATCHED THEN
-              INSERT ROW AS PARTITION
+              INSERT ROW 
         """
         
         query_job = client.query(merge_sql)
         query_job.result()
-        print(f"[{datetime.now()}] {FINAL_TABLE} 최종 테이블 Upsert 완료.")
+        print(f"[{datetime.now()}] {TEMP_TABLE_FULL_ID} 최종 테이블 Upsert 완료.")
 
     except Exception as e:
         print(f"오류 발생: {e}")
@@ -316,7 +317,7 @@ def extract_load_joyple_question_info():
 
     finally:
         # 5. 작업이 성공하든 실패하든 스테이징 테이블 삭제
-        client.delete_table(temp_staging_table, not_found_ok=True)
+        client.delete_table(TEMP_TABLE_FULL_ID, not_found_ok=True)
         print(f"[{datetime.now()}] 스테이징 테이블 삭제 완료.")
 
 
