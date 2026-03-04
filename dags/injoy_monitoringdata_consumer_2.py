@@ -392,113 +392,113 @@ def load_to_notion(**context):
     # XCom에서 변환된 데이터 가져오기
     transformed_data_json = context['ti'].xcom_pull(key='transformed_data', task_ids='transform_data')
     df_renamed = pd.read_json(transformed_data_json, orient='records')
+    print(df_renamed)
+    # # Notion 기존 데이터 조회
+    # print("\nStep 3-1: Notion DB의 기존 데이터 조회 및 중복 데이터 분석을 시작합니다.")
+    # notion_pages = get_all_notion_pages(NOTION_DB_ID, headers)
     
-    # Notion 기존 데이터 조회
-    print("\nStep 3-1: Notion DB의 기존 데이터 조회 및 중복 데이터 분석을 시작합니다.")
-    notion_pages = get_all_notion_pages(NOTION_DB_ID, headers)
+    # # Key 기준으로 페이지들을 모아두는 딕셔너리
+    # # 구조: { "생성된_키": [{"id": "page_id1", "created_time": "2023-01..."}, ...] }
+    # existing_pages_map = {}
     
-    # Key 기준으로 페이지들을 모아두는 딕셔너리
-    # 구조: { "생성된_키": [{"id": "page_id1", "created_time": "2023-01..."}, ...] }
-    existing_pages_map = {}
-    
-    for page in notion_pages:
-        props = page.get("properties", {})
-        page_id = page.get("id")
-        created_time = page.get("created_time") # Notion에서 자동 제공하는 생성 시간
+    # for page in notion_pages:
+    #     props = page.get("properties", {})
+    #     page_id = page.get("id")
+    #     created_time = page.get("created_time") # Notion에서 자동 제공하는 생성 시간
         
-        user_rt = props.get('사용자', {}).get('rich_text', [])
-        space_id_rt = props.get('스페이스id', {}).get('rich_text', [])
-        convo_id_rt = props.get('대화id', {}).get('rich_text', [])
-        msg_id_rt = props.get('메시지id', {}).get('rich_text', [])
+    #     user_rt = props.get('사용자', {}).get('rich_text', [])
+    #     space_id_rt = props.get('스페이스id', {}).get('rich_text', [])
+    #     convo_id_rt = props.get('대화id', {}).get('rich_text', [])
+    #     msg_id_rt = props.get('메시지id', {}).get('rich_text', [])
         
-        row_values = {
-            '사용자': user_rt[0].get('plain_text', '') if user_rt else '',
-            '스페이스id': space_id_rt[0].get('plain_text', '') if space_id_rt else '',
-            '대화id': convo_id_rt[0].get('plain_text', '') if convo_id_rt else '',
-            '메시지id': msg_id_rt[0].get('plain_text', '') if msg_id_rt else '',
-        }
+    #     row_values = {
+    #         '사용자': user_rt[0].get('plain_text', '') if user_rt else '',
+    #         '스페이스id': space_id_rt[0].get('plain_text', '') if space_id_rt else '',
+    #         '대화id': convo_id_rt[0].get('plain_text', '') if convo_id_rt else '',
+    #         '메시지id': msg_id_rt[0].get('plain_text', '') if msg_id_rt else '',
+    #     }
 
-        key = generate_row_key(row_values)
-        if key:
-            if key not in existing_pages_map:
-                existing_pages_map[key] = []
-            existing_pages_map[key].append({"id": page_id, "created_time": created_time})
+    #     key = generate_row_key(row_values)
+    #     if key:
+    #         if key not in existing_pages_map:
+    #             existing_pages_map[key] = []
+    #         existing_pages_map[key].append({"id": page_id, "created_time": created_time})
             
-    print(f"✅ Notion DB에서 총 {len(existing_pages_map)}개의 고유 키를 확인했습니다.")
+    # print(f"✅ Notion DB에서 총 {len(existing_pages_map)}개의 고유 키를 확인했습니다.")
     
-    # 중복 제거 (가장 오래된 값만 유지하고 나머지는 Archive)
-    print("\nStep 3-2: 중복 데이터 제거 (가장 오래된 데이터 유지)")
-    valid_existing_map = {} # 최종적으로 업데이트할 대상 (Key -> Page ID)
-    archive_count = 0
+    # # 중복 제거 (가장 오래된 값만 유지하고 나머지는 Archive)
+    # print("\nStep 3-2: 중복 데이터 제거 (가장 오래된 데이터 유지)")
+    # valid_existing_map = {} # 최종적으로 업데이트할 대상 (Key -> Page ID)
+    # archive_count = 0
     
-    for key, pages in existing_pages_map.items():
-        if len(pages) > 1:
-            # created_time 기준으로 오름차순 정렬 (ISO 8601 포맷이므로 문자열 정렬로 충분히 시간순 정렬됨)
-            pages.sort(key=lambda x: x["created_time"])
-            oldest_page = pages[0]
-            valid_existing_map[key] = oldest_page["id"]
+    # for key, pages in existing_pages_map.items():
+    #     if len(pages) > 1:
+    #         # created_time 기준으로 오름차순 정렬 (ISO 8601 포맷이므로 문자열 정렬로 충분히 시간순 정렬됨)
+    #         pages.sort(key=lambda x: x["created_time"])
+    #         oldest_page = pages[0]
+    #         valid_existing_map[key] = oldest_page["id"]
             
-            # 나머지 최신 데이터들은 삭제(Archive) 처리
-            for duplicate in pages[1:]:
-                dup_page_id = duplicate["id"]
-                # Notion API에서 페이지 삭제는 archived 속성을 True로 변경하는 방식입니다.
-                res = requests.patch(f"https://api.notion.com/v1/pages/{dup_page_id}", headers=headers, json={"archived": True})
-                if res.ok:
-                    archive_count += 1
-                    print(f"  -> 중복 삭제 완료 (Key: {key}, PageID: {dup_page_id})")
-                time.sleep(0.3)
-        else:
-            # 중복이 없는 경우 유일한 페이지 ID 저장
-            valid_existing_map[key] = pages[0]["id"]
+    #         # 나머지 최신 데이터들은 삭제(Archive) 처리
+    #         for duplicate in pages[1:]:
+    #             dup_page_id = duplicate["id"]
+    #             # Notion API에서 페이지 삭제는 archived 속성을 True로 변경하는 방식입니다.
+    #             res = requests.patch(f"https://api.notion.com/v1/pages/{dup_page_id}", headers=headers, json={"archived": True})
+    #             if res.ok:
+    #                 archive_count += 1
+    #                 print(f"  -> 중복 삭제 완료 (Key: {key}, PageID: {dup_page_id})")
+    #             time.sleep(0.3)
+    #     else:
+    #         # 중복이 없는 경우 유일한 페이지 ID 저장
+    #         valid_existing_map[key] = pages[0]["id"]
             
-    if archive_count > 0:
-        print(f"✅ 총 {archive_count}개의 중복 데이터를 안전하게 보관함(Archive)으로 이동했습니다.")
+    # if archive_count > 0:
+    #     print(f"✅ 총 {archive_count}개의 중복 데이터를 안전하게 보관함(Archive)으로 이동했습니다.")
 
-    # 신규 추가(Insert) 및 업데이트(Update)
-    print(f"\nStep 3-3: 신규 데이터 추가(Insert) 및 기존 데이터 갱신(Update)을 시작합니다.")
-    insert_count = 0
-    update_count = 0
+    # # 신규 추가(Insert) 및 업데이트(Update)
+    # print(f"\nStep 3-3: 신규 데이터 추가(Insert) 및 기존 데이터 갱신(Update)을 시작합니다.")
+    # insert_count = 0
+    # update_count = 0
     
-    for index, row in df_renamed.iterrows():
-        row_dict = row.to_dict()
-        key = generate_row_key(row_dict)
-        properties_payload = build_properties_payload(row_dict)
+    # for index, row in df_renamed.iterrows():
+    #     row_dict = row.to_dict()
+    #     key = generate_row_key(row_dict)
+    #     properties_payload = build_properties_payload(row_dict)
         
-        if key in valid_existing_map:
-            # 1. Update (기존 데이터 덮어쓰기)
-            page_id = valid_existing_map[key]
-            # Update시에는 parent 속성을 보내지 않고 properties만 보냅니다.
-            payload = {"properties": properties_payload}
+    #     if key in valid_existing_map:
+    #         # 1. Update (기존 데이터 덮어쓰기)
+    #         page_id = valid_existing_map[key]
+    #         # Update시에는 parent 속성을 보내지 않고 properties만 보냅니다.
+    #         payload = {"properties": properties_payload}
             
-            res = requests.patch(f"https://api.notion.com/v1/pages/{page_id}", headers=headers, json=payload)
+    #         res = requests.patch(f"https://api.notion.com/v1/pages/{page_id}", headers=headers, json=payload)
             
-            if not res.ok:
-                print(f"    ❌ 업데이트 실패! (Key: {key}) - 에러: {res.text}")
-            else:
-                update_count += 1
-                print(f"    🔄 업데이트 성공! (Key: {key})")
+    #         if not res.ok:
+    #             print(f"    ❌ 업데이트 실패! (Key: {key}) - 에러: {res.text}")
+    #         else:
+    #             update_count += 1
+    #             print(f"    🔄 업데이트 성공! (Key: {key})")
                 
-        else:
-            # 2. Insert (신규 데이터 추가)
-            payload = {"parent": {"database_id": NOTION_DB_ID}, "properties": properties_payload}
+    #     else:
+    #         # 2. Insert (신규 데이터 추가)
+    #         payload = {"parent": {"database_id": NOTION_DB_ID}, "properties": properties_payload}
             
-            res = requests.post("https://api.notion.com/v1/pages", headers=headers, json=payload)
+    #         res = requests.post("https://api.notion.com/v1/pages", headers=headers, json=payload)
             
-            if not res.ok:
-                print(f"    ❌ 추가 실패! (Key: {key}) - 에러: {res.text}")
-            else:
-                insert_count += 1
-                new_page_id = res.json().get("id")
-                # [핵심 수정] 성공 시 새로 발급된 page_id를 map에 추가하여, 
-                # 동일한 배치 내에 중복 키가 들어와도 이후엔 Update를 타도록 방지합니다.
-                valid_existing_map[key] = new_page_id 
-                print(f"    🆕 신규 추가 성공! (Key: {key})")
+    #         if not res.ok:
+    #             print(f"    ❌ 추가 실패! (Key: {key}) - 에러: {res.text}")
+    #         else:
+    #             insert_count += 1
+    #             new_page_id = res.json().get("id")
+    #             # [핵심 수정] 성공 시 새로 발급된 page_id를 map에 추가하여, 
+    #             # 동일한 배치 내에 중복 키가 들어와도 이후엔 Update를 타도록 방지합니다.
+    #             valid_existing_map[key] = new_page_id 
+    #             print(f"    🆕 신규 추가 성공! (Key: {key})")
                 
-        time.sleep(0.3)
+    #     time.sleep(0.3)
 
-    print(f"\n✅ 작업 결과: {insert_count}개 신규 추가, {update_count}개 업데이트 완료.")
-    print("\n✨ 모든 동기화 작업이 완료되었습니다! ✨")
-    print("=" * 50)
+    # print(f"\n✅ 작업 결과: {insert_count}개 신규 추가, {update_count}개 업데이트 완료.")
+    # print("\n✨ 모든 동기화 작업이 완료되었습니다! ✨")
+    # print("=" * 50)
 
 # ============================================================
 # DAG 정의
