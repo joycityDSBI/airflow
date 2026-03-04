@@ -187,7 +187,7 @@ def extract_audit_logs(**context):
             key_extract_query = """
             SELECT distinct space_id, conversation_id, message_id, user_email, user_id, user_name  
             FROM datahub.injoy_ops_schema.injoy_monitoring_audit
-            -- WHERE event_time_kst >= CURRENT_TIMESTAMP - INTERVAL 1 HOUR
+            -- WHERE event_time_kst >= CURRENT_TIMESTAMP - INTERVAL 1 HOUR ## 정식서비스 할때 기간설정하여 변경해야함.
             """
             cursor.execute(key_extract_query)
             df_keys = cursor.fetchall_arrow().to_pandas()
@@ -389,6 +389,65 @@ def extract_audit_query(**context):
         cursor.close()
         connection.close()
 
+def processing_message_details(**context):
+    """
+    task 2-1 : api responce 데이터 파싱하여 컬럼 생성하여 테이블저장
+    """
+    config = get_databricks_config()
+    connection = sql.connect(
+        server_hostname=config['instance'].replace('https://', ''),
+        http_path=Variable.get('databricks_http_path'),
+        access_token=config['token']
+    )
+
+    query = f"""
+    MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_api_message_details_parsing AS target
+    USING (
+        SELECT 
+            space_id,
+            conversation_id,
+            message_id,
+            -- 기존 원본 테이블에 있고 파싱 테이블에도 남겨야 하는 컬럼이 있다면 추가 (예: created_at 등)
+            get_json_object(api_response, '$.attachments[0].query.description')                     AS description, 
+            get_json_object(api_response, '$.attachments[0].query.query')                           AS query,
+            get_json_object(api_response, '$.attachments[0].query.query_result_metadata.row_count') AS row_count,
+            get_json_object(api_response, '$.attachments[0].query.statement_id') AS statement_id,
+            get_json_object(api_response, '$.attachments[1].suggested_questions.questions') AS questions,
+            get_json_object(api_response, '$.content') AS content,
+            get_json_object(api_response, '$.status') AS status,
+            get_json_object(api_response, '$.auto_regenerate_count') AS auto_regenerate_count,
+            get_json_object(api_response, '$.error.error') AS error,
+            get_json_object(api_response, '$.error.type') AS error_type,
+            get_json_object(api_response, '$.feedback.rating') AS feedback_rating
+        FROM datahub.injoy_ops_schema.injoy_monitoring_api_message_details
+        
+        -- 💡 [중요] 전체 스캔을 피하기 위한 증분 조건 (예: 최근 1~2일 데이터만 스캔)
+        -- WHERE created_at >= current_date() - interval 2 days
+    ) AS source
+    ON target.space_id = source.space_id 
+       AND target.conversation_id = source.conversation_id 
+       AND target.message_id = source.message_id
+       
+    WHEN MATCHED THEN
+        UPDATE SET *
+        
+    WHEN NOT MATCHED THEN
+        INSERT *
+    """
+    try:
+        cursor = connection.cursor()
+        
+        print("🚀 Query History 데이터 적재를 시작합니다...")
+        cursor.execute(query)
+        
+    except Exception as e:
+        print(f"❌ Query History 적재 중 오류 발생: {e}")
+        raise e
+        
+    finally:
+        cursor.close()
+        connection.close()
+
 
 
 # Task 정의
@@ -405,21 +464,27 @@ task0 = PythonOperator(
     dag=dag,
 )
 
-task1_1 = PythonOperator(
+task1 = PythonOperator(
     task_id='extract_audit_logs',
     python_callable=extract_audit_logs,
     dag=dag,
 )
 
-task1_2 = PythonOperator(
+task2 = PythonOperator(
     task_id='get_message_details',
     python_callable=get_message_details,
     dag=dag,
 )
 
-task1_3 = PythonOperator(
+task3 = PythonOperator(
     task_id='extract_audit_query',
     python_callable=extract_audit_query,
+    dag=dag,
+)
+
+task4 = PythonOperator(
+    task_id='get_message_details',
+    python_callable=get_message_details,
     dag=dag,
 )
 
@@ -427,4 +492,5 @@ task1_3 = PythonOperator(
 
 
 # Task 의존성 설정
-task0 >> task1_1 >> [task1_2, task1_3]
+task0 >> task1 >> [task2, task3]
+task2 >> task4
