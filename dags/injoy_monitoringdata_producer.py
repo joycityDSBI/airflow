@@ -197,8 +197,10 @@ def extract_audit_logs(**context):
 
             # XCom으로 Key 리스트 전달
             context['ti'].xcom_push(key='merge_key_list', value=merge_key_list)
-            print(f"✅ MERGE 완료 및 {len(merge_key_list)}개의 Key 리스트 XCom 저장 완료") ## 수정필요. space_id, conversation_id, message_id 수집된
+            print(f"✅ MERGE 완료 및 {len(merge_key_list)}개의 Key 리스트 XCom 저장 완료") 
 
+            keys_info = ", ".join([f"({k['space_id']}/{k['conversation_id']}/{k['message_id']})" for k in merge_key_list])
+            print(f"📍 대상 ID 리스트 (space/conv/msg): {keys_info}")
     finally:
         cursor.close()
         connection.close()
@@ -321,7 +323,74 @@ def get_message_details(**context):
         connection.close()
 
     return len(api_results)
- 
+
+def extract_audit_query(**context):
+    """
+    task 3 : Databricks Query History(Genie Space 관련 쿼리) 추출 및 테이블 적재
+    """
+    config = get_databricks_config()
+    connection = sql.connect(
+        server_hostname=config['instance'].replace('https://', ''),
+        http_path=Variable.get('databricks_http_path'),
+        access_token=config['token']
+    )
+
+    # query history 적재를 위한 MERGE 쿼리
+    query_history_merge = f"""
+        MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_audit_query AS target
+        USING (
+            SELECT 
+                statement_id, 
+                executed_by, 
+                execution_status, 
+                CAST(total_duration_ms AS DOUBLE) / 1000 AS query_duration_seconds, 
+                CAST(result_fetch_duration_ms AS DOUBLE) / 1000 AS query_result_fetch_duration_seconds, 
+                CAST(end_time AS TIMESTAMP) + INTERVAL 9 HOURS AS query_end_time_kst,
+                query_source.genie_space_id as space_id
+            FROM system.query.history
+            WHERE query_source.genie_space_id IS NOT NULL
+                AND statement_type = 'SELECT'
+                AND DATE(end_time) >= CURRENT_DATE - INTERVAL 3 DAYS
+                AND DATE(end_time) < CURRENT_DATE
+        ) AS source
+        ON target.statement_id = source.statement_id
+        
+        WHEN MATCHED THEN
+          UPDATE SET 
+            target.execution_status = source.execution_status,
+            target.query_duration_seconds = source.query_duration_seconds,
+            target.query_result_fetch_duration_seconds = source.query_result_fetch_duration_seconds
+            
+        WHEN NOT MATCHED THEN
+          INSERT *;
+    """
+
+    try:
+        cursor = connection.cursor()
+        
+        print("🚀 Query History 데이터 적재를 시작합니다...")
+        cursor.execute(query_history_merge)
+        
+        # 얼마나 적재(또는 업데이트)되었는지 확인을 위한 카운트 조회 (선택 사항)
+        cursor.execute("""
+            SELECT count(1) 
+            FROM datahub.injoy_ops_schema.injoy_monitoring_audit_query 
+            WHERE DATE(query_end_time_kst) >= CURRENT_DATE - INTERVAL 1 DAYS
+        """)
+        recent_count = cursor.fetchone()[0]
+        
+        print(f"✅ Query History MERGE 완료! (최근 1일 기준 데이터 수: {recent_count})")
+        
+    except Exception as e:
+        print(f"❌ Query History 적재 중 오류 발생: {e}")
+        raise e
+        
+    finally:
+        cursor.close()
+        connection.close()
+
+
+
 # Task 정의
 # bash_task = BashOperator(
 #     task_id = 'bash_task',
@@ -336,19 +405,26 @@ task0 = PythonOperator(
     dag=dag,
 )
 
-task1 = PythonOperator(
+task1_1 = PythonOperator(
     task_id='extract_audit_logs',
     python_callable=extract_audit_logs,
     dag=dag,
 )
 
-task2 = PythonOperator(
+task1_2 = PythonOperator(
     task_id='get_message_details',
     python_callable=get_message_details,
     dag=dag,
 )
 
+task1_3 = PythonOperator(
+    task_id='extract_audit_query',
+    python_callable=extract_audit_query,
+    dag=dag,
+)
+
+
 
 
 # Task 의존성 설정
-task0 >> task1 >> task2
+task0 >> task1_1 >> [task1_2, task1_3]
