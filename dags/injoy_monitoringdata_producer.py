@@ -535,6 +535,126 @@ def processing_message_details(**context):
         connection.close()
 
 
+def processing_message_details(**context):
+    """
+    task 2-1 : api responce 데이터 파싱하여 컬럼 생성하여 테이블저장
+    """
+    config = get_databricks_config()
+    connection = sql.connect(
+        server_hostname=config['instance'].replace('https://', ''),
+        http_path=Variable.get('databricks_http_path'),
+        access_token=config['token']
+    )
+
+    query = """
+
+    select b.content
+     , a.user_email
+     , a.user_id
+     , a.user_name
+     , c.space_name
+     , a.space_id
+     , a.conversation_id
+     , a.message_id
+     , b.query
+     , cast(unix_timestamp(d.query_end_time_kst) - unix_timestamp(a.event_time_kst) as int) as message_response_duration_seconds
+     , a.event_time_kst
+     , b.row_count
+     , b.status
+     , b.description
+     , b.questions
+     , b.auto_regenerate_count
+     , b.error
+     , b.error_type
+     , b.feedback_rating
+    from (datahub.injoy_ops_schema.injoy_monitoring_audit) as a
+    left join (datahub.injoy_ops_schema.injoy_monitoring_api_message_details_parsing) as b
+    ON  a.space_id = b.space_id 
+    AND a.conversation_id = b.conversation_id 
+    AND a.message_id = b.message_id
+    left join datahub.injoy_ops_schema.injoy_space_list as c
+    ON a.space_id = c.space_id
+    left join datahub.injoy_ops_schema.injoy_monitoring_audit_query as d
+    ON b.statement_id = d.statement_id
+    """
+
+def merge_final_monitoring_data(**context):
+    """
+    Task 4: 여러 테이블을 조인하여 최종 모니터링 데이터(injoy_monitoring_data)에 MERGE
+    """
+    config = get_databricks_config()
+    connection = sql.connect(
+        server_hostname=config['instance'].replace('https://', ''),
+        http_path=Variable.get('databricks_http_path'),
+        access_token=config['token']
+    )
+
+    # 작성해주신 조인 쿼리를 USING (source) 절에 삽입
+    query = """
+    MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_data AS target
+    USING (
+        SELECT 
+            b.content,
+            a.user_email,
+            a.user_id,
+            a.user_name,
+            c.space_name,
+            a.space_id,
+            a.conversation_id,
+            a.message_id,
+            b.query,
+            CAST(UNIX_TIMESTAMP(d.query_end_time_kst) - UNIX_TIMESTAMP(a.event_time_kst) AS INT) AS message_response_duration_seconds,
+            a.event_time_kst,
+            b.row_count,
+            b.status,
+            b.description,
+            b.questions,
+            b.auto_regenerate_count,
+            b.error,
+            b.error_type,
+            b.feedback_rating
+        FROM datahub.injoy_ops_schema.injoy_monitoring_audit AS a
+        LEFT JOIN datahub.injoy_ops_schema.injoy_monitoring_api_message_details_parsing AS b
+            ON a.space_id = b.space_id 
+            AND a.conversation_id = b.conversation_id 
+            AND a.message_id = b.message_id
+        LEFT JOIN datahub.injoy_ops_schema.injoy_space_list AS c
+            ON a.space_id = c.space_id
+        LEFT JOIN datahub.injoy_ops_schema.injoy_monitoring_audit_query AS d
+            ON b.statement_id = d.statement_id
+            
+        -- 💡 [권장] 전체 스캔 방지: 최근 데이터(예: 최근 3일)만 갱신하도록 필터 추가
+        -- WHERE a.event_time_kst >= current_timestamp() - interval 3 days
+    ) AS source
+    ON target.space_id = source.space_id 
+       AND target.conversation_id = source.conversation_id 
+       AND target.message_id = source.message_id
+       
+    -- 기존에 존재하는 메시지면 업데이트
+    WHEN MATCHED THEN
+        UPDATE SET *
+        
+    -- 새로운 메시지면 인서트
+    WHEN NOT MATCHED THEN
+        INSERT *
+    """
+
+    try:
+        cursor = connection.cursor()
+        print("🚀 최종 모니터링 데이터(injoy_monitoring_data) MERGE 작업을 시작합니다...")
+        cursor.execute(query)
+        print("✅ 최종 데이터 적재 완료!")
+        
+    except Exception as e:
+        print(f"❌ 최종 데이터 MERGE 중 오류 발생: {e}")
+        raise e
+        
+    finally:
+        cursor.close()
+        connection.close()
+
+
+
 
 # Task 정의
 # bash_task = BashOperator(
@@ -568,7 +688,6 @@ task3 = PythonOperator(
     dag=dag,
 )
 
-
 task4 = PythonOperator(
     task_id='extract_audit_query',
     python_callable=extract_audit_query,
@@ -581,9 +700,14 @@ task5 = PythonOperator(
     dag=dag,
 )
 
+task6 = PythonOperator(
+    task_id='merge_final_monitoring_data',
+    python_callable= merge_final_monitoring_data,
+    dag=dag,
+)
 
 
 
 # Task 의존성 설정
 task0 >> task1 >> [task2, task3, task4]
-task2 >> task5
+task2 >> task5 >> task6
