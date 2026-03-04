@@ -483,8 +483,8 @@ task3 = PythonOperator(
 )
 
 task4 = PythonOperator(
-    task_id='get_message_details',
-    python_callable=get_message_details,
+    task_id='processing_message_details',
+    python_callable= processing_message_details,
     dag=dag,
 )
 
