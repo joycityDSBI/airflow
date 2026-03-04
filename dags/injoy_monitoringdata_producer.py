@@ -84,7 +84,7 @@ def tokenize_databricks(url, headers):
 
 
 def extract_audit_logs(**context):
-    """Databricks audit 로그 추출 및 처리"""
+    """Task 1 : Databricks Genie audit 로그 추출 및 처리"""
     from databricks import sql
     
     config = get_databricks_config()
@@ -95,7 +95,6 @@ def extract_audit_logs(**context):
         access_token=config['token']
     )
 
-    # 아침 8시에 배치가 진행되기 때문에 intervarl 2days와 1days를 진행
     merge_query = f"""
         MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_audit AS target
         USING (
@@ -110,8 +109,8 @@ def extract_audit_logs(**context):
                 FROM system.access.audit
                 WHERE service_name = 'aibiGenie'
                     AND action_name IN ('createConversationMessage', 'updateConversationMessageFeedback', 'getMessageQueryResult')
-                    AND DATE(event_time) >= CURRENT_DATE - INTERVAL 10 DAYS
-                    AND DATE(event_time) < CURRENT_DATE
+                    AND event_time >= CAST(DATE(NOW()) - INTERVAL 10 DAYS AS TIMESTAMP) - INTERVAL 9 HOURS
+                    AND event_time < CAST(DATE(NOW()) AS TIMESTAMP) - INTERVAL 9 HOURS
             ),
             message_tb AS (
                 SELECT
@@ -181,13 +180,22 @@ def extract_audit_logs(**context):
             cursor = connection.cursor()
             cursor.execute(merge_query)
 
+            # 💡 영향을 받은 행(row)의 수를 가져옵니다.
+            affected_rows = cursor.rowcount
+
+            print("-" * 50)
+            print(f"✅ query 실행 성공!")
+            print(f"📊 처리된 데이터 수: {affected_rows} rows (Inserted/Updated)")
+            print("-" * 50)
+
             # 2. 이번 배치에서 처리된 Key 리스트만 별도로 추출하여 XCom에 저장
             # MERGE가 완료된 후, 최신 event_time_kst 기준으로 처리된 ID들만 가져옵니다.
             # (필요에 따라 WHERE 조건을 조정하세요)
             key_extract_query = """
             SELECT distinct space_id, conversation_id, message_id, user_email, user_id, user_name  
             FROM datahub.injoy_ops_schema.injoy_monitoring_audit
-            -- WHERE event_time_kst >= CURRENT_TIMESTAMP - INTERVAL 1 HOUR ## 정식서비스 할때 기간설정하여 변경해야함.
+            WHERE DATE(event_time_kst) >= DATE(NOW()) - INTERVAL 10 DAYS
+            AND   event_time_kst < DATE(NOW())
             """
             cursor.execute(key_extract_query)
             df_keys = cursor.fetchall_arrow().to_pandas()
@@ -199,7 +207,7 @@ def extract_audit_logs(**context):
             context['ti'].xcom_push(key='merge_key_list', value=merge_key_list)
             print(f"✅ MERGE 완료 및 {len(merge_key_list)}개의 Key 리스트 XCom 저장 완료") 
 
-            keys_info = ", ".join([f"({k['space_id']}/{k['conversation_id']}/{k['message_id']})" for k in merge_key_list])
+            keys_info = "\n".join([f"({k['space_id']} / {k['conversation_id']} / {k['message_id']})" for k in merge_key_list])
             print(f"📍 대상 ID 리스트 (space/conv/msg): {keys_info}")
     finally:
         cursor.close()
@@ -209,7 +217,7 @@ def extract_audit_logs(**context):
 
 def get_message_details(**context):
     """
-    Task 2: Genie API로 메시지 상세 정보 수집 -> Databricks 테이블에 저장.
+    Task 2: Genie API로 메시지 상세 정보 수집 -> Databricks 테이블에 저장.(datahub.injoy_ops_schema.injoy_monitoring_api_message_details)
     """
     ti = context['ti']
     config = get_databricks_config()
@@ -251,7 +259,7 @@ def get_message_details(**context):
                 "api_response": api_json_str
             })
         except Exception as e:
-            print(f"❌ API 호출 실패 (message_id: {message_id}): {e}") ## 수정필요. space_id, conversation_id, message_id 수집된
+            print(f"❌ API 호출 실패 | [Space: {space_id}] [Conv: {conversation_id}] [Msg: {message_id}] | Error: {e}")
             # 에러가 나더라도 다른 메시지는 계속 처리할 수 있도록 pass
 
     if not api_results:
@@ -273,14 +281,10 @@ def get_message_details(**context):
         cursor = connection.cursor()
         
         # 2. 임시 스테이징 테이블(또는 임시 뷰) 생성
-        # Databricks에서 대량 데이터를 처리할 때 가장 빠른 방법 중 하나입니다.
         staging_table = "datahub.injoy_ops_schema.temp_genie_api_staging"
-        
-        # 스테이징 테이블 초기화 (있다면 삭제 후 생성)
         cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
         
         # 데이터를 튜플 형태로 변환하여 한 번에 삽입 (Bulk insert)
-        # 컬럼 순서: space_id, conversation_id, message_id, user_id, user_name, api_response
         values_to_insert = [tuple(x) for x in df_api.values]
         
         # 테이블 생성
@@ -291,32 +295,60 @@ def get_message_details(**context):
             )
         """)
         
-        # executemany를 사용하여 대량 삽입 (내부적으로 최적화된 벌크 삽입 수행)
         insert_sql = f"INSERT INTO {staging_table} VALUES (?, ?, ?, ?, ?, ?, ?)"
         cursor.executemany(insert_sql, values_to_insert)
 
-        # 3. 단 한 번의 MERGE 쿼리로 타겟 테이블 업데이트
         final_merge_query = f"""
-            MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_api_message_details AS target
-            USING {staging_table} AS source
-            ON target.space_id = source.space_id 
-               AND target.conversation_id = source.conversation_id 
-               AND target.message_id = source.message_id
-            WHEN MATCHED THEN
-                UPDATE SET 
-                    target.user_id = source.user_id,
-                    target.user_name = source.user_name,
-                    target.user_email = source.user_email,
-                    target.api_response = source.api_response
-            WHEN NOT MATCHED THEN
-                INSERT *;
+        MERGE INTO datahub.injoy_ops_schema.injoy_monitoring_api_message_details AS target
+        USING {staging_table} AS source
+        ON target.space_id = source.space_id 
+           AND target.conversation_id = source.conversation_id 
+           AND target.message_id = source.message_id
+
+        -- 💡 매칭될 경우 (기존 데이터 업데이트 + 시간 갱신)
+        WHEN MATCHED THEN
+            UPDATE SET 
+                target.user_id = source.user_id,
+                target.user_name = source.user_name,
+                target.user_email = source.user_email,
+                target.api_response = source.api_response,
+                target.update_datetime_kst = NOW() + INTERVAL 9 HOURS
+
+        -- 💡 매칭되지 않을 경우 (새 데이터 인서트 + 시간 기록)
+        WHEN NOT MATCHED THEN
+            INSERT (
+                space_id, 
+                conversation_id, 
+                message_id, 
+                user_id, 
+                user_name, 
+                user_email, 
+                api_response, 
+                update_datetime_kst
+            ) 
+            VALUES (
+                source.space_id, 
+                source.conversation_id, 
+                source.message_id, 
+                source.user_id, 
+                source.user_name, 
+                source.user_email, 
+                source.api_response, 
+                NOW() + INTERVAL 9 HOURS
+            );
         """
         cursor.execute(final_merge_query)
-        
+
+        # 💡 영향을 받은 행(row)의 수를 가져옵니다.
+        affected_rows = cursor.rowcount
+
+        print("-" * 50)
+        print(f"✅ query 실행 성공!")
+        print(f"📊 처리된 데이터 수: {affected_rows} rows (Inserted/Updated)")
+        print("-" * 50)
+
         # 임시 테이블 삭제
         cursor.execute(f"DROP TABLE IF EXISTS {staging_table}")
-        
-        print(f"✅ {len(api_results)}건의 데이터를 단일 MERGE로 성공적으로 처리했습니다.")
         
     finally:
         cursor.close()
@@ -326,7 +358,7 @@ def get_message_details(**context):
 
 def get_space_list(**context):
     """
-    Task 2: Genie API로 스페이스 정보 수집 및 DB 적재
+    Task 3: Genie API로 스페이스 정보 수집 및 DB 적재(datahub.injoy_ops_schema.injoy_space_list)
     """
     config = get_databricks_config()
     headers = {"Authorization": f"Bearer {config['token']}"}
@@ -389,9 +421,14 @@ def get_space_list(**context):
     
     try:
         cursor = connection.cursor()
-        print(f"🚀 스페이스 정보({len(spaces)}개) 적재를 시작합니다...")
         cursor.execute(query)
-        print("✅ 스페이스 정보 테이블(injoy_space_list) 적재 완료!")
+        # 💡 영향을 받은 행(row)의 수를 가져옵니다.
+        affected_rows = cursor.rowcount
+
+        print("-" * 50)
+        print(f"✅ query 실행 성공!")
+        print(f"📊 처리된 데이터 수: {affected_rows} rows (Inserted/Updated)")
+        print("-" * 50)
         
     except Exception as e:
         print(f"❌ 스페이스 정보 적재 중 오류 발생: {e}")
@@ -400,16 +437,13 @@ def get_space_list(**context):
     finally:
         cursor.close()
         connection.close()
-
-    # 5. 기존처럼 XCom에 푸시 (후속 태스크에서 필요할 경우를 대비)
-    context['ti'].xcom_push(key='space_id_to_name', value=space_id_to_name)
     
     return len(spaces)
 
 
 def extract_audit_query(**context):
     """
-    task 3 : Databricks Query History(Genie Space 관련 쿼리) 추출 및 테이블 적재
+    task4 : Databricks Query History(Genie Space 관련 쿼리) 추출 및 테이블 적재(datahub.injoy_ops_schema.injoy_monitoring_audit_query)
     """
     config = get_databricks_config()
     connection = sql.connect(
@@ -433,8 +467,8 @@ def extract_audit_query(**context):
             FROM system.query.history
             WHERE query_source.genie_space_id IS NOT NULL
                 AND statement_type = 'SELECT'
-                AND DATE(end_time) >= CURRENT_DATE - INTERVAL 10 DAYS
-                AND DATE(end_time) < CURRENT_DATE
+                AND end_time >= CAST(DATE(NOW()) - INTERVAL 10 DAYS AS TIMESTAMP) - INTERVAL 9 HOURS
+                AND end_time < CAST(DATE(NOW()) AS TIMESTAMP) - INTERVAL 9 HOURS
         ) AS source
         ON target.statement_id = source.statement_id
         
@@ -450,19 +484,14 @@ def extract_audit_query(**context):
 
     try:
         cursor = connection.cursor()
-        
-        print("🚀 Query History 데이터 적재를 시작합니다...")
         cursor.execute(query_history_merge)
-        
-        # 얼마나 적재(또는 업데이트)되었는지 확인을 위한 카운트 조회 (선택 사항)
-        cursor.execute("""
-            SELECT count(1) 
-            FROM datahub.injoy_ops_schema.injoy_monitoring_audit_query 
-            WHERE DATE(query_end_time_kst) >= CURRENT_DATE - INTERVAL 1 DAYS
-        """)
-        recent_count = cursor.fetchone()[0]
-        
-        print(f"✅ Query History MERGE 완료! (최근 1일 기준 데이터 수: {recent_count})")
+        # 💡 영향을 받은 행(row)의 수를 가져옵니다.
+        affected_rows = cursor.rowcount
+
+        print("-" * 50)
+        print(f"✅ query 실행 성공!")
+        print(f"📊 처리된 데이터 수: {affected_rows} rows (Inserted/Updated)")
+        print("-" * 50)
         
     except Exception as e:
         print(f"❌ Query History 적재 중 오류 발생: {e}")
@@ -474,7 +503,7 @@ def extract_audit_query(**context):
 
 def processing_message_details(**context):
     """
-    task 2-1 : api responce 데이터 파싱하여 컬럼 생성하여 테이블저장
+    task5 : api responce 데이터 파싱하여 컬럼 생성하여 테이블저장
     """
     config = get_databricks_config()
     connection = sql.connect(
@@ -493,6 +522,7 @@ def processing_message_details(**context):
             user_id,
             user_name,
             user_email,
+            update_datetime_kst TIMESTAMP,
             -- 기존 원본 테이블에 있고 파싱 테이블에도 남겨야 하는 컬럼이 있다면 추가 (예: created_at 등)
             get_json_object(api_response, '$.attachments[0].query.description')                     AS description, 
             get_json_object(api_response, '$.attachments[0].query.query')                           AS query,
@@ -506,9 +536,7 @@ def processing_message_details(**context):
             get_json_object(api_response, '$.error.type') AS error_type,
             get_json_object(api_response, '$.feedback.rating') AS feedback_rating
         FROM datahub.injoy_ops_schema.injoy_monitoring_api_message_details
-        
-        -- 💡 [중요] 전체 스캔을 피하기 위한 증분 조건 (예: 최근 1~2일 데이터만 스캔)
-        -- WHERE created_at >= current_date() - interval 2 days
+        WHERE DATE(update_datetime_kst) = DATE(NOW()) 
     ) AS source
     ON target.space_id = source.space_id 
        AND target.conversation_id = source.conversation_id 
@@ -522,10 +550,16 @@ def processing_message_details(**context):
     """
     try:
         cursor = connection.cursor()
-        
-        print("🚀 Query History 데이터 적재를 시작합니다...")
         cursor.execute(query)
         
+        # 💡 영향을 받은 행(row)의 수를 가져옵니다.
+        affected_rows = cursor.rowcount
+
+        print("-" * 50)
+        print(f"✅ query 실행 성공!")
+        print(f"📊 처리된 데이터 수: {affected_rows} rows (Inserted/Updated)")
+        print("-" * 50)
+
     except Exception as e:
         print(f"❌ Query History 적재 중 오류 발생: {e}")
         raise e
@@ -534,49 +568,6 @@ def processing_message_details(**context):
         cursor.close()
         connection.close()
 
-
-def processing_message_details(**context):
-    """
-    task 2-1 : api responce 데이터 파싱하여 컬럼 생성하여 테이블저장
-    """
-    config = get_databricks_config()
-    connection = sql.connect(
-        server_hostname=config['instance'].replace('https://', ''),
-        http_path=Variable.get('databricks_http_path'),
-        access_token=config['token']
-    )
-
-    query = """
-
-    select b.content
-     , a.user_email
-     , a.user_id
-     , a.user_name
-     , c.space_name
-     , a.space_id
-     , a.conversation_id
-     , a.message_id
-     , b.query
-     , cast(unix_timestamp(d.query_end_time_kst) - unix_timestamp(a.event_time_kst) as int) as message_response_duration_seconds
-     , a.event_time_kst
-     , b.row_count
-     , b.status
-     , b.description
-     , b.questions
-     , b.auto_regenerate_count
-     , b.error
-     , b.error_type
-     , b.feedback_rating
-    from (datahub.injoy_ops_schema.injoy_monitoring_audit) as a
-    left join (datahub.injoy_ops_schema.injoy_monitoring_api_message_details_parsing) as b
-    ON  a.space_id = b.space_id 
-    AND a.conversation_id = b.conversation_id 
-    AND a.message_id = b.message_id
-    left join datahub.injoy_ops_schema.injoy_space_list as c
-    ON a.space_id = c.space_id
-    left join datahub.injoy_ops_schema.injoy_monitoring_audit_query as d
-    ON b.statement_id = d.statement_id
-    """
 
 def merge_final_monitoring_data(**context):
     """
@@ -622,9 +613,8 @@ def merge_final_monitoring_data(**context):
             ON a.space_id = c.space_id
         LEFT JOIN datahub.injoy_ops_schema.injoy_monitoring_audit_query AS d
             ON b.statement_id = d.statement_id
-            
-        -- 💡 [권장] 전체 스캔 방지: 최근 데이터(예: 최근 3일)만 갱신하도록 필터 추가
-        -- WHERE a.event_time_kst >= current_timestamp() - interval 3 days
+        WHERE DATE(A.event_time_kst) >= DATE(NOW()) - INTERVAL 10 DAYS
+        AND   DATE(A.event_time_kst) < DATE(NOW())             
     ) AS source
     ON target.space_id = source.space_id 
        AND target.conversation_id = source.conversation_id 
@@ -641,9 +631,14 @@ def merge_final_monitoring_data(**context):
 
     try:
         cursor = connection.cursor()
-        print("🚀 최종 모니터링 데이터(injoy_monitoring_data) MERGE 작업을 시작합니다...")
         cursor.execute(query)
-        print("✅ 최종 데이터 적재 완료!")
+        # 💡 영향을 받은 행(row)의 수를 가져옵니다.
+        affected_rows = cursor.rowcount
+
+        print("-" * 50)
+        print(f"✅ query 실행 성공!")
+        print(f"📊 처리된 데이터 수: {affected_rows} rows (Inserted/Updated)")
+        print("-" * 50)
         
     except Exception as e:
         print(f"❌ 최종 데이터 MERGE 중 오류 발생: {e}")
@@ -652,9 +647,6 @@ def merge_final_monitoring_data(**context):
     finally:
         cursor.close()
         connection.close()
-
-
-
 
 # Task 정의
 # bash_task = BashOperator(
