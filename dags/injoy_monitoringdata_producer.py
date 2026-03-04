@@ -110,7 +110,7 @@ def extract_audit_logs(**context):
                 FROM system.access.audit
                 WHERE service_name = 'aibiGenie'
                     AND action_name IN ('createConversationMessage', 'updateConversationMessageFeedback', 'getMessageQueryResult')
-                    AND DATE(event_time) >= CURRENT_DATE - INTERVAL 3 DAYS
+                    AND DATE(event_time) >= CURRENT_DATE - INTERVAL 10 DAYS
                     AND DATE(event_time) < CURRENT_DATE
             ),
             message_tb AS (
@@ -433,7 +433,7 @@ def extract_audit_query(**context):
             FROM system.query.history
             WHERE query_source.genie_space_id IS NOT NULL
                 AND statement_type = 'SELECT'
-                AND DATE(end_time) >= CURRENT_DATE - INTERVAL 3 DAYS
+                AND DATE(end_time) >= CURRENT_DATE - INTERVAL 10 DAYS
                 AND DATE(end_time) < CURRENT_DATE
         ) AS source
         ON target.statement_id = source.statement_id
