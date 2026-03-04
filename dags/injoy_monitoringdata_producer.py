@@ -324,6 +324,89 @@ def get_message_details(**context):
 
     return len(api_results)
 
+def get_space_list(**context):
+    """
+    Task 2: Genie API로 스페이스 정보 수집 및 DB 적재
+    """
+    config = get_databricks_config()
+    headers = {"Authorization": f"Bearer {config['token']}"}
+    
+    # 1. 스페이스 목록 조회 API 호출
+    spaces_url = f"https://{config['instance']}/api/2.0/genie/spaces"
+    resp = requests.get(spaces_url, headers=headers)
+    
+    connection = sql.connect(
+        server_hostname=config['instance'].replace('https://', ''),
+        http_path=Variable.get('databricks_http_path'),
+        access_token=config['token']
+    )
+
+    if resp.status_code != 200:
+        print(f"⚠️ 스페이스 목록 조회 실패: {resp.status_code}")
+        return 0
+        
+    spaces = resp.json().get("spaces", [])
+    if not spaces:
+        print("⚠️ 수집된 스페이스가 없습니다.")
+        return 0
+
+    # 2. SQL 구문에 들어갈 다중 VALUES 텍스트 생성
+    values_list = []
+    space_id_to_name = {}
+    
+    for s in spaces:
+        space_id = s.get("space_id")
+        raw_name = s.get("title", "")
+        space_id_to_name[space_id] = raw_name
+        
+        # 💡 SQL 에러 방지: 스페이스 이름에 홑따옴표(')가 있을 경우 탈출(Escape) 처리
+        safe_name = raw_name.replace("'", "''") 
+        values_list.append(f"('{space_id}', '{safe_name}')")
+        
+    values_str = ",\n        ".join(values_list)
+
+    # 3. MERGE 쿼리 작성 (Upsert)
+    query = f"""
+    MERGE INTO datahub.injoy_ops_schema.injoy_space_list AS target
+    USING (
+        SELECT * FROM VALUES
+        {values_str}
+        AS t(space_id, space_name)
+    ) AS source
+    ON target.space_id = source.space_id
+    
+    -- 기존에 존재하는 스페이스면 무조건 이름과 마지막 수집 시간(KST)을 갱신
+    WHEN MATCHED THEN 
+        UPDATE SET 
+            target.space_name = source.space_name,
+            target.update_datetime_kst = from_utc_timestamp(current_timestamp(), 'Asia/Seoul')
+            
+    -- 새롭게 발견된 스페이스일 경우 인서트
+    WHEN NOT MATCHED THEN 
+        INSERT (space_id, space_name, update_datetime_kst) 
+        VALUES (source.space_id, source.space_name, from_utc_timestamp(current_timestamp(), 'Asia/Seoul'))
+    """
+    
+    try:
+        cursor = connection.cursor()
+        print(f"🚀 스페이스 정보({len(spaces)}개) 적재를 시작합니다...")
+        cursor.execute(query)
+        print("✅ 스페이스 정보 테이블(injoy_space_list) 적재 완료!")
+        
+    except Exception as e:
+        print(f"❌ 스페이스 정보 적재 중 오류 발생: {e}")
+        raise e
+        
+    finally:
+        cursor.close()
+        connection.close()
+
+    # 5. 기존처럼 XCom에 푸시 (후속 태스크에서 필요할 경우를 대비)
+    context['ti'].xcom_push(key='space_id_to_name', value=space_id_to_name)
+    
+    return len(spaces)
+
+
 def extract_audit_query(**context):
     """
     task 3 : Databricks Query History(Genie Space 관련 쿼리) 추출 및 테이블 적재
@@ -480,12 +563,19 @@ task2 = PythonOperator(
 )
 
 task3 = PythonOperator(
+    task_id='get_space_list',
+    python_callable=get_space_list,
+    dag=dag,
+)
+
+
+task4 = PythonOperator(
     task_id='extract_audit_query',
     python_callable=extract_audit_query,
     dag=dag,
 )
 
-task4 = PythonOperator(
+task5 = PythonOperator(
     task_id='processing_message_details',
     python_callable= processing_message_details,
     dag=dag,
@@ -495,5 +585,5 @@ task4 = PythonOperator(
 
 
 # Task 의존성 설정
-task0 >> task1 >> [task2, task3]
-task2 >> task4
+task0 >> task1 >> [task2, task3, task4]
+task2 >> task5
