@@ -522,7 +522,7 @@ def processing_message_details(**context):
             user_id,
             user_name,
             user_email,
-            update_datetime_kst TIMESTAMP,
+            update_datetime_kst,
             -- 기존 원본 테이블에 있고 파싱 테이블에도 남겨야 하는 컬럼이 있다면 추가 (예: created_at 등)
             get_json_object(api_response, '$.attachments[0].query.description')                     AS description, 
             get_json_object(api_response, '$.attachments[0].query.query')                           AS query,
@@ -697,7 +697,6 @@ task6 = PythonOperator(
     python_callable= merge_final_monitoring_data,
     dag=dag,
 )
-
 
 
 # Task 의존성 설정
