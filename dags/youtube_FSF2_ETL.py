@@ -370,7 +370,7 @@ def youtube_FSF2_etl():
     data_svc, ana_svc = get_services()
     video_map = get_video_id_title_map(data_svc)
     today = datetime.now(timezone.utc).date()
-    start_date = (today - timedelta(days=7)).isoformat() # 7일 전부터 오늘까지
+    start_date = (today - timedelta(days=15)).isoformat() # 7일 전부터 오늘까지
     end_date = today.isoformat()    
     print(f"데이터 조회 기간: {start_date} ~ {end_date}")
 
