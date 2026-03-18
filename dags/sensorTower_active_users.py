@@ -260,7 +260,7 @@ def app_id_active_users_fetch_load(APP_ID_LIST: list, SENSORTOWER_TOKEN: str):
     # 6일전 날짜를 가져오는 로직
     today = datetime.now().date()
     ######################### 7일 전으로 수정 해야 함
-    six_days_ago = today - timedelta(days=15)
+    six_days_ago = today - timedelta(days=6)
     start_date_str = six_days_ago.strftime("%Y-%m-%d")
     end_date_str = today.strftime("%Y-%m-%d")
 
