@@ -37,7 +37,7 @@ def etl_dim_os(**context):
     target_date, _ = calc_target_date(context['logical_date'])
     
     #################### 백필용 데이터 처리
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
 
     for td_str in target_date:
@@ -287,7 +287,7 @@ def etl_dim_auth_method_id(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     ####################
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -375,7 +375,7 @@ def etl_dim_product_code(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     ####################
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
 
     for td_str in target_date:
@@ -462,7 +462,7 @@ def adjust_dim_product_code(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     ####################
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
     query = f"""
     MERGE `datahub-478802.datahub.dim_product_code` AS target
@@ -923,7 +923,7 @@ def etl_dim_exchange_rate(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1044,7 +1044,7 @@ def etl_dim_game_id(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리 
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
 
     for td_str in target_date:
@@ -1132,7 +1132,7 @@ def etl_dim_app_id(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
 
     for td_str in target_date:
@@ -1224,7 +1224,7 @@ def etl_dim_google_campaign(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리 
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
 
     for td_str in target_date:
@@ -1397,7 +1397,7 @@ def etl_dim_ip4_country_code(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1524,7 +1524,7 @@ def etl_dim_joyple_game_code(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1626,7 +1626,7 @@ def etl_dim_market_id(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     ####################    백필용 데이터 처리
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1888,7 +1888,7 @@ def etl_dim_pg_id(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     #################### 백필용 데이터 처리
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
     for td_str in target_date:
         # [수정 1] 문자열(String)을 datetime 객체로 변환
@@ -1974,7 +1974,7 @@ def etl_dim_IAA_app_name(**context):
     target_date, _ = calc_target_date(context['logical_date'])
 
     # #################### 백필용 데이터 처리
-    target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
+    # target_date = target_date_range("2026-03-09", "2026-03-17")  ## 백필용
 
     for td in target_date:
         target_date = td
