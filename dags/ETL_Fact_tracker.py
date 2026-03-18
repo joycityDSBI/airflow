@@ -850,7 +850,7 @@ def etl_f_cost_campaign_rule(client):
         TRUNCATE TABLE `datahub-478802.datahub.f_cost_campaign_rule`
     """
 
-    query = f"""
+    query = f"""  
 
         INSERT INTO `datahub-478802.datahub.f_cost_campaign_rule`
         (

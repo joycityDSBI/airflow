@@ -245,7 +245,7 @@ def etl_dim_AFC_campaign(**context):
                 WHEN media_category IN ('Google','Google-Re') AND etc_category != 'Purchase'                             THEN CONCAT(optim,'_ETC')
                 ELSE '구분없음'
              END AS class
-           , upload_time       
+           , upload_time         
       FROM `dataplatform-bdts.mas.af_campaign_rule` 
     ) AS a
     """
