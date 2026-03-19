@@ -235,14 +235,9 @@ with DAG(
     tags=['steam', 'wishlist', 'bigquery'],
 ) as dag:
 
-    steam_wishlist_to_bq_logic_task = PythonOperator(
-        task_id='steam_wishlist_to_bq_logic_task',
-        python_callable=steam_wishlist_to_bq_logic
-    )
 
     upload_to_bigquery_task = PythonOperator(
         task_id='upload_to_bigquery_task',
         python_callable=upsert_to_bigquery
     )
 
-steam_wishlist_to_bq_logic_task >> upload_to_bigquery_task
