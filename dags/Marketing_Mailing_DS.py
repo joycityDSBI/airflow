@@ -1244,7 +1244,7 @@ with DAG(
             # 이메일 발송
             logger.info("📧 이메일 발송 중...")
 
-            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
+            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=60)
             server.set_debuglevel(0)  # 디버그 모드 끄기
             
             # # 인증이 필요하면
