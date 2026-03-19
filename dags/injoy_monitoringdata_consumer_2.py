@@ -343,21 +343,15 @@ def transform_data(**context):
     )
     
     # 날짜 형식 변환
+    # event_time_kst는 Databricks에서 이미 KST로 변환된 값이지만,
+    # to_json(date_format='iso')가 naive datetime에 Z(UTC)를 붙이므로
+    # timezone 정보를 제거하고 값 자체(KST)를 그대로 사용한다.
     s = pd.to_datetime(df_renamed['질문날짜'], errors='coerce')
-    
-    # 타임존 처리: 이미 타임존이 있는지 확인 후 처리
-    if s.dt.tz is None:
-        # 타임존이 없는 경우: tz_localize 사용
-        print("ℹ️  타임존 정보가 없습니다. Asia/Seoul로 설정합니다.")
-        s = s.dt.tz_localize('Asia/Seoul', ambiguous='infer', nonexistent='shift_forward')
-    else:
-        # 이미 타임존이 있는 경우: tz_convert 사용
-        print(f"ℹ️  기존 타임존({s.dt.tz})을 Asia/Seoul로 변환합니다.")
-        print(f"ℹ️ 기존 타임존 {s.dt.tz}")
-        s = s.dt.tz_convert('Asia/Seoul')
-        print(f"ℹ️ 변경 타임존 {s.dt.tz}")
-    
-    # ISO 8601 형식으로 변환
+    if s.dt.tz is not None:
+        print(f"ℹ️  XCom 직렬화로 붙은 timezone({s.dt.tz}) 제거 (값은 이미 KST)")
+        s = s.dt.tz_localize(None)
+
+    # ISO 8601 형식으로 변환 (timezone 없이 KST 값 그대로 저장)
     df_renamed['질문날짜'] = s.apply(lambda x: x.isoformat(timespec='seconds') if pd.notna(x) else None)
     df_renamed.loc[s.isna(), '질문날짜'] = None
     print("🔄 '질문날짜' 컬럼을 Notion 표준 시간 형식으로 변환했습니다.")
@@ -433,28 +427,28 @@ def load_to_notion(**context):
     # =====================================================================
     # 🧪 [TEST MODE] 특정 메시지 ID만 필터링 (테스트 완료 후 이 블록 삭제)
     # =====================================================================
-    # test_msg_id = "01f115d09ae214509d842c379172bb72"
-    # print(f"\n🧪 [TEST MODE] 메시지 ID가 '{test_msg_id}'인 데이터만 필터링합니다.")
+    test_msg_id = "01f115d09ae214509d842c379172bb72"
+    print(f"\n🧪 [TEST MODE] 메시지 ID가 '{test_msg_id}'인 데이터만 필터링합니다.")
     
     # DataFrame의 컬럼명이 '메시지id'인지 'message_id'인지 확인 후 필터링
-    # if '메시지id' in df_renamed.columns:
-    #     df_renamed = df_renamed[df_renamed['메시지id'] == test_msg_id]
-    # elif 'message_id' in df_renamed.columns:
-    #     df_renamed = df_renamed[df_renamed['message_id'] == test_msg_id]
+    if '메시지id' in df_renamed.columns:
+        df_renamed = df_renamed[df_renamed['메시지id'] == test_msg_id]
+    elif 'message_id' in df_renamed.columns:
+        df_renamed = df_renamed[df_renamed['message_id'] == test_msg_id]
 
-    # # 필터링 후 데이터가 없으면 즉시 종료
-    # if df_renamed.empty:
-    #     print(f"⚠️ XCom에서 가져온 데이터 중 해당 메시지 ID({test_msg_id})가 없습니다. 작업을 종료합니다.")
-    #     return
-    # else:
-    #     print(f"✅ 테스트 대상 데이터 {len(df_renamed)}건을 찾았습니다. 다음 단계를 진행합니다.")
+    # 필터링 후 데이터가 없으면 즉시 종료
+    if df_renamed.empty:
+        print(f"⚠️ XCom에서 가져온 데이터 중 해당 메시지 ID({test_msg_id})가 없습니다. 작업을 종료합니다.")
+        return
+    else:
+        print(f"✅ 테스트 대상 데이터 {len(df_renamed)}건을 찾았습니다. 다음 단계를 진행합니다.")
     # =====================================================================
 
     print(df_renamed)
     # Notion 기존 데이터 조회
     print("\nStep 3-1: Notion DB의 기존 데이터 조회 및 중복 데이터 분석을 시작합니다.")
-    # notion_pages = get_test_notion_pages(NOTION_DB_ID, headers, test_msg_id)
-    notion_pages = get_all_notion_pages(NOTION_DB_ID, headers)
+    notion_pages = get_test_notion_pages(NOTION_DB_ID, headers, test_msg_id)
+    # notion_pages = get_all_notion_pages(NOTION_DB_ID, headers)
     print(notion_pages) 
 
     # Key 기준으로 페이지들을 모아두는 딕셔너리
@@ -564,13 +558,13 @@ def load_to_notion(**context):
 # DAG 정의
 # ============================================================
 
-injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
+injoy_monitoringdata_producer_ver2 = Dataset('injoy_monitoringdata_producer_ver2')
 
 with DAG(
     dag_id='injoy_monitoringdata_consumer_2',
     default_args=default_args,
     description='Databricks 데이터를 Notion DB에 동기화하는 DAG',
-    schedule=[injoy_monitoringdata_producer],
+    schedule=[injoy_monitoringdata_producer_ver2],
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['notion', 'sync', 'monitoring'],
