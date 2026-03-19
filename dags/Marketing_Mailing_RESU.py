@@ -1293,8 +1293,33 @@ with DAG(
             msg['Subject'] = f"[RESU] UA Performance & Cost Report {today}"
             msg.attach(MIMEText(html_body, 'html'))
             
-            server.sendmail(SENDER_EMAIL, RECIPIENT_EMAILS, msg.as_string())
-            server.quit()
+            if not RECIPIENT_EMAILS:
+                print("⚠️ 발송 대상 리스트가 비어 있어 메일 발송을 건너뜁니다.")
+            else:
+                # 2. 이메일 주소 형식 간단 정제 (공백 제거 및 유효성 체크)
+                clean_recipients = [str(r).strip() for r in RECIPIENT_EMAILS if r and "@" in str(r)]
+                
+                if not clean_recipients:
+                    print("⚠️ 유효한 형식의 이메일 주소가 없습니다.")
+                else:
+                    # 3. 대량 발송 시 서버 부하 및 거부 방지를 위해 50명씩 끊어서 발송
+                    batch_size = 50
+                    for i in range(0, len(clean_recipients), batch_size):
+                        chunk = clean_recipients[i:i + batch_size]
+                        try:
+                            print(f"📧 이메일 발송 중... ({i + len(chunk)}/{len(clean_recipients)})")
+                            server.sendmail(SENDER_EMAIL, chunk, msg.as_string())
+                        except smtplib.SMTPRecipientsRefused as e:
+                            # 어떤 주소가 거부되었는지 상세 로그 남기기
+                            print(f"❌ 일부 수신자 거부 발생: {e.recipients}")
+                        except Exception as e:
+                            print(f"❌ 발송 중 알 수 없는 에러 발생: {e}")
+
+            # 4. 안전하게 연결 종료
+            try:
+                server.quit()
+            except:
+                server.close()
             print("메일 발송 성공")
 
             # msg = MIMEMultipart()
