@@ -428,21 +428,21 @@ def load_to_notion(**context):
     # =====================================================================
     # 🧪 [TEST MODE] 특정 메시지 ID만 필터링 (테스트 완료 후 이 블록 삭제)
     # =====================================================================
-    test_msg_id = "01f122ca9a1910ff99ea267ce974eecc"
-    print(f"\n🧪 [TEST MODE] 메시지 ID가 '{test_msg_id}'인 데이터만 필터링합니다.")
+    # test_msg_id = "01f122ca9a1910ff99ea267ce974eecc"
+    # print(f"\n🧪 [TEST MODE] 메시지 ID가 '{test_msg_id}'인 데이터만 필터링합니다.")
     
-    # DataFrame의 컬럼명이 '메시지id'인지 'message_id'인지 확인 후 필터링
-    if '메시지id' in df_renamed.columns:
-        df_renamed = df_renamed[df_renamed['메시지id'] == test_msg_id]
-    elif 'message_id' in df_renamed.columns:
-        df_renamed = df_renamed[df_renamed['message_id'] == test_msg_id]
+    # # DataFrame의 컬럼명이 '메시지id'인지 'message_id'인지 확인 후 필터링
+    # if '메시지id' in df_renamed.columns:
+    #     df_renamed = df_renamed[df_renamed['메시지id'] == test_msg_id]
+    # elif 'message_id' in df_renamed.columns:
+    #     df_renamed = df_renamed[df_renamed['message_id'] == test_msg_id]
 
-    # 필터링 후 데이터가 없으면 즉시 종료
-    if df_renamed.empty:
-        print(f"⚠️ XCom에서 가져온 데이터 중 해당 메시지 ID({test_msg_id})가 없습니다. 작업을 종료합니다.")
-        return
-    else:
-        print(f"✅ 테스트 대상 데이터 {len(df_renamed)}건을 찾았습니다. 다음 단계를 진행합니다.")
+    # # 필터링 후 데이터가 없으면 즉시 종료
+    # if df_renamed.empty:
+    #     print(f"⚠️ XCom에서 가져온 데이터 중 해당 메시지 ID({test_msg_id})가 없습니다. 작업을 종료합니다.")
+    #     return
+    # else:
+    #     print(f"✅ 테스트 대상 데이터 {len(df_renamed)}건을 찾았습니다. 다음 단계를 진행합니다.")
     # =====================================================================
 
     print(f"\n총 {len(df_renamed)}건에 대해 Notion 조회 및 upsert를 시작합니다.")
