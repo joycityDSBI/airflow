@@ -343,15 +343,16 @@ def transform_data(**context):
     )
     
     # 날짜 형식 변환
-    # event_time_kst는 Databricks에서 이미 KST로 변환된 값이지만,
-    # to_json(date_format='iso')가 naive datetime에 Z(UTC)를 붙이므로
-    # timezone 정보를 제거하고 값 자체(KST)를 그대로 사용한다.
+    # event_time_kst는 Databricks에서 이미 KST로 변환된 값이지만 +00:00 라벨이 잘못 붙어 있음.
+    # 따라서 잘못된 timezone 라벨을 제거한 뒤, 값 그대로를 KST(+09:00)로 재지정한다.
+    # (tz_convert가 아닌 tz_localize를 사용하여 값 변환 없이 라벨만 교체)
     s = pd.to_datetime(df_renamed['질문날짜'], errors='coerce')
     if s.dt.tz is not None:
-        print(f"ℹ️  XCom 직렬화로 붙은 timezone({s.dt.tz}) 제거 (값은 이미 KST)")
-        s = s.dt.tz_localize(None)
+        print(f"ℹ️  잘못된 timezone 라벨({s.dt.tz}) 제거 후 KST(+09:00)로 재지정")
+        s = s.dt.tz_localize(None)          # +00:00 라벨 제거 (값 변환 없음)
+    s = s.dt.tz_localize('Asia/Seoul')      # +09:00 라벨 부착 (값 변환 없음)
 
-    # ISO 8601 형식으로 변환 (timezone 없이 KST 값 그대로 저장)
+    # ISO 8601 형식으로 변환 → Notion에 "2026-03-18T22:01:38+09:00" 형태로 전달
     df_renamed['질문날짜'] = s.apply(lambda x: x.isoformat(timespec='seconds') if pd.notna(x) else None)
     df_renamed.loc[s.isna(), '질문날짜'] = None
     print("🔄 '질문날짜' 컬럼을 Notion 표준 시간 형식으로 변환했습니다.")
