@@ -108,7 +108,7 @@ def build_properties_payload(row_data: dict) -> dict:
 
     for key, value in row_data.items():
         # 📌 1. 먼저 array/list 타입 확인
-        if isinstance(value, (list, tuple, pd.Series)):
+        if isinstance(value, (list, tuple, pd.Series))  :
             # 빈 배열이면 continue
             if len(value) == 0:
                 continue
@@ -433,28 +433,29 @@ def load_to_notion(**context):
     # =====================================================================
     # 🧪 [TEST MODE] 특정 메시지 ID만 필터링 (테스트 완료 후 이 블록 삭제)
     # =====================================================================
-    test_msg_id = "01f115d09ae214509d842c379172bb72"
-    print(f"\n🧪 [TEST MODE] 메시지 ID가 '{test_msg_id}'인 데이터만 필터링합니다.")
+    # test_msg_id = "01f115d09ae214509d842c379172bb72"
+    # print(f"\n🧪 [TEST MODE] 메시지 ID가 '{test_msg_id}'인 데이터만 필터링합니다.")
     
     # DataFrame의 컬럼명이 '메시지id'인지 'message_id'인지 확인 후 필터링
-    if '메시지id' in df_renamed.columns:
-        df_renamed = df_renamed[df_renamed['메시지id'] == test_msg_id]
-    elif 'message_id' in df_renamed.columns:
-        df_renamed = df_renamed[df_renamed['message_id'] == test_msg_id]
+    # if '메시지id' in df_renamed.columns:
+    #     df_renamed = df_renamed[df_renamed['메시지id'] == test_msg_id]
+    # elif 'message_id' in df_renamed.columns:
+    #     df_renamed = df_renamed[df_renamed['message_id'] == test_msg_id]
 
-    # 필터링 후 데이터가 없으면 즉시 종료
-    if df_renamed.empty:
-        print(f"⚠️ XCom에서 가져온 데이터 중 해당 메시지 ID({test_msg_id})가 없습니다. 작업을 종료합니다.")
-        return
-    else:
-        print(f"✅ 테스트 대상 데이터 {len(df_renamed)}건을 찾았습니다. 다음 단계를 진행합니다.")
+    # # 필터링 후 데이터가 없으면 즉시 종료
+    # if df_renamed.empty:
+    #     print(f"⚠️ XCom에서 가져온 데이터 중 해당 메시지 ID({test_msg_id})가 없습니다. 작업을 종료합니다.")
+    #     return
+    # else:
+    #     print(f"✅ 테스트 대상 데이터 {len(df_renamed)}건을 찾았습니다. 다음 단계를 진행합니다.")
     # =====================================================================
 
     print(df_renamed)
     # Notion 기존 데이터 조회
     print("\nStep 3-1: Notion DB의 기존 데이터 조회 및 중복 데이터 분석을 시작합니다.")
-    notion_pages = get_test_notion_pages(NOTION_DB_ID, headers, test_msg_id)
-    print(notion_pages)
+    # notion_pages = get_test_notion_pages(NOTION_DB_ID, headers, test_msg_id)
+    notion_pages = get_all_notion_pages(NOTION_DB_ID, headers)
+    print(notion_pages) 
 
     # Key 기준으로 페이지들을 모아두는 딕셔너리
     # 구조: { "생성된_키": [{"id": "page_id1", "created_time": "2023-01..."}, ...] }
@@ -497,7 +498,7 @@ def load_to_notion(**context):
             oldest_page = pages[0]
             valid_existing_map[key] = oldest_page["id"]
             
-            # 나머지 최신 데이터들은 삭제(Archive) 처리
+            # 나머지 최신 데이터들은 삭제(휴지통) 처리
             for duplicate in pages[1:]:
                 dup_page_id = duplicate["id"]
                 # Notion API에서 페이지 삭제는 archived 속성을 True로 변경하는 방식입니다.
