@@ -1,3 +1,6 @@
 {
-    "python.REPL.enableREPLSmartSend": false
+  "python.defaultInterpreterPath": "c:\\airflow\\.venv\\Scripts\\python.exe",
+  "python.terminal.activateEnvironment": true,
+  "python.languageServer": "Pylance",
+  "python.analysis.typeCheckingMode": "basic"
 }
