@@ -1228,7 +1228,7 @@ with DAG(
                 logger.error("❌ 수신자가 없습니다. 이메일을 발송하지 않습니다.")
                 return
 
-            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
+            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=60)
             server.set_debuglevel(1)  # 👈 상세 로그 켜기
             
             # # 인증이 필요하면
