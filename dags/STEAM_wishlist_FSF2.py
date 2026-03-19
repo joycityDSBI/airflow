@@ -120,6 +120,7 @@ def steam_wishlist_to_bq_logic(**context):
     # 5. CSV를 DataFrame으로 변환 (메모리 내에서 처리)
     # Steam CSV는 보통 첫 몇 줄에 메타데이터가 있을 수 있으니 상황에 따라 skiprows 조절 필요
     df = pd.read_csv(io.StringIO(response.text), skiprows=2)
+    print("📧데이터프레임으로 변환 완료")
 
     column_mapping = {
         'DateLocal': 'datekey',
@@ -129,9 +130,10 @@ def steam_wishlist_to_bq_logic(**context):
         'Adds': 'adds',
         'Deletes': 'deletes',
         'PurchasesAndActivations': 'purchase_and_activations',
-        'Gifts': 'gists'
+        'Gifts': 'gifts'
     }
     df.rename(columns=column_mapping, inplace=True)
+    print("📧 컬럼 명 변경 완료")
 
     return df
 
@@ -148,6 +150,25 @@ def upsert_to_bigquery():
     if df.empty:
         print("No data to upsert.")
         return
+    
+    # (4) 전처리
+    if 'datekey' in df.columns:
+        # 1. 먼저 datetime으로 변환
+        df['datekey'] = pd.to_datetime(df['datekey'])
+        # 2. 시간(00:00:00)을 떼어내고 날짜(Date) 객체로 변환
+        df['datekey'] = df['datekey'].dt.date
+    
+    numeric_cols = ['adds', 'deletes', 'purchase_and_activations', 'gifts']
+    for col in numeric_cols:
+        if col in df.columns:
+            # 1. 숫자로 변환 (에러 발생 시 NaN)
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            # 2. NaN을 0으로 채움
+            df[col] = df[col].fillna(0)
+            
+            # 3. [핵심] 정수형(int)으로 강제 변환 (소수점 버림)
+            df[col] = df[col].astype(int)
 
     # [수정 1] 타임스탬프 고정 (변수 재사용)
     timestamp = int(time.time())
@@ -165,7 +186,7 @@ def upsert_to_bigquery():
     )
 
     try:
-        print(f"Loading data to staging table: {staging_table_id}...")
+        print(f"📧 Loading data to staging table: {staging_table_id}...")
         # 테이블 적재 (이때 테이블이 생성됨)
         load_job = client.load_table_from_dataframe(df, staging_table_id, job_config=job_config)
         load_job.result() # 대기
