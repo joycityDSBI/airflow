@@ -4,8 +4,6 @@ import pandas as pd
 import io
 import urllib.parse
 from airflow import DAG
-import airflow 
-print(airflow.__version__)
 from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable
 import os
