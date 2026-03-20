@@ -300,6 +300,7 @@ def extract_data(**context):
                 datahub.injoy_ops_schema.injoy_monitoring_data
             WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 60 DAYS AS TIMESTAMP) 
             AND event_time_kst < CAST(DATE(NOW()) AS TIMESTAMP) 
+            AND message_id = '01f1002ce5681d62b3febf51b26bfbd9'
             ORDER BY conversation_id, event_time_kst
         """
         
@@ -416,6 +417,9 @@ def load_to_notion(**context):
     df_renamed = pd.read_json(transformed_data_json, orient='records')
 
     print(f"\n총 {len(df_renamed)}건에 대해 Notion 조회 및 upsert를 시작합니다.")
+    for _, row in df_renamed.iterrows():
+        r = row.to_dict()
+        print(f"  [XCom 확인] key={generate_row_key(r)} | 사용자 질의={str(r.get('사용자 질의',''))[:30]} | 사용자명={r.get('사용자명')} | 응답속도(초)={r.get('응답속도(초)')} (type={type(r.get('응답속도(초)')).__name__})")
 
     # df_renamed의 메시지id 목록으로 Notion 페이지 일괄 조회
     msg_id_list = df_renamed['메시지id'].tolist()
