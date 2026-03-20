@@ -299,7 +299,7 @@ def extract_data(**context):
                 datahub.injoy_ops_schema.injoy_monitoring_data
             WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 60 DAYS AS TIMESTAMP) 
             AND event_time_kst < CAST(DATE(NOW()) AS TIMESTAMP) 
-            AND message_id = '01f1002ce5681d62b3febf51b26bfbd9'
+            AND message_id != '01f1002ce5681d62b3febf51b26bfbd9'
             ORDER BY conversation_id, event_time_kst
         """
         
