@@ -1,9 +1,9 @@
 # Airflow function
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.bash import BashOperator
 from airflow.models import Variable
-from airflow.models.baseoperator import chain
+from airflow.models import chain
 from google.oauth2 import service_account
 import json
 
@@ -58,11 +58,11 @@ def etl_dim_os(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -307,11 +307,11 @@ def etl_dim_auth_method_id(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -396,11 +396,11 @@ def etl_dim_product_code(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -943,11 +943,11 @@ def etl_dim_exchange_rate(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -1065,11 +1065,11 @@ def etl_dim_game_id(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -1153,11 +1153,11 @@ def etl_dim_app_id(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -1245,11 +1245,11 @@ def etl_dim_google_campaign(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -1417,11 +1417,11 @@ def etl_dim_ip4_country_code(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -1544,11 +1544,11 @@ def etl_dim_joyple_game_code(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -1646,11 +1646,11 @@ def etl_dim_market_id(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -1908,11 +1908,11 @@ def etl_dim_pg_id(**context):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")

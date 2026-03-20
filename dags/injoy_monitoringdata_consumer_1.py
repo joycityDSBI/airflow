@@ -6,7 +6,7 @@ Notion DB 동기화 DAG
 """
 
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import requests
 import pandas as pd
@@ -37,7 +37,7 @@ default_args = {
 # ============================================================
 # 유틸리티 함수
 # ============================================================
-def get_var(key: str, default: str = None, required: bool = False) -> str:
+def get_var(key: str, default: str | None = None, required: bool = False) -> str:
     """환경 변수 → Airflow Variable 순서로 조회
     
     Args:
@@ -59,10 +59,10 @@ def get_var(key: str, default: str = None, required: bool = False) -> str:
         # airflow.sdk.Variable은 default 파라미터 사용
         # airflow.models.Variable은 default_var 파라미터 사용
         try:
-            var_value = Variable.get(key, default=None)
+            var_value = Variable.get(key, None)
         except TypeError:
             # fallback for older Airflow versions
-            var_value = Variable.get(key, default_var=None)
+            var_value = Variable.get(key, None)
         
         if var_value:
             print(f"✓ Airflow Variable에서 {key} 로드됨")
@@ -81,7 +81,8 @@ def get_var(key: str, default: str = None, required: bool = False) -> str:
                          f"환경 변수 또는 Airflow Variable에서 설정하세요.")
     
     print(f"ℹ️  {key} 값을 찾을 수 없습니다 (선택사항)")
-    return None
+    return ''
+
 
 
 def get_notion_headers():
@@ -204,11 +205,13 @@ def build_properties_payload(row_data: dict) -> dict:
 
 def has_data_changed(source_row: dict, notion_row: dict) -> bool:
     """소스 데이터와 Notion 데이터 변경 여부를 비교합니다."""
+    conv_date = source_row.get("conversation_date")
+
     prop_map = {
         "대화id": str(source_row.get("conversation_id") or ""),
         "사용자": str(source_row.get("user_email") or ""),
         "스페이스명": str(source_row.get("space_name") or ""),
-        "대화날짜": source_row.get("conversation_date").strftime('%Y-%m-%d') if pd.notna(source_row.get("conversation_date")) else "",
+        "대화날짜": conv_date.strftime('%Y-%m-%d') if pd.notna(conv_date) else "",
     }
 
     source_flow_as_string = '\n'.join(map(str, [item for item in source_row.get("conversation_flow", []) if item is not None]))
@@ -256,7 +259,12 @@ def fetch_data_from_databricks(**context):
             """)
             
             # 결과를 DataFrame으로 변환
-            columns = [desc[0] for desc in cursor.description]
+            if cursor.description is not None:
+                columns = [desc[0] for desc in cursor.description]
+            else:
+                # 쿼리 결과가 없는 경우(DML 작업 등)에 대한 처리
+                print("⚠️ 쿼리 결과가 없거나 description을 가져올 수 없습니다.")
+                
             data = cursor.fetchall()
             source_df = pd.DataFrame(data, columns=columns)
             

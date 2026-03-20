@@ -27,11 +27,11 @@ def etl_pre_payment_deduct_user(target_date: list, client):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -114,11 +114,11 @@ def etl_pre_payment_deduct_order(target_date: list, client):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -263,11 +263,11 @@ def etl_f_common_payment(target_date: list, client):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")

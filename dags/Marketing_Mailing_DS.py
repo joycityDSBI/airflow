@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from datetime import datetime, time, timedelta, timezone
 import time as t_sleep
 from google.cloud import bigquery
@@ -46,7 +46,7 @@ with DAG(
 
     logger = logging.getLogger(__name__)
 
-    def get_var(key: str, default: str = None) -> str:
+    def get_var(key: str, default: str | None= None) -> str:
         """환경 변수 또는 Airflow Variable 조회"""
         return os.environ.get(key) or Variable.get(key, default_var=default)
 
@@ -188,7 +188,7 @@ with DAG(
             {df}
             """,
             config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION,
+                    system_instruction=SYSTEM_INSTRUCTION[0],
                     # tools=[RAG],
                     temperature=0.5,
                     labels=LABELS

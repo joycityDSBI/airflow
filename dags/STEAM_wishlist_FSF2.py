@@ -234,6 +234,8 @@ def upsert_to_bigquery():
         client.delete_table(staging_table_id, not_found_ok=True)
 
 
+
+
 # DAG 기본 설정
 default_args = {
     'owner': 'airflow',

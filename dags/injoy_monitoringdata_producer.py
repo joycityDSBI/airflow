@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta, timezone as dt_timezone
 from io import StringIO
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.bash import BashOperator
 from airflow.providers.databricks.hooks.databricks import DatabricksHook
 from airflow.models import Variable
 import pandas as pd
@@ -10,7 +11,6 @@ from airflow import Dataset
 import numpy as np
 import json
 import pyspark
-from airflow.operators.bash import BashOperator
 from databricks import sql
 
 injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')

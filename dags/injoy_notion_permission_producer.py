@@ -7,8 +7,10 @@ from databricks import sql
 import os
 from airflow.models import Variable
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.bash import BashOperator
+from typing import Any, cast
+
 
 injoy_notion_permission_producer = Dataset('injoy_notion_permission_producer')
 
@@ -32,7 +34,7 @@ with DAG(
 ) as dag:
 
 
-    def get_var(key: str, default: str = None, required: bool = False) -> str:
+    def get_var(key: str, default: str | None = None, required: bool = False) -> str:
         """환경 변수 → Airflow Variable 순서로 조회"""
         env_value = os.environ.get(key)
         if env_value:
@@ -41,9 +43,9 @@ with DAG(
         
         try:
             try:
-                var_value = Variable.get(key, default=None)
+                var_value = Variable.get(key, None)
             except TypeError:
-                var_value = Variable.get(key, default_var=None)
+                var_value = Variable.get(key, None)
             
             if var_value:
                 print(f"✓ Airflow Variable에서 {key} 로드됨")
@@ -59,7 +61,7 @@ with DAG(
             raise ValueError(f"필수 설정 {key}을(를) 찾을 수 없습니다.")
         
         print(f"ℹ️  {key} 값을 찾을 수 없습니다 (선택사항)")
-        return None
+        return ''
 
     def get_notion_headers():
         """Notion API 헤더 생성"""
@@ -428,7 +430,7 @@ with DAG(
         try:
             # ✅ SELECT 쿼리도 백틱 사용
             with sql.connect(**config) as conn:
-                df_existing = pd.read_sql(f"SELECT * FROM {target_table}", conn)
+                df_existing = pd.read_sql(f"SELECT * FROM {target_table}", cast(Any, conn))
             
             print(f"✅ 기존 테이블 로드 완료")
             

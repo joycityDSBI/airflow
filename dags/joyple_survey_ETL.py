@@ -2,15 +2,16 @@ import pandas as pd
 import pymysql
 from datetime import datetime, timedelta
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable
 from google.oauth2 import service_account
 from google.cloud import bigquery
 import json
 import os
+from typing import Any, cast
 
 
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
@@ -84,7 +85,7 @@ def extract_load_joyple_survey_list():
             promotion_id
         FROM joycity_survey.joyple_survey_list 
     """
-    df = pd.read_sql(query, conn)
+    df = pd.read_sql(query, cast(Any, conn))
     conn.close()
 
     if df.empty:
@@ -145,7 +146,7 @@ def extract_load_joyple_response():
     """
 
     print(f"Extracting data from {start_date_str}...")
-    df = pd.read_sql(query, conn)
+    df = pd.read_sql(query, cast(Any,conn))
     conn.close()
 
     if df.empty:
@@ -296,7 +297,7 @@ def extract_load_joyple_question_info():
     """
 
     print(f"Extracting data from ...")
-    df = pd.read_sql(query, conn)
+    df = pd.read_sql(query, cast(Any, conn))
     conn.close()
 
     if df.empty:

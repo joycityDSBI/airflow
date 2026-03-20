@@ -1,5 +1,5 @@
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import requests
 import pandas as pd
@@ -31,7 +31,7 @@ default_args = {
 # ============================================================
 # 유틸리티 함수
 # ============================================================
-def get_var(key: str, default: str = None, required: bool = False) -> str:
+def get_var(key: str, default: str | None = None, required: bool = False) -> str:
     """환경 변수 → Airflow Variable 순서로 조회"""
     env_value = os.environ.get(key)
     if env_value:
@@ -40,9 +40,9 @@ def get_var(key: str, default: str = None, required: bool = False) -> str:
     
     try:
         try:
-            var_value = Variable.get(key, default=None)
+            var_value = Variable.get(key, None)
         except TypeError:
-            var_value = Variable.get(key, default_var=None)
+            var_value = Variable.get(key, None)
         
         if var_value:
             print(f"✓ Airflow Variable에서 {key} 로드됨")
@@ -58,7 +58,7 @@ def get_var(key: str, default: str = None, required: bool = False) -> str:
         raise ValueError(f"필수 설정 {key}을(를) 찾을 수 없습니다.")
     
     print(f"ℹ️  {key} 값을 찾을 수 없습니다 (선택사항)")
-    return None
+    return ''
 
 
 NOTION_DATABASE_ID = get_var('NOTION_DB_ID_INJOY_MONITORINGDATA_CONSUMER', "230ea67a568180c591fee27d4e90e001")
@@ -129,7 +129,8 @@ def build_properties_payload(row_data: dict) -> dict:
 
         elif key == "응답속도(초)":
             try:
-                numeric_value = float(value)
+                for val in value:
+                    numeric_value = float(val) if pd.notna(val) else 0.0
                 properties[key] = {"number": numeric_value}
             except (ValueError, TypeError):
                 continue
@@ -155,7 +156,8 @@ def build_properties_payload(row_data: dict) -> dict:
 
         elif key in ['row_count', 'auto_regenerate_count']:
             try:
-                int_value = int(value)
+                for val in value:
+                    int_value = int(val) if pd.notna(val) else 0
                 properties[key] = {"number": int_value}
             except (ValueError, TypeError):
                 continue
@@ -283,7 +285,7 @@ def extract_data(**context):
         cursor.execute(sql_query)
         
         # 결과를 DataFrame으로 변환
-        columns = [desc[0] for desc in cursor.description]
+        columns = [desc[0] for desc in (cursor.description or [])]
         rows = cursor.fetchall()
         source_df = pd.DataFrame(rows, columns=columns)
         

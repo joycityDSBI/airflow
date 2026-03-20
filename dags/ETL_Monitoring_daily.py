@@ -1,7 +1,7 @@
 # Airflow function
 import smtplib
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable
 
 from google.cloud import bigquery
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 PROJECT_ID = "datahub-478802"
 LOCATION = "US"
 
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 

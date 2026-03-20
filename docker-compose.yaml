@@ -17,6 +17,8 @@ x-airflow-common:
     # [중요] 워커는 내부망(Docker Network)을 통해 API 서버의 8080포트로 통신함
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: 'http://airflow-apiserver:8080/execution/'
 
+    AIRFLOW__CORE__AUTH_MANAGER: "airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager"
+    AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
     _AIRFLOW_WWW_USER_CREATE: 'true'
     _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
     _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-admin123}
@@ -105,7 +107,7 @@ services:
   # [2] Web Server (UI용 - 사용자 접속)
   airflow-webserver:
     <<: *airflow-common
-    command: webserver
+    command: api-server #webserver
     ports:
       # Host(8080) -> Container(8080)
       # 사용자가 접속할 포트
