@@ -19,7 +19,7 @@ from airflow.models import Variable
 logging.basicConfig(level=logging.INFO)
 
 
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
@@ -110,9 +110,10 @@ def request_with_retry(method: str, url: str, **kwargs) -> requests.Response:
         return res
     
     # 📌 모든 재시도 실패
-    if last:
-        logging.error(f"❌ 모든 재시도 실패 ({MAX_RETRY}회): {last.status_code}")
-    return last
+    if last is None:
+        raise requests.RequestException(f"모든 재시도 실패 ({MAX_RETRY}회) 및 응답 없음")
+    
+    return last # 이제 last는 무조건 Response 객체임이 보장됨
 
 
 # ===== 텍스트 추출 유틸 =====
@@ -309,8 +310,8 @@ def sync_db_c(df: pd.DataFrame, a_id_map: Dict[str, str], b_id_map: Dict[str, st
     unique_pairs = df.drop_duplicates(subset=["full_table_id", "column_name"])
     desired: Set[Tuple[str, str]] = set()
     for row in unique_pairs.itertuples():
-        tid = row.full_table_id
-        cname = row.column_name
+        tid = str(row.full_table_id)
+        cname = str(row.column_name)
         if tid in a_id_map and cname in b_id_map:
             desired.add((a_id_map[tid], b_id_map[cname]))
 

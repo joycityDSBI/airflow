@@ -7,16 +7,19 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable
-from airflow.utils.trigger_rule import TriggerRule
+# try:
+#     from airflow.models.taskinstance import TriggerRule
+# except ImportError:
+#     from airflow.utils.trigger_rule import TriggerRule
 import os
 import logging
 import json
 from google.oauth2 import service_account
 
 # ===== 설정 =====
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None= None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 

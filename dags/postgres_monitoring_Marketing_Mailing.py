@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import pandas as pd
 import smtplib
@@ -9,7 +9,7 @@ import logging
 import os
 from airflow.models import Variable
 from sqlalchemy import create_engine, text
-
+from contextlib import closing
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ dag = DAG(
     catchup=False,
 )
 
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None = None) -> str:
     """환경 변수 → Airflow Variable 순서로 조회
     
     Args:
@@ -80,7 +80,7 @@ def query_dag_stats_and_send_email():
         engine = create_engine(db_conn_string)
         
         # 연결 테스트
-        with engine.connect() as conn:
+        with closing(engine.connect()) as conn:
             result = conn.execute(text("SELECT 1"))
             logger.info("✓ PostgreSQL 연결 성공")
         
@@ -112,7 +112,7 @@ def query_dag_stats_and_send_email():
         logger.info("쿼리 실행 중...")
         
         # SQLAlchemy 2.x 호환성: text() 래퍼 사용
-        with engine.connect() as conn:
+        with closing(engine.connect()) as conn:
             result = conn.execute(text(sql_query))
             rows = result.fetchall()
             columns = result.keys()

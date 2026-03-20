@@ -8,16 +8,16 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable
-from airflow.utils.trigger_rule import TriggerRule
+# from airflow.utils.trigger_rule import TriggerRule
 import json
 from google.oauth2 import service_account
 
 
 
 # ===== 설정 =====
-def get_config(key: str, default: str = None) -> str:
+def get_config(key: str, default: str | None = None) -> str:
     """환경 변수 또는 Airflow Variable에서 설정값 가져오기"""
     env_value = os.environ.get(key)
     if env_value:
@@ -28,7 +28,7 @@ def get_config(key: str, default: str = None) -> str:
     except TypeError:
         return Variable.get(key, default)
     except KeyError:
-        return default
+        return str(default)
 
 
 # 전역 설정값

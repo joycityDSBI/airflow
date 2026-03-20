@@ -130,7 +130,7 @@ with DAG(
     )
 
     def genai_paid_geo_analytics(df, credentials):
-        last_exception = None
+        last_exception = Exception("데이터가 비어있거나 할당량이 소진 되었습니다.")
         
         # 리전 리스트를 하나씩 순회
         for loc in LOCATION_LIST:
@@ -188,7 +188,7 @@ with DAG(
             {df}
             """,
             config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION[0],
+                    system_instruction="\n".join(SYSTEM_INSTRUCTION) if isinstance(SYSTEM_INSTRUCTION, list) else SYSTEM_INSTRUCTION,
                     # tools=[RAG],
                     temperature=0.5,
                     labels=LABELS
@@ -196,13 +196,19 @@ with DAG(
             )
         
         text = response_data.text
-        first_hash_removed = text.replace('#', '', 1)
-        return first_hash_removed.replace('#', '<br>\n*')
+        if text is not None:
+            # 여기서부터는 Pylance가 text를 str로 인식합니다.
+            first_hash_removed = text.replace('#', '', 1)
+            return first_hash_removed.replace('#', '<br>\n*')
+        else:
+            # text가 None일 경우의 예외 처리 (빈 문자열 반환 등)
+            logging.error("API 응답 텍스트가 비어있습니다.")
+            return ""
     
 
     # 제미나이 organic 국가별 함수
     def genai_organic_geo_analytics(df, credentials):
-        last_exception = None
+        last_exception = Exception("데이터가 비어있거나 할당량이 소진 되었습니다.")
         
         # 리전 리스트를 하나씩 순회
         for loc in LOCATION_LIST:
@@ -259,7 +265,7 @@ with DAG(
 
             """,
             config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION,
+                    system_instruction="\n".join(SYSTEM_INSTRUCTION) if isinstance(SYSTEM_INSTRUCTION, list) else SYSTEM_INSTRUCTION,
                     # tools=[RAG],
                     temperature=0.5,
                     labels=LABELS
@@ -267,13 +273,19 @@ with DAG(
             )
         
         text = response_data.text
-        first_hash_removed = text.replace('#', '', 1)
-        return first_hash_removed.replace('#', '<br>\n*')
+        if text is not None:
+            # 여기서부터는 Pylance가 text를 str로 인식합니다.
+            first_hash_removed = text.replace('#', '', 1)
+            return first_hash_removed.replace('#', '<br>\n*')
+        else:
+            # text가 None일 경우의 예외 처리 (빈 문자열 반환 등)
+            logging.error("API 응답 텍스트가 비어있습니다.")
+            return ""
 
 
     # 제미나이 Paid 전체 요약 함수
     def genai_paid_all_analytics(df, credentials, text_data):
-        last_exception = None
+        last_exception = Exception("데이터가 비어있거나 할당량이 소진 되었습니다.")
         
         # 리전 리스트를 하나씩 순회
         for loc in LOCATION_LIST:
@@ -330,7 +342,7 @@ with DAG(
             {text_data}
             """,
             config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION,
+                    system_instruction="\n".join(SYSTEM_INSTRUCTION) if isinstance(SYSTEM_INSTRUCTION, list) else SYSTEM_INSTRUCTION,
                     # tools=[RAG],
                     temperature=0.5,
                     labels=LABELS
@@ -338,13 +350,19 @@ with DAG(
             )
         
         text = response_data.text
-        first_hash_removed = text.replace('#', '', 1)
-        return first_hash_removed.replace('#', '<br>\n*')
+        if text is not None:
+            # 여기서부터는 Pylance가 text를 str로 인식합니다.
+            first_hash_removed = text.replace('#', '', 1)
+            return first_hash_removed.replace('#', '<br>\n*')
+        else:
+            # text가 None일 경우의 예외 처리 (빈 문자열 반환 등)
+            logging.error("API 응답 텍스트가 비어있습니다.")
+            return ""
 
     # 제미나이 전체 유저 요약 함수
 
     def genai_organic_all_analytics(df, credentials, text_data):
-        last_exception = None
+        last_exception = Exception("데이터가 비어있거나 할당량이 소진 되었습니다.")
         
         # 리전 리스트를 하나씩 순회
         for loc in LOCATION_LIST:
@@ -401,7 +419,7 @@ with DAG(
             {text_data}
             """,
             config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION,
+                    system_instruction="\n".join(SYSTEM_INSTRUCTION) if isinstance(SYSTEM_INSTRUCTION, list) else SYSTEM_INSTRUCTION,
                     # tools=[RAG],
                     temperature=0.5,
                     labels=LABELS
@@ -409,8 +427,14 @@ with DAG(
             )
         
         text = response_data.text
-        first_hash_removed = text.replace('#', '', 1)
-        return first_hash_removed.replace('#', '<br>\n*')
+        if text is not None:
+            # 여기서부터는 Pylance가 text를 str로 인식합니다.
+            first_hash_removed = text.replace('#', '', 1)
+            return first_hash_removed.replace('#', '<br>\n*')
+        else:
+            # text가 None일 경우의 예외 처리 (빈 문자열 반환 등)
+            logging.error("API 응답 텍스트가 비어있습니다.")
+            return ""
 
 
     # # GCP 인증

@@ -11,9 +11,9 @@ import os
 from google.oauth2.service_account import Credentials
 from google.cloud import bigquery, storage
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable
-from airflow.decorators import task
+# from airflow.decorators import task
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -23,7 +23,7 @@ import time
 from googleapiclient.discovery import build
 
 # ============= 환경 변수 또는 Airflow Variable 조회 함수 =============
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None = None) -> str:
     """환경 변수 → Airflow Variable 순서로 조회
     
     Args:
@@ -600,8 +600,8 @@ def generate_agency_reports(**context):
     success_count = 0
     
     for i in range(len(project_list)):
-        pr_name = project_list[i].strip() if i < len(project_list) else ""
-        agency_name = agency_list[i].strip() if i < len(agency_list) else ""
+        pr_name = str(project_list[i]).strip() if i < len(project_list) else ""
+        agency_name = str(agency_list[i]).strip() if i < len(agency_list) else ""
         
         if not pr_name or not agency_name:
             continue
@@ -753,14 +753,14 @@ def authorize_gcs_access(**context):
         print(f"\n--- {idx + 1}번째 행 처리 ---")
         
         # 콤마로 구분된 이메일 파싱 (공백 제거)
-        emails = [email.strip() for email in mails_str.split(',') if email.strip()]
+        emails = [email.strip() for email in str(mails_str).split(',') if email.strip()]
         
         print(f"이메일: {emails}")
         print(f"타겟 URL: {target_url_str}")
         print(f"링크: {link}")
         
         # 타겟 URL에서 Spreadsheet ID 추출
-        match = re.search(r'/d/([a-zA-Z0-9-_]+)', target_url_str)
+        match = re.search(r'/d/([a-zA-Z0-9-_]+)', str(target_url_str))
         if not match:
             print(f"✗ URL에서 Spreadsheet ID를 추출할 수 없습니다: {target_url_str}")
             continue
@@ -787,7 +787,7 @@ def authorize_gcs_access(**context):
         
         # target_url_str (문자열)을 사용
         try:
-            target_sheet = client.open_by_url(target_url_str)
+            target_sheet = client.open_by_url(str(target_url_str))
         except Exception as e:
             print(f"✗ 타겟 시트 열기 실패: {str(e)}")
             continue
@@ -834,7 +834,7 @@ def authorize_gcs_access(**context):
                 body=request_body
             ).execute()
             
-            print(f"✓ '{target_sheet_title}' 시트의 C{row_number} 셀에 데이터 업데이트 완료!")
+            print(f"✓ '{target_sheet_title}' 시트 데이터 업데이트 완료!")
             print(f"  업데이트 내용: {link}")
         except Exception as e:
             print(f"✗ 데이터 업데이트 실패: {str(e)}")
