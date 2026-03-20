@@ -255,6 +255,8 @@ def fetch_data_from_databricks(**context):
             cursor.execute("""
                 SELECT conversation_id, user_email, space_name, content, event_time_kst
                 FROM datahub.injoy_ops_schema.injoy_monitoring_data
+                WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 60 DAYS AS TIMESTAMP) 
+                AND event_time_kst < CAST(DATE(NOW()) AS TIMESTAMP) 
                 ORDER BY conversation_id, event_time_kst
             """)
             
