@@ -469,6 +469,8 @@ def load_to_notion(**context):
         if matched_pages:
             # Update (가장 오래된 페이지에 덮어쓰기)
             page_id = matched_pages[0]["id"]
+            print(f"    [DEBUG] 응답속도(초) in payload: {properties_payload.get('응답속도(초)')}")
+            print(f"    [DEBUG] payload keys: {list(properties_payload.keys())}")
             res = requests.patch(f"https://api.notion.com/v1/pages/{page_id}", headers=headers, json={"properties": properties_payload})
             if not res.ok:
                 print(f"    ❌ 업데이트 실패! (Key: {key}) - 에러: {res.text}")
