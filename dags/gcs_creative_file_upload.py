@@ -5,8 +5,8 @@ Google Sheets → GCS 링크 정규화 & Notion DB 업로드 DAG
 """
 
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.bash import BashOperator
 from airflow.models import Variable
 from datetime import datetime, timedelta
 import os
@@ -19,6 +19,7 @@ except ImportError:
     import subprocess
     subprocess.check_call(['pip', 'install', 'gspread'])
     import gspread
+from typing import Any, Dict, cast
 
 
 gcs_creative_file_upload = Dataset('gcs_creative_file_upload')
@@ -49,7 +50,7 @@ dag = DAG(
 # =====================
 # Airflow Variables에서 설정 값 로드
 # =====================
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None= None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
@@ -176,8 +177,11 @@ def fetch_notion_schema(**context):
     notion = NotionClient(auth=NOTION_API_KEY)
     
     # DB 스키마 조회
-    info = notion.databases.retrieve(database_id=NOTION_DB_ID)
-    props = info.get("properties", {})
+    info = cast(Dict[str, Any], notion.databases.retrieve(database_id=NOTION_DB_ID))
+    props = info.get("properties", {}) # ignore
+
+    
+
     prop_by_clean = {}
     title_prop_name = None
     project_prop = None
@@ -202,10 +206,13 @@ def fetch_notion_schema(**context):
         cursor = None
         
         while True:
-            resp = notion.databases.query(
-                database_id=NOTION_DB_ID,
-                start_cursor=cursor
-            ) if cursor else notion.databases.query(database_id=NOTION_DB_ID)
+            # 1. 쿼리 파라미터 준비
+            query_params: Dict[str, Any] = {"database_id": NOTION_DB_ID}
+            if cursor:
+                query_params["start_cursor"] = cursor
+                
+            # 2. cast를 사용하여 resp를 dict으로 인식하게 만듦
+            resp = cast(Dict[str, Any], notion.databases.query(**query_params))
             
             for page in resp.get("results", []):
                 props_data = page.get("properties", {})
@@ -667,7 +674,7 @@ def process_sheet(sheet_name, **context):
         for i in range(batch_len):
             gi = rows_done + i
             disp = get_safe(link_display_vals, gi)
-            yt_url = first_url(get_safe(youtube_vals, gi))
+            yt_url = first_url(str(get_safe(youtube_vals, gi)))
             
             so_name = get_safe(so_vals_disp, gi)
             past_name = get_safe(past_vals_disp, gi)
@@ -701,7 +708,7 @@ def process_sheet(sheet_name, **context):
                 batch_values.append(chosen_url)
             else:
                 if looks_like_url(disp):
-                    batch_values.append(disp.strip())
+                    batch_values.append(str(disp).strip())
                 else:
                     batch_values.append(disp)
             
@@ -715,7 +722,7 @@ def process_sheet(sheet_name, **context):
                 cells = ws.range(link_range)
                 for i, cell in enumerate(cells):
                     cell.value = batch_values[i]
-                ws.update_cells(cells, value_input_option='USER_ENTERED')
+                ws.update_cells(cells, value_input_option=cast(Any, 'USER_ENTERED'))
                 ws.format(link_range, {
                     "horizontalAlignment": "LEFT",
                     "wrapStrategy": "CLIP"
@@ -742,8 +749,8 @@ def process_sheet(sheet_name, **context):
     headers_row = ws.row_values(3)
     last_col_letter = col_index_to_letter(len(headers_row))
     rng_disp = f"A3:{last_col_letter}{end_row}"
-    grid_disp = ws.get(rng_disp, value_render_option='UNFORMATTED_VALUE') or []
-    grid_form = ws.get(rng_disp, value_render_option='FORMULA') or []
+    grid_disp = ws.get(rng_disp, value_render_option=cast(Any, 'UNFORMATTED_VALUE')) or []
+    grid_form = ws.get(rng_disp, value_render_option=cast(Any, 'FORMULA')) or []
     
     if not grid_disp:
         return {'status': 'completed', 'sheet_name': sheet_name, 'updated_links': new_links_count, 'notion_rows': 0}
@@ -795,7 +802,7 @@ def process_sheet(sheet_name, **context):
                 title_value = str(v).strip()
                 break
         
-        properties = {title_prop_name: {"title": notion_rich(title_value)}}
+        properties: Dict[str, Any] = {title_prop_name: {"title": notion_rich(title_value)}}
         
         # 프로젝트 속성
         if project_prop:

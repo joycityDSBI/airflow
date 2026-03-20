@@ -1,7 +1,5 @@
 # Airflow function
-from multiprocessing import context
 from airflow.models import Variable
-
 from google.cloud import bigquery
 from datetime import datetime, timedelta
 import pytz

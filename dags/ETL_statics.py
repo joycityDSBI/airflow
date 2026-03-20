@@ -1,9 +1,9 @@
 # Airflow function
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.bash import BashOperator
 from airflow.models import Variable
-from airflow.models.baseoperator import chain
+from airflow.models import chain
 from google.oauth2 import service_account
 import json
 import calendar

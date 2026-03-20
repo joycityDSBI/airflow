@@ -28,11 +28,11 @@ def etl_f_common_register(target_date:list, client):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -330,11 +330,11 @@ def adjust_f_common_register(target_date:list, client):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -544,11 +544,11 @@ def etl_f_common_register_char(target_date:list, client):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -734,11 +734,11 @@ def adjust_f_common_register_char(target_date:list, client):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -873,11 +873,11 @@ def etl_f_common_access(target_date: list, client):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜: {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")
@@ -1070,11 +1070,11 @@ def etl_f_common_access_last_login(target_date: list, client):
         start_kst = kst.localize(current_date_obj)
         
         # KST -> UTC 변환
-        start_utc = start_kst.astimezone(pytz.UTC)
+        start_utc = start_kst.astimezone(timezone.utc)
         
         # 종료 시간 계산 (하루 뒤)
         end_kst = start_kst + timedelta(days=1)
-        end_utc = end_kst.astimezone(pytz.UTC)
+        end_utc = end_kst.astimezone(timezone.utc)
 
         print(f"📝 대상날짜 / f_common_access_last_login : {td_str}")
         print(f"   ㄴ 시작시간(UTC): {start_utc}")

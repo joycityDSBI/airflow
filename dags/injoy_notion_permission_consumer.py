@@ -5,8 +5,9 @@ import os
 from datetime import datetime, timedelta
 from databricks import sql
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.models import Variable
+from typing import Any, cast
 
 injoy_notion_permission_producer = Dataset('injoy_notion_permission_producer')
 
@@ -32,7 +33,7 @@ with DAG(
 
     # ==================== 유틸리티 함수 ====================
     
-    def get_var(key: str, default: str = None, required: bool = False) -> str:
+    def get_var(key: str, default: str | None = None, required: bool = False) -> str:
         """환경 변수 → Airflow Variable 순서로 조회"""
         env_value = os.environ.get(key)
         if env_value:
@@ -41,9 +42,9 @@ with DAG(
         
         try:
             try:
-                var_value = Variable.get(key, default=None)
+                var_value = Variable.get(key, None)
             except TypeError:
-                var_value = Variable.get(key, default_var=None)
+                var_value = Variable.get(key, None)
             
             if var_value:
                 print(f"✓ Airflow Variable에서 {key} 로드됨")
@@ -59,7 +60,7 @@ with DAG(
             raise ValueError(f"필수 설정 {key}을(를) 찾을 수 없습니다.")
         
         print(f"ℹ️  {key} 값을 찾을 수 없습니다 (선택사항)")
-        return None
+        return ''
 
     def get_notion_headers():
         """Notion API 헤더 생성"""
@@ -364,7 +365,7 @@ with DAG(
         """
         
         with sql.connect(**config) as conn:
-            df = pd.read_sql(query, conn)
+            df = pd.read_sql(query, cast(Any, conn))
         
         df = df.rename(columns={
             "user_name": "유저 이름",
@@ -406,7 +407,7 @@ with DAG(
         """
         
         with sql.connect(**config) as conn:
-            df = pd.read_sql(query, conn)
+            df = pd.read_sql(query, cast(Any, conn))
         
         df = df.rename(columns={
             "inherited_group_name": "그룹이름",
@@ -436,7 +437,7 @@ with DAG(
         """
         
         with sql.connect(**config) as conn:
-            df = pd.read_sql(query, conn)
+            df = pd.read_sql(query, cast(Any, conn))
         
         df = df.rename(columns={
             "object_type": "에셋 타입",

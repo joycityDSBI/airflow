@@ -30,12 +30,12 @@ from google.genai import types
 # Airflow 관련
 from airflow.models import Variable
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 
 logger = logging.getLogger(__name__)
 
 
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None= None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
@@ -272,7 +272,7 @@ def build_wow_table(
         for col in metrics:
             row_cur[col] = df_wide.loc[idx, (col, current_label)]
             row_prev[col] = df_wide.loc[idx, (col, prev_label)]
-            row_delta[col] = delta.loc[idx, col]
+            row_delta[col] = str(delta.loc[idx, col])
 
         rows.extend([row_cur, row_prev, row_delta])
 
@@ -1022,7 +1022,7 @@ def create_graph_send_email(**kwargs):
 
     response_current = genai_client.models.generate_content(
         model="gemini-3-pro-preview",  # API 호출
-        contents=prompt_current_final,
+        contents="\n\n".join(prompt_current_final),
         config=config_current_optimized,
     )
 
@@ -1077,7 +1077,7 @@ def create_graph_send_email(**kwargs):
 
     response_organic_paid = genai_client.models.generate_content(
         model="gemini-3-pro-preview",  # Vertex AI 모델명
-        contents=prompt_organic_paid_final,
+        contents="\n\n".join(prompt_organic_paid_final),
         config=config_organic_paid_optimized,
     )
 
@@ -1140,7 +1140,7 @@ def create_graph_send_email(**kwargs):
 
     response_wow_paid = genai_client.models.generate_content(
         model="gemini-3-pro-preview",  # Vertex AI 모델명
-        contents=prompt_wow_paid_final,
+        contents="\n\n".join(prompt_wow_paid_final),
         config=config_wow_paid_optimized,
     )
 
@@ -1191,7 +1191,7 @@ def create_graph_send_email(**kwargs):
 
     response_country = genai_client.models.generate_content(
         model="gemini-3-pro-preview",  # Vertex AI 모델명
-        contents=prompt_country_final,
+        contents="\n\n".join(prompt_country_final),
         config=config_country_optimized,
     )
 
@@ -1245,7 +1245,7 @@ def create_graph_send_email(**kwargs):
 
     response5 = genai_client.models.generate_content(
         model="gemini-3-pro-preview",  # Vertex AI 모델명
-        contents=prompt_os_final,
+        contents="\n\n".join(prompt_os_final),
         config=config_os_optimized,
     )
 

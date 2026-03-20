@@ -18,13 +18,13 @@ from sqlalchemy import text
 
 from airflow import DAG, Dataset
 from airflow.models import Variable
-from airflow.operators.python import PythonOperator
-from airflow.operators.bash import BashOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.providers.standard.operators.bash import BashOperator
 
 
 fsf2_cbt_pre_register_etl = Dataset('fsf2_cbt_pre_register_etl')
 
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
@@ -69,7 +69,8 @@ class BetaTester(Base):
     synced_at = Column(DateTime, default=datetime.utcnow)
 
 # 테이블이 없으면 생성
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine) # type: ignore
+
 
 # ==========================================
 # 3. 유틸리티 함수
