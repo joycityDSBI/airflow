@@ -105,7 +105,7 @@ services:
   # [2] Web Server (UI용 - 사용자 접속)
   airflow-webserver:
     <<: *airflow-common
-    command: webserver
+    command: api-server #webserver
     ports:
       # Host(8080) -> Container(8080)
       # 사용자가 접속할 포트
