@@ -443,13 +443,13 @@ def sync_with_notion(**context):
 # DAG 정의
 # ============================================================
 
-injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
+injoy_monitoringdata_producer_ver2 = Dataset('injoy_monitoringdata_producer_ver2')
 
 with DAG(
     dag_id='injoy_monitoringdata_consumer_1',
     default_args=default_args,
     description='Databricks 데이터를 Notion DB와 동기화',
-    schedule=[injoy_monitoringdata_producer],
+    schedule=[injoy_monitoringdata_producer_ver2],
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['notion', 'databricks', 'sync'],
