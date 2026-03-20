@@ -204,33 +204,54 @@ def build_properties_payload(row_data: dict) -> dict:
     return properties
 
 
-def get_all_notion_pages(database_id: str, headers: dict) -> list:
-    """Notion DB의 모든 페이지 조회 (페이지네이션 처리)"""
+def get_all_notion_pages(database_id: str, headers: dict, msg_id_list: list) -> dict:
+    """df_renamed의 메시지id 목록에 해당하는 Notion 페이지만 조회 (배치 OR 필터)
+    Returns: {msg_id: [pages]} 딕셔너리
+    """
     url = f"https://api.notion.com/v1/databases/{database_id}/query"
-    results = []
-    has_more = True
-    next_cursor = None
-    
-    print("⏳ Notion DB에서 모든 페이지 조회를 시작합니다...")
-    while has_more:
-        payload = {"page_size": 100}
-        if next_cursor:
-            payload["start_cursor"] = next_cursor
-        
-        try:
-            res = requests.post(url, headers=headers, json=payload)
-            res.raise_for_status()
-            data = res.json()
-            results.extend(data.get("results", []))
-            next_cursor = data.get("next_cursor")
-            has_more = data.get("has_more", False)
-        except requests.exceptions.RequestException as e:
-            print(f"❌ Notion API 에러 발생: {e}")
-            break
-        time.sleep(0.3)
-        
-    print(f"✅ Notion DB에서 총 {len(results)}개의 페이지를 조회했습니다.")
-    return results
+    pages_map = {}
+
+    unique_msg_ids = list(set(mid for mid in msg_id_list if mid))
+    print(f"⏳ Notion DB에서 {len(unique_msg_ids)}개 메시지id에 해당하는 페이지 조회 시작...")
+
+    # Notion OR 필터 최대 100개 제한 → 100개씩 배치
+    for i in range(0, len(unique_msg_ids), 100):
+        batch = unique_msg_ids[i:i + 100]
+        payload = {
+            "page_size": 100,
+            "filter": {
+                "or": [
+                    {"property": "메시지id", "rich_text": {"equals": mid}}
+                    for mid in batch
+                ]
+            }
+        }
+
+        has_more = True
+        next_cursor = None
+
+        while has_more:
+            if next_cursor:
+                payload["start_cursor"] = next_cursor
+            try:
+                res = requests.post(url, headers=headers, json=payload)
+                res.raise_for_status()
+                data = res.json()
+                for page in data.get("results", []):
+                    props = page.get("properties", {})
+                    msg_id_rt = props.get("메시지id", {}).get("rich_text", [])
+                    mid = msg_id_rt[0].get("plain_text", "") if msg_id_rt else ""
+                    if mid:
+                        pages_map.setdefault(mid, []).append(page)
+                next_cursor = data.get("next_cursor")
+                has_more = data.get("has_more", False)
+            except requests.exceptions.RequestException as e:
+                print(f"❌ Notion API 에러 발생: {e}")
+                break
+
+    total = sum(len(v) for v in pages_map.values())
+    print(f"✅ Notion DB에서 총 {total}개의 페이지를 조회했습니다.")
+    return pages_map
 
 
 # ============================================================
@@ -379,41 +400,6 @@ def transform_data(**context):
     context['ti'].xcom_push(key='transformed_data', value=df_renamed.to_json(orient='records', date_format='iso'))
 
 
-def get_test_notion_pages(database_id, headers, target_msg_id):
-    """Notion API Filter를 사용하여 특정 메시지ID를 가진 페이지만 조회"""
-    url = f"https://api.notion.com/v1/databases/{database_id}/query"
-    
-    # [핵심] Notion DB의 '메시지id' 컬럼(rich_text 타입) 값이 target_msg_id와 일치하는 것만 필터링
-    payload = {
-        "filter": {
-            "property": "메시지id",  # 실제 Notion DB의 컬럼명과 정확히 일치해야 합니다.
-            "rich_text": {
-                "equals": target_msg_id
-            }
-        }
-    }
-    
-    results = []
-    has_more = True
-    next_cursor = None
-    
-    while has_more:
-        if next_cursor:
-            payload["start_cursor"] = next_cursor
-            
-        res = requests.post(url, headers=headers, json=payload)
-        
-        if not res.ok:
-            print(f"❌ Notion 조회 실패: {res.text}")
-            break
-            
-        data = res.json()
-        results.extend(data.get("results", []))
-        
-        has_more = data.get("has_more", False)
-        next_cursor = data.get("next_cursor")
-        
-    return results
 
 
 def load_to_notion(**context):
@@ -429,29 +415,12 @@ def load_to_notion(**context):
     transformed_data_json = context['ti'].xcom_pull(key='transformed_data', task_ids='transform_data')
     df_renamed = pd.read_json(transformed_data_json, orient='records')
 
-    # =====================================================================
-    # 🧪 [TEST MODE] 특정 메시지 ID만 필터링 (테스트 완료 후 이 블록 삭제)
-    # =====================================================================
-    # test_msg_id = "01f122ca9a1910ff99ea267ce974eecc"
-    # print(f"\n🧪 [TEST MODE] 메시지 ID가 '{test_msg_id}'인 데이터만 필터링합니다.")
-    
-    # # DataFrame의 컬럼명이 '메시지id'인지 'message_id'인지 확인 후 필터링
-    # if '메시지id' in df_renamed.columns:
-    #     df_renamed = df_renamed[df_renamed['메시지id'] == test_msg_id]
-    # elif 'message_id' in df_renamed.columns:
-    #     df_renamed = df_renamed[df_renamed['message_id'] == test_msg_id]
-
-    # # 필터링 후 데이터가 없으면 즉시 종료
-    # if df_renamed.empty:
-    #     print(f"⚠️ XCom에서 가져온 데이터 중 해당 메시지 ID({test_msg_id})가 없습니다. 작업을 종료합니다.")
-    #     return
-    # else:
-    #     print(f"✅ 테스트 대상 데이터 {len(df_renamed)}건을 찾았습니다. 다음 단계를 진행합니다.")
-    # =====================================================================
-
     print(f"\n총 {len(df_renamed)}건에 대해 Notion 조회 및 upsert를 시작합니다.")
 
-    # df_renamed 행마다 해당 메시지id로만 Notion 조회 → 중복 처리 + insert/update 한번에 처리
+    # df_renamed의 메시지id 목록으로 Notion 페이지 일괄 조회
+    msg_id_list = df_renamed['메시지id'].tolist()
+    notion_pages_map = get_all_notion_pages(NOTION_DB_ID, headers, msg_id_list)
+
     insert_count = 0
     update_count = 0
     archive_count = 0
@@ -462,8 +431,8 @@ def load_to_notion(**context):
         msg_id = row_dict.get('메시지id', '')
         properties_payload = build_properties_payload(row_dict)
 
-        # 해당 메시지id에 매칭되는 Notion 페이지만 조회
-        notion_pages = get_test_notion_pages(NOTION_DB_ID, headers, msg_id)
+        # 사전 조회된 map에서 해당 메시지id 페이지 가져오기
+        notion_pages = notion_pages_map.get(msg_id, [])
 
         # 조회된 페이지 중 key_columns 기준으로 정확히 일치하는 것만 필터링
         matched_pages = []
