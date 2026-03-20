@@ -109,7 +109,7 @@ def extract_audit_logs(**context):
                 FROM system.access.audit
                 WHERE service_name = 'aibiGenie'
                     AND action_name IN ('createConversationMessage', 'updateConversationMessageFeedback', 'getMessageQueryResult')
-                    AND event_time >= CAST(DATE(NOW()) - INTERVAL 60 DAYS AS TIMESTAMP) - INTERVAL 9 HOURS
+                    AND event_time >= CAST(DATE(NOW()) - INTERVAL 3 DAYS AS TIMESTAMP) - INTERVAL 9 HOURS
                     AND event_time < CAST(DATE(NOW()) AS TIMESTAMP) - INTERVAL 9 HOURS
             ),
             message_tb AS (
@@ -194,7 +194,7 @@ def extract_audit_logs(**context):
             key_extract_query = """
             SELECT distinct space_id, conversation_id, message_id, user_email, user_id, user_name  
             FROM datahub.injoy_ops_schema.injoy_monitoring_audit
-            WHERE DATE(event_time_kst) >= DATE(NOW()) - INTERVAL 60 DAYS
+            WHERE DATE(event_time_kst) >= DATE(NOW()) - INTERVAL 3 DAYS
             AND   event_time_kst < DATE(NOW())
             """
             cursor.execute(key_extract_query)
@@ -467,7 +467,7 @@ def extract_audit_query(**context):
             FROM system.query.history
             WHERE query_source.genie_space_id IS NOT NULL
                 AND statement_type = 'SELECT'
-                AND end_time >= CAST(DATE(NOW()) - INTERVAL 60 DAYS AS TIMESTAMP) - INTERVAL 9 HOURS
+                AND end_time >= CAST(DATE(NOW()) - INTERVAL 3 DAYS AS TIMESTAMP) - INTERVAL 9 HOURS
                 AND end_time < CAST(DATE(NOW()) AS TIMESTAMP) - INTERVAL 9 HOURS
         ) AS source
         ON target.statement_id = source.statement_id
@@ -613,7 +613,7 @@ def merge_final_monitoring_data(**context):
             ON a.space_id = c.space_id
         LEFT JOIN datahub.injoy_ops_schema.injoy_monitoring_audit_query AS d
             ON b.statement_id = d.statement_id
-        WHERE DATE(A.event_time_kst) >= DATE(NOW()) - INTERVAL 60 DAYS
+        WHERE DATE(A.event_time_kst) >= DATE(NOW()) - INTERVAL 3 DAYS
         AND   DATE(A.event_time_kst) < DATE(NOW())             
     ) AS source
     ON target.space_id = source.space_id 

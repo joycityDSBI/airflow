@@ -297,12 +297,11 @@ def extract_data(**context):
                 feedback_rating
             FROM 
                 datahub.injoy_ops_schema.injoy_monitoring_data
-            WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 60 DAYS AS TIMESTAMP) 
+            WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 3 DAYS AS TIMESTAMP) 
             AND event_time_kst < CAST(DATE(NOW()) AS TIMESTAMP) 
-            AND message_id != '01f1002ce5681d62b3febf51b26bfbd9'
             ORDER BY conversation_id, event_time_kst
         """
-        
+         
         print("📊 SQL 쿼리 실행 중...")
         cursor = connection.cursor()
         cursor.execute(sql_query)
@@ -313,7 +312,7 @@ def extract_data(**context):
         source_df = pd.DataFrame(rows, columns=columns)
         
         # 하드코딩으로 유저 제외
-        exclude_emails = ['heegle@joycity.com', 'kimjack415@joycity.com']
+        exclude_emails = ['heegle@joycity.com', 'kimjack415@joycity.com', 'pradeepkumar.palaniswamy+dbadmin@databricks.com']
         source_df = source_df[~source_df['user_email'].isin(exclude_emails)]
 
         cursor.close()
