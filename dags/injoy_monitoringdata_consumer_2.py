@@ -129,8 +129,7 @@ def build_properties_payload(row_data: dict) -> dict:
 
         elif key == "응답속도(초)":
             try:
-                for val in value:
-                    numeric_value = float(val) if pd.notna(val) else 0.0
+                numeric_value = float(value)
                 properties[key] = {"number": numeric_value}
             except (ValueError, TypeError):
                 continue
