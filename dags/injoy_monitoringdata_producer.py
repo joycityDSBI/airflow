@@ -211,7 +211,7 @@ def extract_audit_logs(**context):
             print(f"📍 대상 ID 리스트 (space/conv/msg): {keys_info}")
     finally:
         cursor.close()
-        connection.close()
+        connection.close() 
 
     return len(merge_key_list)
 
