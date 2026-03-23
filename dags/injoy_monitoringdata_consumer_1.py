@@ -255,7 +255,7 @@ def fetch_data_from_databricks(**context):
             cursor.execute("""
                 SELECT conversation_id, user_email, space_name, content, event_time_kst
                 FROM datahub.injoy_ops_schema.injoy_monitoring_data
-                WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 60 DAYS AS TIMESTAMP) 
+                WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 3 DAYS AS TIMESTAMP) 
                 AND event_time_kst < CAST(DATE(NOW()) AS TIMESTAMP) 
                 ORDER BY conversation_id, event_time_kst
             """)
@@ -346,7 +346,7 @@ def aggregate_data(**context):
     aggregated_df['conversation_date'] = pd.to_datetime(aggregated_df['conversation_date']).dt.date
     aggregated_df['conversation_id'] = aggregated_df['conversation_id'].astype(str)
 
-    print(f"✅ Pandas 집계 완료. 총 {len(aggregated_df)}개의 대화로 그룹화되었습니다.")
+    print(f"✅ Pandas 집계 완료 . 총 {len(aggregated_df)}개의 대화로 그룹화되었습니다.")
     
     # XCom에 집계 데이터 저장
     context['task_instance'].xcom_push(key='aggregated_data', value=aggregated_df.to_json(orient='records', date_format='iso'))
