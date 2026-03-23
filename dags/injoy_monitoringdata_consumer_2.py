@@ -493,7 +493,7 @@ def load_to_notion(**context):
 # DAG 정의
 # ============================================================
 
-injoy_monitoringdata_producer_ver2 = Dataset('injoy_monitoringdata_producer_ver2')
+injoy_monitoringdata_producer_ver2 = Dataset('injoy_monitoringdata_producer2')
 
 with DAG(
     dag_id='injoy_monitoringdata_consumer_2',
