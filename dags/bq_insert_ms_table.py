@@ -1,5 +1,5 @@
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from datetime import timedelta, datetime, timezone
 from google.oauth2 import service_account
 import os
@@ -11,7 +11,7 @@ from google.cloud import bigquery
 import json
 
 
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 

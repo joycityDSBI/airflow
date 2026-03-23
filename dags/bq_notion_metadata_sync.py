@@ -16,10 +16,10 @@ from email.mime.text import MIMEText
 from typing import Any, Dict
 import pandas as pd
 from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.sensors.base import BaseSensorOperator
+from airflow.providers.standard.operators.python import PythonOperator
+from airflow.sensors.base import BaseSensorOperator # type: ignore
 from airflow.models import Variable
-from airflow.utils.trigger_rule import TriggerRule
+from airflow.utils.trigger_rule import TriggerRule # type: ignore
 from google.cloud import bigquery
 import json
 from google.oauth2 import service_account
@@ -38,7 +38,7 @@ except ImportError:
 
 
 # ===== 설정 =====
-def get_config(key: str, default: str = None) -> str:
+def get_config(key: str, default: str | None = None) -> str:
     """환경 변수 또는 Airflow Variable에서 설정값 가져오기"""
     env_value = os.environ.get(key)
     if env_value:
@@ -53,9 +53,9 @@ def get_config(key: str, default: str = None) -> str:
             # Airflow 2.x
             return Variable.get(key, default_var=default)
     except Exception:
-        return default
+        return ''
 
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
@@ -103,7 +103,7 @@ class BigQueryMetadataChangeSensor(BaseSensorOperator):
         self.query = query
         self.hash_variable = hash_variable
     
-    def _get_variable_safely(self, key: str, default: str = None) -> str:
+    def _get_variable_safely(self, key: str, default: str | None = None) -> str:
         # (기존 코드와 동일)
         try:
             try:
@@ -112,7 +112,7 @@ class BigQueryMetadataChangeSensor(BaseSensorOperator):
             except ImportError:
                 return Variable.get(key, default_var=default)
         except Exception:
-            return default
+            return ''
     
     def _set_variable_safely(self, key: str, value: str) -> bool:
         """Variable을 안전하게 저장"""

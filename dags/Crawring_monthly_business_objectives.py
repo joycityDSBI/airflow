@@ -9,7 +9,7 @@ import json
 import pandas_gbq # 최신 방식 권장
 from datetime import datetime, timedelta
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 import requests
 import time
 

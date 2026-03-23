@@ -9,11 +9,11 @@ import json
 import pandas_gbq # 최신 방식 권장
 from datetime import datetime, timedelta
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 import requests
 import time
 
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
@@ -624,8 +624,8 @@ def RESU_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
             # 3. 결측치(NaN) 처리
             # BigQuery DATE 컬럼에 NULL로 넣기 위해 None으로 치환
             # (주의: 날짜 컬럼은 0이나 빈 문자열 ''로 채우면 업로드 시 에러가 납니다)
-            df_final[col] = df_final[col].replace({float('nan'): None})
-            df_final[col] = df_final[col].replace({'': None})
+            df_final[col] = df_final[col].replace({float('nan'): None}) # type: ignore
+            df_final[col] = df_final[col].replace({'': None}) # type: ignore
     
     # 3. 데이터 삽입
     try:

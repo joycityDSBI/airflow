@@ -9,12 +9,12 @@ import json
 import pandas_gbq # 최신 방식 권장
 from datetime import datetime, timedelta
 from airflow import DAG, Dataset
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 import requests
 import time
 import logging
 
-def get_var(key: str, default: str = None) -> str:
+def get_var(key: str, default: str | None = None) -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
 
