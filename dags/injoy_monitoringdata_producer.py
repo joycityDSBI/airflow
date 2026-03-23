@@ -13,7 +13,7 @@ import json
 import pyspark
 from databricks import sql
 
-injoy_monitoringdata_producer = Dataset('injoy_monitoringdata_producer')
+injoy_monitoringdata_producer2 = Dataset('injoy_monitoringdata_producer2')
 
 # 제외 그룹 필터링
 exclude_groups = ["Operators", "admins", "users", 
@@ -651,7 +651,7 @@ def merge_final_monitoring_data(**context):
 # Task 정의
 # bash_task = BashOperator(
 #     task_id = 'bash_task',
-#     outlets = [injoy_monitoringdata_producer],
+#     outlets = [injoy_monitoringdata_producer2],
 #     bash_command = 'echo "producer_1 수행 완료"'
 # )
 
@@ -695,6 +695,7 @@ task5 = PythonOperator(
 task6 = PythonOperator(
     task_id='merge_final_monitoring_data',
     python_callable= merge_final_monitoring_data,
+    outlets=[injoy_monitoringdata_producer2],  # ← 여기만 추가
     dag=dag,
 )
 

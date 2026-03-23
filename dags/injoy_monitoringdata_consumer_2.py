@@ -297,8 +297,8 @@ def extract_data(**context):
                 feedback_rating
             FROM 
                 datahub.injoy_ops_schema.injoy_monitoring_data
-            WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 3 DAYS AS TIMESTAMP) 
-            AND event_time_kst < CAST(DATE(NOW()) AS TIMESTAMP) 
+            -- WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 3 DAYS AS TIMESTAMP) 
+            where event_time_kst < CAST(DATE(NOW()) AS TIMESTAMP) 
             ORDER BY conversation_id, event_time_kst
         """
          
@@ -493,7 +493,7 @@ def load_to_notion(**context):
 # DAG 정의
 # ============================================================
 
-injoy_monitoringdata_producer_ver2 = Dataset('injoy_monitoringdata_producer_ver2')
+injoy_monitoringdata_producer_ver2 = Dataset('injoy_monitoringdata_producer2')
 
 with DAG(
     dag_id='injoy_monitoringdata_consumer_2',
