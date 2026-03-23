@@ -253,16 +253,25 @@ def upsert_to_notion(key_columns: list):
         # 각 컬럼의 타입에 맞게 필터를 구성해야 합니다 (여기서는 rich_text 기준)
         and_filter = []
         for col in key_columns:
-            and_filter.append({
-                "property": col,
-                "rich_text": {"equals": str(row[col])}
-            })
-        
-        # 2. 기존 페이지 조회
-        query_res = cast(Any, notion.databases.query(
+            val = str(row[col])
+            
+            # 컬럼명이 'Date'이거나 날짜 형식인 경우 (실제 DB 컬럼명에 맞게 수정)
+            if col == "Date": 
+                and_filter.append({
+                    "property": col,
+                    "date": {"equals": val}  # 'rich_text' 대신 'date' 사용
+                })
+            else:
+                and_filter.append({
+                    "property": col,
+                    "rich_text": {"equals": val}
+                })
+
+        # 2. 쿼리 실행
+        query_res = notion.databases.query(
             database_id=notion_db_id,
             filter={"and": and_filter}
-        ))
+        )
         
         # 3. 속성 데이터 구성 (Upsert 대상 전체 데이터)
         properties = {}
