@@ -256,7 +256,7 @@ def upsert_to_notion(key_columns: list):
             val = str(row[col])
             
             # 컬럼명이 'Date'이거나 날짜 형식인 경우 (실제 DB 컬럼명에 맞게 수정)
-            if col == "Date": 
+            if col == "datekey": 
                 and_filter.append({
                     "property": col,
                     "date": {"equals": val}  # 'rich_text' 대신 'date' 사용
@@ -276,35 +276,28 @@ def upsert_to_notion(key_columns: list):
         # 3. 속성 데이터 구성 (Upsert 대상 전체 데이터)
         properties = {}
         for col in df.columns:
-            # Notion 속성 타입에 맞춰 분기 처리가 필요합니다.
-            # 아래는 모든 컬럼을 rich_text/title로 처리하는 단순화 예시입니다.
-            value = str(row[col])
+            val = row[col]
+            str_val = str(val)
 
-            if col == "datekey":  # 실제 Notion DB의 날짜 컬럼명으로 변경하세요
-                and_filter.append({
-                    "property": col,
-                    "date": {"equals": value} # ISO 8601 형식(YYYY-MM-DD)이어야 합니다.
-                })
-            elif col == "adds" or col == "deletes" or col == "purchase_and_activations" or col == "gifts":
-                and_filter.append({
-                    "property": col,
-                    "number": {"equals": int(value)}
-                })
-            elif col == "Name": # DB의 Title 속성명
-                properties[col] = {"title": [{"text": {"content": str(row[col])}}]}
-            else:
-                properties[col] = {"rich_text": [{"text": {"content": str(row[col])}}]}
+            # [핵심 수정] 여기서는 properties에 담아야 합니다!
+            if col == "Name": # Title 속성
+                properties[col] = {"title": [{"text": {"content": str_val}}]}
+            elif col == "datekey": # Date 속성
+                properties[col] = {"date": {"start": str_val}}
+            elif col in ["adds", "deletes", "purchase_and_activations", "gifts"]: # Number 속성
+                properties[col] = {"number": int(val) if pd.notna(val) else 0}
+            else: # 나머지 일반 텍스트
+                properties[col] = {"rich_text": [{"text": {"content": str_val}}]}
 
         # 4. 결과에 따른 처리
         if query_res["results"]:
             page_id = query_res["results"][0]["id"]
             notion.pages.update(page_id=page_id, properties=properties)
-            print(f"Updated: {tuple(row[key_columns])}")
+            print(f"✅ Updated: {tuple(row[key_columns])}")
         else:
             notion.pages.create(parent={"database_id": notion_db_id}, properties=properties)
-            print(f"Created: {tuple(row[key_columns])}")
+            print(f"✨ Created: {tuple(row[key_columns])}")
             
-        # Rate Limit 방지를 위해 약간의 지연시간 추가 (초당 3회 제한)
         time.sleep(0.4)
 
 
