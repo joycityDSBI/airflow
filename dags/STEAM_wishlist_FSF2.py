@@ -269,7 +269,19 @@ def upsert_to_notion(key_columns: list):
         for col in df.columns:
             # Notion 속성 타입에 맞춰 분기 처리가 필요합니다.
             # 아래는 모든 컬럼을 rich_text/title로 처리하는 단순화 예시입니다.
-            if col == "Name": # DB의 Title 속성명
+            value = str(row[col])
+
+            if col == "datekey":  # 실제 Notion DB의 날짜 컬럼명으로 변경하세요
+                and_filter.append({
+                    "property": col,
+                    "date": {"equals": value} # ISO 8601 형식(YYYY-MM-DD)이어야 합니다.
+                })
+            elif col == "adds" or col == "deletes" or col == "purchase_and_activations" or col == "gifts":
+                and_filter.append({
+                    "property": col,
+                    "number": {"equals": int(value)}
+                })
+            elif col == "Name": # DB의 Title 속성명
                 properties[col] = {"title": [{"text": {"content": str(row[col])}}]}
             else:
                 properties[col] = {"rich_text": [{"text": {"content": str(row[col])}}]}
