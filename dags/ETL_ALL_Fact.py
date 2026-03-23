@@ -47,7 +47,7 @@ def etl_fact_tracker(**context):
     target_date, _ = calc_target_date(run_date)
 
     ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
+    # target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
     # run_kst = None
 
 
@@ -84,7 +84,7 @@ def etl_fact_access(**context):
     target_date, _ = calc_target_date(run_date)
 
     ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
+    # target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
     # run_kst = None
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
@@ -116,7 +116,7 @@ def etl_fact_payment(**context):
 
 
     ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
+    # target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
     # run_kst = None
 
 
@@ -148,7 +148,7 @@ def etl_fact_funnel(**context):
 
 
     ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
+    # target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
     # run_kst = None
 
 
@@ -179,7 +179,7 @@ def etl_fact_IAA(**context):
     target_date, _ = calc_target_date(run_date)
 
     ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
+    # target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
     # run_kst = None
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
@@ -211,7 +211,7 @@ def etl_fact_usermap(**context):
     target_date, _ = calc_target_date(run_date)
 
     ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
+    # target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
     # run_kst = None
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
