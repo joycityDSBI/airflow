@@ -13,6 +13,7 @@ from google.cloud import bigquery
 import json
 from google.oauth2 import service_account
 import time
+from typing import Any, cast
 
 
 def get_var(key: str, default: str = 'default') -> str:
@@ -234,6 +235,56 @@ def upsert_to_bigquery():
         client.delete_table(staging_table_id, not_found_ok=True)
 
 
+def upsert_to_notion(key_columns: list):
+    
+    from notion_client import Client
+    notion_token = get_var('NOTION_TOKEN')
+    notion = Client(auth = notion_token)
+    notion_db_id = '32cea67a568180ce990ae74e85de7d3d'
+    
+    df = steam_wishlist_to_bq_logic()
+
+    if df.empty:
+        print("No data to upsert.")
+        return
+    
+    for _, row in df.iterrows():
+        # 1. 다중 키를 이용한 필터 생성 (AND 조건)
+        # 각 컬럼의 타입에 맞게 필터를 구성해야 합니다 (여기서는 rich_text 기준)
+        and_filter = []
+        for col in key_columns:
+            and_filter.append({
+                "property": col,
+                "rich_text": {"equals": str(row[col])}
+            })
+        
+        # 2. 기존 페이지 조회
+        query_res = cast(Any, notion.databases.query(
+            database_id=notion_db_id,
+            filter={"and": and_filter}
+        ))
+        
+        # 3. 속성 데이터 구성 (Upsert 대상 전체 데이터)
+        properties = {}
+        for col in df.columns:
+            # Notion 속성 타입에 맞춰 분기 처리가 필요합니다.
+            # 아래는 모든 컬럼을 rich_text/title로 처리하는 단순화 예시입니다.
+            if col == "Name": # DB의 Title 속성명
+                properties[col] = {"title": [{"text": {"content": str(row[col])}}]}
+            else:
+                properties[col] = {"rich_text": [{"text": {"content": str(row[col])}}]}
+
+        # 4. 결과에 따른 처리
+        if query_res["results"]:
+            page_id = query_res["results"][0]["id"]
+            notion.pages.update(page_id=page_id, properties=properties)
+            print(f"Updated: {tuple(row[key_columns])}")
+        else:
+            notion.pages.create(parent={"database_id": notion_db_id}, properties=properties)
+            print(f"Created: {tuple(row[key_columns])}")
+            
+        # Rate Limit 방지를 위해 약간의 지연시간 추가 (초당 3회 제한)
+        time.sleep(0.4)
 
 
 # DAG 기본 설정
@@ -262,3 +313,10 @@ with DAG(
         python_callable=upsert_to_bigquery
     )
 
+    upload_to_notion_task = PythonOperator(
+        task_id='upload_to_notion_task',
+        python_callable=upsert_to_notion,
+        op_kwargs={'key_columns': ['datekey', 'game', 'country_code']}
+    )
+
+    upload_to_bigquery_task >> upload_to_notion_task
