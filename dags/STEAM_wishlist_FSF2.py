@@ -268,10 +268,10 @@ def upsert_to_notion(key_columns: list):
                 })
 
         # 2. 쿼리 실행
-        query_res = notion.databases.query(
+        query_res = cast(Any, notion.databases.query(
             database_id=notion_db_id,
             filter={"and": and_filter}
-        )
+        ))
         
         # 3. 속성 데이터 구성 (Upsert 대상 전체 데이터)
         properties = {}
