@@ -324,15 +324,19 @@ def fetch_stats_via_uc(app_id):
     
     options = uc.ChromeOptions()
     options.add_argument('--headless')  # 화면 없이 실행
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--no-sandbox')            # [필수] Docker 환경에서 권한 문제 해결
+    options.add_argument('--disable-dev-shm-usage')  # [필수] 공유 메모리(/dev/shm) 부족 에러 방지
+    options.add_argument('--disable-gpu')           # [권장] 리소스 절약
+    
+    # 때에 따라 root 권한 충돌 방지를 위해 아래 추가
+    options.add_argument('--remote-debugging-port=9222')
     
     driver = None
     result = None
 
     try:
         # 크롬 드라이버 초기화 (자동으로 최신 버전 다운로드)
-        driver = uc.Chrome(options=options, version_main=None)
+        driver = uc.Chrome(options=options)
         url = f"https://steamdb.info/app/{app_id}/charts/"
         
         driver.get(url)
