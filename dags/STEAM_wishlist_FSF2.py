@@ -14,9 +14,8 @@ import json
 from google.oauth2 import service_account
 import time
 from typing import Any, cast
-import undetected_chromedriver as uc
+from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-from xvfbwrapper import Xvfb
 import re
 
 
@@ -314,90 +313,75 @@ TABLE_NAME = 'steam_game_followers'
 TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_NAME}"
 
 
-def fetch_stats_via_uc(app_id):
-    """undetected-chromedriver를 사용하여 SteamDB 데이터 파싱"""
-    print(f"🌐 가상 브라우저 실행 중 (AppID: {app_id})...")
+def fetch_stats_via_playwright(app_id):
+    """Playwright를 사용하여 SteamDB 데이터 파싱"""
+    print(f"🎭 Playwright 브라우저 실행 중 (AppID: {app_id})...")
     
-    # 서버 환경을 위한 가상 디스플레이 시작
-    vdisplay = Xvfb(width=1920, height=1080, colordepth=24)
-    vdisplay.start()
-    # 환경 변수 강제 지정
-    os.environ["DISPLAY"] = f":{vdisplay.new_display}"
+    result = None
     
-    options = uc.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
-    options.add_argument('--disable-software-rasterizer')
-    # Docker 환경에서 크롬 안정성을 위한 추가 옵션
-    options.add_argument('--remote-debugging-pipe')
-    
-    driver = None
-
-    try:
-        # 크롬 드라이버 초기화 (자동으로 최신 버전 다운로드)
-        print("🚀 크롬 드라이버 인스턴스 생성 중...")
-        driver = uc.Chrome(options=options, use_subprocess=True)
-
-        # 브라우저가 정상적으로 떴는지 확인하기 위해 아주 짧은 대기
-        driver.set_page_load_timeout(30)
-
-        url = f"https://steamdb.info/app/{app_id}/charts/"
-        driver.get(url)
+    with sync_playwright() as p:
+        # 1. 브라우저 실행 (Docker 환경을 위한 옵션 포함)
+        browser = p.chromium.launch(
+            headless=True,
+            args=[
+                '--no-sandbox', 
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled' # 자동화 탐지 우회
+            ]
+        )
         
-        # Cloudflare 통과를 위해 충분히 대기 (매우 중요)
-        print("⏳ Cloudflare 우회 대기 (15초)...")
-        time.sleep(15)
+        # 2. 브라우저 컨텍스트 및 페이지 생성 (일반 브라우저처럼 보이게 설정)
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        )
+        page = context.new_page()
         
-        # 페이지 소스 가져오기
-        html = driver.page_source
-        soup = BeautifulSoup(html, 'html.parser')
-        
-        # --- [HTML 파싱 로직] 아까 이미지 구조 기반 ---
-        chart_list = soup.find('ul', class_='app-chart-numbers')
-        
-        if not chart_list:
-            print("❌ 데이터 구조를 찾을 수 없습니다. (차단되었을 가능성)")
-            return None
-
-        # 초기값 설정
-        wishlist_rank = None
-        followers = None
-
-        # 모든 li 태그를 순회하며 텍스트 매칭
-        for li in chart_list.find_all('li'):
-            text = li.get_text(strip=True)
+        try:
+            url = f"https://steamdb.info/app/{app_id}/charts/"
+            print(f"🌐 페이지 접속: {url}")
+            page.goto(url, wait_until="networkidle", timeout=60000)
             
-            # 1. Wishlist Activity 순위 추출 (#6704)
-            if 'wishlist activity' in text.lower():
-                rank_match = re.search(r'#([\d,]+)', text)
-                if rank_match:
-                    # '#' 기호와 콤마 제거
-                    wishlist_rank = int(rank_match.group(1).replace(',', ''))
+            # 3. Cloudflare 및 데이터 로딩 대기 (15초)
+            print("⏳ 데이터 로딩 및 우회 대기 중...")
+            page.wait_for_timeout(15000) 
+            
+            # 4. 페이지 소스 가져오기 및 BeautifulSoup 파싱
+            html = page.content()
+            soup = BeautifulSoup(html, 'html.parser')
+            
+            chart_list = soup.find('ul', class_='app-chart-numbers')
+            
+            if not chart_list:
+                print("❌ 데이터 구조를 찾을 수 없습니다. (접속 차단 가능성)")
+                # 디버깅을 위해 현재 페이지 캡처 저장 (선택 사항)
+                # page.screenshot(path="debug_screenshot.png")
+                return None
 
-            # 2. Followers 수 추출 (96)
-            elif 'followers' in text.lower():
-                count_match = re.search(r'([\d,]+)', text)
-                if count_match:
-                    # 콤마 제거 후 정수형 변환
-                    followers = int(count_match.group(1).replace(',', ''))
+            wishlist_rank = None
+            followers = None
 
-        result = {
-            'wishlist_rank': wishlist_rank,
-            'followers': followers
-        }
-        print(f"✅ 파싱 성공: Rank={wishlist_rank}, Followers={followers}")
+            for li in chart_list.find_all('li'):
+                text = li.get_text(strip=True)
+                if 'wishlist activity' in text.lower():
+                    rank_match = re.search(r'#([\d,]+)', text)
+                    if rank_match:
+                        wishlist_rank = int(rank_match.group(1).replace(',', ''))
+                elif 'followers' in text.lower():
+                    count_match = re.search(r'([\d,]+)', text)
+                    if count_match:
+                        followers = int(count_match.group(1).replace(',', ''))
 
-    except Exception as e:
-        print(f"❌ 에러 발생: {e}")
-    finally:
-        # 브라우저 및 가상 디스플레이 종료 (자원 반납)
-        if driver:
-            driver.quit()
-        vdisplay.stop()
-        print("🌐 가상 브라우저 종료.")
-        
+            result = {
+                'wishlist_rank': wishlist_rank,
+                'followers': followers
+            }
+            print(f"✅ 성공: Rank={wishlist_rank}, Followers={followers}")
+
+        except Exception as e:
+            print(f"❌ Playwright 에러: {e}")
+        finally:
+            browser.close()
+            
     return result
 
 def steam_db_etl():
@@ -409,7 +393,7 @@ def steam_db_etl():
     today = datetime.now(timezone.utc).date()
 
     # 2. 데이터 수집
-    stats = fetch_stats_via_uc(APP_ID)
+    stats = fetch_stats_via_playwright(APP_ID)
     
     if not stats or (stats['wishlist_rank'] is None and stats['followers'] is None):
         print("적재할 데이터가 없습니다.")
