@@ -321,6 +321,8 @@ def fetch_stats_via_uc(app_id):
     # 서버 환경을 위한 가상 디스플레이 시작
     vdisplay = Xvfb(width=1920, height=1080, colordepth=24)
     vdisplay.start()
+    # 환경 변수 강제 지정
+    os.environ["DISPLAY"] = f":{vdisplay.new_display}"
     
     options = uc.ChromeOptions()
     options.add_argument('--headless')
@@ -336,11 +338,7 @@ def fetch_stats_via_uc(app_id):
     try:
         # 크롬 드라이버 초기화 (자동으로 최신 버전 다운로드)
         print("🚀 크롬 드라이버 인스턴스 생성 중...")
-        driver = uc.Chrome(
-            options=options,
-            driver_executable_path=None, # 자동으로 찾도록 설정
-            browser_executable_path='/usr/bin/google-chrome' # 경로 명시
-        )
+        driver = uc.Chrome(options=options, use_subprocess=True)
 
         # 브라우저가 정상적으로 떴는지 확인하기 위해 아주 짧은 대기
         driver.set_page_load_timeout(30)
