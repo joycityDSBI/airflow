@@ -26,6 +26,8 @@ x-airflow-common:
     _AIRFLOW_WWW_USER_LASTNAME: ${_AIRFLOW_WWW_USER_LASTNAME:-User}
     _AIRFLOW_WWW_USER_EMAIL: ${_AIRFLOW_WWW_USER_EMAIL:-admin@example.com}
 
+    _PIP_ADDITIONAL_DEPENDENCIES: "undetected-chromedriver beautifulsoup4 xvfbwrapper cloudscraper"
+
     AIRFLOW__API__ENABLE_EXPERIMENTAL_API: 'true'
     AIRFLOW__API__MAXIMUM_PAGE_LIMIT: 100
 
