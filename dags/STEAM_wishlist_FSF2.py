@@ -481,10 +481,10 @@ with DAG(
         op_kwargs={'key_columns': ['datekey', 'game', 'country_code']}
     )
 
-    steam_follower_etl_task = PythonOperator(
-        task_id='steam_follower_etl_task',
-        python_callable=steam_db_etl
-    )
+    # steam_follower_etl_task = PythonOperator(
+    #     task_id='steam_follower_etl_task',
+    #     python_callable=steam_db_etl
+    # )
 
 
-    steam_follower_etl_task >> upload_to_bigquery_task >> upload_to_notion_task
+    upload_to_bigquery_task >> upload_to_notion_task
