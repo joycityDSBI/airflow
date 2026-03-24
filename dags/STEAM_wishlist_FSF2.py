@@ -319,31 +319,38 @@ def fetch_stats_via_uc(app_id):
     print(f"🌐 가상 브라우저 실행 중 (AppID: {app_id})...")
     
     # 서버 환경을 위한 가상 디스플레이 시작
-    vdisplay = Xvfb(width=1920, height=1080)
+    vdisplay = Xvfb(width=1920, height=1080, colordepth=24)
     vdisplay.start()
     
     options = uc.ChromeOptions()
-    options.add_argument('--headless')  # 화면 없이 실행
-    options.add_argument('--no-sandbox')            # [필수] Docker 환경에서 권한 문제 해결
-    options.add_argument('--disable-dev-shm-usage')  # [필수] 공유 메모리(/dev/shm) 부족 에러 방지
-    options.add_argument('--disable-gpu')           # [권장] 리소스 절약
-    
-    # 때에 따라 root 권한 충돌 방지를 위해 아래 추가
-    options.add_argument('--remote-debugging-port=9222')
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-software-rasterizer')
+    # Docker 환경에서 크롬 안정성을 위한 추가 옵션
+    options.add_argument('--remote-debugging-pipe')
     
     driver = None
-    result = None
 
     try:
         # 크롬 드라이버 초기화 (자동으로 최신 버전 다운로드)
-        driver = uc.Chrome(options=options)
+        print("🚀 크롬 드라이버 인스턴스 생성 중...")
+        driver = uc.Chrome(
+            options=options,
+            driver_executable_path=None, # 자동으로 찾도록 설정
+            browser_executable_path='/usr/bin/google-chrome' # 경로 명시
+        )
+
+        # 브라우저가 정상적으로 떴는지 확인하기 위해 아주 짧은 대기
+        driver.set_page_load_timeout(30)
+
         url = f"https://steamdb.info/app/{app_id}/charts/"
-        
         driver.get(url)
         
         # Cloudflare 통과를 위해 충분히 대기 (매우 중요)
-        print("⏳ Cloudflare 확인 중... 10초 대기...")
-        time.sleep(10) 
+        print("⏳ Cloudflare 우회 대기 (15초)...")
+        time.sleep(15)
         
         # 페이지 소스 가져오기
         html = driver.page_source
