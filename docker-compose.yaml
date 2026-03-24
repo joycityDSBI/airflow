@@ -160,6 +160,7 @@ services:
 
   airflow-worker:
     <<: *airflow-common
+    shm_size: '2gb'
     command: celery worker
     healthcheck:
       test:
