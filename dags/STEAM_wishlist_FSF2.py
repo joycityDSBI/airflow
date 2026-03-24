@@ -460,4 +460,4 @@ with DAG(
     )
 
 
-    upload_to_bigquery_task >> upload_to_notion_task >> steam_follower_etl_task
+    steam_follower_etl_task >>upload_to_bigquery_task >> upload_to_notion_task 
