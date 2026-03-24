@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import requests
 import pandas as pd
 import io
@@ -16,6 +16,7 @@ import time
 from typing import Any, cast
 
 
+
 def get_var(key: str, default: str = 'default') -> str:
     """환경 변수 또는 Airflow Variable 조회"""
     return os.environ.get(key) or Variable.get(key, default_var=default)
@@ -30,6 +31,7 @@ BQ_DATASET_ID = 'external_data'
 BQ_TABLE_ID = 'steam_wishlist_region'
 CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
+APP_ID = '4004820'
 
 
 def init_clients():
@@ -61,7 +63,8 @@ def get_gcp_credentials():
         scopes=SCOPES
     )
 
-def steam_wishlist_to_bq_logic(**context):
+
+def steam_wishlist_to_bq_logic(APP_ID):
     # 1. 날짜 설정 (Airflow Execution Date 활용)
     # ds: YYYY-MM-DD 형식 (예: 2026-03-19)
 
@@ -72,7 +75,7 @@ def steam_wishlist_to_bq_logic(**context):
     start_date_str = six_days_ago.strftime("%Y-%m-%d")
     end_date_str = today.strftime("%Y-%m-%d")
 
-    app_id = "4004820"
+    app_id = APP_ID
     
     # 2. 동적 URL 생성 (템플릿 날짜 적용)
     url = (
@@ -146,7 +149,7 @@ def upsert_to_bigquery():
     Key: datekey, app_id
     """
     client = init_clients()["bq_client"]
-    df = steam_wishlist_to_bq_logic()
+    df = steam_wishlist_to_bq_logic(APP_ID)
 
     if df.empty:
         print("No data to upsert.")
@@ -242,7 +245,7 @@ def upsert_to_notion(key_columns: list):
     notion = Client(auth = notion_token)
     notion_db_id = '32cea67a568180ce990ae74e85de7d3d'
     
-    df = steam_wishlist_to_bq_logic()
+    df = steam_wishlist_to_bq_logic(APP_ID)
 
     if df.empty:
         print("No data to upsert.")
@@ -301,6 +304,124 @@ def upsert_to_notion(key_columns: list):
         time.sleep(0.4)
 
 
+
+def steam_follower_etl():
+    
+    PROJECT_ID = 'datahub-478802'
+    DATASET_ID = 'external_data'
+    TABLE_NAME = 'steam_game_followers'
+    TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_NAME}"
+    
+    # [중요] 기존에 정의된 CREDENTIALS_JSON 사용
+    creds_dict = json.loads(CREDENTIALS_JSON) if isinstance(CREDENTIALS_JSON, str) else CREDENTIALS_JSON
+    credentials = service_account.Credentials.from_service_account_info(creds_dict)
+    client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
+
+    # 2. 대상 게임 리스트
+    target_games = {
+        "4004820": "FSF2"
+    }
+    
+    all_data = []
+    today = datetime.now(timezone.utc).date()
+
+    # 3. 데이터 수집
+    for app_id, game_name in target_games.items():
+        print(f"Steam 데이터 수집 중: {game_name}...")
+        url = f"https://store.steampowered.com/api/requestedcounts?ids={app_id}"
+        try:
+            res = requests.get(url, timeout=10)
+            data = res.json()
+            if data and 'follower_count' in data[0]:
+                all_data.append({
+                    'datekey': today,
+                    'app_id': str(app_id),
+                    'game_name': str(game_name),
+                    'follower_count': int(data[0]['follower_count']),
+                    'updated_at': datetime.now(timezone.utc)
+                })
+        except Exception as e:
+            print(f"에러 발생 ({app_id}): {e}")
+        time.sleep(1)
+
+    if not all_data:
+        print("적재할 데이터가 없습니다.")
+        return
+
+    # 4. 데이터프레임 생성 및 타입 정리
+    df = pd.DataFrame(all_data)
+    df['datekey'] = pd.to_datetime(df['datekey']).dt.date
+
+    # 5. BigQuery 직접 적재 (Write Append)
+    # 동일 날짜 데이터 중복 방지를 위해 실행 전 오늘 데이터 삭제 (선택 사항)
+    delete_query = f"DELETE FROM `{TABLE_ID}` WHERE datekey = '{today}'"
+    try:
+        client.query(delete_query).result()
+        print(f"기존 {today} 데이터 삭제 완료.")
+    except Exception:
+        print("기존 데이터가 없거나 테이블이 처음 생성됩니다.")
+
+    # 데이터 적재 설정
+    job_config = bigquery.LoadJobConfig(
+        schema=[
+            bigquery.SchemaField("datekey", "DATE"),
+            bigquery.SchemaField("follower_count", "INTEGER"),
+        ],
+        write_disposition="WRITE_APPEND", # 데이터 추가
+    )
+
+    try:
+        job = client.load_table_from_dataframe(df, TABLE_ID, job_config=job_config)
+        job.result() # 적재 완료 대기
+        print(f"✅ 성공: {len(df)}행이 {TABLE_ID}에 적재되었습니다.")
+    except Exception as e:
+        print(f"❌ 적재 실패: {e}")
+
+    # 6. Notion DB에 데이터 추가
+    try:
+        from notion_client import Client
+        # Airflow 환경변수 등에서 토큰 가져오기 (기존 코드의 get_var 활용)
+        notion_token = get_var('NOTION_TOKEN') 
+        notion = Client(auth=notion_token)
+        notion_db_id = '32dea67a568180d6b987d85d7384fe68'
+
+        print(f"Notion DB 적재 시작...")
+        
+        for data in all_data:
+            notion.pages.create(
+                parent={"database_id": notion_db_id},
+                properties={
+                    # 'Name' 혹은 'app_id'가 Title 속성일 경우 (데이터베이스 설정에 따라 수정 필요)
+                    "app_id": {
+                        "title": [
+                            {"text": {"content": data['app_id']}}
+                        ]
+                    },
+                    "game_name": {
+                        "rich_text": [
+                            {"text": {"content": data['game_name']}}
+                        ]
+                    },
+                    "follower_count": {
+                        "number": data['follower_count']
+                    },
+                    "datekey": {
+                        "date": {"start": data['datekey'].isoformat()}
+                    },
+                    "updated_at": {
+                        "date": {"start": data['updated_at'].isoformat()}
+                    }
+                }
+            )
+        print(f"✅ 성공: {len(all_data)}개의 데이터가 Notion에 추가되었습니다.")
+
+    except Exception as e:
+        print(f"❌ Notion 적재 실패: {e}")
+
+
+
+
+
 # DAG 기본 설정
 default_args = {
     'owner': 'airflow',
@@ -333,4 +454,10 @@ with DAG(
         op_kwargs={'key_columns': ['datekey', 'game', 'country_code']}
     )
 
-    upload_to_bigquery_task >> upload_to_notion_task
+    steam_follower_etl_task = PythonOperator(
+        task_id='steam_follower_etl_task',
+        python_callable=steam_follower_etl
+    )
+
+
+    upload_to_bigquery_task >> upload_to_notion_task >> steam_follower_etl_task

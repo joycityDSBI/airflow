@@ -2,5 +2,14 @@
   "python.defaultInterpreterPath": "c:\\airflow\\.venv\\Scripts\\python.exe",
   "python.terminal.activateEnvironment": true,
   "python.languageServer": "Pylance",
-  "python.analysis.typeCheckingMode": "basic"
+  "python.analysis.typeCheckingMode": "basic",
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "./dags",
+    "-p",
+    "*test.py"
+  ],
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestEnabled": true
 }
