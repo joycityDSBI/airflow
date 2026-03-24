@@ -11,6 +11,7 @@ apache-airflow-providers-postgres>=6.4.0
 
 # Google Cloud Platform
 google-cloud-bigquery>=3.11,<3.12  # Python 3.8 호환
+google-cloud-bigquery-storage>=2.22,<3.0
 google-cloud-storage>=2.10,<2.11
 google-cloud-tasks>=2.13,<2.15
 google-api-python-client>=2.95,<2.100
