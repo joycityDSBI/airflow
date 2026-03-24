@@ -329,8 +329,14 @@ def steam_follower_etl():
     for app_id, game_name in target_games.items():
         print(f"Steam 데이터 수집 중: {game_name}...")
         url = f"https://store.steampowered.com/api/requestedcounts?ids={app_id}"
+
+        headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': f'https://store.steampowered.com/app/{app_id}'
+        }
+
         try:
-            res = requests.get(url, timeout=10)
+            res = requests.get(url, headers=headers, timeout=10)
             data = res.json()
             if data and 'follower_count' in data[0]:
                 all_data.append({
