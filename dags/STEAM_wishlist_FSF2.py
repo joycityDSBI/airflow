@@ -331,8 +331,8 @@ def steam_follower_etl():
         url = f"https://store.steampowered.com/api/requestedcounts?ids={app_id}"
 
         headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': f'https://store.steampowered.com/app/{app_id}'
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+        "referer": f"https://partner.steampowered.com/app/wishlist/{app_id}/"
         }
 
         try:
