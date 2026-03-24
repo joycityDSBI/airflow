@@ -91,3 +91,8 @@ pycryptodome>=3.20.0
 
 # 재시도 로직 라이브러리
 tenacity
+
+# 웹 크롤링 라이브러리
+undetected-chromedriver
+beautifulsoup4
+xvfbwrapper
