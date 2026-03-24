@@ -14,6 +14,10 @@ import json
 from google.oauth2 import service_account
 import time
 from typing import Any, cast
+import undetected_chromedriver as uc
+from bs4 import BeautifulSoup
+from xvfbwrapper import Xvfb
+import re
 
 
 
@@ -304,129 +308,150 @@ def upsert_to_notion(key_columns: list):
         time.sleep(0.4)
 
 
+PROJECT_ID = 'datahub-478802'
+DATASET_ID = 'external_data'
+TABLE_NAME = 'steam_game_followers'
+TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_NAME}"
 
-def steam_follower_etl():
+
+def fetch_stats_via_uc(app_id):
+    """undetected-chromedriver를 사용하여 SteamDB 데이터 파싱"""
+    print(f"🌐 가상 브라우저 실행 중 (AppID: {app_id})...")
     
-    PROJECT_ID = 'datahub-478802'
-    DATASET_ID = 'external_data'
-    TABLE_NAME = 'steam_game_followers'
-    TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_NAME}"
+    # 서버 환경을 위한 가상 디스플레이 시작
+    vdisplay = Xvfb(width=1920, height=1080)
+    vdisplay.start()
     
-    # [중요] 기존에 정의된 CREDENTIALS_JSON 사용
+    options = uc.ChromeOptions()
+    options.add_argument('--headless')  # 화면 없이 실행
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    
+    driver = None
+    result = None
+
+    try:
+        # 크롬 드라이버 초기화 (자동으로 최신 버전 다운로드)
+        driver = uc.Chrome(options=options, version_main=None)
+        url = f"https://steamdb.info/app/{app_id}/charts/"
+        
+        driver.get(url)
+        
+        # Cloudflare 통과를 위해 충분히 대기 (매우 중요)
+        print("⏳ Cloudflare 확인 중... 10초 대기...")
+        time.sleep(10) 
+        
+        # 페이지 소스 가져오기
+        html = driver.page_source
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # --- [HTML 파싱 로직] 아까 이미지 구조 기반 ---
+        chart_list = soup.find('ul', class_='app-chart-numbers')
+        
+        if not chart_list:
+            print("❌ 데이터 구조를 찾을 수 없습니다. (차단되었을 가능성)")
+            return None
+
+        # 초기값 설정
+        wishlist_rank = None
+        followers = None
+
+        # 모든 li 태그를 순회하며 텍스트 매칭
+        for li in chart_list.find_all('li'):
+            text = li.get_text(strip=True)
+            
+            # 1. Wishlist Activity 순위 추출 (#6704)
+            if 'wishlist activity' in text.lower():
+                rank_match = re.search(r'#([\d,]+)', text)
+                if rank_match:
+                    # '#' 기호와 콤마 제거
+                    wishlist_rank = int(rank_match.group(1).replace(',', ''))
+
+            # 2. Followers 수 추출 (96)
+            elif 'followers' in text.lower():
+                count_match = re.search(r'([\d,]+)', text)
+                if count_match:
+                    # 콤마 제거 후 정수형 변환
+                    followers = int(count_match.group(1).replace(',', ''))
+
+        result = {
+            'wishlist_rank': wishlist_rank,
+            'followers': followers
+        }
+        print(f"✅ 파싱 성공: Rank={wishlist_rank}, Followers={followers}")
+
+    except Exception as e:
+        print(f"❌ 에러 발생: {e}")
+    finally:
+        # 브라우저 및 가상 디스플레이 종료 (자원 반납)
+        if driver:
+            driver.quit()
+        vdisplay.stop()
+        print("🌐 가상 브라우저 종료.")
+        
+    return result
+
+def steam_db_etl():
+    """SteamDB 수집 및 BigQuery 적재 메인 함수"""
+    
+    # 1. 대상 게임 (FSF2)
+    APP_ID = "4004820"
+    GAME_NAME = "FSF2"
+    today = datetime.now(timezone.utc).date()
+
+    # 2. 데이터 수집
+    stats = fetch_stats_via_uc(APP_ID)
+    
+    if not stats or (stats['wishlist_rank'] is None and stats['followers'] is None):
+        print("적재할 데이터가 없습니다.")
+        return
+
+    # 3. 데이터프레임 생성
+    df = pd.DataFrame([{
+        'datekey': today,
+        'app_id': str(APP_ID),
+        'game_name': str(GAME_NAME),
+        'wishlist_rank': stats['wishlist_rank'],
+        'follower_count': stats['followers'],
+        'updated_at': datetime.now(timezone.utc)
+    }])
+    
+    # 타입 정리
+    df['datekey'] = pd.to_datetime(df['datekey']).dt.date
+
+    # 4. BigQuery 클라이언트 생성
     creds_dict = json.loads(CREDENTIALS_JSON) if isinstance(CREDENTIALS_JSON, str) else CREDENTIALS_JSON
     credentials = service_account.Credentials.from_service_account_info(creds_dict)
     client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
 
-    # 2. 대상 게임 리스트
-    target_games = {
-        "4004820": "FSF2"
-    }
+    # 5. BigQuery 직접 적재 (Delete-Insert 방식)
+    print(f"BigQuery 적재 시작: {TABLE_ID}")
     
-    all_data = []
-    today = datetime.now(timezone.utc).date()
-
-    # 3. 데이터 수집
-    for app_id, game_name in target_games.items():
-        print(f"Steam 데이터 수집 중: {game_name}...")
-        url = f"https://store.steampowered.com/api/requestedcounts?ids={app_id}"
-
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-        }
-
-        try:
-            res = requests.get(url, headers=headers, timeout=10)
-            data = res.json()
-            if data and 'follower_count' in data[0]:
-                all_data.append({
-                    'datekey': today,
-                    'app_id': str(app_id),
-                    'game_name': str(game_name),
-                    'follower_count': int(data[0]['follower_count']),
-                    'updated_at': datetime.now(timezone.utc)
-                })
-        except Exception as e:
-            print(f"에러 발생 ({app_id}): {e}")
-        time.sleep(1)
-
-    if not all_data:
-        print("적재할 데이터가 없습니다.")
-        return
-
-    # 4. 데이터프레임 생성 및 타입 정리
-    df = pd.DataFrame(all_data)
-    df['datekey'] = pd.to_datetime(df['datekey']).dt.date
-
-    # 5. BigQuery 직접 적재 (Write Append)
-    # 동일 날짜 데이터 중복 방지를 위해 실행 전 오늘 데이터 삭제 (선택 사항)
-    delete_query = f"DELETE FROM `{TABLE_ID}` WHERE datekey = '{today}'"
+    # 오늘 데이터 중복 방지 삭제
+    delete_query = f"DELETE FROM `{TABLE_ID}` WHERE datekey = '{today}' AND app_id = '{APP_ID}'"
     try:
         client.query(delete_query).result()
         print(f"기존 {today} 데이터 삭제 완료.")
     except Exception:
         print("기존 데이터가 없거나 테이블이 처음 생성됩니다.")
 
-    # 데이터 적재 설정
+    # 적재 설정 (Schema 정의 포함)
     job_config = bigquery.LoadJobConfig(
         schema=[
             bigquery.SchemaField("datekey", "DATE"),
+            bigquery.SchemaField("wishlist_rank", "INTEGER"),
             bigquery.SchemaField("follower_count", "INTEGER"),
+            bigquery.SchemaField("updated_at", "TIMESTAMP"),
         ],
-        write_disposition="WRITE_APPEND", # 데이터 추가
+        write_disposition="WRITE_APPEND",
     )
 
     try:
         job = client.load_table_from_dataframe(df, TABLE_ID, job_config=job_config)
-        job.result() # 적재 완료 대기
+        job.result() # 완료 대기
         print(f"✅ 성공: {len(df)}행이 {TABLE_ID}에 적재되었습니다.")
     except Exception as e:
         print(f"❌ 적재 실패: {e}")
-
-    # 6. Notion DB에 데이터 추가
-    try:
-        from notion_client import Client
-        # Airflow 환경변수 등에서 토큰 가져오기 (기존 코드의 get_var 활용)
-        notion_token = get_var('NOTION_TOKEN') 
-        notion = Client(auth=notion_token)
-        notion_db_id = '32dea67a568180d6b987d85d7384fe68'
-
-        print(f"Notion DB 적재 시작...")
-        
-        for data in all_data:
-            notion.pages.create(
-                parent={"database_id": notion_db_id},
-                properties={
-                    # 'Name' 혹은 'app_id'가 Title 속성일 경우 (데이터베이스 설정에 따라 수정 필요)
-                    "app_id": {
-                        "title": [
-                            {"text": {"content": data['app_id']}}
-                        ]
-                    },
-                    "game_name": {
-                        "rich_text": [
-                            {"text": {"content": data['game_name']}}
-                        ]
-                    },
-                    "follower_count": {
-                        "number": data['follower_count']
-                    },
-                    "datekey": {
-                        "date": {"start": data['datekey'].isoformat()}
-                    },
-                    "updated_at": {
-                        "date": {"start": data['updated_at'].isoformat()}
-                    }
-                }
-            )
-        print(f"✅ 성공: {len(all_data)}개의 데이터가 Notion에 추가되었습니다.")
-
-    except Exception as e:
-        print(f"❌ Notion 적재 실패: {e}")
-
 
 
 
@@ -465,8 +490,8 @@ with DAG(
 
     steam_follower_etl_task = PythonOperator(
         task_id='steam_follower_etl_task',
-        python_callable=steam_follower_etl
+        python_callable=steam_db_etl
     )
 
 
-    upload_to_bigquery_task >> upload_to_notion_task >> steam_follower_etl_task
+    steam_follower_etl_task >> upload_to_bigquery_task >> upload_to_notion_task
