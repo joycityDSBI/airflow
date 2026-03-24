@@ -372,20 +372,8 @@ def task_collect_notion(**context):
 
     logger.info(f"[Task1] 수집 완료 - 테이블 메타: {len(table_info_list)}건, 컬럼 메타: {len(column_info_list)}건")
 
-    # 테스트용: 특정 테이블만 필터링
-    target_table = "aibi-service.Service_Set.user_character_mapping"
-    filtered_table_info = [t for t in table_info_list if t.get("Hub 테이블명") == target_table]
-    filtered_column_info = [c for c in column_info_list if c.get("Hub 테이블명") == target_table]
-
-    logger.info(f"[Task1] 테스트 필터링 - 테이블: {filtered_table_info}, 컬럼: {len(filtered_column_info)}건")
-
-    # # 기존 코드 (주석처리)
-    # context["ti"].xcom_push(key="table_info_list", value=table_info_list)
-    # context["ti"].xcom_push(key="column_info_list", value=column_info_list)
-
-    # 테스트용: 필터링된 데이터만 전달
-    context["ti"].xcom_push(key="table_info_list", value=filtered_table_info)
-    context["ti"].xcom_push(key="column_info_list", value=filtered_column_info)
+    context["ti"].xcom_push(key="table_info_list", value=table_info_list)
+    context["ti"].xcom_push(key="column_info_list", value=column_info_list)
 
 # ===============================================================
 # Task 2. 메타데이터 전처리 → XCom으로 전달
@@ -594,99 +582,99 @@ def etl_single_table(table_name: str, **context) -> None:
         # Step 5: S3 cleanup (항상 실행)
         cleanup_s3_prefix(s3_client, s3_config["bucket"], s3_export_prefix)
 
-# # ===============================================================
-# # Task 4. Databricks Delta Table 튜닝
-# # ===============================================================
+# ===============================================================
+# Task 4. Databricks Delta Table 튜닝
+# ===============================================================
 
-# def check_constraint_exists(cursor, catalog: str, schema: str, table_name: str, constraint_name: str, constraint_type: str) -> bool:
-#     query = f"""
-#         SELECT 1
-#         FROM {catalog}.information_schema.table_constraints
-#         WHERE constraint_catalog = '{catalog}'
-#           AND constraint_schema = '{schema}'
-#           AND table_name = '{table_name}'
-#           AND constraint_name = '{constraint_name}'
-#           AND constraint_type = '{constraint_type}'
-#         LIMIT 1
-#     """
-#     try:
-#         cursor.execute(query)
-#         return cursor.fetchone() is not None
-#     except Exception as e:
-#         logger.warning(f"[Task4] 제약조건 존재 여부 확인 실패 ({constraint_name}): {e}")
-#         return False
+def check_constraint_exists(cursor, catalog: str, schema: str, table_name: str, constraint_name: str, constraint_type: str) -> bool:
+    query = f"""
+        SELECT 1
+        FROM {catalog}.information_schema.table_constraints
+        WHERE constraint_catalog = '{catalog}'
+          AND constraint_schema = '{schema}'
+          AND table_name = '{table_name}'
+          AND constraint_name = '{constraint_name}'
+          AND constraint_type = '{constraint_type}'
+        LIMIT 1
+    """
+    try:
+        cursor.execute(query)
+        return cursor.fetchone() is not None
+    except Exception as e:
+        logger.warning(f"[Task4] 제약조건 존재 여부 확인 실패 ({constraint_name}): {e}")
+        return False
 
 
-# def task_tune_databricks(**context):
-#     logger.info("[Task4] Databricks Delta Table 튜닝 시작")
-#     ti = context["ti"]
+def task_tune_databricks(**context):
+    logger.info("[Task4] Databricks Delta Table 튜닝 시작")
+    ti = context["ti"]
 
-#     df_table = pd.read_json(ti.xcom_pull(task_ids="task_preprocess_metadata", key="df_table"))
-#     db_config = get_databricks_config()
-#     catalog = db_config["catalog"]
-#     genie_to_schema = dict(zip(df_table["genie_table"], df_table["target_schema"]))
+    df_table = pd.DataFrame(json.loads(ti.xcom_pull(task_ids="task_preprocess_metadata", key="df_table")))
+    db_config = get_databricks_config()
+    catalog = db_config["catalog"]
+    genie_to_schema = dict(zip(df_table["genie_table"], df_table["target_schema"]))
 
-#     conn = get_databricks_connection(db_config)
-#     cursor = conn.cursor()
+    conn = get_databricks_connection(db_config)
+    cursor = conn.cursor()
 
-#     try:
-#         for _, row in df_table.iterrows():
-#             schema = row.get("target_schema", "bqtable")
-#             table_name = row.get("genie_table")
-#             pk_columns = row.get("pk", [])
-#             fk_mapping = row.get("fk_table_pk", {})
+    try:
+        for _, row in df_table.iterrows():
+            schema = row.get("target_schema", "bqtable")
+            table_name = row.get("genie_table")
+            pk_columns = row.get("pk", [])
+            fk_mapping = row.get("fk_table_pk", {})
 
-#             if not table_name:
-#                 continue
+            if not table_name:
+                continue
 
-#             if isinstance(pk_columns, list) and pk_columns:
-#                 for col in pk_columns:
-#                     execute_databricks_sql(
-#                         cursor,
-#                         f"ALTER TABLE {catalog}.{schema}.{table_name} ALTER COLUMN {col} SET NOT NULL",
-#                         f"NOT NULL {table_name}.{col}"
-#                     )
+            if isinstance(pk_columns, list) and pk_columns:
+                for col in pk_columns:
+                    execute_databricks_sql(
+                        cursor,
+                        f"ALTER TABLE {catalog}.{schema}.{table_name} ALTER COLUMN {col} SET NOT NULL",
+                        f"NOT NULL {table_name}.{col}"
+                    )
 
-#                 pk_cols = ", ".join(pk_columns)
-#                 constraint_name_pk = f"pk_{table_name}"
-#                 if not check_constraint_exists(cursor, catalog, schema, table_name, constraint_name_pk, "PRIMARY KEY"):
-#                     execute_databricks_sql(
-#                         cursor,
-#                         f"ALTER TABLE {catalog}.{schema}.{table_name} ADD CONSTRAINT {constraint_name_pk} PRIMARY KEY ({pk_cols})",
-#                         f"PK {table_name}"
-#                     )
-#                 else:
-#                     logger.info(f"[Task4] PK 이미 존재 - 스킵: {constraint_name_pk}")
+                pk_cols = ", ".join(pk_columns)
+                constraint_name_pk = f"pk_{table_name}"
+                if not check_constraint_exists(cursor, catalog, schema, table_name, constraint_name_pk, "PRIMARY KEY"):
+                    execute_databricks_sql(
+                        cursor,
+                        f"ALTER TABLE {catalog}.{schema}.{table_name} ADD CONSTRAINT {constraint_name_pk} PRIMARY KEY ({pk_cols})",
+                        f"PK {table_name}"
+                    )
+                else:
+                    logger.info(f"[Task4] PK 이미 존재 - 스킵: {constraint_name_pk}")
 
-#             if isinstance(fk_mapping, dict):
-#                 for fk_table, fk_cols in fk_mapping.items():
-#                     if not isinstance(fk_cols, list) or not fk_cols:
-#                         continue
-#                     target_schema = genie_to_schema.get(fk_table, "bqtable")
-#                     fk_cols_str = ", ".join(fk_cols)
-#                     constraint_name_fk = f"fk_{table_name}_to_{fk_table}"
-#                     if not check_constraint_exists(cursor, catalog, schema, table_name, constraint_name_fk, "FOREIGN KEY"):
-#                         execute_databricks_sql(
-#                             cursor,
-#                             (f"ALTER TABLE {catalog}.{schema}.{table_name} "
-#                              f"ADD CONSTRAINT {constraint_name_fk} FOREIGN KEY ({fk_cols_str}) "
-#                              f"REFERENCES {catalog}.{target_schema}.{fk_table}({fk_cols_str})"),
-#                             f"FK {table_name} → {fk_table}"
-#                         )
-#                     else:
-#                         logger.info(f"[Task4] FK 이미 존재 - 스킵: {constraint_name_fk}")
+            if isinstance(fk_mapping, dict):
+                for fk_table, fk_cols in fk_mapping.items():
+                    if not isinstance(fk_cols, list) or not fk_cols:
+                        continue
+                    target_schema = genie_to_schema.get(fk_table, "bqtable")
+                    fk_cols_str = ", ".join(fk_cols)
+                    constraint_name_fk = f"fk_{table_name}_to_{fk_table}"
+                    if not check_constraint_exists(cursor, catalog, schema, table_name, constraint_name_fk, "FOREIGN KEY"):
+                        execute_databricks_sql(
+                            cursor,
+                            (f"ALTER TABLE {catalog}.{schema}.{table_name} "
+                             f"ADD CONSTRAINT {constraint_name_fk} FOREIGN KEY ({fk_cols_str}) "
+                             f"REFERENCES {catalog}.{target_schema}.{fk_table}({fk_cols_str})"),
+                            f"FK {table_name} → {fk_table}"
+                        )
+                    else:
+                        logger.info(f"[Task4] FK 이미 존재 - 스킵: {constraint_name_fk}")
 
-#             execute_databricks_sql(cursor, f"ALTER TABLE {catalog}.{schema}.{table_name} CLUSTER BY auto", f"CLUSTER {table_name}")
-#             execute_databricks_sql(cursor, f"OPTIMIZE {catalog}.{schema}.{table_name}", f"OPTIMIZE {table_name}")
+            execute_databricks_sql(cursor, f"ALTER TABLE {catalog}.{schema}.{table_name} CLUSTER BY auto", f"CLUSTER {table_name}")
+            execute_databricks_sql(cursor, f"OPTIMIZE {catalog}.{schema}.{table_name}", f"OPTIMIZE {table_name}")
 
-#     except Exception as e:
-#         logger.error(f"[Task4] 튜닝 중 오류 발생: {e}")
-#         raise
-#     finally:
-#         cursor.close()
-#         conn.close()
+    except Exception as e:
+        logger.error(f"[Task4] 튜닝 중 오류 발생: {e}")
+        raise
+    finally:
+        cursor.close()
+        conn.close()
 
-#     logger.info("[Task4] Databricks Delta Table 튜닝 완료")
+    logger.info("[Task4] Databricks Delta Table 튜닝 완료")
 
 # ===============================================================
 # DAG 정의
@@ -729,9 +717,9 @@ with DAG(
         python_callable=etl_single_table,
     ).expand(op_kwargs=preprocess_metadata.output)
 
-    # tune_databricks = PythonOperator(
-    #     task_id="task_tune_databricks",
-    #     python_callable=task_tune_databricks,
-    # )
+    tune_databricks = PythonOperator(
+        task_id="task_tune_databricks",
+        python_callable=task_tune_databricks,
+    )
 
-    collect_notion >> preprocess_metadata >> etl_tasks ## >> tune_databricks
+    collect_notion >> preprocess_metadata >> etl_tasks >> tune_databricks
