@@ -701,7 +701,7 @@ default_args = {
 }
 
 with DAG(
-    dag_id="notion_to_databricks_dag",
+    dag_id="notion_bq_to_db_dag",
     default_args=default_args,
     description="Notion 메타데이터 기반 BigQuery → Databricks ETL",
     schedule="30 23 * * *",  # KST 08:30 (UTC 23:30)
