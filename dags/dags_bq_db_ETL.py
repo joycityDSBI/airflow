@@ -275,6 +275,10 @@ def _cast_to_delta_schema(df: pd.DataFrame, delta_schema: dict, col_rename_map: 
                 df[hub_col] = df[hub_col].astype(pd.Int8Dtype())
             elif delta_type == "boolean":
                 df[hub_col] = df[hub_col].astype(pd.BooleanDtype())
+            elif delta_type in ("double", "float"):
+                df[hub_col] = df[hub_col].astype(pd.Float64Dtype())
+            elif delta_type in ("string", "varchar", "char"):
+                df[hub_col] = df[hub_col].astype(pd.StringDtype())
         except Exception as e:
             logger.warning(f"[타입 변환 실패] {hub_col} ({delta_type}): {e}")
     return df
