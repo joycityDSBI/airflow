@@ -583,6 +583,7 @@ def etl_single_table(table_name: str, **context) -> None:
     s3_export_prefix = f"{s3_config['prefix']}{table_short_name}/{dag_run_id}/"
     s3_export_path = f"s3://{s3_config['bucket']}/{s3_export_prefix}"
 
+    delete_executed = False
     try:
         logger.info(f"[ETL] {target_table} 시작 | 소스: {table_name}")
 
@@ -627,6 +628,7 @@ def etl_single_table(table_name: str, **context) -> None:
             f"DELETE FROM {target_table} WHERE to_date({genie_date_col}) IN ({date_in_sql})",
             f"DELETE {target_table}"
         )
+        delete_executed = True
 
         delete_count_log = "\n".join([f"  {d}: {pre_delete_map.get(d, 0):,}건" for d in sorted(date_set)])
         logger.info(f"[ETL] {target_table} | 삭제된 날짜별 row수 (총 {sum(pre_delete_map.values()):,}건):\n{delete_count_log}")
@@ -670,6 +672,17 @@ def etl_single_table(table_name: str, **context) -> None:
 
     except Exception as e:
         logger.error(f"[ETL] {target_table} 적재 실패: {e}")
+        if delete_executed:
+            logger.warning(f"[ETL] {target_table} DELETE 이후 실패 감지 → Time Travel 롤백 시도 (6시간 전)")
+            try:
+                execute_databricks_sql(
+                    cursor,
+                    f"CREATE OR REPLACE TABLE {target_table} SELECT * FROM {target_table} TIMESTAMP AS OF current_timestamp() - INTERVAL 6 HOURS",
+                    f"ROLLBACK {target_table}"
+                )
+                logger.info(f"[ETL] {target_table} 롤백 완료")
+            except Exception as rb_err:
+                logger.error(f"[ETL] {target_table} 롤백 실패: {rb_err}")
         raise
     finally:
         cursor.close()
