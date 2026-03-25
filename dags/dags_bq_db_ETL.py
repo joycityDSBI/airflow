@@ -29,6 +29,7 @@ import json
 import time
 import io
 import logging
+import uuid
 import requests
 import pandas as pd
 import boto3
@@ -281,8 +282,8 @@ def _cast_to_delta_schema(df: pd.DataFrame, delta_schema: dict, col_rename_map: 
 
 def upload_bq_to_s3_parquet(bq_client, bqstorage_client, table_name: str, s3_client, bucket: str, s3_prefix: str, hub_date_col: str, delta_schema: dict = None, col_rename_map: dict = None) -> tuple:
     """
-    BQ 테이블을 S3에 Parquet으로 업로드 (BigQuery Storage API 사용)
-    스트리밍 중 날짜별 row 수를 동시에 집계하여 별도 BQ 쿼리를 제거.
+    BQ 뷰테이블을 물리 테이블로 먼저 materialization한 뒤 S3에 Parquet으로 업로드.
+    물리화로 Storage API 읽기 성능을 확보하며, 완료 후 임시 테이블은 자동 삭제됨.
 
     Args:
         bq_client: BigQuery Client
@@ -300,61 +301,82 @@ def upload_bq_to_s3_parquet(bq_client, bqstorage_client, table_name: str, s3_cli
     """
     logger.info(f"[BQ→S3] {table_name} Parquet 업로드 시작 → s3://{bucket}/{s3_prefix}")
 
-    # BQ 테이블 쿼리
-    query_job = bq_client.query(f"SELECT * FROM `{table_name}`")
+    # 뷰테이블 → 물리 테이블 materialization (소스와 동일 project.dataset에 임시 저장)
+    parts = table_name.split(".")
+    mat_table_id = f"{parts[0]}.{parts[1]}.etl_tmp_{parts[2]}_{uuid.uuid4().hex[:8]}"
+    logger.info(f"[BQ→S3] {table_name} 물리화 시작 → {mat_table_id}")
+    mat_job = bq_client.query(
+        f"SELECT * FROM `{table_name}`",
+        job_config=bigquery.QueryJobConfig(
+            destination=bigquery.TableReference.from_string(mat_table_id),
+            write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+        ),
+    )
+    mat_job.result()
+    mat_row_count = bq_client.get_table(mat_table_id).num_rows
+    logger.info(f"[BQ→S3] 물리화 완료: {mat_table_id} ({mat_row_count:,}행)")
 
-    # 청크를 200MB(비압축 Arrow 기준) 단위로 합쳐 S3에 Parquet 업로드
-    TARGET_BYTES = 200 * 1024 * 1024  # 200MB
-    part_idx = 0
-    uploaded_files = []
-    accumulated_tables = []
-    accumulated_bytes = 0
-    date_count_map = {}
+    try:
+        # 물리 테이블에서 Storage API로 읽기
+        query_job = bq_client.query(f"SELECT * FROM `{mat_table_id}`")
 
-    def _flush(tables, part_idx):
-        merged = pa.concat_tables(tables)
-        buffer = io.BytesIO()
-        pq.write_table(merged, buffer)
-        buffer.seek(0)
-        s3_key = f"{s3_prefix}part-{part_idx:05d}.parquet"
-        s3_client.put_object(Bucket=bucket, Key=s3_key, Body=buffer.getvalue())
-        logger.info(f"[BQ→S3] 업로드 완료: part-{part_idx:05d}.parquet ({len(merged):,} 행, {buffer.tell()/1024/1024:.1f}MB)")
-        return s3_key
+        # 청크를 200MB(비압축 Arrow 기준) 단위로 합쳐 S3에 Parquet 업로드
+        TARGET_BYTES = 200 * 1024 * 1024  # 200MB
+        part_idx = 0
+        uploaded_files = []
+        accumulated_tables = []
+        accumulated_bytes = 0
+        date_count_map = {}
 
-    for chunk_df in query_job.result().to_dataframe_iterable(bqstorage_client=bqstorage_client):
-        if chunk_df.empty:
-            continue
+        def _flush(tables, part_idx):
+            merged = pa.concat_tables(tables, promote_options="default")
+            buffer = io.BytesIO()
+            pq.write_table(merged, buffer)
+            file_size = buffer.tell()
+            buffer.seek(0)
+            s3_key = f"{s3_prefix}part-{part_idx:05d}.parquet"
+            s3_client.put_object(Bucket=bucket, Key=s3_key, Body=buffer.getvalue())
+            logger.info(f"[BQ→S3] 업로드 완료: part-{part_idx:05d}.parquet ({len(merged):,} 행, {file_size/1024/1024:.1f}MB)")
+            return s3_key
 
-        # 날짜별 카운트 누적
-        for date_val, cnt in chunk_df[hub_date_col].dropna().apply(
-            lambda x: str(x.date()) if hasattr(x, "date") else str(x)[:10]
-        ).value_counts().items():
-            date_count_map[date_val] = date_count_map.get(date_val, 0) + int(cnt)
+        for chunk_df in query_job.result().to_dataframe_iterable(bqstorage_client=bqstorage_client):
+            if chunk_df.empty:
+                continue
 
-        # Delta 스키마 기반 타입 캐스팅 (nullable INT64 → float64 문제 방지)
-        if delta_schema and col_rename_map is not None:
-            chunk_df = _cast_to_delta_schema(chunk_df, delta_schema, col_rename_map)
+            # 날짜별 카운트 누적
+            for date_val, cnt in chunk_df[hub_date_col].dropna().apply(
+                lambda x: str(x.date()) if hasattr(x, "date") else str(x)[:10]
+            ).value_counts().items():
+                date_count_map[date_val] = date_count_map.get(date_val, 0) + int(cnt)
 
-        chunk_table = pa.Table.from_pandas(chunk_df)
-        accumulated_tables.append(chunk_table)
-        accumulated_bytes += chunk_table.nbytes
+            # Delta 스키마 기반 타입 캐스팅 (nullable INT64 → float64 문제 방지)
+            if delta_schema and col_rename_map is not None:
+                chunk_df = _cast_to_delta_schema(chunk_df, delta_schema, col_rename_map)
 
-        if accumulated_bytes >= TARGET_BYTES:
+            chunk_table = pa.Table.from_pandas(chunk_df)
+            accumulated_tables.append(chunk_table)
+            accumulated_bytes += chunk_table.nbytes
+
+            if accumulated_bytes >= TARGET_BYTES:
+                uploaded_files.append(_flush(accumulated_tables, part_idx))
+                part_idx += 1
+                accumulated_tables = []
+                accumulated_bytes = 0
+
+        # 남은 데이터 flush
+        if accumulated_tables:
             uploaded_files.append(_flush(accumulated_tables, part_idx))
             part_idx += 1
-            accumulated_tables = []
-            accumulated_bytes = 0
 
-    # 남은 데이터 flush
-    if accumulated_tables:
-        uploaded_files.append(_flush(accumulated_tables, part_idx))
-        part_idx += 1
+        if not uploaded_files:
+            raise AirflowException(f"[BQ→S3] 업로드된 파일 없음: {table_name}")
 
-    if not uploaded_files:
-        raise AirflowException(f"[BQ→S3] 업로드된 파일 없음: {table_name}")
+        logger.info(f"[BQ→S3] {table_name} 업로드 완료 ({part_idx}개 파트 파일)")
+        return f"s3://{bucket}/{s3_prefix}", date_count_map
 
-    logger.info(f"[BQ→S3] {table_name} 업로드 완료 ({part_idx}개 파트 파일)")
-    return f"s3://{bucket}/{s3_prefix}", date_count_map
+    finally:
+        bq_client.delete_table(mat_table_id, not_found_ok=True)
+        logger.info(f"[BQ→S3] 임시 물리 테이블 삭제 완료: {mat_table_id}")
 
 def cleanup_s3_prefix(s3_client, bucket: str, prefix: str) -> None:
     """
