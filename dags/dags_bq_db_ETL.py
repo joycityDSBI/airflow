@@ -237,9 +237,52 @@ def execute_databricks_sql(cursor, sql: str, description: str = "") -> None:
         logger.error(f"[Databricks SQL 실패] {description} | 에러: {e}\nSQL: {sql}")
         raise
 
-def upload_bq_to_s3_parquet(bq_client, bqstorage_client, table_name: str, s3_client, bucket: str, s3_prefix: str) -> str:
+def get_databricks_schema(cursor, target_table: str) -> dict:
+    """
+    Delta 테이블 스키마 조회.
+
+    Returns:
+        {genie_col: delta_type} (예: {'user_id': 'bigint', 'amount': 'double'})
+        테이블이 없으면 빈 dict 반환 (첫 적재 케이스).
+    """
+    try:
+        cursor.execute(f"DESCRIBE TABLE {target_table}")
+        rows = cursor.fetchall()
+        return {row[0]: row[1].lower() for row in rows if row[0] and not row[0].startswith("#")}
+    except Exception:
+        return {}
+
+
+def _cast_to_delta_schema(df: pd.DataFrame, delta_schema: dict, col_rename_map: dict) -> pd.DataFrame:
+    """
+    Databricks Delta 스키마에 맞게 DataFrame 컬럼 타입 변환.
+    BQ nullable INT64 → pandas float64 → Parquet DOUBLE 문제를 방지.
+    """
+    reverse_map = {v: k for k, v in col_rename_map.items()}
+    for genie_col, delta_type in delta_schema.items():
+        hub_col = reverse_map.get(genie_col, genie_col)
+        if hub_col not in df.columns:
+            continue
+        try:
+            if delta_type in ("bigint", "long"):
+                df[hub_col] = df[hub_col].astype(pd.Int64Dtype())
+            elif delta_type in ("int", "integer"):
+                df[hub_col] = df[hub_col].astype(pd.Int32Dtype())
+            elif delta_type in ("smallint", "short"):
+                df[hub_col] = df[hub_col].astype(pd.Int16Dtype())
+            elif delta_type == "tinyint":
+                df[hub_col] = df[hub_col].astype(pd.Int8Dtype())
+            elif delta_type == "boolean":
+                df[hub_col] = df[hub_col].astype(pd.BooleanDtype())
+        except Exception as e:
+            logger.warning(f"[타입 변환 실패] {hub_col} ({delta_type}): {e}")
+    return df
+
+
+def upload_bq_to_s3_parquet(bq_client, bqstorage_client, table_name: str, s3_client, bucket: str, s3_prefix: str, hub_date_col: str, delta_schema: dict = None, col_rename_map: dict = None) -> tuple:
     """
     BQ 테이블을 S3에 Parquet으로 업로드 (BigQuery Storage API 사용)
+    스트리밍 중 날짜별 row 수를 동시에 집계하여 별도 BQ 쿼리를 제거.
 
     Args:
         bq_client: BigQuery Client
@@ -248,42 +291,70 @@ def upload_bq_to_s3_parquet(bq_client, bqstorage_client, table_name: str, s3_cli
         s3_client: boto3 S3 Client
         bucket: S3 버킷명
         s3_prefix: S3 경로 prefix (예: "bq-exports/table/run_id/")
+        hub_date_col: 날짜 기준 컬럼명
+        delta_schema: Databricks Delta 테이블 스키마 ({genie_col: delta_type}). 타입 캐스팅에 사용.
+        col_rename_map: BQ→Databricks 컬럼 rename 매핑 ({hub_col: genie_col}). delta_schema와 함께 사용.
 
     Returns:
-        S3 경로 (예: "s3://bucket/bq-exports/table/run_id/")
+        (s3_path, date_count_map): S3 경로, 날짜별 row 수 dict
     """
     logger.info(f"[BQ→S3] {table_name} Parquet 업로드 시작 → s3://{bucket}/{s3_prefix}")
 
     # BQ 테이블 쿼리
     query_job = bq_client.query(f"SELECT * FROM `{table_name}`")
 
-    # Arrow 배치 단위로 스트리밍하며 S3에 Parquet 업로드
+    # 청크를 200MB(비압축 Arrow 기준) 단위로 합쳐 S3에 Parquet 업로드
+    TARGET_BYTES = 200 * 1024 * 1024  # 200MB
     part_idx = 0
     uploaded_files = []
+    accumulated_tables = []
+    accumulated_bytes = 0
+    date_count_map = {}
+
+    def _flush(tables, part_idx):
+        merged = pa.concat_tables(tables)
+        buffer = io.BytesIO()
+        pq.write_table(merged, buffer)
+        buffer.seek(0)
+        s3_key = f"{s3_prefix}part-{part_idx:05d}.parquet"
+        s3_client.put_object(Bucket=bucket, Key=s3_key, Body=buffer.getvalue())
+        logger.info(f"[BQ→S3] 업로드 완료: part-{part_idx:05d}.parquet ({len(merged):,} 행, {buffer.tell()/1024/1024:.1f}MB)")
+        return s3_key
 
     for chunk_df in query_job.result().to_dataframe_iterable(bqstorage_client=bqstorage_client):
         if chunk_df.empty:
             continue
 
-        # pandas DataFrame → pyarrow Table → Parquet
-        table = pa.Table.from_pandas(chunk_df)
-        buffer = io.BytesIO()
-        pq.write_table(table, buffer)
-        buffer.seek(0)
+        # 날짜별 카운트 누적
+        for date_val, cnt in chunk_df[hub_date_col].dropna().apply(
+            lambda x: str(x.date()) if hasattr(x, "date") else str(x)[:10]
+        ).value_counts().items():
+            date_count_map[date_val] = date_count_map.get(date_val, 0) + int(cnt)
 
-        # S3에 파트 파일 업로드
-        s3_key = f"{s3_prefix}part-{part_idx:05d}.parquet"
-        s3_client.put_object(Bucket=bucket, Key=s3_key, Body=buffer.getvalue())
-        uploaded_files.append(s3_key)
+        # Delta 스키마 기반 타입 캐스팅 (nullable INT64 → float64 문제 방지)
+        if delta_schema and col_rename_map is not None:
+            chunk_df = _cast_to_delta_schema(chunk_df, delta_schema, col_rename_map)
 
-        logger.info(f"[BQ→S3] 업로드 완료: part-{part_idx:05d}.parquet ({len(chunk_df)} 행)")
+        chunk_table = pa.Table.from_pandas(chunk_df)
+        accumulated_tables.append(chunk_table)
+        accumulated_bytes += chunk_table.nbytes
+
+        if accumulated_bytes >= TARGET_BYTES:
+            uploaded_files.append(_flush(accumulated_tables, part_idx))
+            part_idx += 1
+            accumulated_tables = []
+            accumulated_bytes = 0
+
+    # 남은 데이터 flush
+    if accumulated_tables:
+        uploaded_files.append(_flush(accumulated_tables, part_idx))
         part_idx += 1
 
     if not uploaded_files:
         raise AirflowException(f"[BQ→S3] 업로드된 파일 없음: {table_name}")
 
     logger.info(f"[BQ→S3] {table_name} 업로드 완료 ({part_idx}개 파트 파일)")
-    return f"s3://{bucket}/{s3_prefix}"
+    return f"s3://{bucket}/{s3_prefix}", date_count_map
 
 def cleanup_s3_prefix(s3_client, bucket: str, prefix: str) -> None:
     """
@@ -489,15 +560,23 @@ def etl_single_table(table_name: str, **context) -> None:
     try:
         logger.info(f"[ETL] {target_table} 시작 | 소스: {table_name}")
 
-        # Step 1: 날짜별 row수 수집 (날짜 범위 + BQ 건수 동시 수집)
-        date_job = bq_client.query(
-            f"SELECT DATE({hub_date_col}) as date_key, COUNT(*) as row_count "
-            f"FROM `{table_name}` GROUP BY 1 ORDER BY 1"
+        # Step 1: Delta 스키마 조회 (타입 캐스팅용, 테이블 없으면 빈 dict)
+        delta_schema = get_databricks_schema(cursor, target_table)
+        if delta_schema:
+            logger.info(f"[ETL] {target_table} | Delta 스키마 {len(delta_schema)}개 컬럼 로드 완료")
+
+        # Step 2: BQ → S3 Parquet 업로드 (날짜별 row 수 동시 집계)
+        _, date_count_map = upload_bq_to_s3_parquet(
+            bq_client,
+            bqstorage_client,
+            table_name,
+            s3_client,
+            s3_config["bucket"],
+            s3_export_prefix,
+            hub_date_col=hub_date_col,
+            delta_schema=delta_schema,
+            col_rename_map=col_rename_map,
         )
-        date_count_map = {}
-        for row_date in date_job.result():
-            if row_date["date_key"] is not None:
-                date_count_map[str(row_date["date_key"])] = row_date["row_count"]
 
         date_set = set(date_count_map.keys())
 
@@ -506,16 +585,6 @@ def etl_single_table(table_name: str, **context) -> None:
 
         bq_count_log = "\n".join([f"  {d}: {date_count_map[d]:,}건" for d in sorted(date_count_map)])
         logger.info(f"[ETL] {target_table} | BQ 날짜별 row수 (총 {sum(date_count_map.values()):,}건):\n{bq_count_log}")
-
-        # Step 2: BQ → S3 Parquet 업로드
-        upload_bq_to_s3_parquet(
-            bq_client,
-            bqstorage_client,
-            table_name,
-            s3_client,
-            s3_config["bucket"],
-            s3_export_prefix
-        )
 
         # Step 3: Databricks DELETE (날짜 범위)
         date_in_sql = ", ".join([f"DATE('{d}')" for d in sorted(date_set)])
