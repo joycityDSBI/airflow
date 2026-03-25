@@ -713,11 +713,12 @@ def task_tune_databricks(**context):
     cursor = conn.cursor()
 
     try:
+        # Pass 1: 모든 테이블 PK 먼저 설정 (FK 참조 대상 PK가 반드시 존재해야 함)
+        logger.info("[Task4] Pass 1 - PK 설정 시작")
         for _, row in df_table.iterrows():
             schema = row.get("target_schema", "bqtable")
             table_name = row.get("genie_table")
             pk_columns = row.get("pk", [])
-            fk_mapping = row.get("fk_table_pk", {})
 
             if not table_name:
                 continue
@@ -740,6 +741,16 @@ def task_tune_databricks(**context):
                     )
                 else:
                     logger.info(f"[Task4] PK 이미 존재 - 스킵: {constraint_name_pk}")
+
+        # Pass 2: FK + CLUSTER + OPTIMIZE
+        logger.info("[Task4] Pass 2 - FK/CLUSTER/OPTIMIZE 시작")
+        for _, row in df_table.iterrows():
+            schema = row.get("target_schema", "bqtable")
+            table_name = row.get("genie_table")
+            fk_mapping = row.get("fk_table_pk", {})
+
+            if not table_name:
+                continue
 
             if isinstance(fk_mapping, dict):
                 for fk_table, fk_cols in fk_mapping.items():
