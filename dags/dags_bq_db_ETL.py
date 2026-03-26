@@ -811,7 +811,7 @@ with DAG(
     dag_id="notion_bq_to_db_dag",
     default_args=default_args,
     description="Notion 메타데이터 기반 BigQuery → Databricks ETL",
-    schedule="30 23 * * *",  # KST 08:30 (UTC 23:30)
+    schedule="50 22 * * *",  # KST 07:50 (UTC 22:50)
     start_date=datetime(2024, 1, 1),
     catchup=False,
     max_active_tasks=10,    # 동시 실행 Task 최대 수 (테이블 병렬 처리 상한선)
