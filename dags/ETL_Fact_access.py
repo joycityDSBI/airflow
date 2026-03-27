@@ -386,10 +386,22 @@ def adjust_f_common_register(target_date:list, client):
             , TB.install_datekey
             from
             (
-                select joyple_game_code, auth_account_name, 
-                array_agg(STRUCT(game_id, world_id, auth_method_id, auth_account_name, tracker_account_id, mmp_type, device_id, ip, market_id, os_id, platform_device_type, 
-                app_id, log_time) ORDER BY log_time asc)[OFFSET(0)] AS INFO
-                from dataplatform-204306.CommonLog.Payment
+                select JoypleGameID as joyple_game_code
+                     , AuthAccountName as auth_account_name
+                     , array_agg(STRUCT(gameid as game_id, 
+                                        worldid as world_id, 
+                                        AuthMethodID as auth_method_id,
+                                        AuthAccountName as auth_account_name, 
+                                        TrackerAccountName as tracker_account_id, 
+                                        TrackerTypeID as mmp_type, 
+                                        DeviceID as device_id, 
+                                        IP as ip, 
+                                        MarketID as market_id,
+                                        OSID as os_id,
+                                        PlatformDeviceType as platform_device_type, 
+                                        AppID as app_id, 
+                                        LogTime as log_time) ORDER BY logtime asc)[OFFSET(0)] AS INFO
+                from `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V`
                 where log_time >= '{start_utc}'
                 and log_time < '{end_utc}'
                 group by joyple_game_code, auth_account_name
@@ -768,9 +780,25 @@ def adjust_f_common_register_char(target_date:list, client):
             , DATETIME(TA.INFO.log_time, "Asia/Seoul") as game_sub_user_reg_datetime            
             from
             (
-                select joyple_game_code, auth_account_name, game_sub_user_name,
-                array_agg(STRUCT(game_id, world_id, auth_method_id, auth_account_name, tracker_account_id, mmp_type, device_id, ip, market_id, os_id, platform_device_type, app_id, log_time, server_name) ORDER BY log_time asc)[OFFSET(0)] AS INFO
-                from dataplatform-204306.CommonLog.Payment
+                select JoypleGameID                 as joyple_game_code, 
+                       AuthAccountName              as auth_account_name, 
+                       GameSubUserName              as  game_sub_user_name,
+                array_agg(STRUCT(gameid             as game_id, 
+                                 worldid            as world_id, 
+                                 AuthMethodID       as auth_method_id, 
+                                 AuthAccountName    as auth_account_name, 
+                                 TrackerAccountName as tracker_account_id, 
+                                 TrackerTypeID      as mmp_type, 
+                                 DeviceID           as device_id, 
+                                 IP                 as ip, 
+                                 MarketID           as market_id, 
+                                 OSID               as os_id, 
+                                 PlatformDeviceType as platform_device_type, 
+                                 appid              as app_id, 
+                                 logTime            as log_time, 
+                                 servername         as server_name
+                                 ) ORDER BY logtime asc)[OFFSET(0)] AS INFO
+                from `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V`
                 where log_time >= '{start_utc}'
                 and log_time < '{end_utc}'
                 group by joyple_game_code, auth_account_name, game_sub_user_name
