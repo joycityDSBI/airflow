@@ -606,13 +606,22 @@ def etl_single_table(table_name: str, **context) -> None:
         logger.info(f"[ETL] {target_table} | 삭제된 날짜별 row수 (총 {sum(pre_delete_map.values()):,}건):\n{delete_count_log}")
 
         # Step 7: Databricks COPY INTO (S3 Parquet으로부터)
+        # BQ DATETIME → Parquet TIMESTAMP_NTZ 로 export 되는데,
+        # Delta 테이블 컬럼이 TIMESTAMP(UTC-adjusted)이면 타입 불일치로 COPY INTO 실패.
+        # delta_schema에서 timestamp 타입인 컬럼은 명시적으로 CAST 처리.
         select_cols = []
         for hub_col in df_map["hub_column"]:
             genie_col = col_rename_map.get(hub_col, hub_col)
-            if hub_col != genie_col:
-                select_cols.append(f"`{hub_col}` AS `{genie_col}`")
+            target_type = delta_schema.get(genie_col, "")
+            if target_type == "timestamp":
+                expr = f"CAST(`{hub_col}` AS TIMESTAMP)"
             else:
-                select_cols.append(f"`{hub_col}`")
+                expr = f"`{hub_col}`"
+
+            if hub_col != genie_col:
+                select_cols.append(f"{expr} AS `{genie_col}`")
+            else:
+                select_cols.append(expr)
 
         select_clause = ",\n            ".join(select_cols)
 
