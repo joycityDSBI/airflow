@@ -402,8 +402,8 @@ def adjust_f_common_register(target_date:list, client):
                                         AppID as app_id, 
                                         LogTime as log_time) ORDER BY logtime asc)[OFFSET(0)] AS INFO
                 from `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V`
-                where log_time >= '{start_utc}'
-                and log_time < '{end_utc}'
+                where LogTime >= '{start_utc}'
+                and LogTime < '{end_utc}'
                 group by joyple_game_code, auth_account_name
             ) TA
             left join 
