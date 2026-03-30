@@ -792,10 +792,10 @@ default_args = {
 }
 
 with DAG(
-    dag_id="notion_bq_to_db_dag_test",
+    dag_id="notion_bq_to_db_dag_GCS_ver",
     default_args=default_args,
-    description="Notion 메타데이터 기반 BigQuery → GCS → S3 → Databricks ETL (테스트)",
-    schedule=None,  # 수동 실행 전용
+    description="Notion 메타데이터 기반 BigQuery → GCS → S3 → Databricks ETL",
+    schedule="50 22 * * *",  # 수동 실행 전용
     start_date=datetime(2024, 1, 1),
     catchup=False,
     max_active_tasks=10,
