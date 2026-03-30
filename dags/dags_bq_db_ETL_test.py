@@ -493,13 +493,9 @@ def etl_single_table(table_name: str, **context) -> None:
     df_table = pd.DataFrame(json.loads(ti.xcom_pull(task_ids="task_preprocess_metadata", key="df_table")))
     df_column = pd.DataFrame(json.loads(ti.xcom_pull(task_ids="task_preprocess_metadata", key="df_column")))
 
-    # [TEST] active_user_daily_item_flow 단독 테스트: 해당 테이블 외 모두 스킵
-    if table_name != "aibi-service.Service_Set.active_user_daily_item_flow":
-        logger.info(f"[ETL] 스킵 (테스트 단독 실행 모드): {table_name}")
+    if table_name in TARGET_TEST_TABLES:
+        logger.info(f"[ETL] 스킵 대상 테이블: {table_name}")
         return
-    # if table_name in TARGET_TEST_TABLES:
-    #     logger.info(f"[ETL] 스킵 대상 테이블: {table_name}")
-    #     return
 
     hub_date_col = DATE_COL_MAP.get(table_name)
     if hub_date_col is None:
@@ -510,49 +506,43 @@ def etl_single_table(table_name: str, **context) -> None:
         raise AirflowException(f"[ETL] 테이블 메타 없음: {table_name}")
     row = row.iloc[0]
 
-    # [TEST 주석처리] schema/genie_table_name/target_table 은 Databricks 적재 시 사용
-    # schema = (row.get("target_schema") or "bqtable").strip()
-    # genie_table_name = row.get("genie_table") or table_name.split(".")[-1]
-    # db_config = get_databricks_config()
+    schema = (row.get("target_schema") or "bqtable").strip()
+    genie_table_name = row.get("genie_table") or table_name.split(".")[-1]
+    db_config = get_databricks_config()
     bq_config = get_bq_config()
-    # s3_config = get_s3_config()
+    s3_config = get_s3_config()
     gcs_config = get_gcs_config()
-    # catalog = db_config["catalog"]
-    # target_table = f"{catalog}.{schema}.{genie_table_name}"
+    catalog = db_config["catalog"]
+    target_table = f"{catalog}.{schema}.{genie_table_name}_test"
 
-    # [TEST 주석처리] col_rename_map / genie_date_col 은 Databricks COPY INTO 시 사용
-    # df_map = df_column[df_column["hub_table"] == table_name][["hub_column", "genie_column", "genie_column_desc"]]
-    # df_map = df_map[df_map["genie_column"].astype(str).str.len() > 0]
-    # col_rename_map = dict(zip(df_map["hub_column"], df_map["genie_column"]))
-    # genie_date_col = col_rename_map.get(hub_date_col, hub_date_col)
+    df_map = df_column[df_column["hub_table"] == table_name][["hub_column", "genie_column", "genie_column_desc"]]
+    df_map = df_map[df_map["genie_column"].astype(str).str.len() > 0]
+    col_rename_map = dict(zip(df_map["hub_column"], df_map["genie_column"]))
+    genie_date_col = col_rename_map.get(hub_date_col, hub_date_col)
 
-    # 클라이언트 생성 (BQ만 사용)
+    # 클라이언트 생성
     bq_client = get_bq_client(bq_config)
-    # [TEST 주석처리] gcs_client — GCS cleanup 주석 처리로 현재 미사용 (Step 5 복원 시 활성화)
-    # gcs_client = get_gcs_client(bq_config)
-    # [TEST 주석처리] Databricks/S3 클라이언트 (Step 5~7에서만 사용)
-    # conn = get_databricks_connection(db_config)
-    # cursor = conn.cursor()
-    # s3_client = get_s3_client(s3_config)
+    gcs_client = get_gcs_client(bq_config)
+    conn = get_databricks_connection(db_config)
+    cursor = conn.cursor()
+    s3_client = get_s3_client(s3_config)
 
     # 경로 설정 (run_id 포함 → 실행마다 고유)
     table_short_name = table_name.split(".")[-1]
     dag_run_id = context["run_id"].replace(":", "_").replace("+", "_")
     gcs_export_prefix = f"{gcs_config['prefix']}/{table_short_name}/{dag_run_id}/"
-    # [TEST 주석처리] S3 경로 (Step 5에서만 사용)
-    # s3_export_prefix = f"{s3_config['prefix']}{table_short_name}/{dag_run_id}/"
-    # s3_export_path = f"s3://{s3_config['bucket']}/{s3_export_prefix}"
+    s3_export_prefix = f"{s3_config['prefix']}{table_short_name}/{dag_run_id}/"
+    s3_export_path = f"s3://{s3_config['bucket']}/{s3_export_prefix}"
 
     mat_table_id = None
-    # [TEST 주석처리] delete_executed 는 Databricks DELETE 롤백 로직에서만 사용
-    # delete_executed = False
+    delete_executed = False
     try:
-        logger.info(f"[ETL] {table_name} 시작 (GCS Export 테스트)")
+        logger.info(f"[ETL] {target_table} 시작 | 소스: {table_name}")
 
-        # [TEST 주석처리] Step 1: Delta 스키마 조회 (Databricks 연결 필요)
-        # delta_schema = get_databricks_schema(cursor, target_table)
-        # if delta_schema:
-        #     logger.info(f"[ETL] {target_table} | Delta 스키마 {len(delta_schema)}개 컬럼 로드 완료")
+        # Step 1: Delta 스키마 조회 (테이블 없으면 빈 dict)
+        delta_schema = get_databricks_schema(cursor, target_table)
+        if delta_schema:
+            logger.info(f"[ETL] {target_table} | Delta 스키마 {len(delta_schema)}개 컬럼 로드 완료")
 
         # Step 2: BQ 뷰 → 물리 temp table materialization
         parts = table_name.split(".")
@@ -582,92 +572,95 @@ def etl_single_table(table_name: str, **context) -> None:
             raise AirflowException(f"[ETL] 기준 날짜 데이터 없음: {table_name}")
 
         bq_count_log = "\n".join([f"  {d}: {date_count_map[d]:,}건" for d in sorted(date_count_map)])
-        logger.info(f"[ETL] {table_name} | BQ 날짜별 row수 (총 {sum(date_count_map.values()):,}건):\n{bq_count_log}")
+        logger.info(f"[ETL] {target_table} | BQ 날짜별 row수 (총 {sum(date_count_map.values()):,}건):\n{bq_count_log}")
 
         # Step 4: BQ Export → GCS (서버 메모리 미사용)
         export_bq_to_gcs(bq_client, mat_table_id, gcs_config["bucket"], gcs_export_prefix)
-        logger.info(f"[ETL] {table_name} GCS Export 완료 → gs://{gcs_config['bucket']}/{gcs_export_prefix}")
 
-        # [TEST 주석처리] Step 5: GCS → S3 전송
-        # copy_gcs_to_s3(
-        #     gcs_client, s3_client,
-        #     gcs_config["bucket"], gcs_export_prefix,
-        #     s3_config["bucket"], s3_export_prefix,
-        # )
+        # Step 5: GCS → S3 전송
+        copy_gcs_to_s3(
+            gcs_client, s3_client,
+            gcs_config["bucket"], gcs_export_prefix,
+            s3_config["bucket"], s3_export_prefix,
+        )
 
-        # [TEST 주석처리] date_set / date_in_sql (Step 6~7 Databricks에서만 사용)
-        # date_set = set(date_count_map.keys())
-        # date_in_sql = ", ".join([f"DATE('{d}')" for d in sorted(date_set)])
+        date_set = set(date_count_map.keys())
+        date_in_sql = ", ".join([f"DATE('{d}')" for d in sorted(date_set)])
 
-        # [TEST 주석처리] Step 6: Databricks DELETE (날짜 범위)
-        # cursor.execute(
-        #     f"SELECT DATE({genie_date_col}) as date_key, COUNT(*) as row_count "
-        #     f"FROM {target_table} WHERE to_date({genie_date_col}) IN ({date_in_sql}) "
-        #     f"GROUP BY 1 ORDER BY 1"
-        # )
-        # pre_delete_map = {str(r[0]): r[1] for r in (cursor.fetchall() or []) if r[0] is not None}
-        # execute_databricks_sql(
-        #     cursor,
-        #     f"DELETE FROM {target_table} WHERE to_date({genie_date_col}) IN ({date_in_sql})",
-        #     f"DELETE {target_table}"
-        # )
-        # delete_executed = True
-        # delete_count_log = "\n".join([f"  {d}: {pre_delete_map.get(d, 0):,}건" for d in sorted(date_set)])
-        # logger.info(f"[ETL] {target_table} | 삭제된 날짜별 row수 (총 {sum(pre_delete_map.values()):,}건):\n{delete_count_log}")
+        # Step 6: Databricks DELETE (날짜 범위)
+        cursor.execute(
+            f"SELECT DATE({genie_date_col}) as date_key, COUNT(*) as row_count "
+            f"FROM {target_table} WHERE to_date({genie_date_col}) IN ({date_in_sql}) "
+            f"GROUP BY 1 ORDER BY 1"
+        )
+        pre_delete_map = {str(r[0]): r[1] for r in (cursor.fetchall() or []) if r[0] is not None}
 
-        # [TEST 주석처리] Step 7: Databricks COPY INTO (S3 Parquet으로부터)
-        # select_cols = []
-        # for hub_col in df_map["hub_column"]:
-        #     genie_col = col_rename_map.get(hub_col, hub_col)
-        #     if hub_col != genie_col:
-        #         select_cols.append(f"`{hub_col}` AS `{genie_col}`")
-        #     else:
-        #         select_cols.append(f"`{hub_col}`")
-        # select_clause = ",\n            ".join(select_cols)
-        # copy_into_sql = f"""
-        #                 COPY INTO {target_table}
-        #                 FROM (
-        #                     SELECT
-        #                         {select_clause}
-        #                     FROM '{s3_export_path}'
-        #                 )
-        #                 FILEFORMAT = PARQUET
-        #                 COPY_OPTIONS ('mergeSchema' = 'true')
-        #                 """
-        # execute_databricks_sql(cursor, copy_into_sql, f"COPY INTO {target_table}")
-        # cursor.execute(
-        #     f"SELECT DATE({genie_date_col}) as date_key, COUNT(*) as row_count "
-        #     f"FROM {target_table} WHERE to_date({genie_date_col}) IN ({date_in_sql}) "
-        #     f"GROUP BY 1 ORDER BY 1"
-        # )
-        # post_insert_map = {str(r[0]): r[1] for r in (cursor.fetchall() or []) if r[0] is not None}
-        # insert_count_log = "\n".join([f"  {d}: {post_insert_map.get(d, 0):,}건" for d in sorted(date_set)])
-        # logger.info(f"[ETL] {target_table} | 적재 완료 날짜별 row수 (총 {sum(post_insert_map.values()):,}건):\n{insert_count_log}")
-        # logger.info(f"[ETL] {target_table} 적재 완료")
+        execute_databricks_sql(
+            cursor,
+            f"DELETE FROM {target_table} WHERE to_date({genie_date_col}) IN ({date_in_sql})",
+            f"DELETE {target_table}"
+        )
+        delete_executed = True
+
+        delete_count_log = "\n".join([f"  {d}: {pre_delete_map.get(d, 0):,}건" for d in sorted(date_set)])
+        logger.info(f"[ETL] {target_table} | 삭제된 날짜별 row수 (총 {sum(pre_delete_map.values()):,}건):\n{delete_count_log}")
+
+        # Step 7: Databricks COPY INTO (S3 Parquet으로부터)
+        select_cols = []
+        for hub_col in df_map["hub_column"]:
+            genie_col = col_rename_map.get(hub_col, hub_col)
+            if hub_col != genie_col:
+                select_cols.append(f"`{hub_col}` AS `{genie_col}`")
+            else:
+                select_cols.append(f"`{hub_col}`")
+
+        select_clause = ",\n            ".join(select_cols)
+
+        copy_into_sql = f"""
+                        COPY INTO {target_table}
+                        FROM (
+                            SELECT
+                                {select_clause}
+                            FROM '{s3_export_path}'
+                        )
+                        FILEFORMAT = PARQUET
+                        COPY_OPTIONS ('mergeSchema' = 'true')
+                        """
+
+        execute_databricks_sql(cursor, copy_into_sql, f"COPY INTO {target_table}")
+
+        cursor.execute(
+            f"SELECT DATE({genie_date_col}) as date_key, COUNT(*) as row_count "
+            f"FROM {target_table} WHERE to_date({genie_date_col}) IN ({date_in_sql}) "
+            f"GROUP BY 1 ORDER BY 1"
+        )
+        post_insert_map = {str(r[0]): r[1] for r in (cursor.fetchall() or []) if r[0] is not None}
+
+        insert_count_log = "\n".join([f"  {d}: {post_insert_map.get(d, 0):,}건" for d in sorted(date_set)])
+        logger.info(f"[ETL] {target_table} | 적재 완료 날짜별 row수 (총 {sum(post_insert_map.values()):,}건):\n{insert_count_log}")
+
+        logger.info(f"[ETL] {target_table} 적재 완료")
 
     except Exception as e:
-        logger.error(f"[ETL] {table_name} 실패: {e}")
-        # [TEST 주석처리] Databricks 롤백 로직 (DELETE 미실행 상태이므로 불필요)
-        # if delete_executed:
-        #     logger.warning(f"[ETL] {target_table} DELETE 이후 실패 감지 → Time Travel 롤백 시도 (6시간 전)")
-        #     try:
-        #         execute_databricks_sql(
-        #             cursor,
-        #             f"CREATE OR REPLACE TABLE {target_table} SELECT * FROM {target_table} TIMESTAMP AS OF current_timestamp() - INTERVAL 6 HOURS",
-        #             f"ROLLBACK {target_table}"
-        #         )
-        #         logger.info(f"[ETL] {target_table} 롤백 완료")
-        #     except Exception as rb_err:
-        #         logger.error(f"[ETL] {target_table} 롤백 실패: {rb_err}")
+        logger.error(f"[ETL] {target_table} 적재 실패: {e}")
+        if delete_executed:
+            logger.warning(f"[ETL] {target_table} DELETE 이후 실패 감지 → Time Travel 롤백 시도 (6시간 전)")
+            try:
+                execute_databricks_sql(
+                    cursor,
+                    f"CREATE OR REPLACE TABLE {target_table} SELECT * FROM {target_table} TIMESTAMP AS OF current_timestamp() - INTERVAL 6 HOURS",
+                    f"ROLLBACK {target_table}"
+                )
+                logger.info(f"[ETL] {target_table} 롤백 완료")
+            except Exception as rb_err:
+                logger.error(f"[ETL] {target_table} 롤백 실패: {rb_err}")
         raise
     finally:
-        # [TEST 주석처리] Databricks 커넥션 close (미연결 상태)
-        # cursor.close()
-        # conn.close()
-        # [TEST 주석처리] Step 8: S3 cleanup (미사용)
-        # cleanup_s3_prefix(s3_client, s3_config["bucket"], s3_export_prefix)
-        # [TEST 주석처리] GCS cleanup — GCS 파일 확인 후 수동 정리
-        # cleanup_gcs_prefix(gcs_client, gcs_config["bucket"], gcs_export_prefix)
+        cursor.close()
+        conn.close()
+        # Step 8: S3 / GCS cleanup + 임시 물리 테이블 삭제 (항상 실행)
+        cleanup_s3_prefix(s3_client, s3_config["bucket"], s3_export_prefix)
+        cleanup_gcs_prefix(gcs_client, gcs_config["bucket"], gcs_export_prefix)
         if mat_table_id:
             bq_client.delete_table(mat_table_id, not_found_ok=True)
             logger.info(f"[ETL] 임시 물리 테이블 삭제 완료: {mat_table_id}")
@@ -815,12 +808,9 @@ with DAG(
         python_callable=etl_single_table,
     ).expand(op_kwargs=preprocess_metadata.output)
 
-    # [TEST 주석처리] tune_databricks (Databricks 적재 완료 후 실행)
-    # tune_databricks = PythonOperator(
-    #     task_id="task_tune_databricks",
-    #     python_callable=task_tune_databricks,
-    # )
+    tune_databricks = PythonOperator(
+        task_id="task_tune_databricks",
+        python_callable=task_tune_databricks,
+    )
 
-    # [TEST] GCS Export 까지만 실행
-    collect_notion >> preprocess_metadata >> etl_tasks
-    # collect_notion >> preprocess_metadata >> etl_tasks >> tune_databricks
+    collect_notion >> preprocess_metadata >> etl_tasks >> tune_databricks
