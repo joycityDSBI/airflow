@@ -1021,7 +1021,7 @@ def create_graph_send_email(**kwargs):
     )
 
     response_current = genai_client.models.generate_content(
-        model="gemini-3-pro-preview",  # API 호출
+        model="gemini-3.1-pro-preview",  # API 호출
         contents="\n\n".join(prompt_current_final),
         config=config_current_optimized,
     )
@@ -1076,7 +1076,7 @@ def create_graph_send_email(**kwargs):
     )
 
     response_organic_paid = genai_client.models.generate_content(
-        model="gemini-3-pro-preview",  # Vertex AI 모델명
+        model="gemini-3.1-pro-preview",  # Vertex AI 모델명
         contents="\n\n".join(prompt_organic_paid_final),
         config=config_organic_paid_optimized,
     )
@@ -1139,7 +1139,7 @@ def create_graph_send_email(**kwargs):
     )
 
     response_wow_paid = genai_client.models.generate_content(
-        model="gemini-3-pro-preview",  # Vertex AI 모델명
+        model="gemini-3.1-pro-preview",  # Vertex AI 모델명
         contents="\n\n".join(prompt_wow_paid_final),
         config=config_wow_paid_optimized,
     )
@@ -1190,7 +1190,7 @@ def create_graph_send_email(**kwargs):
     )
 
     response_country = genai_client.models.generate_content(
-        model="gemini-3-pro-preview",  # Vertex AI 모델명
+        model="gemini-3.1-pro-preview",  # Vertex AI 모델명
         contents="\n\n".join(prompt_country_final),
         config=config_country_optimized,
     )
@@ -1244,7 +1244,7 @@ def create_graph_send_email(**kwargs):
     )
 
     response5 = genai_client.models.generate_content(
-        model="gemini-3-pro-preview",  # Vertex AI 모델명
+        model="gemini-3.1-pro-preview",  # Vertex AI 모델명
         contents="\n\n".join(prompt_os_final),
         config=config_os_optimized,
     )
