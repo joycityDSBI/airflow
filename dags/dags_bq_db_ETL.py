@@ -324,8 +324,8 @@ def upload_bq_to_s3_parquet(bq_client, bqstorage_client, table_name: str, s3_cli
         # 물리 테이블에서 Storage API로 읽기
         query_job = bq_client.query(f"SELECT * FROM `{mat_table_id}`")
 
-        # 청크를 200MB(비압축 Arrow 기준) 단위로 합쳐 S3에 Parquet 업로드
-        TARGET_BYTES = 200 * 1024 * 1024  # 200MB
+        # 청크를 100MB(비압축 Arrow 기준) 단위로 합쳐 S3에 Parquet 업로드
+        TARGET_BYTES = 100 * 1024 * 1024  # 100MB
         part_idx = 0
         uploaded_files = []
         accumulated_tables = []
@@ -564,6 +564,7 @@ def etl_single_table(table_name: str, **context) -> None:
     s3_config = get_s3_config()
     catalog = db_config["catalog"]
     target_table = f"{catalog}.{schema}.{genie_table_name}"
+    target_table = target_table + "_test"  # TODO: 테스트 완료 후 제거
 
     df_map = df_column[df_column["hub_table"] == table_name][["hub_column", "genie_column", "genie_column_desc"]]
     df_map = df_map[df_map["genie_column"].astype(str).str.len() > 0]
