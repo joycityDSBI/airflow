@@ -96,7 +96,7 @@ COLUMN_COL_MAP = {
 
 # 테스트용 GCS 버킷 (prod 전환 시: Variable.get("GCS_EXPORT_BUCKET") 으로 교체)
 # GCS_TEST_BUCKET = "test_bkbk"
-GCS_TEST_BUCKET = Variable.get("GCS_EXPORT_BUCKET")
+GCS_TEST_BUCKET = Variable.get("GCS_EXPORT_BUCKET").strip()
 GCS_EXPORT_PREFIX = "bq-exports"
 
 # ===============================================================
