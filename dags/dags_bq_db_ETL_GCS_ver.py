@@ -513,7 +513,7 @@ def etl_single_table(table_name: str, **context) -> None:
     s3_config = get_s3_config()
     gcs_config = get_gcs_config()
     catalog = db_config["catalog"]
-    target_table = f"{catalog}.{schema}.{genie_table_name}_test"
+    target_table = f"{catalog}.{schema}.{genie_table_name}"
 
     df_map = df_column[df_column["hub_table"] == table_name][["hub_column", "genie_column", "genie_column_desc"]]
     df_map = df_map[df_map["genie_column"].astype(str).str.len() > 0]
