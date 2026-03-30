@@ -136,7 +136,7 @@ def insert_daily_useage_notion():
     df = daily_useage_df()
     df['datekey'] = pd.to_datetime(df['datekey']).dt.date
     df['query_count'] = pd.to_numeric(df['query_count'], errors='coerce').fillna(0).astype(int)
-    df['estimated_cost_usd'] = pd.to_numeric(df['query_count'], errors='coerce').fillna(0).astype(float)
+    df['estimated_cost_usd'] = pd.to_numeric(df['estimated_cost_usd'], errors='coerce').fillna(0).astype(float)
 
     if df.empty:
         print("No data to upsert.")
@@ -207,10 +207,10 @@ def insert_user_useage_notion():
     notion_db_id = '333ea67a568180c9a412d186139300d3'
     
     df = user_useage_df()
-    df['user_email'] = pd.to_datetime(df['user_email']).astype(str)
+    
     df['query_count'] = pd.to_numeric(df['query_count'], errors='coerce').fillna(0).astype(int)
     df['total_tb'] = pd.to_numeric(df['total_tb'], errors='coerce').fillna(0).astype(float)
-    df['estimated_cost_usd'] = pd.to_numeric(df['query_count'], errors='coerce').fillna(0).astype(float)
+    df['estimated_cost_usd'] = pd.to_numeric(df['estimated_cost_usd'], errors='coerce').fillna(0).astype(float)
 
     if df.empty:
         print("No data to upsert.")
