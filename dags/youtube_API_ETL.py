@@ -568,6 +568,19 @@ def youtube_etl():
         for col in ['video_id', 'video_title', 'comment_id', 'author', 'text', 'channel_id']:
             df_comments_all[col] = df_comments_all[col].astype(str)
 
+    views_mb     = df_views.memory_usage(deep=True).sum() / 1024 / 1024
+    age_gender_mb = df_age_gender.memory_usage(deep=True).sum() / 1024 / 1024
+    comments_mb  = df_comments_all.memory_usage(deep=True).sum() / 1024 / 1024
+    total_mb     = views_mb + age_gender_mb + comments_mb
+    print(
+        f"[메모리 사용량] "
+        f"views={views_mb:.2f}MB | "
+        f"age_gender={age_gender_mb:.2f}MB | "
+        f"comments={comments_mb:.2f}MB | "
+        f"합계={total_mb:.2f}MB "
+        f"(rows: views={len(df_views)}, age_gender={len(df_age_gender)}, comments={len(df_comments_all)})"
+    )
+
     upsert_to_bigquery(client, df_views, PROJECT_ID, DATASET_ID, views_by_video_id_table_id)
     print("Views by video ID upserted.")
 
