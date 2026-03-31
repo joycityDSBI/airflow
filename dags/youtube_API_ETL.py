@@ -347,7 +347,7 @@ def compute_daily_delta_from_pre(client, channel_id, datekey):
         GREATEST(today.comments_cum - IFNULL(yesterday.comments_cum, 0), 0)     AS comments,
         0                                                                        AS shares
     FROM {pre_table} today
-    LEFT JOIN {pre_table} yesterday
+    INNER JOIN {pre_table} yesterday
         ON  today.video_id   = yesterday.video_id
         AND today.channel_id = yesterday.channel_id
         AND yesterday.datekey = DATE_SUB(today.datekey, INTERVAL 1 DAY)
