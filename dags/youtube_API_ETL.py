@@ -149,7 +149,7 @@ def fetch_combined_data(analytics_service, video_map, start_date, end_date):
         for attempt in range(3):
             try:
                 request = analytics_service.reports().query(
-                    ids="channel==MINE",
+                    ids="channel==MINE", #TODO : 브랜드 계정관리 채널의 경우 channel_id 값으로 설정을해야함. 참고하길.
                     startDate=start_date,
                     endDate=end_date,
                     metrics="views,likes,comments,shares",
@@ -190,7 +190,7 @@ def fetch_combined_data_viewer_per_video(analytics_service, video_map, start_dat
         for attempt in range(3):
             try:
                 request = analytics_service.reports().query(
-                    ids="channel==MINE",
+                    ids="channel==MINE", #TODO : 브랜드 계정관리 채널의 경우 channel_id 값으로 설정을해야함. 참고하길.
                     startDate=start_date,
                     endDate=end_date,
                     metrics="viewerPercentage",
@@ -463,12 +463,14 @@ def upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, TABLE_ID):
         client.delete_table(staging_table_id, not_found_ok=True)
 
 
-def youtube_RESU_etl():
+def youtube_etl():
     today = datetime.now(timezone.utc).date()
     yesterday = today - timedelta(days=1)
-    start_date = yesterday.isoformat()
-    end_date   = yesterday.isoformat()
-    print(f"데이터 조회 기간: {start_date} ~ {end_date}")
+    end_date             = yesterday.isoformat()
+    start_date_data_api  = yesterday.isoformat()           # Data API: 하루치만
+    start_date_analytics = (today - timedelta(days=7)).isoformat()  # Analytics API: 7일 재수집 (딜레이 대응)
+    print(f"데이터 조회 기간 (Data API)     : {start_date_data_api} ~ {end_date}")
+    print(f"데이터 조회 기간 (Analytics API): {start_date_analytics} ~ {end_date}")
 
     creds_dict = json.loads(CREDENTIALS_JSON) if isinstance(CREDENTIALS_JSON, str) else CREDENTIALS_JSON
     bq_creds = service_account.Credentials.from_service_account_info(creds_dict)
@@ -488,13 +490,13 @@ def youtube_RESU_etl():
             data_svc, ana_svc = get_services(channel['token_file'])
             video_map = get_video_id_title_map(data_svc)
 
-            df_v = fetch_combined_data(ana_svc, video_map, start_date, end_date)
+            df_v = fetch_combined_data(ana_svc, video_map, start_date_analytics, end_date)
             df_v['channel_id']       = channel_id
             df_v['joyple_game_code'] = game_code
             df_v['source_api']       = source_api
             all_views.append(df_v)
 
-            df_ag = fetch_combined_data_viewer_per_video(ana_svc, video_map, start_date, end_date)
+            df_ag = fetch_combined_data_viewer_per_video(ana_svc, video_map, start_date_analytics, end_date)
             df_ag['channel_id']       = channel_id
             df_ag['joyple_game_code'] = game_code
             all_age_gender.append(df_ag)
@@ -596,10 +598,10 @@ with DAG(
     tags=['youtube', 'RESU', 'bigquery'],
 ) as dag:
 
-    youtube_RESU_etl_task = PythonOperator(
-        task_id='youtube_RESU_etl_task',
-        python_callable=youtube_RESU_etl,
+    youtube_etl_task = PythonOperator(
+        task_id='youtube_etl_task',
+        python_callable=youtube_etl,
     )
 
 
-youtube_RESU_etl_task
+youtube_etl_task
