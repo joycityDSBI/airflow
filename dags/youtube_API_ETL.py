@@ -581,6 +581,13 @@ def youtube_etl():
         f"(rows: views={len(df_views)}, age_gender={len(df_age_gender)}, comments={len(df_comments_all)})"
     )
 
+    if not df_views.empty:
+        df_views = df_views.drop_duplicates(subset=['datekey', 'channel_id', 'video_id'])
+    if not df_age_gender.empty:
+        df_age_gender = df_age_gender.drop_duplicates(subset=['datekey', 'channel_id', 'video_id', 'age_group', 'gender'])
+    if not df_comments_all.empty:
+        df_comments_all = df_comments_all.drop_duplicates(subset=['comment_id', 'channel_id', 'video_id'])
+
     upsert_to_bigquery(client, df_views, PROJECT_ID, DATASET_ID, views_by_video_id_table_id)
     print("Views by video ID upserted.")
 
