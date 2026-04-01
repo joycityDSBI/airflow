@@ -110,23 +110,23 @@ def send_wishlist_email():
     color_daily = '#4C72B0'
     color_cumul = '#DD8452'
 
-    ax1.set_xlabel('날짜', fontsize=12)
-    ax1.set_ylabel('일자별 위시리스트 수', color=color_daily, fontsize=11)
+    ax1.set_xlabel('Date', fontsize=12)
+    ax1.set_ylabel('Daily Wishlists', color=color_daily, fontsize=11)
     line1, = ax1.plot(df['datekey'], df['일자별 위시리스트 수'],
-                      color=color_daily, marker='o', linewidth=2, label='일자별 위시리스트 수')
+                      color=color_daily, marker='o', linewidth=2, label='Daily Wishlists')
     ax1.tick_params(axis='y', labelcolor=color_daily)
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
     ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
     plt.xticks(rotation=45)
 
     ax2 = ax1.twinx()
-    ax2.set_ylabel('누적 위시리스트 수', color=color_cumul, fontsize=11)
+    ax2.set_ylabel('Cumulative Wishlists', color=color_cumul, fontsize=11)
     line2, = ax2.plot(df['datekey'], df['누적 위시리스트 수'],
-                      color=color_cumul, marker='s', linewidth=2, linestyle='--', label='누적 위시리스트 수')
+                      color=color_cumul, marker='s', linewidth=2, linestyle='--', label='Cumulative Wishlists')
     ax2.tick_params(axis='y', labelcolor=color_cumul)
 
     ax1.legend(handles=[line1, line2], loc='upper left', fontsize=10)
-    plt.title('STEAM 위시리스트 현황 (최근 14일)', fontsize=14, pad=15)
+    plt.title('STEAM Wishlist (Last 14 Days)', fontsize=14, pad=15)
     fig.tight_layout()
 
     buf = io.BytesIO()
@@ -173,8 +173,6 @@ def send_wishlist_email():
     msg.attach(img)
 
     with smtplib.SMTP(smtp_host, smtp_port) as server:
-        server.starttls()
-        server.login(smtp_user, smtp_password)
         server.sendmail(smtp_user, email_to.split(','), msg.as_string())
 
     logger.info("위시리스트 리포트 이메일 전송 완료: %s", email_to)
@@ -209,4 +207,4 @@ with DAG(
     )
 
 
-    send_wishlist_email_task
+send_wishlist_email_task
