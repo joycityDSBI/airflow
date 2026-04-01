@@ -124,14 +124,14 @@ def send_wishlist_email():
     df_region = df_region.sort_values('wishlist_cnt', ascending=False).reset_index(drop=True)
 
     # --- 차트 생성: 라인 차트(위) + 파이 차트(아래) ---
-    fig = plt.figure(figsize=(4, 5))
+    fig = plt.figure(figsize=(12, 15))
 
-    color_daily = '#4C72B0'
-    color_cumul = '#DD8452'
+    color_daily = "#23C479"
+    color_cumul = "#FA792F"
 
     # 라인 차트
     ax1 = fig.add_subplot(2, 1, 1)
-    ax1.set_xlabel('Date', fontsize=12)
+    ax1.set_xlabel('Date', fontsize=10)
     ax1.set_ylabel('Daily Wishlists', color=color_daily, fontsize=11)
     line1, = ax1.plot(df['datekey'], df['일자별 위시리스트 수'],
                       color=color_daily, marker='o', linewidth=2, label='Daily Wishlists')
@@ -141,7 +141,7 @@ def send_wishlist_email():
     plt.setp(ax1.get_xticklabels(), rotation=45)
 
     ax2 = ax1.twinx()
-    ax2.set_ylabel('Cumulative Wishlists', color=color_cumul, fontsize=11)
+    ax2.set_ylabel('Cumulative Wishlists', color=color_cumul, fontsize=10)
     line2, = ax2.plot(df['datekey'], df['누적 위시리스트 수'],
                       color=color_cumul, marker='s', linewidth=2, linestyle='--', label='Cumulative Wishlists')
     ax2.tick_params(axis='y', labelcolor=color_cumul)
