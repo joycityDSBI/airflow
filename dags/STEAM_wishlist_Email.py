@@ -97,19 +97,40 @@ def extract_bigquery_data():
 
     return df
 
+def region_bigquery_data():
+    client = init_clients()["bq_client"]
+
+    query = """
+        select region, sum(adds) AS wishlist_cnt
+        from `datahub-478802.external_data.steam_wishlist_region` 
+        group by region
+    """
+
+    df = client.query(
+        query, job_config=bigquery.QueryJobConfig()
+    ).to_dataframe()
+
+    return df
+
+
 
 def send_wishlist_email():
-    """extract_bigquery_data 결과를 라인 차트로 그려 이메일로 전송합니다."""
+    """extract_bigquery_data + region_bigquery_data 결과를 차트로 그려 이메일로 전송합니다."""
     df = extract_bigquery_data()
     df['datekey'] = pd.to_datetime(df['datekey'])
     df = df.sort_values('datekey')
 
-    # --- 차트 생성 ---
-    fig, ax1 = plt.subplots(figsize=(12, 6))
+    df_region = region_bigquery_data()
+    df_region = df_region.sort_values('wishlist_cnt', ascending=False).reset_index(drop=True)
+
+    # --- 차트 생성: 라인 차트(위) + 파이 차트(아래) ---
+    fig = plt.figure(figsize=(12, 14))
 
     color_daily = '#4C72B0'
     color_cumul = '#DD8452'
 
+    # 라인 차트
+    ax1 = fig.add_subplot(2, 1, 1)
     ax1.set_xlabel('Date', fontsize=12)
     ax1.set_ylabel('Daily Wishlists', color=color_daily, fontsize=11)
     line1, = ax1.plot(df['datekey'], df['일자별 위시리스트 수'],
@@ -117,20 +138,42 @@ def send_wishlist_email():
     ax1.tick_params(axis='y', labelcolor=color_daily)
     ax1.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
     ax1.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-    plt.xticks(rotation=45)
+    plt.setp(ax1.get_xticklabels(), rotation=45)
 
     ax2 = ax1.twinx()
     ax2.set_ylabel('Cumulative Wishlists', color=color_cumul, fontsize=11)
     line2, = ax2.plot(df['datekey'], df['누적 위시리스트 수'],
                       color=color_cumul, marker='s', linewidth=2, linestyle='--', label='Cumulative Wishlists')
     ax2.tick_params(axis='y', labelcolor=color_cumul)
-
     ax1.legend(handles=[line1, line2], loc='upper left', fontsize=10)
-    plt.title('STEAM Wishlist (Last 14 Days)', fontsize=14, pad=15)
-    fig.tight_layout()
+    ax1.set_title('STEAM Wishlist (Last 14 Days)', fontsize=14, pad=15)
+
+    # 파이 차트 - 상위 10개 지역, 나머지는 Others로 합산
+    TOP_N = 10
+    if len(df_region) > TOP_N:
+        top = df_region.head(TOP_N).copy()
+        others_val = df_region.iloc[TOP_N:]['wishlist_cnt'].sum()
+        others_row = pd.DataFrame([{'region': 'Others', 'wishlist_cnt': others_val}])
+        pie_df = pd.concat([top, others_row], ignore_index=True)
+    else:
+        pie_df = df_region.copy()
+
+    ax_pie = fig.add_subplot(2, 1, 2)
+    _, _, autotexts = ax_pie.pie(
+        pie_df['wishlist_cnt'].tolist(),
+        labels=pie_df['region'].tolist(),
+        autopct='%1.1f%%',
+        startangle=90,
+        pctdistance=0.8,
+    )
+    for at in autotexts:
+        at.set_fontsize(8)
+    ax_pie.set_title('Wishlist by Region (Cumulative)', fontsize=14, pad=15)
+
+    fig.tight_layout(pad=3.0)
 
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=150)
+    fig.savefig(buf, format='png', dpi=150)
     buf.seek(0)
     plt.close(fig)
 
@@ -140,6 +183,12 @@ def send_wishlist_email():
     daily_val = int(latest['일자별 위시리스트 수'])
     cumul_val = int(latest['누적 위시리스트 수'])
 
+    region_rows = ''.join(
+        f"<tr><td style='padding:3px 12px;'>{row['region']}</td>"
+        f"<td style='padding:3px 12px; text-align:right;'>{int(row['wishlist_cnt']):,}</td></tr>"
+        for _, row in df_region.iterrows()
+    )
+
     html_body = f"""
     <html><body>
     <h2>STEAM 위시리스트 리포트</h2>
@@ -148,6 +197,14 @@ def send_wishlist_email():
       <li>일자별 위시리스트 수: <b>{daily_val:,}</b></li>
       <li>누적 위시리스트 수: <b>{cumul_val:,}</b></li>
     </ul>
+    <h3>지역별 누적 위시리스트 수</h3>
+    <table border="1" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+      <tr style="background:#f0f0f0;">
+        <th style="padding:4px 12px;">Region</th>
+        <th style="padding:4px 12px;">Cumulative Wishlists</th>
+      </tr>
+      {region_rows}
+    </table>
     <br>
     <img src="cid:wishlist_chart">
     </body></html>
