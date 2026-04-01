@@ -124,7 +124,7 @@ def send_wishlist_email():
     df_region = df_region.sort_values('wishlist_cnt', ascending=False).reset_index(drop=True)
 
     # --- 차트 생성: 라인 차트(위) + 파이 차트(아래) ---
-    fig = plt.figure(figsize=(12, 14))
+    fig = plt.figure(figsize=(4, 5))
 
     color_daily = '#4C72B0'
     color_cumul = '#DD8452'
@@ -207,7 +207,11 @@ def send_wishlist_email():
     </table>
     <br>
     <img src="cid:wishlist_chart">
-    <a href="https://www.notion.so/joycity/32cea67a568180ce990ae74e85de7d3d?v=32cea67a568180d7beaa000cb0525e8f">자세히 보기</a>
+    <a href="https://www.notion.so/joycity/32cea67a568180ce990ae74e85de7d3d?v=32cea67a568180d7beaa000cb0525e8f"
+       style="display:inline-block; padding:10px 24px; background-color:#4C72B0; color:#ffffff;
+              text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold;">
+      자세히 보기
+    </a>
     </body></html>
     """
 
