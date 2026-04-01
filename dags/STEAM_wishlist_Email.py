@@ -207,6 +207,7 @@ def send_wishlist_email():
     </table>
     <br>
     <img src="cid:wishlist_chart">
+    <a href="https://www.notion.so/joycity/32cea67a568180ce990ae74e85de7d3d?v=32cea67a568180d7beaa000cb0525e8f">자세히 보기</a>
     </body></html>
     """
 
