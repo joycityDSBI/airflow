@@ -148,8 +148,8 @@ def send_wishlist_email():
     ax1.legend(handles=[line1, line2], loc='upper left', fontsize=10)
     ax1.set_title('STEAM Wishlist (Last 14 Days)', fontsize=14, pad=15)
 
-    # 파이 차트 - 상위 10개 지역, 나머지는 Others로 합산
-    TOP_N = 10
+    # 파이 차트 - 상위 7개 지역, 나머지는 Others로 합산
+    TOP_N = 7
     if len(df_region) > TOP_N:
         top = df_region.head(TOP_N).copy()
         others_val = df_region.iloc[TOP_N:]['wishlist_cnt'].sum()
@@ -220,7 +220,7 @@ def send_wishlist_email():
     smtp_port = 25
     smtp_user = "ds_bi@joycity.com"
     smtp_password = get_var("SMTP_PASSWORD")
-    email_to = 'fc748c69.joycity.com@kr.teams.ms'
+    email_to = '3b590d59.joycity.com@kr.teams.ms'
 
     msg = MIMEMultipart('related')
     msg['Subject'] = f'[STEAM 위시리스트] {date_str} 리포트'
