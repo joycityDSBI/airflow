@@ -36,7 +36,6 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
 APP_ID = '4004820'
 
-
 def init_clients():
     """Task 내부에서 실행되어 필요한 클라이언트들을 생성하여 반환합니다."""
     creds = get_gcp_credentials()
