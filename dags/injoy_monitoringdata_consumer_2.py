@@ -149,7 +149,7 @@ def build_properties_payload(row_data: dict) -> dict:
         elif key in ["status", "error_type", "feedback_rating", "스페이스명"]:
             # 선택(Select) 속성은 값이 비어있을 때 빈 문자열("")을 보내면 에러가 날 수 있습니다.
             # 따라서 값이 있는 경우에만 select payload를 생성하도록 안전하게 처리하는 것이 좋습니다.
-            val_str = str(value or "").strip()
+            val_str = str(value or "").strip().replace(",", "")
             if val_str:
                 properties[key] = {"select": {"name": val_str}}
 
@@ -297,8 +297,7 @@ def extract_data(**context):
                 feedback_rating
             FROM 
                 datahub.injoy_ops_schema.injoy_monitoring_data
-            -- WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 3 DAYS AS TIMESTAMP) 
-            where event_time_kst < CAST(DATE(NOW()) AS TIMESTAMP) 
+            WHERE event_time_kst >= CAST(DATE(NOW()) - INTERVAL 3 DAYS AS TIMESTAMP) 
             ORDER BY conversation_id, event_time_kst
         """
          
