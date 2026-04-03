@@ -483,6 +483,8 @@ def adjust_dim_product_code(**context):
                          , CAST(null AS STRING) as product_name_EN
                          , CAST(null AS STRING) as product_name_JP,
                            ROW_NUMBER() OVER (PARTITION BY 139, code ORDER BY set_date, PKind DESC) as rn
+                         , set_date as sale_date_start
+                         , end_date as sale_date_end
                     FROM `data-science-division-216308.PackageInfo.CFWZ_PackageInfo`
                     CROSS JOIN UNNEST([CAST(PKind AS STRING)
                                       ,CAST(PRODUCTCODE_aos AS STRING)
@@ -504,6 +506,8 @@ def adjust_dim_product_code(**context):
                          , CAST(null AS STRING) as product_name_EN
                          , CAST(null AS STRING) as product_name_JP
                          , ROW_NUMBER() OVER (PARTITION BY 129, code ORDER BY package_kind DESC) as rn
+                         , cast(null as string) as sale_date_start
+                         , cast(null as string) as sale_date_end
                     FROM `data-science-division-216308.PackageInfo.GNSS_PackageInfo`
                     CROSS JOIN UNNEST([CAST(PACKAGE_KIND AS STRING)
                                       ,CAST(PRODUCTCODE_aos AS STRING)
@@ -525,6 +529,8 @@ def adjust_dim_product_code(**context):
                      , CAST(null AS STRING) as product_name_EN
                      , CAST(null AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY 147, code ORDER BY sale_date_start, package_kind DESC) as rn
+                     , Cast(sale_date_start as STRING) as sale_date_start
+                     , Cast(sale_date_end as STRING) as sale_date_end                     
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_BLS`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                   ,CAST(iap_code_google AS STRING)
@@ -546,7 +552,9 @@ def adjust_dim_product_code(**context):
                 , CAST(package_name AS STRING) as product_name
                 , CAST(null AS STRING) as product_name_EN
                 , CAST(null AS STRING) as product_name_JP
-                 , ROW_NUMBER() OVER (PARTITION BY 140, code ORDER BY sale_date_start, package_kind DESC) as rn
+                , ROW_NUMBER() OVER (PARTITION BY 140, code ORDER BY sale_date_start, package_kind DESC) as rn
+                , Cast(sale_date_start as STRING) as sale_date_start
+                , Cast(sale_date_end as STRING) as sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_BLSKR`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                   ,CAST(iap_code_google AS STRING)
@@ -569,6 +577,8 @@ def adjust_dim_product_code(**context):
                      , CAST(null AS STRING) as product_name_EN
                      , CAST(null AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY 154, code ORDER BY sale_date_start, package_kind DESC) as rn
+                     , Cast(sale_date_start as STRING) as sale_date_start
+                     , Cast(sale_date_end as STRING) as sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_C4`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                  , CAST(iap_code_google AS STRING)
@@ -590,6 +600,8 @@ def adjust_dim_product_code(**context):
                      , CAST(null AS STRING) as product_name_EN
                      , CAST(null AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY 139, code ORDER BY sale_date_start, package_kind DESC) as rn
+                     , Cast(sale_date_start as STRING) as sale_date_start
+                     , Cast(sale_date_end as STRING) as sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_CFWZ`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                  , CAST(iap_code_google AS STRING)
@@ -612,6 +624,8 @@ def adjust_dim_product_code(**context):
                      , CAST(null AS STRING) as product_name_EN
                      , CAST(null AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY 155, code ORDER BY sale_date_start, package_kind DESC) as rn
+                     , sale_date_start
+                     , sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_DRB`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                  , CAST(iap_code_google AS STRING)
@@ -620,10 +634,30 @@ def adjust_dim_product_code(**context):
 
             UNION ALL
 
-            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start
+                 , sale_date_end
             from 
             (
-            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP, sale_date_start
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start
+                 , sale_date_end
             , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY sale_date_start, package_kind desc) as rn
             from
             (
@@ -639,6 +673,7 @@ def adjust_dim_product_code(**context):
                     , CAST(null AS STRING) as product_name_JP
                     , sale_date_start
                     , package_kind
+                    , sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_DS`
                 -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
                 CROSS JOIN UNNEST([
@@ -665,6 +700,8 @@ def adjust_dim_product_code(**context):
                      , CAST(null AS STRING) as product_name_EN
                      , CAST(null AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY 153, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , Cast(sale_date_start as STRING) as sale_date_start
+                     , Cast(sale_date_end as STRING) as sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_GBCC`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                  , CAST(iap_code_google AS STRING)
@@ -673,10 +710,30 @@ def adjust_dim_product_code(**context):
 
             UNION ALL
 
-            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start 
+                 , sale_date_end
             from 
             (
-            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP, sale_date_start
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start
+                 , sale_date_end
             , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY sale_date_start, package_kind desc) as rn
             from
             (
@@ -692,6 +749,7 @@ def adjust_dim_product_code(**context):
                     , CAST(null AS STRING) as product_name_JP
                     , sale_date_start
                     , package_kind
+                    , sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_GBTW`
                 -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
                 CROSS JOIN UNNEST([
@@ -719,6 +777,8 @@ def adjust_dim_product_code(**context):
                      , CAST(null AS STRING) as product_name_EN
                      , CAST(null AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY 156, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , Cast(sale_date_start as STRING) as sale_date_start
+                     , Cast(sale_date_end as STRING) as sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_JTWN`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                  , CAST(iap_code_google AS STRING)
@@ -741,6 +801,8 @@ def adjust_dim_product_code(**context):
                      , CAST(null AS STRING) as product_name_EN
                      , CAST(null AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY 148, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , sale_date_start
+                     , sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_KOFS`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                  , CAST(iap_code_google AS STRING)
@@ -763,6 +825,8 @@ def adjust_dim_product_code(**context):
                      , CAST(null AS STRING) as product_name_EN
                      , CAST(null AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY 151, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , sale_date_start 
+                     , sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_LOL`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                  , CAST(iap_code_google AS STRING)
@@ -785,6 +849,8 @@ def adjust_dim_product_code(**context):
                      , A.Package_Name_ENG as product_name_EN
                      , CAST(B.package_name_jp AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY G.game_id, code ORDER BY A.Start_Date, A.package_kind DESC) as rn
+                     , CAST(A.Start_Date as STRING) as sale_date_start
+                     , CAST(A.End_Date as STRING) as sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU` as A
                 CROSS JOIN (SELECT 159 as game_id UNION ALL SELECT 1590) as G
                 LEFT JOIN `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP` as B ON A.Package_Kind = B.Package_Kind
@@ -796,10 +862,30 @@ def adjust_dim_product_code(**context):
 
             UNION ALL
 
-            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start
+                 , sale_date_end
             from 
             (
-            select joyple_game_code, product_code, goods_type, shop_category, package_category, price, product_name, product_name_EN, product_name_JP, sale_date_start
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start
+                 , sale_date_end
             , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY sale_date_start, package_kind desc) as rn
             from
             (
@@ -815,6 +901,7 @@ def adjust_dim_product_code(**context):
                     , CAST(null AS STRING) as product_name_JP
                     , sale_date_start
                     , package_kind
+                    , sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_POTC`
                 -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
                 CROSS JOIN UNNEST([
@@ -842,6 +929,8 @@ def adjust_dim_product_code(**context):
                      , CAST(null AS STRING) as product_name_EN
                      , CAST(null AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY 142, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , sale_date_start
+                     , sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_TERA`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                  , CAST(iap_code_google AS STRING)
@@ -864,6 +953,8 @@ def adjust_dim_product_code(**context):
                      , CAST(null AS STRING) as product_name_EN
                      , CAST(null AS STRING) as product_name_JP
                      , ROW_NUMBER() OVER (PARTITION BY 30001, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , sale_date_start
+                     , sale_date_end
                 FROM `data-science-division-216308.PackageInfo.PackageInfo_WWM`
                 CROSS JOIN UNNEST([CAST(package_kind AS STRING)
                                  , CAST(iap_code_google AS STRING)
@@ -886,6 +977,8 @@ def adjust_dim_product_code(**context):
     , target.product_name_EN = source.product_name_EN
     , target.product_name_JP = source.product_name_JP
     , target.update_timestamp = CURRENT_TIMESTAMP()
+    , target.sale_date_start = source.sale_date_start
+    , target.sale_date_end = source.sale_date_end
     """
 
     query_job = client.query(query)
