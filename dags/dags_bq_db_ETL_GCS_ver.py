@@ -309,10 +309,33 @@ def copy_gcs_to_s3(gcs_client: storage.Client, s3_client, gcs_bucket: str, gcs_p
     if not blobs:
         raise AirflowException(f"[GCS→S3] GCS에서 파일을 찾을 수 없습니다. (prefix: {gcs_prefix})")
 
+    _GCS_DOWNLOAD_MAX_RETRIES = 3
+    _GCS_DOWNLOAD_RETRY_DELAY = 2  # seconds
+
     for blob in blobs:
         file_name = blob.name.split("/")[-1]
         s3_key = f"{s3_prefix}{file_name}"
-        data = blob.download_as_bytes()
+
+        data = None
+        for attempt in range(1, _GCS_DOWNLOAD_MAX_RETRIES + 1):
+            try:
+                if attempt == 1:
+                    # generation이 고정된 blob으로 먼저 시도
+                    data = blob.download_as_bytes()
+                else:
+                    # generation 비고정 fresh reference로 재시도 (404 방어)
+                    fresh_blob = bucket.blob(blob.name)
+                    data = fresh_blob.download_as_bytes()
+                break
+            except Exception as e:
+                if attempt == _GCS_DOWNLOAD_MAX_RETRIES:
+                    raise
+                logger.warning(
+                    f"[GCS→S3] 다운로드 실패 (시도 {attempt}/{_GCS_DOWNLOAD_MAX_RETRIES}): "
+                    f"gs://{gcs_bucket}/{blob.name} | {e} → {_GCS_DOWNLOAD_RETRY_DELAY}초 후 fresh reference로 재시도"
+                )
+                time.sleep(_GCS_DOWNLOAD_RETRY_DELAY)
+
         s3_client.put_object(Bucket=s3_bucket, Key=s3_key, Body=data)
         logger.info(f"[GCS→S3] 업로드 완료: gs://{gcs_bucket}/{blob.name} → s3://{s3_bucket}/{s3_key} ({blob.size / (1024**2):.2f} MB)")
 
