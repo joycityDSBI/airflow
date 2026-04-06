@@ -750,7 +750,7 @@ def etl_f_user_map_test(target_date: list, client):
                     app_id, media_source, bundle_id, is_organic, agency, campaign, init_campaign,
                     adset_name, ad_name, is_retargeting, advertising_id, idfa, site_id,
                     channel, CB1_media_source, CB1_campaign, CB2_media_source, CB2_campaign, CB3_media_source, CB3_campaign
-                    FROM datahub-478802.datahub.f_common_register_test
+                    FROM datahub-478802.datahub.f_common_register
                     WHERE reg_datekey < '{end_date}'
                 ) AS B
                 ON A.joyple_game_code = B.joyple_game_code AND A.auth_account_name = B.auth_account_name
@@ -971,7 +971,7 @@ def etl_f_user_map_char_test(target_date: list, client):
                     FROM `datahub-478802.datahub.f_common_payment` WHERE datekey >= '{start_date}' and datekey < '{end_date}'
                     GROUP BY 1,2,3
                 ) AS F ON A.joyple_game_code = F.joyple_game_code AND A.auth_account_name = F.auth_account_name AND COALESCE(A.game_sub_user_name, 'dafault') = COALESCE(F.game_sub_user_name, 'dafault')
-                LEFT OUTER JOIN (SELECT * FROM `datahub-478802.datahub.f_common_register_test` WHERE reg_datekey < '{end_date}') AS G
+                LEFT OUTER JOIN (SELECT * FROM `datahub-478802.datahub.f_common_register` WHERE reg_datekey < '{end_date}') AS G
                     ON A.joyple_game_code = G.joyple_game_code AND A.auth_account_name = G.auth_account_name
                 LEFT OUTER JOIN (
                     SELECT joyple_game_code, auth_account_name, game_sub_user_name,
