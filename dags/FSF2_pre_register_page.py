@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 # ==========================================
 # 설정
 # ==========================================
-# API_URL = "https://freestylefootball2.com/api/pre-register/v2-cbt/stats"  # [LIVE]
-API_URL = "https://qa-fsf2.joycity.com/api/pre-register/v2-cbt/stats"  # [QA]
+API_URL = "https://freestylefootball2.com/api/pre-register/v2-cbt/stats"  # [LIVE]
+# API_URL = "https://qa-fsf2.joycity.com/api/pre-register/v2-cbt/stats"  # [QA]
 
 PROJECT_ID = "datahub-478802"
 BQ_DATASET_ID = "external_data"
