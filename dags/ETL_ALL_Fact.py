@@ -59,8 +59,8 @@ def etl_fact_tracker(**context):
         etl_f_tracker_install_test(target_date=target_date, client=bq_client)
         etl_f_tracker_first(target_date=target_date, client=bq_client)          ## 추가 26-04-06
         # etl_f_tracker_re_engagement(target_date=target_date, client=bq_client) ## 제거됨
-        #etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
-        #etl_f_cost_campaign_rule(client=bq_client)
+        etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
+        etl_f_cost_campaign_rule(client=bq_client)
         logger.info("✅ etl_fact_tracker completed successfully")
         return True
     
@@ -96,9 +96,9 @@ def etl_fact_access(**context):
         #adjust_f_common_register(target_date=target_date, client=bq_client)
         etl_f_common_register_test(target_date=target_date, client=bq_client)
         adjust_f_common_register_test(target_date=target_date, client=bq_client)
-        #etl_f_common_register_char(target_date=target_date, client=bq_client)
-        #adjust_f_common_register_char(target_date=target_date, client=bq_client)
-        #etl_f_common_access(target_date=target_date, client=bq_client)
+        etl_f_common_register_char(target_date=target_date, client=bq_client)
+        adjust_f_common_register_char(target_date=target_date, client=bq_client)
+        etl_f_common_access(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_access completed successfully")
         return True
     except Exception as e:
@@ -129,7 +129,7 @@ def etl_fact_payment(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        #etl_f_common_payment(target_date=target_date, client=bq_client)
+        etl_f_common_payment(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_payment completed successfully")
         return True
     except Exception as e:
@@ -161,8 +161,8 @@ def etl_fact_funnel(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        #etl_f_funnel_access_first(target_date=target_date, client=bq_client)
-        #etl_f_funnel_access(target_date=target_date, client=bq_client)
+        etl_f_funnel_access_first(target_date=target_date, client=bq_client)
+        etl_f_funnel_access(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_funnel completed successfully")
         return True
     except Exception as e:
@@ -191,10 +191,10 @@ def etl_fact_IAA(**context):
     client = init_clients()
     bq_client = client["bq_client"]
     try:
-        #etl_f_IAA_game_sub_user_watch(target_date=target_date, client=bq_client)
-        #etl_f_IAA_performance(client=bq_client)
-        #etl_f_IAA_auth_account_performance_joyple(target_date=target_date, client=bq_client)
-        #etl_f_IAA_auth_account_performance(target_date=target_date, client=bq_client)
+        etl_f_IAA_game_sub_user_watch(target_date=target_date, client=bq_client)
+        etl_f_IAA_performance(client=bq_client)
+        etl_f_IAA_auth_account_performance_joyple(target_date=target_date, client=bq_client)
+        etl_f_IAA_auth_account_performance(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_IAA completed successfully")
         return True
     except Exception as e:
@@ -228,7 +228,7 @@ def etl_fact_usermap(**context):
         tsa = [date]
 
         try:
-            #etl_f_common_access_last_login(target_date=tsa, client=bq_client)
+            etl_f_common_access_last_login(target_date=tsa, client=bq_client)
             #etl_f_user_map(target_date=tsa, client=bq_client)
             #etl_f_user_map_char(target_date=tsa, client=bq_client)
             etl_f_user_map_test(target_date=tsa, client=bq_client)
