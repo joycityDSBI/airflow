@@ -795,7 +795,7 @@ def etl_f_user_map(target_date: list, client):
                     reg_datekey, reg_datetime,
                     tracker_account_id, tracker_type_id,
                     reg_country_code, market_id, os_id, platform_device_type,
-                    install_country_code, first_tracking_datekey,
+                    first_tracking_country_code, first_tracking_datekey,
                     app_id, media_source, bundle_id, is_organic, agency, campaign, init_campaign,
                     adset_name, ad_name, is_retargeting, advertising_id, idfa, site_id,
                     channel, CB1_media_source, CB1_campaign, CB2_media_source, CB2_campaign, CB3_media_source, CB3_campaign
