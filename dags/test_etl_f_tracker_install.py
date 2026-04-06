@@ -923,7 +923,9 @@ def etl_f_user_map(target_date: list, client):
         )
         ;
         """
-        client.query(query)
+        query_job = client.query(query)
+        query_job.result()
+        print(f"📊 처리된 행 개수(Insert/Update): {query_job.num_dml_affected_rows}")
         print(f"■ {start_date} f_user_map Batch 완료")
 
     print("✅ f_user_map ETL 완료")
@@ -1076,7 +1078,9 @@ def etl_f_user_map_char(target_date: list, client):
                     source.CB3_campaign
         )
         """
-        client.query(query)
+        query_job = client.query(query)
+        query_job.result()
+        print(f"📊 처리된 행 개수(Insert/Update): {query_job.num_dml_affected_rows}")
         print(f"■ {start_date} f_user_map_char Batch 완료")
 
     print("✅ f_user_map_char ETL 완료")
