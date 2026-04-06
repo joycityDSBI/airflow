@@ -533,6 +533,370 @@ def adjust_f_common_register(target_date:list, client):
     return True
 
 
+def etl_f_common_register_test(target_date: list, client):
+
+    kst = pytz.timezone('Asia/Seoul')
+
+    for td_str in target_date:
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        start_kst = kst.localize(current_date_obj)
+        start_utc = start_kst.astimezone(timezone.utc)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(timezone.utc)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
+
+        query = f"""
+        MERGE `datahub-478802.datahub.f_common_register` AS target
+        USING
+        (
+            with TA as (
+                SELECT a.GameID
+                    , a.WorldID
+                    , a.ServerName
+                    , a.JoypleGameID
+                    , a.AuthMethodID
+                    , a.AuthAccountName
+                    , a.GameAccountName
+                    , a.GameSubUserName
+                    , a.DeviceAccountName
+                    , a.TrackerAccountName
+                    , a.TrackerTypeID
+                    , a.MarketID
+                    , a.OSID
+                    , a.PlatformDeviceType
+                    , a.AccountLevel
+                    , a.IP
+                    , a.AccessTypeID
+                    , a.PlaySeconds
+                    , a.LogTime
+                FROM `dataplatform-reporting.DataService.V_0160_0000_AccessLog_V` AS a
+                WHERE a.LogTime >= '{start_utc}'
+                AND a.LogTime < '{end_utc}'
+                AND a.AccessTypeID = 1
+            )
+            , TB as (
+                SELECT
+                    DATE(Info.LogTime, "Asia/Seoul")      AS reg_datekey
+                    , DATETIME(Info.LogTime, "Asia/Seoul")  AS reg_datetime
+                    , Info.GameID               AS game_id
+                    , Info.WorldID              AS world_id
+                    , JoypleGameID              AS joyple_game_code
+                    , Info.AuthMethodID         AS auth_method_id
+                    , AuthAccountName           AS auth_account_name
+                    , Info.TrackerAccountName   AS tracker_account_id
+                    , Info.TrackerTypeID        AS tracker_type_id
+                    , Info.DeviceAccountName    AS device_id
+                    , b.country_code            AS country_code
+                    , Info.MarketID             AS market_id
+                    , Info.OSID                 AS os_id
+                    , Info.PlatformDeviceType   AS platform_device_type
+                FROM (
+                    SELECT a.JoypleGameID
+                        , a.AuthAccountName
+                        , ARRAY_AGG(STRUCT(a.GameID, a.AuthMethodID, a.WorldID, a.TrackerTypeID, a.MarketID, a.OSID, a.IP, a.PlatformDeviceType, a.TrackerAccountName, a.DeviceAccountName, a.LogTime) ORDER BY a.LogTime ASC LIMIT 1)[OFFSET(0)] AS Info
+                    FROM (
+                        SELECT
+                            a.GameID , a.WorldID , a.JoypleGameID , a.AuthMethodID , a.AuthAccountName
+                            , a.TrackerAccountName , a.TrackerTypeID , a.DeviceAccountName , a.PlatformDeviceType
+                            , a.MarketID , a.OSID , a.IP , a.LogTime
+                        FROM TA AS a
+                        WHERE a.AccessTypeID = 1
+                        AND a.GameID IS NOT NULL
+                        AND a.AuthAccountName IS NOT NULL
+                    ) AS a
+                    GROUP BY a.JoypleGameID, a.AuthAccountName
+                ) AS a
+                LEFT OUTER JOIN datahub-478802.datahub.dim_ip4_country_code AS b
+                ON (a.Info.IP = b.ip)
+            )
+            , TC as (
+                SELECT
+                TB.reg_datekey,
+                TB.reg_datetime,
+                TB.game_id,
+                TB.world_id,
+                TB.joyple_game_code,
+                TB.auth_method_id,
+                TB.auth_account_name,
+                TB.tracker_account_id,
+                TB.tracker_type_id,
+                TB.device_id,
+                TB.country_code as reg_country_code,
+                TB.market_id,
+                TB.os_id,
+                TB.platform_device_type,
+                aa.app_id,
+                aa.bundle_id,
+                aa.country_code as first_tracking_country_code,
+                aa.media_source,
+                aa.media_source_cat,
+                if(J.auth_account_name is not null, 'Non-Organic',aa.is_organic) as is_organic,
+                aa.agency,
+                coalesce(J.Campaign_name,aa.campaign)                        as campaign,
+                coalesce(J.Campaign_name,aa.init_campaign)                   as init_campaign,
+                aa.adset_name,
+                coalesce(cast(J.ad_name as string),aa.ad_name)               as ad_name,
+                aa.is_retargeting,
+                aa.advertising_id,
+                aa.idfa,
+                aa.site_id,
+                aa.channel,
+                aa.CB1_media_source,
+                aa.CB1_campaign,
+                aa.CB2_media_source,
+                aa.CB2_campaign,
+                aa.CB3_media_source,
+                aa.CB3_campaign,
+                aa.first_tracking_datetime,
+                aa.first_tracking_datekey
+                FROM TB
+                LEFT JOIN datahub-478802.datahub.f_tracker_first as aa
+                ON TB.tracker_account_id = aa.tracker_account_id AND TB.tracker_type_id = aa.tracker_type_id
+                LEFT JOIN (
+                    SELECT a.*, b.* except(campaign_name, joyple_game_code)
+                    FROM `datahub-478802.datahub.pre_joytracking_tracker` as a
+                    LEFT JOIN `datahub-478802.datahub.dim_pccampaign_list_joytracking` as b
+                    ON a.campaign_name = b.campaign_name AND a.joyple_game_code = b.joyple_game_code) as J
+                ON TB.joyple_game_code = j.joyple_game_code AND TB.auth_account_name = j.auth_account_name
+            )
+            SELECT * FROM TC
+            QUALIFY ROW_NUMBER() OVER(
+                PARTITION BY joyple_game_code, auth_account_name
+                ORDER BY first_tracking_datetime DESC, reg_datetime DESC
+            ) = 1
+        ) AS source ON target.joyple_game_code = source.joyple_game_code AND CAST(target.auth_account_name AS STRING) = CAST(source.auth_account_name AS STRING)
+
+        WHEN MATCHED AND (target.campaign <> source.campaign OR target.media_source <> source.media_source)
+                    AND source.app_id IS NOT NULL THEN
+        UPDATE SET
+            target.app_id = source.app_id
+            , target.bundle_id = source.bundle_id
+            , target.first_tracking_country_code = source.first_tracking_country_code
+            , target.media_source = source.media_source
+            , target.media_source_cat = source.media_source_cat
+            , target.is_organic = source.is_organic
+            , target.agency = source.agency
+            , target.campaign = source.campaign
+            , target.init_campaign = source.init_campaign
+            , target.adset_name = source.adset_name
+            , target.ad_name = source.ad_name
+            , target.is_retargeting = source.is_retargeting
+            , target.advertising_id = source.advertising_id
+            , target.idfa = source.idfa
+            , target.site_id = source.site_id
+            , target.channel = source.channel
+            , target.CB1_media_source = source.CB1_media_source
+            , target.CB1_campaign = source.CB1_campaign
+            , target.CB2_media_source = source.CB2_media_source
+            , target.CB2_campaign = source.CB2_campaign
+            , target.CB3_media_source = source.CB3_media_source
+            , target.CB3_campaign = source.CB3_campaign
+            , target.first_tracking_datetime = source.first_tracking_datetime
+            , target.first_tracking_datekey = source.first_tracking_datekey
+
+        WHEN NOT MATCHED BY target THEN
+        INSERT(
+            reg_datekey, reg_datetime, game_id, world_id, joyple_game_code, auth_method_id,
+            auth_account_name, tracker_account_id, tracker_type_id, device_id, reg_country_code,
+            market_id, os_id, platform_device_type, app_id, bundle_id, first_tracking_country_code,
+            media_source, media_source_cat, is_organic, agency, campaign, init_campaign,
+            adset_name, ad_name, is_retargeting, advertising_id, idfa, site_id, channel,
+            CB1_media_source, CB1_campaign, CB2_media_source, CB2_campaign, CB3_media_source,
+            CB3_campaign, first_tracking_datetime, first_tracking_datekey
+            )
+        VALUES(
+            source.reg_datekey, source.reg_datetime, source.game_id, source.world_id,
+            source.joyple_game_code, source.auth_method_id, source.auth_account_name,
+            source.tracker_account_id, source.tracker_type_id, source.device_id,
+            source.reg_country_code, source.market_id, source.os_id, source.platform_device_type,
+            source.app_id, source.bundle_id, source.first_tracking_country_code, source.media_source,
+            source.media_source_cat, source.is_organic, source.agency, source.campaign,
+            source.init_campaign, source.adset_name, source.ad_name, source.is_retargeting,
+            source.advertising_id, source.idfa, source.site_id, source.channel,
+            source.CB1_media_source, source.CB1_campaign, source.CB2_media_source,
+            source.CB2_campaign, source.CB3_media_source, source.CB3_campaign,
+            source.first_tracking_datetime, source.first_tracking_datekey
+            );
+        """
+
+        query_job = client.query(query)
+        try:
+            query_job.result()
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} f_common_register Batch 완료")
+        except Exception as e:
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+
+    print("✅ f_common_register ETL 완료")
+    return True
+
+
+# ── 테스트 대상 함수 4 : adjust_f_common_register ─────────────────────────────
+def adjust_f_common_register_test(target_date: list, client):
+
+    kst = pytz.timezone('Asia/Seoul')
+
+    for td_str in target_date:
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        start_kst = kst.localize(current_date_obj)
+        start_utc = start_kst.astimezone(timezone.utc)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(timezone.utc)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
+
+        query = f"""
+        MERGE datahub-478802.datahub.f_common_register AS target
+        USING
+        (
+            select DATE(TA.INFO.log_time, "Asia/Seoul") as reg_datekey
+            , DATETIME(TA.INFO.log_time, "Asia/Seoul") as reg_datetime
+            , TA.INFO.game_id
+            , TA.INFO.world_id
+            , TA.joyple_game_code
+            , TA.INFO.auth_method_id
+            , TA.auth_account_name
+            , TA.INFO.tracker_account_id
+            , TA.INFO.mmp_type as tracker_type_id
+            , TA.INFO.device_id
+            , TC.country_code as reg_country_code
+            , TA.INFO.market_id
+            , TA.INFO.os_id
+            , TA.INFO.platform_device_type
+            , TA.INFO.app_id
+            , TB.bundle_id
+            , TC.country_code as first_tracking_country_code
+            , TB.media_source
+            , TB.media_source_cat
+            , if(J.auth_account_name is not null, 'Non-Organic',TB.is_organic) as is_organic
+            , TB.agency
+            , coalesce(J.Campaign_name,TB.campaign) as campaign
+            , coalesce(J.Campaign_name,TB.init_campaign) as init_campaign
+            , TB.adset_name
+            , coalesce(cast(J.ad_name as string),TB.ad_name) as ad_name
+            , TB.is_retargeting
+            , TB.advertising_id
+            , TB.idfa
+            , TB.site_id
+            , TB.channel
+            , TB.CB1_media_source
+            , TB.CB1_campaign
+            , TB.CB2_media_source
+            , TB.CB2_campaign
+            , TB.CB3_media_source
+            , TB.CB3_campaign
+            , TB.first_tracking_datetime
+            , TB.first_tracking_datekey
+            from
+            (
+                select JoypleGameID as joyple_game_code
+                     , AuthAccountName as auth_account_name
+                     , array_agg(STRUCT(gameid as game_id,
+                                        worldid as world_id,
+                                        AuthMethodID as auth_method_id,
+                                        AuthAccountName as auth_account_name,
+                                        TrackerAccountName as tracker_account_id,
+                                        TrackerTypeID as mmp_type,
+                                        DeviceID as device_id,
+                                        IP as ip,
+                                        MarketID as market_id,
+                                        OSID as os_id,
+                                        PlatformDeviceType as platform_device_type,
+                                        AppID as app_id,
+                                        LogTime as log_time) ORDER BY logtime asc)[OFFSET(0)] AS INFO
+                from `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V`
+                where LogTime >= '{start_utc}'
+                and LogTime < '{end_utc}'
+                group by joyple_game_code, auth_account_name
+            ) TA
+            left join
+            datahub-478802.datahub.f_tracker_first as TB
+            on TA.INFO.tracker_account_id = TB.tracker_account_id AND TA.INFO.mmp_type = TB.tracker_type_id
+            left join
+            datahub-478802.datahub.dim_ip4_country_code as TC
+            on TA.INFO.ip = TC.ip
+            LEFT JOIN (
+                       SELECT a.*, b.* except(campaign_name, joyple_game_code)
+                       FROM `datahub-478802.datahub.pre_joytracking_tracker` as a
+                       LEFT JOIN `datahub-478802.datahub.dim_pccampaign_list_joytracking` as b
+                       ON a.campaign_name = b.campaign_name AND a.joyple_game_code = b.joyple_game_code) as J
+            ON TA.joyple_game_code = j.joyple_game_code AND TA.auth_account_name = j.auth_account_name
+        ) AS source ON target.joyple_game_code = source.joyple_game_code AND target.auth_account_name = source.auth_account_name
+        WHEN NOT MATCHED BY target THEN
+        INSERT
+        (
+            reg_datekey, reg_datetime, game_id, world_id, joyple_game_code, auth_method_id,
+            auth_account_name, tracker_account_id, tracker_type_id, device_id, reg_country_code,
+            market_id, os_id, platform_device_type, app_id, bundle_id, first_tracking_country_code,
+            media_source, media_source_cat, is_organic, agency, campaign, init_campaign,
+            adset_name, ad_name, is_retargeting, advertising_id, idfa, site_id, channel,
+            CB1_media_source, CB1_campaign, CB2_media_source, CB2_campaign, CB3_media_source,
+            CB3_campaign, first_tracking_datetime, first_tracking_datekey
+        )
+        VALUES
+        (
+            source.reg_datekey, source.reg_datetime, source.game_id, source.world_id,
+            source.joyple_game_code, source.auth_method_id, source.auth_account_name,
+            source.tracker_account_id, source.tracker_type_id, source.device_id,
+            source.reg_country_code, source.market_id, source.os_id, source.platform_device_type,
+            source.app_id, source.bundle_id, source.first_tracking_country_code, source.media_source,
+            source.media_source_cat, source.is_organic, source.agency, source.campaign,
+            source.init_campaign, source.adset_name, source.ad_name, source.is_retargeting,
+            source.advertising_id, source.idfa, source.site_id, source.channel,
+            source.CB1_media_source, source.CB1_campaign, source.CB2_media_source,
+            source.CB2_campaign, source.CB3_media_source, source.CB3_campaign,
+            source.first_tracking_datetime, source.first_tracking_datekey
+        )
+        WHEN MATCHED AND (target.reg_datekey > source.reg_datekey)
+        THEN
+        UPDATE SET
+        target.reg_datekey = source.reg_datekey;
+        """
+
+        query_job = client.query(query)
+        try:
+            query_job.result()
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} f_common_register_adjust Batch 완료")
+        except Exception as e:
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+
+    print("✅ f_common_register_adjust ETL 완료")
+    return True
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def etl_f_common_register_char(target_date:list, client):
 
