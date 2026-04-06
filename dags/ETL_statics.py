@@ -218,8 +218,379 @@ def etl_statics_daily_kpi(**context):
             # 4. 실패 시 출력
             print(f"❌ 쿼리 실행 중 에러 발생: {e}")
             raise e
-    
+        
     print("✅ statics_daily_kpi ETL 완료")
+
+    for td_str in target_date:
+               
+        print(f"📝 statics_daily_kpi_country : 대상날짜: {td_str}")
+
+        # ETL 작업 수행
+        query = f"""
+        MERGE INTO `datahub-478802.datahub.statics_daily_kpi_country` as target
+            USING (
+            SELECT
+            TA.datekey,
+            TA.joyple_game_code,
+            TA.country_code,
+            TA.DAU,
+            TB.DRU,
+            TC.PU,
+            CAST(IFNULL(TC.IAP_revenue, 0) + IFNULL(TD.IAA_rev, 0) AS INT64) as total_rev,
+            CAST(IFNULL(TC.IAP_revenue, 0) AS INT64) as IAP_rev,
+            CAST(IFNULL(TC.IAP_revenue, 0) - IFNULL(TC.IAP_none_market_revenue, 0) AS INT64) as IAP_market_rev,
+            CAST(IFNULL(TC.IAP_none_market_revenue, 0) AS INT64) as IAP_none_market_rev,
+            CAST(IFNULL(TD.IAA_rev, 0) AS INT64) as IAA_rev,
+            ROUND(IFNULL(SAFE_DIVIDE(TC.PU, TA.DAU), 0) * 100, 2) as PUR,
+            ROUND(IFNULL(SAFE_DIVIDE(TC.IAP_revenue, TC.PU), 0), 0) as ARPPU,
+            ROUND(IFNULL(SAFE_DIVIDE(TC.IAP_revenue, TA.DAU), 0), 0) as ARPDAU, -- 이름 변경
+            TE.installs_funnel,
+            TF.installs_appsflyer,
+            ROUND(IFNULL(SAFE_DIVIDE(TG.NNPU, TC.PU), 0) * 100, 2) as NNPUR,
+            TG.NNPU,
+            CAST(IFNULL(TG.NNPU_rev, 0) AS INT64) as NNPU_rev
+            FROM
+            (
+                select datekey, joyple_game_code, reg_country_code as country_code, count(distinct auth_account_name) as DAU
+                from `datahub-478802.datahub.f_common_access`
+                where datekey >= '{td_str}' and datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY) AND
+                access_type_id = 1
+                group by datekey, joyple_game_code, reg_country_code
+            ) as TA
+            left join
+            (
+                select reg_datekey as datekey, joyple_game_code, reg_country_code as country_code
+                , count(distinct auth_account_name) as DRU
+                from `datahub-478802.datahub.f_common_register`
+                where reg_datekey >= '{td_str}' and reg_datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY)
+                group by reg_datekey, joyple_game_code, reg_country_code
+            ) as TB
+            ON TA.datekey = TB.datekey AND TA.joyple_game_code = TB.joyple_game_code AND TA.country_code = TB.country_code
+            left join
+            (
+                select datekey, joyple_game_code, reg_country_code as country_code, count(distinct auth_account_name) as PU
+                , sum(revenue) as IAP_revenue
+                , sum(
+                CASE WHEN pg_id in (select pg_id from `datahub-478802.datahub.dim_special_pg`) 
+                AND platform_device_type in (select platform_device_type from `datahub-478802.datahub.dim_special_pg`)
+                THEN revenue END
+                ) as IAP_none_market_revenue
+                from `datahub-478802.datahub.f_common_payment`
+                where datekey >= '{td_str}' and datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY)
+                group by datekey, joyple_game_code, reg_country_code
+            ) as TC
+            ON TA.datekey = TC.datekey AND TA.joyple_game_code = TC.joyple_game_code AND TA.country_code = TC.country_code
+            left join 
+            (
+                select watch_datekey as datekey, joyple_game_code, reg_country_code as country_code
+                , sum(revenue_per_user_KRW) as IAA_rev
+                from `datahub-478802.datahub.f_IAA_auth_account_performance`
+                where watch_datekey >= '{td_str}' and watch_datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY)
+                group by watch_datekey, joyple_game_code, reg_country_code
+            ) as TD
+            ON TA.datekey = TD.datekey AND TA.joyple_game_code = TD.joyple_game_code AND TA.country_code = TD.country_code
+            left join 
+            (
+                select datekey as datekey, joyple_game_code, country_code
+                , count(distinct device_id) as installs_funnel
+                from `datahub-478802.datahub.f_funnel_access_first`
+                where datekey >= '{td_str}' and datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY)
+                group by datekey, joyple_game_code, country_code
+            ) as TE
+            ON TA.datekey = TE.datekey AND TA.joyple_game_code = TE.joyple_game_code AND TA.country_code = TE.country_code
+            left join 
+            (
+                select install_datekey as datekey, joyple_game_code, country_code
+                , count(distinct tracker_account_id) as installs_appsflyer
+                from `datahub-478802.datahub.f_tracker_install`
+                where install_datekey >= '{td_str}' and install_datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY)
+                group by install_datekey, joyple_game_code, country_code
+            ) as TF
+            ON TA.datekey = TF.datekey AND TA.joyple_game_code = TF.joyple_game_code AND TA.country_code = TF.country_code
+            left join 
+            (
+                select datekey, joyple_game_code, reg_country_code as country_code
+                , count(distinct auth_account_name) as NNPU
+                , sum(revenue) as NNPU_rev
+                from `datahub-478802.datahub.f_common_payment`
+                where datekey >= '{td_str}' and datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY) and
+                reg_datekey = datekey
+                and reg_datediff = 0
+                group by datekey, joyple_game_code, reg_country_code
+            ) as TG
+            ON TA.datekey = TG.datekey AND TA.joyple_game_code = TG.joyple_game_code AND TA.country_code = TG.country_code
+            ) as source
+            ON target.datekey = source.datekey AND target.joyple_game_code = source.joyple_game_code AND target.country_code = source.country_code
+            WHEN MATCHED THEN 
+            UPDATE SET 
+            target.DAU = source.DAU,
+            target.DRU = source.DRU,
+            target.PU = source.PU,
+            target.total_rev = source.total_rev,
+            target.IAP_rev = source.IAP_rev,
+            target.IAP_market_rev = source.IAP_market_rev,
+            target.IAP_none_market_rev = source.IAP_none_market_rev,
+            target.IAA_rev = source.IAA_rev,
+            target.PUR = source.PUR,
+            target.ARPPU = source.ARPPU,
+            target.ARPDAU = source.ARPDAU,
+            target.installs_funnel = source.installs_funnel,
+            target.installs_appsflyer = source.installs_appsflyer,
+            target.NNPUR = source.NNPUR,
+            target.NNPU = source.NNPU,
+            target.NNPU_rev = source.NNPU_rev
+            WHEN NOT MATCHED THEN 
+            INSERT
+            (
+                datekey,
+                joyple_game_code,
+                country_code,
+                DAU,
+                DRU,
+                PU,
+                total_rev,
+                IAP_rev,
+                IAP_market_rev,
+                IAP_none_market_rev,
+                IAA_rev,
+                PUR,
+                ARPPU,
+                ARPDAU,
+                installs_funnel,
+                installs_appsflyer,
+                NNPUR,
+                NNPU,
+                NNPU_rev
+            )
+            VALUES 
+            (
+                source.datekey,
+                source.joyple_game_code,
+                source.country_code,
+                source.DAU,
+                source.DRU,
+                source.PU,
+                source.total_rev,
+                source.IAP_rev,
+                source.IAP_market_rev,
+                source.IAP_none_market_rev,
+                source.IAA_rev,
+                source.PUR,
+                source.ARPPU,
+                source.ARPDAU,
+                source.installs_funnel,
+                source.installs_appsflyer,
+                source.NNPUR,
+                source.NNPU,
+                source.NNPU_rev
+            )
+        """
+
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} statics_daily_kpi_country Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+
+    print("✅ statics_daily_kpi_country ETL 완료")
+
+    for td_str in target_date:
+               
+        print(f"📝 statics_daily_kpi_market : 대상날짜: {td_str}")
+
+        # ETL 작업 수행
+        query = f"""
+        MERGE INTO `datahub-478802.datahub.statics_daily_kpi_market` as target
+            USING (
+            SELECT
+            TA.datekey,
+            TA.joyple_game_code,
+            TA.market_id,
+            TA.DAU,
+            TB.DRU,
+            TC.PU,
+            CAST(IFNULL(TC.IAP_revenue, 0) + IFNULL(TD.IAA_rev, 0) AS INT64) as total_rev,
+            CAST(IFNULL(TC.IAP_revenue, 0) AS INT64) as IAP_rev,
+            CAST(IFNULL(TC.IAP_revenue, 0) - IFNULL(TC.IAP_none_market_revenue, 0) AS INT64) as IAP_market_rev,
+            CAST(IFNULL(TC.IAP_none_market_revenue, 0) AS INT64) as IAP_none_market_rev,
+            CAST(IFNULL(TD.IAA_rev, 0) AS INT64) as IAA_rev,
+            ROUND(IFNULL(SAFE_DIVIDE(TC.PU, TA.DAU), 0) * 100, 2) as PUR,
+            ROUND(IFNULL(SAFE_DIVIDE(TC.IAP_revenue, TC.PU), 0), 0) as ARPPU,
+            ROUND(IFNULL(SAFE_DIVIDE(TC.IAP_revenue, TA.DAU), 0), 0) as ARPDAU, -- 이름 변경
+            TE.installs_funnel,
+            TF.installs_appsflyer,
+            ROUND(IFNULL(SAFE_DIVIDE(TG.NNPU, TC.PU), 0) * 100, 2) as NNPUR,
+            TG.NNPU,
+            CAST(IFNULL(TG.NNPU_rev, 0) AS INT64) as NNPU_rev
+            FROM
+            (
+                select datekey, joyple_game_code, market_id, count(distinct auth_account_name) as DAU
+                from `datahub-478802.datahub.f_common_access`
+                where datekey >= '{td_str}' and datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY) AND
+                access_type_id = 1
+                group by datekey, joyple_game_code, market_id
+            ) as TA
+            left join
+            (
+                select reg_datekey as datekey, joyple_game_code, market_id
+                , count(distinct auth_account_name) as DRU
+                from `datahub-478802.datahub.f_common_register`
+                where reg_datekey >= '{td_str}' and reg_datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY)
+                group by reg_datekey, joyple_game_code, market_id
+            ) as TB
+            ON TA.datekey = TB.datekey AND TA.joyple_game_code = TB.joyple_game_code AND TA.market_id = TB.market_id
+            left join
+            (
+                select datekey, joyple_game_code, market_id, count(distinct auth_account_name) as PU
+                , sum(revenue) as IAP_revenue
+                , sum(
+                CASE WHEN pg_id in (select pg_id from `datahub-478802.datahub.dim_special_pg`) 
+                AND platform_device_type in (select platform_device_type from `datahub-478802.datahub.dim_special_pg`)
+                THEN revenue END
+                ) as IAP_none_market_revenue
+                from `datahub-478802.datahub.f_common_payment`
+                where datekey >= '{td_str}' and datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY)
+                group by datekey, joyple_game_code, market_id
+            ) as TC
+            ON TA.datekey = TC.datekey AND TA.joyple_game_code = TC.joyple_game_code AND TA.market_id = TC.market_id
+            left join 
+            (
+                select watch_datekey as datekey, A.joyple_game_code, B.market_id
+                , sum(revenue_per_user_KRW) as IAA_rev
+                from `datahub-478802.datahub.f_IAA_auth_account_performance` as A
+                inner join `datahub-478802.datahub.f_common_register` as B
+                on A.auth_account_name = B.auth_account_name
+                where watch_datekey >= '{td_str}' and watch_datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY)
+                group by watch_datekey, A.joyple_game_code, B.market_id
+            ) as TD
+            ON TA.datekey = TD.datekey AND TA.joyple_game_code = TD.joyple_game_code AND TA.market_id = TD.market_id
+            left join 
+            (
+                select datekey as datekey, joyple_game_code, market_id
+                , count(distinct device_id) as installs_funnel
+                from `datahub-478802.datahub.f_funnel_access_first`
+                where datekey >= '{td_str}' and datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY)
+                group by datekey, joyple_game_code, market_id
+            ) as TE
+            ON TA.datekey = TE.datekey AND TA.joyple_game_code = TE.joyple_game_code AND TA.market_id = TE.market_id
+            left join 
+            (
+                select install_datekey as datekey, joyple_game_code, market_id
+                , count(distinct tracker_account_id) as installs_appsflyer
+                from `datahub-478802.datahub.f_tracker_install`
+                where install_datekey >= '{td_str}' and install_datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY)
+                group by install_datekey, joyple_game_code, market_id
+            ) as TF
+            ON TA.datekey = TF.datekey AND TA.joyple_game_code = TF.joyple_game_code AND TA.market_id = TF.market_id
+            left join 
+            (
+                select datekey, joyple_game_code, market_id
+                , count(distinct auth_account_name) as NNPU
+                , sum(revenue) as NNPU_rev
+                from `datahub-478802.datahub.f_common_payment`
+                where datekey >= '{td_str}' and datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY) and
+                reg_datekey = datekey
+                and reg_datediff = 0
+                group by datekey, joyple_game_code, market_id
+            ) as TG
+            ON TA.datekey = TG.datekey AND TA.joyple_game_code = TG.joyple_game_code AND TA.market_id = TG.market_id
+            ) as source
+            ON target.datekey = source.datekey AND target.joyple_game_code = source.joyple_game_code AND target.market_id = source.market_id
+            WHEN MATCHED THEN 
+            UPDATE SET 
+            target.DAU = source.DAU,
+            target.DRU = source.DRU,
+            target.PU = source.PU,
+            target.total_rev = source.total_rev,
+            target.IAP_rev = source.IAP_rev,
+            target.IAP_market_rev = source.IAP_market_rev,
+            target.IAP_none_market_rev = source.IAP_none_market_rev,
+            target.IAA_rev = source.IAA_rev,
+            target.PUR = source.PUR,
+            target.ARPPU = source.ARPPU,
+            target.ARPDAU = source.ARPDAU,
+            target.installs_funnel = source.installs_funnel,
+            target.installs_appsflyer = source.installs_appsflyer,
+            target.NNPUR = source.NNPUR,
+            target.NNPU = source.NNPU,
+            target.NNPU_rev = source.NNPU_rev
+            WHEN NOT MATCHED THEN 
+            INSERT
+            (
+                datekey,
+                joyple_game_code,
+                market_id,
+                DAU,
+                DRU,
+                PU,
+                total_rev,
+                IAP_rev,
+                IAP_market_rev,
+                IAP_none_market_rev,
+                IAA_rev,
+                PUR,
+                ARPPU,
+                ARPDAU,
+                installs_funnel,
+                installs_appsflyer,
+                NNPUR,
+                NNPU,
+                NNPU_rev
+            )
+            VALUES 
+            (
+                source.datekey,
+                source.joyple_game_code,
+                source.market_id,
+                source.DAU,
+                source.DRU,
+                source.PU,
+                source.total_rev,
+                source.IAP_rev,
+                source.IAP_market_rev,
+                source.IAP_none_market_rev,
+                source.IAA_rev,
+                source.PUR,
+                source.ARPPU,
+                source.ARPDAU,
+                source.installs_funnel,
+                source.installs_appsflyer,
+                source.NNPUR,
+                source.NNPU,
+                source.NNPU_rev
+            )
+        """
+
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} statics_daily_kpi_country Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+        
+        print("✅ statics_daily_kpi_market ETL 완료")
+
     return True
 
 
@@ -439,6 +810,416 @@ def etl_statics_weekly_kpi(**context):
             raise e
     
     print("✅ statics_weekly_kpi ETL 완료")
+
+    for td_str in target_date:
+
+        td_date = datetime.strptime(td_str, "%Y-%m-%d").date()
+        day_of_week = td_date.weekday()  # 월요일=0, 일요일=6
+        monday = td_date - timedelta(days=day_of_week)
+        sunday = monday + timedelta(days=6)
+
+        start_of_week = monday.strftime("%Y-%m-%d")  # 월요일
+        end_of_week = sunday.strftime("%Y-%m-%d")
+        
+        # 일요일
+        print(f"📝 statics_weekly_kpi_country 대상주간: {start_of_week} ~ {end_of_week}")
+               
+
+        # ETL 작업 수행
+        query = f"""
+        MERGE INTO datahub-478802.datahub.statics_weekly_kpi_country as target
+        USING (
+                SELECT
+                TA.datekey,
+                TA.joyple_game_code,
+                TA.country_code,
+                TA.WAU,
+                TB.WRU,
+                TC.WPU,
+                CAST(IFNULL(TC.IAP_revenue, 0) + IFNULL(TD.IAA_rev, 0) AS INT64) as total_rev,
+                CAST(IFNULL(TC.IAP_revenue, 0) AS INT64) as IAP_rev,
+                CAST(IFNULL(TC.IAP_revenue, 0) - IFNULL(TC.IAP_none_market_revenue, 0) AS INT64) as IAP_market_rev,
+                CAST(IFNULL(TC.IAP_none_market_revenue, 0) AS INT64) as IAP_none_market_rev,
+                CAST(IFNULL(TD.IAA_rev, 0) AS INT64) as IAA_rev,
+                ROUND(IFNULL(SAFE_DIVIDE(TC.WPU, TA.WAU), 0) * 100, 2) as PUR,
+                ROUND(IFNULL(SAFE_DIVIDE(TC.IAP_revenue, TC.WPU), 0), 0) as ARPPU,
+                ROUND(IFNULL(SAFE_DIVIDE(TC.IAP_revenue, TA.WAU), 0), 0) as ARPWAU,
+                TE.installs_funnel,
+                TF.installs_appsflyer,
+                ROUND(IFNULL(SAFE_DIVIDE(TG.NNPU, TC.WPU), 0) * 100, 2) as NNPUR,
+                TG.NNPU,
+                CAST(IFNULL(TG.NNPU_rev, 0) AS INT64) as NNPU_rev
+                FROM
+                (
+                    select DATE_TRUNC(datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, reg_country_code as country_code
+                    , count(distinct auth_account_name) as WAU
+                    from `datahub-478802.datahub.f_common_access`
+                    where datekey >= '{start_of_week}' AND datekey <= '{end_of_week}' AND
+                    access_type_id = 1
+                    group by 1, 2, 3
+                ) as TA
+                left join
+                (
+                    select DATE_TRUNC(reg_datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, reg_country_code as country_code
+                    , count(distinct auth_account_name) as WRU
+                    from `datahub-478802.datahub.f_common_register`
+                    where reg_datekey >= '{start_of_week}' AND reg_datekey <= '{end_of_week}'
+                    group by 1, 2, 3
+                ) as TB
+                ON TA.datekey = TB.datekey AND TA.joyple_game_code = TB.joyple_game_code AND TA.country_code = TB.country_code
+                left join
+                (
+                    select DATE_TRUNC(datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, reg_country_code as country_code
+                    , count(distinct auth_account_name) as WPU
+                    , sum(revenue) as IAP_revenue
+                    , sum(
+                            CASE WHEN pg_id in (select pg_id from `datahub-478802.datahub.dim_special_pg`) 
+                            AND platform_device_type in (select platform_device_type from `datahub-478802.datahub.dim_special_pg`)
+                            THEN revenue END
+                            ) as IAP_none_market_revenue
+                    from `datahub-478802.datahub.f_common_payment`
+                    where datekey >= '{start_of_week}' AND datekey <= '{end_of_week}'
+                    group by 1, 2, 3
+                ) as TC
+                ON TA.datekey = TC.datekey AND TA.joyple_game_code = TC.joyple_game_code AND TA.country_code = TC.country_code
+                left join 
+                (
+                    select  DATE_TRUNC(watch_datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, reg_country_code as country_code
+                    , sum(revenue_per_user_KRW) as IAA_rev
+                    from `datahub-478802.datahub.f_IAA_auth_account_performance`
+                    where watch_datekey >= '{start_of_week}' AND watch_datekey <= '{end_of_week}'
+                    group by 1, 2, 3
+                ) as TD
+                ON TA.datekey = TD.datekey AND TA.joyple_game_code = TD.joyple_game_code AND TA.country_code = TD.country_code
+                left join 
+                (
+                    select DATE_TRUNC(datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, country_code
+                    , count(distinct device_id) as installs_funnel
+                    from `datahub-478802.datahub.f_funnel_access_first`
+                    where datekey >= '{start_of_week}' AND datekey <= '{end_of_week}'
+                    group by 1, 2, 3
+                ) as TE
+                ON TA.datekey = TE.datekey AND TA.joyple_game_code = TE.joyple_game_code AND TA.country_code = TE.country_code
+                left join 
+                (
+                    select DATE_TRUNC(install_datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, country_code
+                    , count(distinct tracker_account_id) as installs_appsflyer
+                    from `datahub-478802.datahub.f_tracker_install`
+                    where install_datekey >= '{start_of_week}' AND install_datekey <= '{end_of_week}'
+                    group by 1, 2, 3
+                ) as TF
+                ON TA.datekey = TF.datekey AND TA.joyple_game_code = TF.joyple_game_code AND TA.country_code = TF.country_code
+                left join 
+                (
+                    select DATE_TRUNC(datekey, WEEK(MONDAY)) AS datekey
+                    , joyple_game_code, reg_country_code as country_code
+                    , count(distinct auth_account_name) as NNPU
+                    , sum(revenue) as NNPU_rev
+                    from `datahub-478802.datahub.f_common_payment`
+                    where datekey >= '{start_of_week}' AND datekey <= '{end_of_week}' AND
+                    datekey = reg_datekey
+                    and reg_datediff = 0
+                    group by 1, 2, 3
+                ) as TG
+                ON TA.datekey = TG.datekey AND TA.joyple_game_code = TG.joyple_game_code AND TA.country_code = TG.country_code
+        ) as source
+        ON target.datekey = source.datekey AND target.joyple_game_code = source.joyple_game_code AND target.country_code = source.country_code
+        WHEN MATCHED THEN 
+        UPDATE SET 
+            target.WAU = source.WAU,
+            target.WRU = source.WRU,
+            target.WPU = source.WPU,
+            target.total_rev = source.total_rev,
+            target.IAP_rev = source.IAP_rev,
+            target.IAP_market_rev = source.IAP_market_rev,
+            target.IAP_none_market_rev = source.IAP_none_market_rev,
+            target.IAA_rev = source.IAA_rev,
+            target.PUR = source.PUR,
+            target.ARPPU = source.ARPPU,
+            target.ARPWAU = source.ARPWAU,
+            target.installs_funnel = source.installs_funnel,
+            target.installs_appsflyer = source.installs_appsflyer,
+            target.NNPUR = source.NNPUR,
+            target.NNPU = source.NNPU,
+            target.NNPU_rev = source.NNPU_rev
+        WHEN NOT MATCHED THEN 
+        INSERT
+        (
+            datekey
+            , joyple_game_code
+            , country_code
+            , WAU
+            , WRU
+            , WPU
+            , total_rev
+            , IAP_rev
+            , IAP_market_rev
+            , IAP_none_market_rev
+            , IAA_rev
+            , PUR
+            , ARPPU
+            , ARPWAU
+            , installs_funnel
+            , installs_appsflyer
+            , NNPUR
+            , NNPU
+            , NNPU_rev
+        )
+        VALUES
+        (
+            source.datekey
+            , source.joyple_game_code
+            , source.country_code
+            , source.WAU
+            , source.WRU
+            , source.WPU
+            , source.total_rev
+            , source.IAP_rev
+            , source.IAP_market_rev
+            , source.IAP_none_market_rev
+            , source.IAA_rev
+            , source.PUR
+            , source.ARPPU
+            , source.ARPWAU
+            , source.installs_funnel
+            , source.installs_appsflyer
+            , source.NNPUR
+            , source.NNPU
+            , source.NNPU_rev
+        )
+        """
+
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} statics_weekly_kpi Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+    
+    print("✅ statics_weekly_kpi_country ETL 완료")
+
+
+    for td_str in target_date:
+
+        td_date = datetime.strptime(td_str, "%Y-%m-%d").date()
+        day_of_week = td_date.weekday()  # 월요일=0, 일요일=6
+        monday = td_date - timedelta(days=day_of_week)
+        sunday = monday + timedelta(days=6)
+
+        start_of_week = monday.strftime("%Y-%m-%d")  # 월요일
+        end_of_week = sunday.strftime("%Y-%m-%d")
+        
+        # 일요일
+        print(f"📝 statics_weekly_kpi_country 대상주간: {start_of_week} ~ {end_of_week}")
+               
+
+        # ETL 작업 수행
+        query = f"""
+        MERGE INTO datahub-478802.datahub.statics_weekly_kpi_market as target
+        USING (
+                SELECT
+                TA.datekey,
+                TA.joyple_game_code,
+                TA.market_id,
+                TA.WAU,
+                TB.WRU,
+                TC.WPU,
+                CAST(IFNULL(TC.IAP_revenue, 0) + IFNULL(TD.IAA_rev, 0) AS INT64) as total_rev,
+                CAST(IFNULL(TC.IAP_revenue, 0) AS INT64) as IAP_rev,
+                CAST(IFNULL(TC.IAP_revenue, 0) - IFNULL(TC.IAP_none_market_revenue, 0) AS INT64) as IAP_market_rev,
+                CAST(IFNULL(TC.IAP_none_market_revenue, 0) AS INT64) as IAP_none_market_rev,
+                CAST(IFNULL(TD.IAA_rev, 0) AS INT64) as IAA_rev,
+                ROUND(IFNULL(SAFE_DIVIDE(TC.WPU, TA.WAU), 0) * 100, 2) as PUR,
+                ROUND(IFNULL(SAFE_DIVIDE(TC.IAP_revenue, TC.WPU), 0), 0) as ARPPU,
+                ROUND(IFNULL(SAFE_DIVIDE(TC.IAP_revenue, TA.WAU), 0), 0) as ARPWAU,
+                TE.installs_funnel,
+                TF.installs_appsflyer,
+                ROUND(IFNULL(SAFE_DIVIDE(TG.NNPU, TC.WPU), 0) * 100, 2) as NNPUR,
+                TG.NNPU,
+                CAST(IFNULL(TG.NNPU_rev, 0) AS INT64) as NNPU_rev
+                FROM
+                (
+                    select DATE_TRUNC(datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, market_id
+                    , count(distinct auth_account_name) as WAU
+                    from `datahub-478802.datahub.f_common_access`
+                    where datekey >= '{start_of_week}' AND datekey <= '{end_of_week}' AND
+                    access_type_id = 1
+                    group by 1, 2, 3
+                ) as TA
+                left join
+                (
+                    select DATE_TRUNC(reg_datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, market_id
+                    , count(distinct auth_account_name) as WRU
+                    from `datahub-478802.datahub.f_common_register`
+                    where reg_datekey >= '{start_of_week}' AND reg_datekey <= '{end_of_week}'
+                    group by 1, 2, 3
+                ) as TB
+                ON TA.datekey = TB.datekey AND TA.joyple_game_code = TB.joyple_game_code AND TA.market_id = TB.market_id
+                left join
+                (
+                    select DATE_TRUNC(datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, market_id
+                    , count(distinct auth_account_name) as WPU
+                    , sum(revenue) as IAP_revenue
+                    , sum(
+                            CASE WHEN pg_id in (select pg_id from `datahub-478802.datahub.dim_special_pg`) 
+                            AND platform_device_type in (select platform_device_type from `datahub-478802.datahub.dim_special_pg`)
+                            THEN revenue END
+                            ) as IAP_none_market_revenue
+                    from `datahub-478802.datahub.f_common_payment`
+                    where datekey >= '{start_of_week}' AND datekey <= '{end_of_week}'
+                    group by 1, 2, 3
+                ) as TC
+                ON TA.datekey = TC.datekey AND TA.joyple_game_code = TC.joyple_game_code AND TA.market_id = TC.market_id
+                left join 
+                (
+                    select  DATE_TRUNC(watch_datekey, WEEK(MONDAY)) as datekey
+                    , A.joyple_game_code, B.market_id
+                    , sum(revenue_per_user_KRW) as IAA_rev
+                    from `datahub-478802.datahub.f_IAA_auth_account_performance` as A
+                    inner join `datahub-478802.datahub.f_common_register` as B
+                    ON A.auth_account_name = B.auth_account_name
+                    where watch_datekey >= '{start_of_week}' AND watch_datekey <= '{end_of_week}'
+                    group by 1, 2, 3
+                ) as TD
+                ON TA.datekey = TD.datekey AND TA.joyple_game_code = TD.joyple_game_code AND TA.market_id = TD.market_id
+                left join 
+                (
+                    select DATE_TRUNC(datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, market_id
+                    , count(distinct device_id) as installs_funnel
+                    from `datahub-478802.datahub.f_funnel_access_first`
+                    where datekey >= '{start_of_week}' AND datekey <= '{end_of_week}'
+                    group by 1, 2, 3
+                ) as TE
+                ON TA.datekey = TE.datekey AND TA.joyple_game_code = TE.joyple_game_code AND TA.market_id = TE.market_id
+                left join 
+                (
+                    select DATE_TRUNC(install_datekey, WEEK(MONDAY)) as datekey
+                    , joyple_game_code, market_id
+                    , count(distinct tracker_account_id) as installs_appsflyer
+                    from `datahub-478802.datahub.f_tracker_install`
+                    where install_datekey >= '{start_of_week}' AND install_datekey <= '{end_of_week}'
+                    group by 1, 2, 3
+                ) as TF
+                ON TA.datekey = TF.datekey AND TA.joyple_game_code = TF.joyple_game_code AND TA.market_id = TF.market_id
+                left join 
+                (
+                    select DATE_TRUNC(datekey, WEEK(MONDAY)) AS datekey
+                    , joyple_game_code, market_id
+                    , count(distinct auth_account_name) as NNPU
+                    , sum(revenue) as NNPU_rev
+                    from `datahub-478802.datahub.f_common_payment`
+                    where datekey >= '{start_of_week}' AND datekey <= '{end_of_week}' AND
+                    datekey = reg_datekey
+                    and reg_datediff = 0
+                    group by 1, 2, 3
+                ) as TG
+                ON TA.datekey = TG.datekey AND TA.joyple_game_code = TG.joyple_game_code AND TA.market_id = TG.market_id
+        ) as source
+        ON target.datekey = source.datekey AND target.joyple_game_code = source.joyple_game_code AND target.market_id = source.market_id
+        WHEN MATCHED THEN 
+        UPDATE SET 
+            target.WAU = source.WAU,
+            target.WRU = source.WRU,
+            target.WPU = source.WPU,
+            target.total_rev = source.total_rev,
+            target.IAP_rev = source.IAP_rev,
+            target.IAP_market_rev = source.IAP_market_rev,
+            target.IAP_none_market_rev = source.IAP_none_market_rev,
+            target.IAA_rev = source.IAA_rev,
+            target.PUR = source.PUR,
+            target.ARPPU = source.ARPPU,
+            target.ARPWAU = source.ARPWAU,
+            target.installs_funnel = source.installs_funnel,
+            target.installs_appsflyer = source.installs_appsflyer,
+            target.NNPUR = source.NNPUR,
+            target.NNPU = source.NNPU,
+            target.NNPU_rev = source.NNPU_rev
+        WHEN NOT MATCHED THEN 
+        INSERT
+        (
+            datekey
+            , joyple_game_code
+            , market_id
+            , WAU
+            , WRU
+            , WPU
+            , total_rev
+            , IAP_rev
+            , IAP_market_rev
+            , IAP_none_market_rev
+            , IAA_rev
+            , PUR
+            , ARPPU
+            , ARPWAU
+            , installs_funnel
+            , installs_appsflyer
+            , NNPUR
+            , NNPU
+            , NNPU_rev
+        )
+        VALUES
+        (
+            source.datekey
+            , source.joyple_game_code
+            , source.market_id
+            , source.WAU
+            , source.WRU
+            , source.WPU
+            , source.total_rev
+            , source.IAP_rev
+            , source.IAP_market_rev
+            , source.IAP_none_market_rev
+            , source.IAA_rev
+            , source.PUR
+            , source.ARPPU
+            , source.ARPWAU
+            , source.installs_funnel
+            , source.installs_appsflyer
+            , source.NNPUR
+            , source.NNPU
+            , source.NNPU_rev
+        )
+        """
+
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} statics_weekly_kpi Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+    
+    print("✅ statics_weekly_kpi_country ETL 완료")
+
     return True
 
 
