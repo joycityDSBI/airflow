@@ -591,6 +591,95 @@ def etl_statics_daily_kpi(**context):
         
         print("✅ statics_daily_kpi_market ETL 완료")
 
+    for td_str in target_date:
+               
+        print(f"📝 statics_daily_kpi_server_name : 대상날짜: {td_str}")
+
+        # ETL 작업 수행
+        query = f"""
+        MERGE INTO `datahub-478802.datahub.statics_daily_kpi_server_name` as target
+            USING (
+            SELECT
+            TA.datekey,
+            TA.joyple_game_code,
+            TA.server_name,
+            TA.market_id,
+            IFNULL(TA.DAU, 0) as DAU,
+            IFNULL(TA.DRU, 0) as DRU,
+            IFNULL(TB.PU, 0) as PU,
+            IFNULL(TB.revenue, 0) as revenue
+            FROM
+            (
+                select datekey, joyple_game_code, server_name, market_id
+                , count(distinct auth_account_name) as DAU
+                , count(distinct if(datekey = reg_datekey, auth_account_name, null)) as DRU
+                from `datahub-478802.datahub.f_common_access`
+                where datekey >= '{td_str}' and datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY) 
+                AND access_type_id = 1
+                group by 1,2,3,4
+            ) as TA
+            left join
+            (
+                select datekey, joyple_game_code, server_name, market_id
+                , count(distinct auth_account_name) as PU
+                , SUM(revenue) as revenue
+                from `datahub-478802.datahub.f_common_payment`
+                where datekey >= '{td_str}' and datekey < DATE_ADD('{td_str}', INTERVAL 1 DAY) 
+                group by 1,2,3,4
+            ) as TB
+            ON TA.datekey = TB.datekey AND TA.joyple_game_code = TB.joyple_game_code AND TA.server_name = TB.server_name AND TA.market_id = TB.market_id
+           ) as source
+            ON target.datekey = source.datekey AND target.joyple_game_code = source.joyple_game_code AND target.server_name = TB.server_name AND target.market_id = source.market_id
+            WHEN MATCHED THEN 
+            UPDATE SET 
+            target.DAU = source.DAU,
+            target.DRU = source.DRU,
+            target.PU = source.PU,
+            target.revenue = source.revenue
+            WHEN NOT MATCHED THEN 
+            INSERT
+            (
+                datekey,
+                joyple_game_code,
+                server_name,
+                market_id,
+                DAU,
+                DRU,
+                PU,
+                revenue
+            )
+            VALUES 
+            (
+                source.datekey,
+                source.joyple_game_code,
+                source.server_name,
+                source.market_id,
+                source.DAU,
+                source.DRU,
+                source.PU,
+                source.revenue
+            )
+        """
+
+        # 1. 쿼리 실행
+        query_job = client.query(query)
+
+        try:
+            # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
+            # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
+            query_job.result()
+
+            # 3. 성공 시 출력
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} statics_daily_kpi_server_name Batch 완료")
+
+        except Exception as e:
+            # 4. 실패 시 출력
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+        
+        print("✅ statics_daily_kpi_server_name ETL 완료")
+
     return True
 
 
