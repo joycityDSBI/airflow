@@ -1353,7 +1353,7 @@ def etl_f_common_access(target_date: list, client):
                 LEFT OUTER JOIN `datahub-478802.datahub.dim_ip4_country_code` AS b ON TA.IP = b.ip
                 LEFT OUTER JOIN `datahub-478802.datahub.f_common_register` AS c 
                 ON TA.JoypleGameID = c.joyple_game_code AND CAST(TA.AuthAccountName AS STRING) = CAST(c.auth_account_name AS STRING)
-                group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18
+                group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19
         ) AS source
             ON target.datekey = source.datekey
             AND target.reg_datekey = source.reg_datekey
