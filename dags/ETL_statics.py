@@ -629,7 +629,7 @@ def etl_statics_daily_kpi(**context):
             ) as TB
             ON TA.datekey = TB.datekey AND TA.joyple_game_code = TB.joyple_game_code AND TA.server_name = TB.server_name AND TA.market_id = TB.market_id
            ) as source
-            ON target.datekey = source.datekey AND target.joyple_game_code = source.joyple_game_code AND target.server_name = TB.server_name AND target.market_id = source.market_id
+            ON target.datekey = source.datekey AND target.joyple_game_code = source.joyple_game_code AND target.server_name = source.server_name AND target.market_id = source.market_id
             WHEN MATCHED THEN 
             UPDATE SET 
             target.DAU = source.DAU,
