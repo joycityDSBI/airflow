@@ -1330,7 +1330,8 @@ def etl_f_common_access(target_date: list, client):
             SELECT 
                 DATE(TA.LogTime, "Asia/Seoul") as datekey
                 , c.reg_datekey
-                , DATE_DIFF(DATE(TA.LogTime, "Asia/Seoul"), c.reg_datekey, DAY) reg_datediff	      
+                , DATE_DIFF(DATE(TA.LogTime, "Asia/Seoul"), c.reg_datekey, DAY) reg_datediff
+                , c.reg_country_code
                 , TA.GameID AS game_id
                 , TA.WorldID AS world_id
                 , TA.JoypleGameID AS joyple_game_code
@@ -1355,6 +1356,9 @@ def etl_f_common_access(target_date: list, client):
                 group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18
         ) AS source
             ON target.datekey = source.datekey
+            AND target.reg_datekey = source.reg_datekey
+            AND target.reg_datediff = source.reg_datediff
+            AND target.reg_country_code = source.reg_country_code
             AND target.game_id = source.game_id
             AND target.world_id = source.world_id
             AND target.joyple_game_code = source.joyple_game_code
@@ -1375,6 +1379,7 @@ def etl_f_common_access(target_date: list, client):
             (datekey, 
             reg_datekey, 
             reg_datediff, 
+            reg_country_code,
             game_id, 
             world_id, 
             joyple_game_code, 
@@ -1398,6 +1403,7 @@ def etl_f_common_access(target_date: list, client):
             source.datekey, 
             source.reg_datekey, 
             source.reg_datediff, 
+            source.reg_country_code,
             source.game_id, 
             source.world_id, 
             source.joyple_game_code, 
