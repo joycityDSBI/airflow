@@ -337,7 +337,7 @@ def upsert_discord_members_to_notion():
     # 3. Notion upsert
     notion_token = get_var('NOTION_TOKEN')
     notion = Client(auth=notion_token)
-    notion_db_id = "33cea67a-5681-808d-9a0a-000b9556be1f"
+    notion_db_id = "33cea67a56818035b63ec74e33b74733"
 
     # 기존 레코드 조회 (datekey 기준)
     query_res = cast(Any, notion.databases.query(
