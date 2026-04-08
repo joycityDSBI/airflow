@@ -402,4 +402,4 @@ with DAG(
         python_callable=upsert_discord_members_to_notion
     )
 
-    upload_to_bigquery_task >> upload_to_notion_task >> upload_discord_members_to_notion_task
+    upload_discord_members_to_notion_task >> upload_to_bigquery_task >> upload_to_notion_task
