@@ -306,146 +306,63 @@ def upsert_to_notion(key_columns: list):
         time.sleep(0.4)
 
 
-PROJECT_ID = 'datahub-478802'
-DATASET_ID = 'external_data'
-TABLE_NAME = 'steam_game_followers'
-TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_NAME}"
+def upsert_discord_members_to_notion():
+    """
+    Discord Invite API로 멤버 수를 가져와 Notion DB에 Upsert합니다.
+    Key: datekey (KST 기준 오늘 날짜)
+    """
+    from notion_client import Client
+    from typing import Any, cast
 
+    # 1. KST 기준 오늘 날짜
+    KST = timezone(timedelta(hours=9))
+    today_kst = datetime.now(KST).strftime("%Y-%m-%d")
 
-def fetch_stats_via_playwright(app_id):
-    """Playwright를 사용하여 SteamDB 데이터 파싱"""
-    print(f"🎭 Playwright 브라우저 실행 중 (AppID: {app_id})...")
-    
-    result = None
-    
-    with sync_playwright() as p:
-        # 1. 브라우저 실행 (Docker 환경을 위한 옵션 포함)
-        browser = p.chromium.launch(
-            headless=True,
-            args=[
-                '--no-sandbox', 
-                '--disable-dev-shm-usage',
-                '--disable-blink-features=AutomationControlled' # 자동화 탐지 우회
-            ]
+    # 2. Discord Invite API로 멤버 수 조회
+    INVITE_CODE = "jXKR9qUFH4"
+    discord_url = f"https://discord.com/api/v9/invites/{INVITE_CODE}?with_counts=true"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    resp = requests.get(discord_url, headers=headers, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+
+    member_count = data.get("approximate_member_count")
+    if member_count is None:
+        raise ValueError(f"Discord API 응답에 approximate_member_count 없음: {data}")
+
+    print(f"Discord 멤버 수: {member_count} (기준일: {today_kst})")
+
+    # 3. Notion upsert
+    notion_token = get_var('NOTION_TOKEN')
+    notion = Client(auth=notion_token)
+    notion_db_id = "33cea67a56818035b63ec74e33b74733"
+
+    # 기존 레코드 조회 (datekey 기준)
+    query_res = cast(Any, notion.databases.query(
+        database_id=notion_db_id,
+        filter={
+            "property": "datekey",
+            "date": {"equals": today_kst}
+        }
+    ))
+
+    properties = {
+        "datekey": {"date": {"start": today_kst}},
+        "members": {"number": member_count},
+    }
+
+    if query_res["results"]:
+        page_id = query_res["results"][0]["id"]
+        notion.pages.update(page_id=page_id, properties=properties)
+        print(f"Updated Notion page for {today_kst}: members={member_count}")
+    else:
+        notion.pages.create(
+            parent={"database_id": notion_db_id},
+            properties=properties
         )
-        
-        # 2. 브라우저 컨텍스트 및 페이지 생성 (일반 브라우저처럼 보이게 설정)
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        )
-        page = context.new_page()
-        
-        try:
-            url = f"https://steamdb.info/app/{app_id}/charts/"
-            print(f"🌐 페이지 접속: {url}")
-            page.goto(url, wait_until="networkidle", timeout=60000)
-            
-            # 3. Cloudflare 및 데이터 로딩 대기 (15초)
-            print("⏳ 데이터 로딩 및 우회 대기 중...")
-            page.wait_for_timeout(15000) 
-            
-            # 4. 페이지 소스 가져오기 및 BeautifulSoup 파싱
-            html = page.content()
-            soup = BeautifulSoup(html, 'html.parser')
-            
-            chart_list = soup.find('ul', class_='app-chart-numbers')
-            
-            if not chart_list:
-                print("❌ 데이터 구조를 찾을 수 없습니다. (접속 차단 가능성)")
-                # 디버깅을 위해 현재 페이지 캡처 저장 (선택 사항)
-                # page.screenshot(path="debug_screenshot.png")
-                return None
-
-            wishlist_rank = None
-            followers = None
-
-            for li in chart_list.find_all('li'):
-                text = li.get_text(strip=True)
-                if 'wishlist activity' in text.lower():
-                    rank_match = re.search(r'#([\d,]+)', text)
-                    if rank_match:
-                        wishlist_rank = int(rank_match.group(1).replace(',', ''))
-                elif 'followers' in text.lower():
-                    count_match = re.search(r'([\d,]+)', text)
-                    if count_match:
-                        followers = int(count_match.group(1).replace(',', ''))
-
-            result = {
-                'wishlist_rank': wishlist_rank,
-                'followers': followers
-            }
-            print(f"✅ 성공: Rank={wishlist_rank}, Followers={followers}")
-
-        except Exception as e:
-            print(f"❌ Playwright 에러: {e}")
-        finally:
-            browser.close()
-            
-    return result
-
-def steam_db_etl():
-    """SteamDB 수집 및 BigQuery 적재 메인 함수"""
-    
-    # 1. 대상 게임 (FSF2)
-    APP_ID = "4004820"
-    GAME_NAME = "FSF2"
-    today = datetime.now(timezone.utc).date()
-
-    # 2. 데이터 수집
-    stats = fetch_stats_via_playwright(APP_ID)
-    
-    if not stats or (stats['wishlist_rank'] is None and stats['followers'] is None):
-        print("적재할 데이터가 없습니다.")
-        return
-
-    # 3. 데이터프레임 생성
-    df = pd.DataFrame([{
-        'datekey': today,
-        'app_id': str(APP_ID),
-        'game_name': str(GAME_NAME),
-        'wishlist_rank': stats['wishlist_rank'],
-        'follower_count': stats['followers'],
-        'updated_at': datetime.now(timezone.utc)
-    }])
-    
-    # 타입 정리
-    df['datekey'] = pd.to_datetime(df['datekey']).dt.date
-
-    # 4. BigQuery 클라이언트 생성
-    creds_dict = json.loads(CREDENTIALS_JSON) if isinstance(CREDENTIALS_JSON, str) else CREDENTIALS_JSON
-    credentials = service_account.Credentials.from_service_account_info(creds_dict)
-    client = bigquery.Client(project=PROJECT_ID, credentials=credentials)
-
-    # 5. BigQuery 직접 적재 (Delete-Insert 방식)
-    print(f"BigQuery 적재 시작: {TABLE_ID}")
-    
-    # 오늘 데이터 중복 방지 삭제
-    delete_query = f"DELETE FROM `{TABLE_ID}` WHERE datekey = '{today}' AND app_id = '{APP_ID}'"
-    try:
-        client.query(delete_query).result()
-        print(f"기존 {today} 데이터 삭제 완료.")
-    except Exception:
-        print("기존 데이터가 없거나 테이블이 처음 생성됩니다.")
-
-    # 적재 설정 (Schema 정의 포함)
-    job_config = bigquery.LoadJobConfig(
-        schema=[
-            bigquery.SchemaField("datekey", "DATE"),
-            bigquery.SchemaField("wishlist_rank", "INTEGER"),
-            bigquery.SchemaField("follower_count", "INTEGER"),
-            bigquery.SchemaField("updated_at", "TIMESTAMP"),
-        ],
-        write_disposition="WRITE_APPEND",
-    )
-
-    try:
-        job = client.load_table_from_dataframe(df, TABLE_ID, job_config=job_config)
-        job.result() # 완료 대기
-        print(f"✅ 성공: {len(df)}행이 {TABLE_ID}에 적재되었습니다.")
-    except Exception as e:
-        print(f"❌ 적재 실패: {e}")
-
-
+        print(f"Created Notion page for {today_kst}: members={member_count}")
 
 
 # DAG 기본 설정
@@ -480,10 +397,9 @@ with DAG(
         op_kwargs={'key_columns': ['datekey', 'game', 'country_code']}
     )
 
-    # steam_follower_etl_task = PythonOperator(
-    #     task_id='steam_follower_etl_task',
-    #     python_callable=steam_db_etl
-    # )
+    upload_discord_members_to_notion_task = PythonOperator(
+        task_id='upload_discord_members_to_notion_task',
+        python_callable=upsert_discord_members_to_notion
+    )
 
-
-    upload_to_bigquery_task >> upload_to_notion_task
+    upload_discord_members_to_notion_task >> upload_to_bigquery_task >> upload_to_notion_task
