@@ -34,7 +34,8 @@ BQ_DATASET_ID = 'external_data'
 BQ_TABLE_ID = 'steam_wishlist_region'
 BQ_TABLE_TRAFFIC_BREAKDOWN = 'steam_traffic_breakdown'
 BQ_TABLE_TRAFFIC_COUNTRY = 'steam_traffic_country'
-BQ_TABLE_UTM_VISITS = 'steam_utm_visits_conversions'
+BQ_TABLE_UTM_VISITS = 'steam_utm_country'
+BQ_TABLE_UTM_DAILY = 'steam_utm_visits_conversions'
 CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
 APP_ID = '4004820'
@@ -409,7 +410,8 @@ def upsert_df_to_bigquery(client, df: pd.DataFrame, target_table_id: str, merge_
         client.update_table(table, ["expires"])
 
         columns = list(df.columns)
-        on_clause = " AND ".join([f"T.`{k}` = S.`{k}`" for k in merge_keys])
+        # NULL-safe 비교: NULL = NULL은 FALSE이므로 IS NOT DISTINCT FROM 사용
+        on_clause = " AND ".join([f"T.`{k}` IS NOT DISTINCT FROM S.`{k}`" for k in merge_keys])
         update_set = ", ".join([f"T.`{col}` = S.`{col}`" for col in columns if col not in merge_keys])
         insert_cols = ", ".join([f"`{col}`" for col in columns])
         insert_values = ", ".join([f"S.`{col}`" for col in columns])
@@ -592,6 +594,98 @@ def steam_utm_to_bigquery():
     )
 
 
+def steam_utm_daily_to_bigquery():
+    """
+    당일 기준 최근 7일 Steam UTM daily 데이터를 단일 요청으로 수집하여 BigQuery에 Upsert합니다.
+    → steam_utm_visits_conversions
+    """
+    client = init_clients()["bq_client"]
+    today = datetime.now().date()
+    seven_days_ago = today - timedelta(days=7)
+
+    start_date_str = seven_days_ago.strftime("%m%%2F%d%%2F%Y")
+    end_date_str = today.strftime("%m%%2F%d%%2F%Y")
+
+    url = (
+        f"https://partner.steamgames.com/apps/utmtrafficstats/{APP_ID}"
+        f"?preset_date_range=custom"
+        f"&start_date={start_date_str}&end_date={end_date_str}&format=csv&content=daily"
+    )
+
+    pure_cookie_string = f"steamLoginSecure={get_var('STEAM_LOGIN_SECURE')}"
+
+    cookie_dict = {}
+    for c in pure_cookie_string.split(';'):
+        if '=' in c:
+            key, value = c.split('=', 1)
+            key = key.strip()
+            value = value.strip()
+            try:
+                value.encode('latin-1')
+                cookie_dict[key] = value
+            except UnicodeEncodeError:
+                cookie_dict[key] = urllib.parse.quote(value)
+
+    headers = {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+        "referer": f"https://partner.steamgames.com/apps/utmtrafficstats/{APP_ID}"
+    }
+
+    response = requests.get(url, headers=headers, cookies=cookie_dict, timeout=60)
+    response.raise_for_status()
+
+    decoded = response.content.decode('utf-8-sig')
+    sep = '\t' if '\t' in decoded.split('\n')[0] else ','
+    df = pd.read_csv(io.StringIO(decoded), sep=sep)
+    print(f"[UTM daily] 데이터 수집 완료: {len(df)}행, 컬럼: {list(df.columns)}")
+
+    if df.empty:
+        print("No UTM daily data to upsert.")
+        return
+
+    column_mapping = {
+        'Date': 'datekey',
+        'Source': 'source',
+        'Campaign': 'campaign',
+        'Medium': 'medium',
+        'Content': 'content',
+        'Term': 'term',
+        'Device Type': 'device_type',
+        'Visits  (GMT)': 'visits',
+        'Trusted Visits': 'trusted_visits',
+        'Tracked Visits': 'tracked_visits',
+        'Returning Visits': 'returning_visits',
+        'Wishlists': 'wishlists',
+        'Purchases': 'purchases',
+        'Activations': 'activations',
+    }
+    df.rename(columns=column_mapping, inplace=True)
+
+    df['datekey'] = pd.to_datetime(df['datekey']).dt.date
+    df['game_name'] = GAME_NAME
+
+    int_cols = ['visits', 'trusted_visits', 'tracked_visits', 'returning_visits',
+                'wishlists', 'purchases', 'activations']
+    for col in int_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+
+    str_cols = ['source', 'campaign', 'medium', 'content', 'term', 'device_type']
+    for col in str_cols:
+        if col in df.columns:
+            df[col] = df[col].fillna('').astype(str)
+
+    df = df[['datekey', 'game_name', 'source', 'campaign', 'medium', 'content', 'term',
+             'device_type', 'visits', 'trusted_visits', 'tracked_visits', 'returning_visits',
+             'wishlists', 'purchases', 'activations']]
+
+    upsert_df_to_bigquery(
+        client, df,
+        f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_UTM_DAILY}",
+        merge_keys=['datekey', 'game_name', 'source', 'campaign', 'medium', 'content', 'term', 'device_type']
+    )
+
+
 def upsert_discord_members_to_notion():
     """
     Discord Invite API로 멤버 수를 가져와 Notion DB에 Upsert합니다.
@@ -698,4 +792,9 @@ with DAG(
         python_callable=steam_utm_to_bigquery
     )
 
-    upload_steam_traffic_task >> upload_steam_utm_task
+    upload_steam_utm_daily_task = PythonOperator(
+        task_id='upload_steam_utm_daily_to_bigquery',
+        python_callable=steam_utm_daily_to_bigquery
+    )
+
+    upload_steam_traffic_task >> upload_steam_utm_task >> upload_steam_utm_daily_task
