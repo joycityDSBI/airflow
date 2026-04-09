@@ -98,7 +98,7 @@ def steam_wishlist_to_bq_logic(APP_ID):
     pure_cookie_string = (
         f"dateStart={start_date_str}; dateEnd={end_date_str}; priorDateStart={start_date_str};priorDateEnd={end_date_str}; "
         "steamCountry=KR%7Ca386dcd11830e0bc576765a90acdd364; "
-        f"steamLoginSecure={get_var('STEAM_LOGIN_SECURE')}"
+        f"steamLoginSecure={get_var('STEAM_LOGIN_SECURE_PARTNER')}"
     )
 
     cookie_dict = {}
