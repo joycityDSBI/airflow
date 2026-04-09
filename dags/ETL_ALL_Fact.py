@@ -55,8 +55,7 @@ def etl_fact_tracker(**context):
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
     try:
-        #etl_f_tracker_install(target_date=target_date, client=bq_client)
-        etl_f_tracker_install_test(target_date=target_date, client=bq_client)
+        etl_f_tracker_install(target_date=target_date, client=bq_client)
         etl_f_tracker_first(target_date=target_date, client=bq_client)          ## 추가 26-04-06
         # etl_f_tracker_re_engagement(target_date=target_date, client=bq_client) ## 제거됨
         etl_pre_joytracking_tracker(target_date=target_date, client=bq_client)
@@ -92,10 +91,8 @@ def etl_fact_access(**context):
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
     try:
-        #etl_f_common_register(target_date=target_date, client=bq_client)
-        #adjust_f_common_register(target_date=target_date, client=bq_client)
-        etl_f_common_register_test(target_date=target_date, client=bq_client)
-        adjust_f_common_register_test(target_date=target_date, client=bq_client)
+        etl_f_common_register(target_date=target_date, client=bq_client)
+        adjust_f_common_register(target_date=target_date, client=bq_client)
         etl_f_common_register_char(target_date=target_date, client=bq_client)
         adjust_f_common_register_char(target_date=target_date, client=bq_client)
         etl_f_common_access(target_date=target_date, client=bq_client)
@@ -228,10 +225,8 @@ def etl_fact_usermap(**context):
 
         try:
             etl_f_common_access_last_login(target_date=tsa, client=bq_client)
-            #etl_f_user_map(target_date=tsa, client=bq_client)
-            #etl_f_user_map_char(target_date=tsa, client=bq_client)
-            etl_f_user_map_test(target_date=tsa, client=bq_client)
-            etl_f_user_map_char_test(target_date=tsa, client=bq_client)
+            etl_f_user_map(target_date=tsa, client=bq_client)
+            etl_f_user_map_char(target_date=tsa, client=bq_client)
 
         except Exception as e:
             logger.error(f"❌ etl_fact_usermap failed with error: {e}")
