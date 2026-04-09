@@ -513,8 +513,18 @@ def fetch_steam_utm_for_date(date_str: str):
     response = requests.get(url, headers=headers, cookies=cookie_dict, timeout=60)
     response.raise_for_status()
 
-    df = pd.read_csv(io.StringIO(response.content.decode('utf-8-sig')), sep='\t')
-    print(f"[UTM {date_str}] 데이터 수집 완료: {len(df)}행")
+    decoded = response.content.decode('utf-8-sig')
+    # 구분자 자동 감지: 탭이 있으면 TSV, 없으면 CSV
+    sep = '\t' if '\t' in decoded.split('\n')[0] else ','
+    df = pd.read_csv(io.StringIO(decoded), sep=sep)
+    print(f"[UTM {date_str}] 데이터 수집 완료: {len(df)}행, 컬럼: {list(df.columns)}")
+
+    # 데이터 없으면 빈 DataFrame 반환
+    if df.empty:
+        return pd.DataFrame(columns=['datekey', 'game_name', 'source', 'campaign', 'medium',
+                                     'content', 'term', 'country', 'visits', 'trusted_visits',
+                                     'tracked_visits', 'returning_visits', 'wishlists',
+                                     'purchases', 'activations'])
 
     column_mapping = {
         'Source': 'source',
