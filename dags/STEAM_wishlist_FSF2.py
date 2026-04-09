@@ -346,7 +346,16 @@ def fetch_steam_traffic_for_date(date_str: str):
     response = requests.get(url, headers=headers, cookies=cookie_dict, timeout=60)
     response.raise_for_status()
 
-    df = pd.read_csv(io.StringIO(response.text))
+    # CSV 상단 메타데이터 행을 건너뛰고 실제 헤더 행부터 파싱
+    lines = response.text.splitlines()
+    header_row = next(
+        (i for i, line in enumerate(lines) if line.startswith('Page / Category')),
+        None
+    )
+    if header_row is None:
+        raise ValueError(f"[{date_str}] CSV에서 헤더 행을 찾을 수 없습니다.\n응답 앞부분:\n{response.text[:300]}")
+
+    df = pd.read_csv(io.StringIO(response.text), skiprows=header_row)
     print(f"[{date_str}] 트래픽 데이터 수집 완료: {len(df)}행")
 
     column_mapping = {
