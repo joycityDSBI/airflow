@@ -349,8 +349,17 @@ def fetch_steam_traffic_for_date(date_str: str):
     if "<html>" in response.text.lower():
         raise Exception("Steam Session Expired! Airflow Variable에서 쿠키를 갱신하세요.")
 
-    df = pd.read_csv(io.StringIO(response.text))
-    print(f"[{date_str}] 트래픽 데이터 수집 완료: {len(df)}행")
+    # CSV 상단 메타데이터 행을 건너뛰고 'Page / Category' 헤더 행부터 파싱
+    lines = response.text.splitlines()
+    header_row = next(
+        (i for i, line in enumerate(lines) if 'Page / Category' in line),
+        None
+    )
+    if header_row is None:
+        raise ValueError(f"[{date_str}] CSV에서 헤더 행을 찾을 수 없습니다. 응답 내용:\n{response.text[:500]}")
+
+    df = pd.read_csv(io.StringIO(response.text), skiprows=header_row)
+    print(f"[{date_str}] 트래픽 데이터 수집 완료: {len(df)}행 (헤더: line {header_row})")
 
     column_mapping = {
         'Page / Category': 'category',
@@ -554,25 +563,26 @@ with DAG(
 ) as dag:
 
 
-    upload_to_bigquery_task = PythonOperator(
-        task_id='upload_to_bigquery_task',
-        python_callable=upsert_to_bigquery
-    )
+    # upload_to_bigquery_task = PythonOperator(
+    #     task_id='upload_to_bigquery_task',
+    #     python_callable=upsert_to_bigquery
+    # )
 
-    upload_to_notion_task = PythonOperator(
-        task_id='upload_to_notion_task',
-        python_callable=upsert_to_notion,
-        op_kwargs={'key_columns': ['datekey', 'game', 'country_code']}
-    )
+    # upload_to_notion_task = PythonOperator(
+    #     task_id='upload_to_notion_task',
+    #     python_callable=upsert_to_notion,
+    #     op_kwargs={'key_columns': ['datekey', 'game', 'country_code']}
+    # )
 
-    upload_discord_members_to_notion_task = PythonOperator(
-        task_id='upload_discord_members_to_notion_task',
-        python_callable=upsert_discord_members_to_notion
-    )
+    # upload_discord_members_to_notion_task = PythonOperator(
+    #     task_id='upload_discord_members_to_notion_task',
+    #     python_callable=upsert_discord_members_to_notion
+    # )
 
     upload_steam_traffic_task = PythonOperator(
         task_id='upload_steam_traffic_to_bigquery',
         python_callable=steam_traffic_to_bigquery
     )
 
-    upload_to_bigquery_task >> upload_to_notion_task >> upload_discord_members_to_notion_task >> upload_steam_traffic_task
+    # upload_discord_members_to_notion_task >> upload_to_bigquery_task >> upload_to_notion_task >> 
+    upload_steam_traffic_task
