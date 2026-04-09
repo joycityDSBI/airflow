@@ -766,21 +766,21 @@ with DAG(
 ) as dag:
 
 
-    # upload_to_bigquery_task = PythonOperator(
-    #     task_id='upload_to_bigquery_task',
-    #     python_callable=upsert_to_bigquery
-    # )
+    upload_to_bigquery_task = PythonOperator(
+        task_id='upload_to_bigquery_task',
+        python_callable=upsert_to_bigquery
+    )
 
-    # upload_to_notion_task = PythonOperator(
-    #     task_id='upload_to_notion_task',
-    #     python_callable=upsert_to_notion,
-    #     op_kwargs={'key_columns': ['datekey', 'game', 'country_code']}
-    # )
+    upload_to_notion_task = PythonOperator(
+        task_id='upload_to_notion_task',
+        python_callable=upsert_to_notion,
+        op_kwargs={'key_columns': ['datekey', 'game', 'country_code']}
+    )
 
-    # upload_discord_members_to_notion_task = PythonOperator(
-    #     task_id='upload_discord_members_to_notion_task',
-    #     python_callable=upsert_discord_members_to_notion
-    # )
+    upload_discord_members_to_notion_task = PythonOperator(
+        task_id='upload_discord_members_to_notion_task',
+        python_callable=upsert_discord_members_to_notion
+    )
 
     upload_steam_traffic_task = PythonOperator(
         task_id='upload_steam_traffic_to_bigquery',
@@ -797,4 +797,4 @@ with DAG(
         python_callable=steam_utm_daily_to_bigquery
     )
 
-    upload_steam_traffic_task >> upload_steam_utm_task >> upload_steam_utm_daily_task
+    upload_discord_members_to_notion_task >> upload_steam_traffic_task >> upload_steam_utm_task >> upload_steam_utm_daily_task >> upload_to_bigquery_task >> upload_to_notion_task
