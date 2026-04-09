@@ -346,20 +346,8 @@ def fetch_steam_traffic_for_date(date_str: str):
     response = requests.get(url, headers=headers, cookies=cookie_dict, timeout=60)
     response.raise_for_status()
 
-    if "<html>" in response.text.lower():
-        raise Exception("Steam Session Expired! Airflow Variable에서 쿠키를 갱신하세요.")
-
-    # CSV 상단 메타데이터 행을 건너뛰고 'Page / Category' 헤더 행부터 파싱
-    lines = response.text.splitlines()
-    header_row = next(
-        (i for i, line in enumerate(lines) if 'Page / Category' in line),
-        None
-    )
-    if header_row is None:
-        raise ValueError(f"[{date_str}] CSV에서 헤더 행을 찾을 수 없습니다. 응답 내용:\n{response.text[:500]}")
-
-    df = pd.read_csv(io.StringIO(response.text), skiprows=header_row)
-    print(f"[{date_str}] 트래픽 데이터 수집 완료: {len(df)}행 (헤더: line {header_row})")
+    df = pd.read_csv(io.StringIO(response.text))
+    print(f"[{date_str}] 트래픽 데이터 수집 완료: {len(df)}행")
 
     column_mapping = {
         'Page / Category': 'category',
