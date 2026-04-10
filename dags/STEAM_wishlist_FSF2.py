@@ -73,8 +73,8 @@ def get_gcp_credentials():
 
 def steam_wishlist_to_bq_logic():
     today = datetime.now().date()
-    thirty_days_ago = today - timedelta(days=30)
-    start_date_str = thirty_days_ago.strftime("%Y-%m-%d")
+    seven_days_ago = today - timedelta(days=7)
+    start_date_str = seven_days_ago.strftime("%Y-%m-%d")
     end_date_str = today.strftime("%Y-%m-%d")
 
     url = (
@@ -361,10 +361,10 @@ def steam_traffic_to_bigquery():
     all_breakdown = []
     all_country = []
 
-    for i in range(7):
+    for i in range(30):
         target_date = today - timedelta(days=i)
         date_str = target_date.strftime("%Y-%m-%d")
-        print(f"[{i+1}/7] {date_str} 트래픽 데이터 수집 중...")
+        print(f"[{i+1}/30] {date_str} 트래픽 데이터 수집 중...")
         df_breakdown, df_country = fetch_steam_traffic_for_date(date_str)
         all_breakdown.append(df_breakdown)
         all_country.append(df_country)
@@ -485,10 +485,10 @@ def steam_utm_to_bigquery():
 
     all_data = []
 
-    for i in range(7):
+    for i in range(30):
         target_date = today - timedelta(days=i)
         date_str = target_date.strftime("%Y-%m-%d")
-        print(f"[{i+1}/7] {date_str} UTM 데이터 수집 중...")
+        print(f"[{i+1}/30] {date_str} UTM 데이터 수집 중...")
         df = fetch_steam_utm_for_date(date_str)
         all_data.append(df)
         time.sleep(1)
@@ -510,9 +510,9 @@ def steam_utm_daily_to_bigquery():
     """
     client = init_clients()["bq_client"]
     today = datetime.now().date()
-    seven_days_ago = today - timedelta(days=7)
+    thirty_days_ago = today - timedelta(days=30)
 
-    start_date_str = seven_days_ago.strftime("%m%%2F%d%%2F%Y")
+    start_date_str = thirty_days_ago.strftime("%m%%2F%d%%2F%Y")
     end_date_str = today.strftime("%m%%2F%d%%2F%Y")
 
     url = (
