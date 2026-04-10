@@ -115,6 +115,21 @@ def extract_property(page: dict, prop_name: str):
         sel = prop.get("select")
         return sel.get("name") if sel else None
 
+    elif prop_type == "formula":
+        # 수식 결과 타입에 따라 추출
+        formula = prop.get("formula", {})
+        formula_type = formula.get("type")
+        if formula_type == "number":
+            return formula.get("number")
+        elif formula_type == "string":
+            return formula.get("string")
+        elif formula_type == "boolean":
+            return formula.get("boolean")
+        elif formula_type == "date":
+            date_obj = formula.get("date")
+            return date_obj.get("start") if date_obj else None
+        return None
+
     return None
 
 
@@ -127,17 +142,27 @@ def load_server_open_time():
     rows = []
     for page in pages:
         title_text = extract_property(page, "오픈 시간") or ""
-        open_time_raw = extract_property(page, "시간")
         server_group_create_time_raw = extract_property(page, "서버 그룹 생성일")
         server_group_age = extract_property(page, "서버 그룹 나이")
 
-        # open_time 파싱 (timestamp)
+        # open_time: date 프로퍼티의 ISO 값을 직접 사용 ('지난주 화요일' 같은 표시 텍스트 무시)
         open_time = None
-        if open_time_raw:
-            try:
-                open_time = pd.to_datetime(open_time_raw).to_pydatetime()
-            except Exception:
-                pass
+        time_prop = page.get("properties", {}).get("시간", {})
+        time_type = time_prop.get("type")
+        if time_type == "date":
+            date_obj = time_prop.get("date")
+            if date_obj and date_obj.get("start"):
+                try:
+                    open_time = pd.to_datetime(date_obj["start"]).to_pydatetime()
+                except Exception:
+                    pass
+        elif time_type == "created_time":
+            raw = time_prop.get("created_time")
+            if raw:
+                try:
+                    open_time = pd.to_datetime(raw).to_pydatetime()
+                except Exception:
+                    pass
 
         # server_group_create_time 파싱 (date)
         server_group_create_time = None
