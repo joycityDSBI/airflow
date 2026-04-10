@@ -4,7 +4,7 @@ import requests
 import pandas as pd
 from airflow import DAG
 from airflow.providers.standard.operators.python import PythonOperator
-from airflow.models import Variable
+from airflow.sdk import Variable
 import os
 import logging
 from google.cloud import bigquery
@@ -20,7 +20,7 @@ NOTION_DB_ID = '33dea67a568180c89ec3fc570744fefd'
 
 
 def get_var(key: str, default: str = 'default') -> str:
-    return os.environ.get(key) or Variable.get(key, default_var=default)
+    return os.environ.get(key) or Variable.get(key, default=default)
 
 
 def get_gcp_credentials():
