@@ -67,26 +67,22 @@ def fetch_notion_pages() -> list[dict]:
         "Content-Type": "application/json",
     }
     url = f"https://api.notion.com/v1/databases/{NOTION_DB_ID}/query"
-    payload = {
-        "filter": {
-            "property": "분류",
-            "select": {"equals": "신규 서버"}
-        },
-        "page_size": 100,
-    }
+    payload = {"page_size": 100}
 
-    pages = []
+    all_pages = []
     while True:
         resp = requests.post(url, headers=headers, json=payload, timeout=30)
         resp.raise_for_status()
         data = resp.json()
-        pages.extend(data.get("results", []))
+        all_pages.extend(data.get("results", []))
 
         if not data.get("has_more"):
             break
         payload["start_cursor"] = data["next_cursor"]
 
-    print(f"Notion에서 {len(pages)}개 페이지 수집 완료")
+    # 분류='신규 서버' Python 필터링 (컬럼 타입 무관하게 처리)
+    pages = [p for p in all_pages if extract_property(p, "분류") == "신규 서버"]
+    print(f"Notion 전체 {len(all_pages)}개 중 신규 서버 {len(pages)}개 수집 완료")
     return pages
 
 
