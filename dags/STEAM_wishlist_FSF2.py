@@ -702,4 +702,4 @@ with DAG(
         python_callable=steam_utm_daily_to_bigquery
     )
 
-    upload_discord_members_to_notion_task >> upload_steam_traffic_task >> upload_steam_utm_task >> upload_steam_utm_daily_task >> upload_to_bigquery_task >> upload_to_notion_task
+    upload_discord_members_to_notion_task >> upload_to_bigquery_task >> upload_to_notion_task >> upload_steam_traffic_task >> upload_steam_utm_task >> upload_steam_utm_daily_task 
