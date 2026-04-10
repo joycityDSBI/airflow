@@ -71,77 +71,73 @@ def get_gcp_credentials():
     )
 
 
+WISHLIST_API_ENDPOINT = "https://partner.steam-api.com/IPartnerFinancialsService/GetAppWishlistReporting/v001/"
+
+
+def fetch_wishlist_for_date(date_str: str) -> list:
+    """
+    IPartnerFinancialsService API로 특정 날짜의 위시리스트 데이터를 가져옵니다.
+    date_str: YYYY-MM-DD 형식
+    """
+    params = {
+        "key": get_var('STEAM_FINANCIAL_API_KEY'),
+        "appid": int(APP_ID),
+        "date": date_str,
+    }
+    resp = requests.get(WISHLIST_API_ENDPOINT, params=params, timeout=30)
+    resp.raise_for_status()
+    payload = resp.json().get("response", {})
+
+    if not payload:
+        print(f"[{date_str}] 위시리스트 API 응답 없음")
+        return []
+
+    target_date = pd.to_datetime(payload.get("date", date_str)).date()
+    rows = []
+    for c in payload.get("country_summary", []) or []:
+        actions = c.get("summary_actions", {}) or {}
+        rows.append({
+            "datekey": target_date,
+            "game": GAME_NAME,
+            "country_code": c.get("country_code", ""),
+            "region": c.get("region", ""),
+            "adds": actions.get("wishlist_adds", 0),
+            "deletes": actions.get("wishlist_deletes", 0),
+            "purchase_and_activations": actions.get("wishlist_purchases", 0),
+            "gifts": actions.get("wishlist_gifts", 0),
+        })
+    print(f"[{date_str}] 위시리스트 {len(rows)}개 국가 수집")
+    return rows
+
+
 def steam_wishlist_to_bq_logic():
+    """최근 7일치 위시리스트 데이터를 API로 수집하여 DataFrame으로 반환합니다."""
     today = datetime.now().date()
-    seven_days_ago = today - timedelta(days=7)
-    start_date_str = seven_days_ago.strftime("%Y-%m-%d")
-    end_date_str = today.strftime("%Y-%m-%d")
+    all_rows = []
+    for i in range(7):
+        date_str = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+        all_rows.extend(fetch_wishlist_for_date(date_str))
+        time.sleep(0.3)
 
-    url = (
-        f"https://partner.steampowered.com/report_csv.php?"
-        f"file=SteamRegionalWishlists_{APP_ID}_{start_date_str}_to_{end_date_str}&"
-        f"params=query=QueryWishlistActionsByCountryForCSV^appID={APP_ID}^"
-        f"dateStart={start_date_str}^dateEnd={end_date_str}^"
-        f"interpreter=WishlistCountryReportInterpreter"
-    )
+    if not all_rows:
+        return pd.DataFrame()
 
-    pure_cookie_string = (
-        f"dateStart={start_date_str}; dateEnd={end_date_str}; "
-        f"priorDateStart={start_date_str}; priorDateEnd={end_date_str}; "
-        "steamCountry=KR%7Ca386dcd11830e0bc576765a90acdd364; "
-        f"steamLoginSecure={get_var('STEAM_LOGIN_SECURE_PARTNER')}"
-    )
+    df = pd.DataFrame(all_rows)
+    for col in ['adds', 'deletes', 'purchase_and_activations', 'gifts']:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
 
-    cookie_dict = {}
-    for c in pure_cookie_string.split(';'):
-        if '=' in c:
-            key, value = c.split('=', 1)
-            key = key.strip()
-            value = value.strip()
-            try:
-                value.encode('latin-1')
-                cookie_dict[key] = value
-            except UnicodeEncodeError:
-                cookie_dict[key] = urllib.parse.quote(value)
-
-    headers = {
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
-        "referer": f"https://partner.steampowered.com/app/wishlist/{APP_ID}/"
-    }
-
-    response = requests.get(url, headers=headers, cookies=cookie_dict, timeout=60)
-    response.raise_for_status()
-
-    if "<html>" in response.text.lower():
-        raise Exception("Steam Session Expired! STEAM_LOGIN_SECURE_PARTNER 쿠키를 갱신하세요.")
-
-    df = pd.read_csv(io.StringIO(response.text), skiprows=2)
-
-    column_mapping = {
-        'DateLocal': 'datekey',
-        'Game': 'game',
-        'CountryCode': 'country_code',
-        'Region': 'region',
-        'Adds': 'adds',
-        'Deletes': 'deletes',
-        'PurchasesAndActivations': 'purchase_and_activations',
-        'Gifts': 'gifts'
-    }
-    df.rename(columns=column_mapping, inplace=True)
-    print(f"위시리스트 데이터 수집 완료: {len(df)}행 ({start_date_str} ~ {end_date_str})")
+    print(f"위시리스트 데이터 수집 완료: {len(df)}행")
     return df
 
 
 def upsert_to_bigquery():
-    """최근 30일 위시리스트 데이터를 BigQuery steam_wishlist_region에 Upsert합니다."""
+    """최근 7일 위시리스트 데이터를 BigQuery steam_wishlist_region에 Upsert합니다."""
     client = init_clients()["bq_client"]
     df = steam_wishlist_to_bq_logic()
 
     if df.empty:
         print("No wishlist data to upsert.")
         return
-
-    df['datekey'] = pd.to_datetime(df['datekey']).dt.date
 
     for col in ['adds', 'deletes', 'purchase_and_activations', 'gifts']:
         if col in df.columns:
