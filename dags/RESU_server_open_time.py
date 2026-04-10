@@ -72,6 +72,8 @@ def fetch_notion_pages() -> list[dict]:
     all_pages = []
     while True:
         resp = requests.post(url, headers=headers, json=payload, timeout=30)
+        if not resp.ok:
+            print(f"Notion API 오류 응답: {resp.status_code} {resp.text}")
         resp.raise_for_status()
         data = resp.json()
         all_pages.extend(data.get("results", []))
