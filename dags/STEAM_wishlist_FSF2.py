@@ -71,178 +71,81 @@ def get_gcp_credentials():
     )
 
 
-def steam_wishlist_to_bq_logic(APP_ID):
-    # 1. 날짜 설정 (Airflow Execution Date 활용)
-    # ds: YYYY-MM-DD 형식 (예: 2026-03-19)
+WISHLIST_API_ENDPOINT = (
+    "https://partner.steam-api.com"
+    "/IPartnerFinancialsService/GetAppWishlistReporting/v001/"
+)
 
-    # 6일전 날짜를 가져오는 로직
-    today = datetime.now().date()
-    #################### 7일 전으로 변경 해야 함
-    six_days_ago = today - timedelta(days=7)
-    start_date_str = six_days_ago.strftime("%Y-%m-%d")
-    end_date_str = today.strftime("%Y-%m-%d")
 
-    app_id = APP_ID
-    
-    # 2. 동적 URL 생성 (템플릿 날짜 적용)
-    url = (
-        f"https://partner.steampowered.com/report_csv.php?"
-        f"file=SteamRegionalWishlists_{app_id}_{start_date_str}_to_{end_date_str}&"
-        f"params=query=QueryWishlistActionsByCountryForCSV^appID={app_id}^"
-        f"dateStart={start_date_str}^dateEnd={end_date_str}^"
-        f"interpreter=WishlistCountryReportInterpreter"
-    )
-
-    # 3. 쿠키 및 헤더 설정
-    # ✅ 수정: cURL에서 -b 뒤에 있던 '순수 쿠키 문자열'만 넣어야 합니다.
-    pure_cookie_string = (
-        f"dateStart={start_date_str}; dateEnd={end_date_str}; priorDateStart={start_date_str};priorDateEnd={end_date_str}; "
-        "steamCountry=KR%7Ca386dcd11830e0bc576765a90acdd364; "
-        f"steamLoginSecure={get_var('STEAM_LOGIN_SECURE_PARTNER')}"
-    )
-
-    cookie_dict = {}
-    for c in pure_cookie_string.split(';'):
-        if '=' in c:
-            key, value = c.split('=', 1) # 첫 번째 '='만 기준으로 나눔
-            key = key.strip()
-            value = value.strip()
-            
-            # ⚠️ 핵심: latin-1 에러 방지를 위해 값만 URL 인코딩 처리
-            # 이미 인코딩된 값은 유지하고, 생으로 들어간 유니코드만 변환합니다.
-            try:
-                value.encode('latin-1')
-                cookie_dict[key] = value
-            except UnicodeEncodeError:
-                cookie_dict[key] = urllib.parse.quote(value)
-        
-    headers = {
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
-        "referer": f"https://partner.steampowered.com/app/wishlist/{app_id}/"
+def fetch_wishlist_api_for_date(date_str: str) -> list:
+    """
+    IPartnerFinancialsService/GetAppWishlistReporting API로
+    특정 날짜의 위시리스트 데이터를 가져와 행 리스트로 반환합니다.
+    date_str: YYYY-MM-DD 형식
+    """
+    api_key = get_var('STEAM_FINANCIAL_API_KEY')
+    params = {
+        "key": api_key,
+        "appid": int(APP_ID),
+        "rt_start_date": date_str,
+        "rt_end_date": date_str,
     }
+    resp = requests.get(WISHLIST_API_ENDPOINT, params=params, timeout=30)
+    resp.raise_for_status()
+    payload = resp.json().get("response", {})
 
-    # 4. Steam 데이터 요청
-    response = requests.get(url, headers=headers, cookies=cookie_dict, timeout=60)
-    response.raise_for_status()
+    if not payload:
+        print(f"[{date_str}] 위시리스트 API 응답 없음")
+        return []
 
-    if "<html>" in response.text.lower():
-        raise Exception("❌ Steam Session Expired! Airflow Variable에서 쿠키를 갱신하세요.")
-
-    # 5. CSV를 DataFrame으로 변환 (메모리 내에서 처리)
-    # Steam CSV는 보통 첫 몇 줄에 메타데이터가 있을 수 있으니 상황에 따라 skiprows 조절 필요
-    df = pd.read_csv(io.StringIO(response.text), skiprows=2)
-    print("📧데이터프레임으로 변환 완료")
-
-    column_mapping = {
-        'DateLocal': 'datekey',
-        'Game': 'game',
-        'CountryCode': 'country_code',
-        'Region': 'region',
-        'Adds': 'adds',
-        'Deletes': 'deletes',
-        'PurchasesAndActivations': 'purchase_and_activations',
-        'Gifts': 'gifts'
-    }
-    df.rename(columns=column_mapping, inplace=True)
-    print("📧 컬럼 명 변경 완료")
-
-    return df
-
+    target_date = payload.get("date", date_str)
+    countries = payload.get("country_summary", []) or []
+    rows = []
+    for c in countries:
+        actions = c.get("summary_actions", {}) or {}
+        rows.append({
+            "datekey": pd.to_datetime(target_date).date(),
+            "game": GAME_NAME,
+            "country_code": c.get("country_code", ""),
+            "region": c.get("region", ""),
+            "adds": actions.get("wishlist_adds", 0),
+            "deletes": actions.get("wishlist_deletes", 0),
+            "purchase_and_activations": actions.get("wishlist_purchases", 0),
+            "gifts": actions.get("wishlist_gifts", 0),
+        })
+    print(f"[{date_str}] 위시리스트 {len(rows)}개 국가 수집")
+    return rows
 
 
 def upsert_to_bigquery():
     """
-    Dataframe을 BigQuery에 Upsert (Merge) 하는 함수
-    Key: datekey, app_id
+    IPartnerFinancialsService API로 최근 7일 위시리스트 데이터를 수집하여
+    BigQuery steam_wishlist_region 테이블에 Upsert합니다.
     """
     client = init_clients()["bq_client"]
-    df = steam_wishlist_to_bq_logic(APP_ID)
+    today = datetime.now().date()
 
-    if df.empty:
-        print("No data to upsert.")
+    all_rows = []
+    for i in range(7):
+        date_str = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+        print(f"[{i+1}/7] {date_str} 위시리스트 수집 중...")
+        all_rows.extend(fetch_wishlist_api_for_date(date_str))
+        time.sleep(0.5)
+
+    if not all_rows:
+        print("No wishlist data to upsert.")
         return
-    
-    # (4) 전처리
-    if 'datekey' in df.columns:
-        # 1. 먼저 datetime으로 변환
-        df['datekey'] = pd.to_datetime(df['datekey'])
-        # 2. 시간(00:00:00)을 떼어내고 날짜(Date) 객체로 변환
-        df['datekey'] = df['datekey'].dt.date
-    
-    numeric_cols = ['adds', 'deletes', 'purchase_and_activations', 'gifts']
-    for col in numeric_cols:
-        if col in df.columns:
-            # 1. 숫자로 변환 (에러 발생 시 NaN)
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-            
-            # 2. NaN을 0으로 채움
-            df[col] = df[col].fillna(0)
-            
-            # 3. [핵심] 정수형(int)으로 강제 변환 (소수점 버림)
-            df[col] = df[col].astype(int)
 
-    # [수정 1] 타임스탬프 고정 (변수 재사용)
-    timestamp = int(time.time())
-    target_table_id = f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_ID}"
-    staging_table_name = f"temp_steam_staging_{timestamp}"
-    staging_table_id = f"{PROJECT_ID}.{BQ_DATASET_ID}.{staging_table_name}"
+    df = pd.DataFrame(all_rows)
 
-    # 2. 데이터프레임을 임시 테이블에 적재
-    job_config = bigquery.LoadJobConfig(
-        autodetect=True,
-        write_disposition="WRITE_TRUNCATE",
-        schema=[
-                    bigquery.SchemaField("datekey", "DATE"), # datekey는 무조건 DATE로 인식해라!
-                ]
+    for col in ['adds', 'deletes', 'purchase_and_activations', 'gifts']:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+
+    upsert_df_to_bigquery(
+        client, df,
+        f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_ID}",
+        merge_keys=['datekey', 'game', 'country_code']
     )
-
-    try:
-        print(f"📧 Loading data to staging table: {staging_table_id}...")
-        # 테이블 적재 (이때 테이블이 생성됨)
-        load_job = client.load_table_from_dataframe(df, staging_table_id, job_config=job_config)
-        load_job.result() # 대기
-        
-        # [수정 2] 적재 후 만료 시간 업데이트
-        # 이미 생성된 테이블 객체를 가져와서 만료 시간만 업데이트
-        table = client.get_table(staging_table_id)
-        table.expires = datetime.utcnow() + timedelta(hours=1)
-        client.update_table(table, ["expires"]) # BigQuery에 반영
-        
-        # 3. MERGE 쿼리 생성
-        columns = [col for col in df.columns]
-        
-        # [수정 3] 컬럼명에 Backtick(`) 추가하여 예약어 충돌 방지
-        update_set = ", ".join([f"T.`{col}` = S.`{col}`" for col in columns if col not in ['datekey', 'game', 'country_code']])
-        insert_cols = ", ".join([f"`{col}`" for col in columns])
-        insert_values = ", ".join([f"S.`{col}`" for col in columns])
-
-        merge_query = f"""
-        MERGE `{target_table_id}` T
-        USING `{staging_table_id}` S
-        ON T.datekey = S.datekey AND T.game = S.game AND T.country_code = S.country_code
-        
-        WHEN MATCHED THEN
-          UPDATE SET {update_set}
-          
-        WHEN NOT MATCHED THEN
-          INSERT ({insert_cols})
-          VALUES ({insert_values})
-        """
-
-        print("Executing MERGE query...")
-        query_job = client.query(merge_query)
-        query_job.result()
-        
-        print("Upsert complete.")
-
-    except Exception as e:
-        print(f"Upsert Failed: {e}")
-        raise e
-
-    finally:
-        # [수정 4] 일관된 ID로 삭제 시도
-        print(f"Dropping staging table: {staging_table_id}")
-        client.delete_table(staging_table_id, not_found_ok=True)
 
 
 def upsert_to_notion(key_columns: list):
@@ -252,12 +155,19 @@ def upsert_to_notion(key_columns: list):
     notion = Client(auth = notion_token)
     notion_db_id = '32cea67a568180ce990ae74e85de7d3d'
     
-    df = steam_wishlist_to_bq_logic(APP_ID)
+    all_rows = []
+    today = datetime.now().date()
+    for i in range(7):
+        date_str = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+        all_rows.extend(fetch_wishlist_api_for_date(date_str))
+        time.sleep(0.5)
 
-    if df.empty:
+    if not all_rows:
         print("No data to upsert.")
         return
-    
+
+    df = pd.DataFrame(all_rows)
+
     for _, row in df.iterrows():
         # 1. 다중 키를 이용한 필터 생성 (AND 조건)
         # 각 컬럼의 타입에 맞게 필터를 구성해야 합니다 (여기서는 rich_text 기준)
