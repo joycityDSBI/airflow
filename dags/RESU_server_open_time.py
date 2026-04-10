@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 PROJECT_ID = 'datahub-478802'
 DATASET_ID = 'RESU'
 TABLE_ID = 'dim_server_open_time'
-NOTION_DB_ID = '33dea67a568180c89ec3fc570744fefd'
+NOTION_DB_ID = '246ea67a56818025b44af85f6c16ad1b'
 
 
 def get_var(key: str, default: str = 'default') -> str:
