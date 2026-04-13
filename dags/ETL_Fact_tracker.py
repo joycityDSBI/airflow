@@ -202,7 +202,7 @@ def etl_f_tracker_install(target_date: list, client):
                 TIMESTAMP(installTimeStamp) as event_time,
                 'install' as event_type,
                 TrackerAccountInstallDateKST as install_datekey
-                FROM dataplatform-reporting.DataService.V_0271_0001_TrackerAccountInstallFirstFix_V
+                FROM dataplatform-reporting.DataService.T_0271_0000_TrackerAccountInstallFirst_V
                 WHERE TrackerAccountInstallDateKST = '{current_date_obj.strftime("%Y-%m-%d")}'
         ) as source 
         ON target.app_id = source.app_id
