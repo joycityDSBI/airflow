@@ -140,6 +140,8 @@ def generate_ua_data_in_bigquery(**context):
         , Pu_D120, Pu_D150, Pu_D180, Pu_D210, Pu_D240, Pu_D270, Pu_D300, Pu_D330
         , Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510
         FROM `datahub-478802.datahub.f_user_map_cohort_view`
+        WHERE reg_datekey BETWEEN DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 3 MONTH)
+        AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
     """
 
     try:
