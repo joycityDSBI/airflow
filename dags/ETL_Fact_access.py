@@ -101,7 +101,7 @@ def etl_f_common_register(target_date: list, client):
                 TB.tracker_account_id,
                 TB.tracker_type_id,
                 TB.device_id,
-                TB.country_code as reg_country_code,
+                ifnull(aa.country_code,TB.country_code) as reg_country_code,
                 TB.market_id,
                 TB.os_id,
                 TB.platform_device_type,
@@ -218,13 +218,13 @@ def adjust_f_common_register(target_date: list, client):
             , TA.INFO.tracker_account_id
             , TA.INFO.mmp_type as tracker_type_id
             , TA.INFO.device_id
-            , TC.country_code as reg_country_code
+            , ifnull(TB.country_code, TC.country_code) as reg_country_code
             , TA.INFO.market_id
             , TA.INFO.os_id
             , TA.INFO.platform_device_type
             , TA.INFO.app_id
             , TB.bundle_id
-            , TC.country_code as first_tracking_country_code
+            , TB.country_code as first_tracking_country_code
             , TB.media_source
             , TB.media_source_cat
             , if(J.auth_account_name is not null, 'Non-Organic',TB.is_organic) as is_organic
@@ -398,7 +398,7 @@ def etl_f_common_register_char(target_date:list, client):
                 , FirstTrackerAccountID AS tracker_account_id
                 , Info.TrackerTypeID AS tracker_type_id
                 , FirstDeviceID AS device_id
-                , b.country_code AS country_code
+                , ifnull(c.reg_country_code, b.country_code) AS country_code
                 , Info.MarketID AS market_id
                 , Info.OSID AS os_id
                 , Info.PlatformDeviceType AS platform_device_type
@@ -563,7 +563,7 @@ def adjust_f_common_register_char(target_date:list, client):
             , TA.INFO.tracker_account_id
             , TA.INFO.mmp_type as tracker_type_id
             , TA.INFO.device_id
-            , TC.country_code as country_code
+            , ifnull(TB.reg_country_code,TC.country_code) as country_code
             , TA.INFO.market_id
             , TA.INFO.os_id
             , TA.INFO.platform_device_type
