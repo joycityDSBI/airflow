@@ -246,7 +246,7 @@ def load_development_schedule():
     - 어제 날짜 기준으로 패치 날짜 시작일이 2주 이내인 행만 처리
     """
     yesterday = (datetime.now() - timedelta(days=1)).date()
-    two_weeks_ago = yesterday - timedelta(days=14)
+    two_weeks_ago = yesterday - timedelta(days=360)
 
     start_date_filter = two_weeks_ago.strftime("%Y-%m-%d")
     end_date_filter = yesterday.strftime("%Y-%m-%d")
