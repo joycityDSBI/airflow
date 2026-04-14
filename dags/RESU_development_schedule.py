@@ -82,7 +82,7 @@ def extract_property(page: dict, prop_name: str):
 def fetch_notion_pages(start_date_filter: str, end_date_filter: str) -> list[dict]:
     """
     Notion DB에서 조건에 맞는 페이지를 모두 가져옵니다.
-    - 파트 = 기획
+    - 파트 = 기획, 데이터
     - 분석 != 제외 (또는 비어있음)
     - 패치 날짜 시작일이 start_date_filter ~ end_date_filter 범위
     """
@@ -97,8 +97,10 @@ def fetch_notion_pages(start_date_filter: str, end_date_filter: str) -> list[dic
         "filter": {
             "and": [
                 {
-                    "property": "파트",
-                    "select": {"equals": "기획"}
+                    "or": [
+                        {"property": "파트", "select": {"equals": "기획"}},
+                        {"property": "파트", "select": {"equals": "데이터"}},
+                    ]
                 },
                 {
                     "property": "패치 날짜",
