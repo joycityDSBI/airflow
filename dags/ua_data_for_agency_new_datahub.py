@@ -170,7 +170,7 @@ def generate_all_projects_reports(**context):
 
     spreadsheet_url = "https://docs.google.com/spreadsheets/d/1gMEd4_sTX-Y1jr4JcZyonDiMzazKfJOjHdahvhBKNGE/edit?gid=0#gid=0"
     spreadsheet = client.open_by_url(spreadsheet_url)
-    worksheet = spreadsheet.sheet1
+    worksheet = spreadsheet.worksheet('Sheet3')
     data = worksheet.get_all_values()
     project_list = [cell for row in data for cell in row][1:]
 
@@ -563,4 +563,4 @@ task_cleanup_temp = PythonOperator(
 )
 
 # Task 의존성
-task_bigquery_projects >> task_all_projects >> task_agency_reports >> task_authorize_gcs >> task_cleanup_temp
+task_bigquery_projects >> task_all_projects  # TEST: task_all_projects 까지만 실행 (원본: >> task_agency_reports >> task_authorize_gcs >> task_cleanup_temp)
