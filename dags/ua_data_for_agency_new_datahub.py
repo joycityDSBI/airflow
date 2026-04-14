@@ -172,7 +172,7 @@ def generate_all_projects_reports(**context):
 
     spreadsheet_url = "https://docs.google.com/spreadsheets/d/1gMEd4_sTX-Y1jr4JcZyonDiMzazKfJOjHdahvhBKNGE/edit?gid=0#gid=0"
     spreadsheet = client.open_by_url(spreadsheet_url)
-    worksheet = spreadsheet.worksheet('Sheet3')
+    worksheet = spreadsheet.worksheet('sheet3')
     data = worksheet.get_all_values()
     project_list = [cell for row in data for cell in row][1:]
 
