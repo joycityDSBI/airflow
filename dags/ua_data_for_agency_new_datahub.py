@@ -543,24 +543,25 @@ task_all_projects = PythonOperator(
     dag=dag,
 )
 
-task_agency_reports = PythonOperator(
-    task_id='generate_agency_reports',
-    python_callable=generate_agency_reports,
-    dag=dag,
-)
+# TEST: 아래 task 임시 주석처리 (task_all_projects 까지만 실행)
+# task_agency_reports = PythonOperator(
+#     task_id='generate_agency_reports',
+#     python_callable=generate_agency_reports,
+#     dag=dag,
+# )
 
-task_authorize_gcs = PythonOperator(
-    task_id='authorize_gcs_access',
-    python_callable=authorize_gcs_access,
-    dag=dag,
-)
+# task_authorize_gcs = PythonOperator(
+#     task_id='authorize_gcs_access',
+#     python_callable=authorize_gcs_access,
+#     dag=dag,
+# )
 
-task_cleanup_temp = PythonOperator(
-    task_id='cleanup_temp_table',
-    python_callable=cleanup_temp_table,
-    trigger_rule='all_done',  # 이전 task 성공/실패 무관하게 항상 정리
-    dag=dag,
-)
+# task_cleanup_temp = PythonOperator(
+#     task_id='cleanup_temp_table',
+#     python_callable=cleanup_temp_table,
+#     trigger_rule='all_done',
+#     dag=dag,
+# )
 
-# Task 의존성
-task_bigquery_projects >> task_all_projects  # TEST: task_all_projects 까지만 실행 (원본: >> task_agency_reports >> task_authorize_gcs >> task_cleanup_temp)
+# Task 의존성 (TEST: task_all_projects 까지만)
+task_bigquery_projects >> task_all_projects
