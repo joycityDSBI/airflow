@@ -313,6 +313,8 @@ def get_all_comments_with_api_key(video_map):
                 break
         time.sleep(0.2)
 
+    if not comments_data:
+        return pd.DataFrame(columns=['comment_id', 'video_id', 'video_title', 'author', 'text', 'published_at', 'like_count'])
     df = pd.DataFrame(comments_data)
     return df[['comment_id', 'video_id', 'video_title', 'author', 'text', 'published_at', 'like_count']]
 
