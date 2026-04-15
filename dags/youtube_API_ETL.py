@@ -317,7 +317,7 @@ def get_all_comments_with_api_key(video_map):
         return pd.DataFrame(columns=['comment_id', 'video_id', 'video_title', 'author', 'text', 'published_at', 'like_count'])
     df = pd.DataFrame(comments_data)
     return df[['comment_id', 'video_id', 'video_title', 'author', 'text', 'published_at', 'like_count']]
-
+ 
 
 # API 키로 채널 비디오 목록 조회 (Analytics 권한 없는 채널용)
 def get_video_map_with_api_key(channel_id):
