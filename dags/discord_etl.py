@@ -279,11 +279,8 @@ def fetch_and_load_audit_logs(**context):
     주의: 감사 로그는 Discord에서 약 45일만 보관 → 매일 수집 필수
     """
     pst = pytz.timezone("America/Los_Angeles")
-    # [BACKFILL] 45일치 전체 수집 - 완료 후 아래 두 줄로 원복
-    start_utc = datetime.now(timezone.utc) - timedelta(days=45)
-    end_utc = datetime.now(timezone.utc)
-    # target_date_str = (datetime.now(pytz.utc).astimezone(pst).date() - timedelta(days=1)).strftime("%Y-%m-%d")
-    # start_utc, end_utc = _get_target_range_utc(target_date_str)
+    target_date_str = (datetime.now(pytz.utc).astimezone(pst).date() - timedelta(days=1)).strftime("%Y-%m-%d")
+    start_utc, end_utc = _get_target_range_utc(target_date_str)
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
     now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
