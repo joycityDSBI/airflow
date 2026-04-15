@@ -102,15 +102,21 @@ def generate_ua_data_in_bigquery(**context):
     bq_client = bigquery.Client.from_service_account_info(credentials_info)
 
     create_query = f"""
-        CREATE OR REPLACE TABLE `{TEMP_TABLE}` AS
+        CREATE OR REPLACE TABLE `datahub-478802.datahub.f_user_map_cohort_view_temp` AS
         SELECT
           game_code_name AS project_name
         , joyple_game_code
         , reg_datekey AS regdate_joyple_kst
         , app_id
         , gcat
-        , media_category
-        , media
+        ,CASE WHEN media_source = 'Organic' then 'Organic'
+            when media_source = 'Unknown' then 'Unknown'
+            else media_category
+        end as media_category
+        ,CASE WHEN media_source = 'Organic' then 'Organic'
+            when media_source = 'Unknown' then 'Unknown'
+            else media
+        end as media
         , media_source
         , media_detail
         , product_category
