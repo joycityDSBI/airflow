@@ -172,7 +172,7 @@ def fetch_and_load_member_snapshot(**context):
     pst = pytz.timezone("America/Los_Angeles")
     target_date_str = datetime.now(pst).date().strftime("%Y-%m-%d")
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(pst).isoformat()
+    now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
 
     for guild_id in GUILD_IDS:
@@ -208,8 +208,7 @@ def fetch_and_load_member_snapshot(**context):
 
     df = pd.DataFrame(all_rows)
     df["inserted_at"] = pd.to_datetime(df["inserted_at"])
-    pst = pytz.timezone("America/Los_Angeles")
-    df["joined_at"] = pd.to_datetime(df["joined_at"], format="ISO8601", utc=True).dt.tz_convert(pst)
+    df["joined_at"] = pd.to_datetime(df["joined_at"], format="ISO8601", utc=True)
     _upsert_df_to_bq(client, df, "discord_member_snapshot",
                      merge_keys=["datekey", "server_id", "user_id"],
                      date_cols=["datekey"])
@@ -228,7 +227,7 @@ def fetch_and_load_invite_snapshot(**context):
     pst = pytz.timezone("America/Los_Angeles")
     target_date_str = datetime.now(pst).date().strftime("%Y-%m-%d")
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(pst).isoformat()
+    now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
 
     for guild_id in GUILD_IDS:
@@ -262,8 +261,8 @@ def fetch_and_load_invite_snapshot(**context):
 
     df = pd.DataFrame(all_rows)
     df["inserted_at"] = pd.to_datetime(df["inserted_at"])
-    df["created_at"] = pd.to_datetime(df["created_at"], utc=True).dt.tz_convert(pst)
-    df["expires_at"] = pd.to_datetime(df["expires_at"], utc=True, errors="coerce").dt.tz_convert(pst)
+    df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
+    df["expires_at"] = pd.to_datetime(df["expires_at"], utc=True, errors="coerce")
     _upsert_df_to_bq(client, df, "discord_invite_snapshot",
                      merge_keys=["datekey", "server_id", "invite_code"],
                      date_cols=["datekey"])
@@ -283,7 +282,7 @@ def fetch_and_load_audit_logs(**context):
     target_date_str = (datetime.now(pytz.utc).astimezone(pst).date() - timedelta(days=1)).strftime("%Y-%m-%d")
     start_utc, end_utc = _get_target_range_utc(target_date_str)
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(pst).isoformat()
+    now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
 
     for guild_id in GUILD_IDS:
@@ -323,7 +322,7 @@ def fetch_and_load_audit_logs(**context):
                     "user_id": str(entry.get("user_id", "")),
                     "user_name": users_map.get(str(entry.get("user_id", "")), ""),
                     "target_id": str(entry.get("target_id", "")),
-                    "created_at": entry_time.astimezone(pst).isoformat(),
+                    "created_at": entry_time.isoformat(),
                     "inserted_at": now_ts,
                 })
 
@@ -338,7 +337,7 @@ def fetch_and_load_audit_logs(**context):
 
     df = pd.DataFrame(all_rows)
     df["inserted_at"] = pd.to_datetime(df["inserted_at"])
-    df["created_at"] = pd.to_datetime(df["created_at"])
+    df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
     _upsert_df_to_bq(client, df, "discord_audit_log_events",
                      merge_keys=["event_id"],
                      date_cols=["datekey"])
@@ -365,7 +364,7 @@ def fetch_and_load_chat_activity(**context):
     target_date_str = (datetime.now(pytz.utc).astimezone(pst).date() - timedelta(days=1)).strftime("%Y-%m-%d")
     start_utc, end_utc = _get_target_range_utc(target_date_str)
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(pst).isoformat()
+    now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
     reaction_messages = []  # reactions 있는 메시지 메타데이터 → XCom으로 전달
 
@@ -490,7 +489,7 @@ def fetch_and_load_reactions(**context):
     pst = pytz.timezone("America/Los_Angeles")
     target_date_str = (datetime.now(pytz.utc).astimezone(pst).date() - timedelta(days=1)).strftime("%Y-%m-%d")
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(pst).isoformat()
+    now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
 
     # XCom에서 reactions 있는 메시지 목록 수신
