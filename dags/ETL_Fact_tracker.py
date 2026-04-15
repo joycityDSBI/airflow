@@ -763,7 +763,7 @@ def etl_f_cost_campaign_rule(client):
         , mediation
         , pre_yn
         , pre_cate
-        -- , class
+        , class
         , media_group
         , target_group  
         )
@@ -1181,8 +1181,9 @@ def etl_f_cost_campaign_rule(client):
          , a.mediation
          , a.pre_yn
          , a.pre_cate
+         , a.class
          , a.media_group
-         , a.target_group     
+         , a.target_group
      FROM T_Final as a
      LEFT JOIN (select *
                from `datahub-478802.datahub.dim_pccampaign_list_joytracking`) as PC -- PC캠페인 캠페인 정보 수정
