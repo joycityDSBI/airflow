@@ -75,7 +75,47 @@ CHANNELS = [
     },
     {
         'yt_channel_id': 'UC0ghbXNaI27YeODTh4fjubg',  # RESU (EN/Global)
-        'joyple_game_code': 159, 
+        'joyple_game_code': 159,
+        'analytics_access': False,
+    },
+    {
+        'yt_channel_id': 'UCCCIXa7W452h5MEga8L-AoA',  # FreeStyleFootball2 WW (@FreeStyleFootball2_WW)
+        'joyple_game_code': 60009,
+        'analytics_access': False,
+    },
+    {
+        'yt_channel_id': 'UCMXkl-5yTf7ILL3EIgASSOw',  # モエサッカーファイア (@モエサッカーファイア)
+        'joyple_game_code': 60009,
+        'analytics_access': False,
+    },
+    {
+        'yt_channel_id': 'UCm_qEt6y2dNsP22-zZ6aLxg',  # 내 ㅈ대로 홍보해드림 (@내맘대로홍보)
+        'joyple_game_code': 60009,
+        'analytics_access': False,
+    },
+    {
+        'yt_channel_id': 'UCfR0wUYMlzfNc0MGW6vEFiw',  # 캐릭터를아끼자 (@캐릭터를아끼자)
+        'joyple_game_code': 60009,
+        'analytics_access': False,
+    },
+    {
+        'yt_channel_id': 'UCMbhwVGWK6l0p6_hcuAi2Iw',  # Promoting it my damn way (@Promotingitmydamnway)
+        'joyple_game_code': 60009,
+        'analytics_access': False,
+    },
+    {
+        'yt_channel_id': 'UCfEeyimdLqIxn6GNpjhisNQ',  # 프리스타일풋볼2 런칭존버 푸시업 챌린지 (@프풋2챌린지)
+        'joyple_game_code': 60009,
+        'analytics_access': False,
+    },
+    {
+        'yt_channel_id': 'UCEl7v-mdnHN4aznlBMjRAfw',  # 팀장알러지 (@menheraforteamleader)
+        'joyple_game_code': 60009,
+        'analytics_access': False,
+    },
+    {
+        'yt_channel_id': 'UC7qGtl_aq6c92MoOAR-w9rQ',  # BossAllergy (@BossAllergy)
+        'joyple_game_code': 60009,
         'analytics_access': False,
     },
 ]
