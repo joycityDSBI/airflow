@@ -7,6 +7,7 @@ Discord 서버 운영 지표 수집 → BigQuery 적재 DAG
 - discord_invite_snapshot       : 초대링크별 누적 사용수 스냅샷
 - discord_audit_log_events      : 초대 생성 이벤트 로그 (INVITE_CREATE)
 - discord_user_chat_activity    : 채널별 유저별 일별 채팅 횟수 (DAU)
+- discord_message_reactions     : 당일 메시지 이모지 리액션 유저 로그 (DAU 보완)
 
 스케줄: KST 06:00 매일 (cron: "0 21 * * *" UTC)
 수집 대상: 어제 KST 날짜
@@ -29,6 +30,7 @@ import pytz
 import pandas as pd
 import sys
 import os
+from urllib.parse import quote
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ETL_Utils import get_gcp_credentials, calc_target_date, PROJECT_ID
@@ -113,6 +115,10 @@ def _upsert_df_to_bq(client, df: pd.DataFrame, table_id: str,
     timestamp = int(time.time())
     target_table_id = f"{PROJECT_ID}.{DATASET_ID}.{table_id}"
     staging_table_id = f"{PROJECT_ID}.{DATASET_ID}.temp_{table_id}_{timestamp}"
+
+    for col in (date_cols or []):
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col]).dt.date
 
     schema = [bigquery.SchemaField(col, "DATE") for col in (date_cols or [])]
     job_config = bigquery.LoadJobConfig(
@@ -384,12 +390,14 @@ def fetch_and_load_chat_activity(**context):
     - 채널 접근 권한 없으면 해당 채널 건너뜀 (403 처리)
     - 어제 날짜 메시지만 수집 (Snowflake ID로 날짜 필터링)
     """
+    ti = context["ti"]
     target_dates, _ = calc_target_date(context["logical_date"])
     target_date_str = target_dates[0]
     start_utc, end_utc = _get_target_range_utc(target_date_str)
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
     now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
+    reaction_messages = []  # reactions 있는 메시지 메타데이터 → XCom으로 전달
 
     for guild_id in GUILD_IDS:
         server_name = _get_server_name(guild_id)
@@ -432,6 +440,25 @@ def fetch_and_load_chat_activity(**context):
                         user_msg_count[uid] = user_msg_count.get(uid, 0) + 1
                         user_names[uid] = author.get("username", "")
 
+                        # reactions 있는 메시지 → XCom 전달용 목록에 추가
+                        raw_reactions = msg.get("reactions", [])
+                        if raw_reactions:
+                            emojis = []
+                            for r in raw_reactions:
+                                ej = r.get("emoji", {})
+                                ej_id = ej.get("id")
+                                ej_name = ej.get("name", "")
+                                emojis.append(f"{ej_name}:{ej_id}" if ej_id else ej_name)
+                            reaction_messages.append({
+                                "datekey": target_date_str,
+                                "server_id": guild_id,
+                                "server_name": server_name,
+                                "channel_id": channel_id,
+                                "channel_name": channel_name,
+                                "message_id": msg["id"],
+                                "emojis": emojis,
+                            })
+
                     if done or len(messages) < 100:
                         break
                     before_id = messages[-1]["id"]
@@ -457,6 +484,10 @@ def fetch_and_load_chat_activity(**context):
 
             logger.info(f"  채널 '{channel_name}': {len(user_msg_count)} unique user(s)")
 
+    # reactions 있는 메시지 목록을 XCom으로 전달
+    ti.xcom_push(key="reaction_messages", value=json.dumps(reaction_messages))
+    logger.info(f"[chat_activity] reactions 있는 메시지 {len(reaction_messages)}건 XCom push")
+
     if not all_rows:
         logger.info(f"[chat_activity] {target_date_str}: No data.")
         return
@@ -467,6 +498,99 @@ def fetch_and_load_chat_activity(**context):
                      merge_keys=["datekey", "server_id", "channel_id", "user_id"],
                      date_cols=["datekey"])
     logger.info(f"[chat_activity] {target_date_str}: {len(all_rows)} row(s) loaded.")
+
+
+def fetch_and_load_reactions(**context):
+    """
+    이모지 리액션 유저 수집 → discord_message_reactions 적재
+
+    수집 흐름:
+    1. fetch_and_load_chat_activity의 XCom에서 reactions 있는 메시지 목록 수신
+    2. 메시지별 이모지별 유저 목록 API 호출
+       - 유니코드 이모지: 이모지 문자 그대로 (예: 👍)
+       - 커스텀 이모지 : name:id 형식 (예: custom_name:123456789)
+    3. BigQuery 적재
+
+    주의:
+    - 메시지 재스캔 없음 — XCom으로 받은 목록만 처리
+    - 리액션 timestamp은 Discord API 미제공 → inserted_at(수집 시각)으로 대체
+    - 이모지 수 × 메시지 수만큼 API 호출 발생 (rate limit 주의)
+    """
+    ti = context["ti"]
+    target_dates, _ = calc_target_date(context["logical_date"])
+    target_date_str = target_dates[0]
+    client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
+    now_ts = datetime.now(timezone.utc).isoformat()
+    all_rows = []
+
+    # XCom에서 reactions 있는 메시지 목록 수신
+    raw = ti.xcom_pull(key="reaction_messages", task_ids="fetch_and_load_chat_activity")
+    reaction_messages = json.loads(raw) if raw else []
+    logger.info(f"[reactions] XCom에서 {len(reaction_messages)}건 수신")
+
+    if not reaction_messages:
+        logger.info(f"[reactions] {target_date_str}: No messages with reactions.")
+        return
+
+    for msg_meta in reaction_messages:
+        channel_id = msg_meta["channel_id"]
+        channel_name = msg_meta["channel_name"]
+        message_id = msg_meta["message_id"]
+        server_id = msg_meta["server_id"]
+        server_name = msg_meta["server_name"]
+
+        for emoji_str in msg_meta["emojis"]:
+            encoded_emoji = quote(emoji_str, safe="")
+            after_user_id = None
+
+            while True:
+                params = {"limit": 100}
+                if after_user_id:
+                    params["after"] = after_user_id
+
+                try:
+                    users = _discord_get(
+                        f"/channels/{channel_id}/messages/{message_id}/reactions/{encoded_emoji}",
+                        params=params,
+                    )
+                except requests.HTTPError as e:
+                    if e.response.status_code in (404, 403):
+                        logger.warning(f"  메시지 {message_id} 이모지 '{emoji_str}' 조회 실패({e.response.status_code}). 건너뜀.")
+                        break
+                    raise
+
+                if not users:
+                    break
+
+                for user in users:
+                    all_rows.append({
+                        "datekey": target_date_str,
+                        "server_id": server_id,
+                        "server_name": server_name,
+                        "channel_id": channel_id,
+                        "channel_name": channel_name,
+                        "message_id": message_id,
+                        "emoji": emoji_str,
+                        "user_id": user.get("id", ""),
+                        "user_name": user.get("username", ""),
+                        "inserted_at": now_ts,
+                    })
+
+                if len(users) < 100:
+                    break
+                after_user_id = users[-1]["id"]
+
+    logger.info(f"[reactions] {target_date_str}: {len(all_rows)} reaction row(s) collected")
+
+    if not all_rows:
+        return
+
+    df = pd.DataFrame(all_rows)
+    df["inserted_at"] = pd.to_datetime(df["inserted_at"])
+    _upsert_df_to_bq(client, df, "discord_message_reactions",
+                     merge_keys=["datekey", "server_id", "channel_id", "message_id", "emoji", "user_id"],
+                     date_cols=["datekey"])
+    logger.info(f"[reactions] {target_date_str}: {len(all_rows)} row(s) loaded.")
 
 
 # ─── DAG 정의 ─────────────────────────────────────────────────────────────────
@@ -514,5 +638,11 @@ with DAG(
         python_callable=fetch_and_load_chat_activity,
     )
 
-    # 5개 태스크 모두 독립적으로 병렬 실행
+    t_reactions = PythonOperator(
+        task_id="fetch_and_load_reactions",
+        python_callable=fetch_and_load_reactions,
+    )
+
+    # 독립 태스크는 병렬 실행, reactions는 chat_activity 이후 실행 (rate limit 방지)
     [t_server_stats, t_member_snapshot, t_invite_snapshot, t_audit_logs, t_chat_activity]
+    t_chat_activity >> t_reactions

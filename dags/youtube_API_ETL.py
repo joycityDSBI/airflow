@@ -9,6 +9,7 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 import pandas as pd
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from google.cloud import bigquery
 from datetime import datetime, timedelta, timezone
 from google.oauth2 import service_account
@@ -78,11 +79,11 @@ CHANNELS = [
         'joyple_game_code': 159,
         'analytics_access': False,
     },
-    {
-        'yt_channel_id': 'UCCCIXa7W452h5MEga8L-AoA',  # FreeStyleFootball2 WW (@FreeStyleFootball2_WW)
-        'joyple_game_code': 60009,
-        'analytics_access': False,
-    },
+    # {
+    #     'yt_channel_id': 'UCCCIXa7W452h5MEga8L-AoA',  # FreeStyleFootball2 WW (@FreeStyleFootball2_WW) - 채널 ID 확인 필요
+    #     'joyple_game_code': 60009,
+    #     'analytics_access': False,
+    # },
     {
         'yt_channel_id': 'UCMXkl-5yTf7ILL3EIgASSOw',  # モエサッカーファイア (@モエサッカーファイア)
         'joyple_game_code': 60009,
@@ -301,6 +302,12 @@ def get_all_comments_with_api_key(video_map):
                 if not next_page_token:
                     break
 
+            except HttpError as e:
+                if e.resp.status == 403 and 'commentsDisabled' in str(e.reason):
+                    print(f"영상 {v_id} 댓글 비활성화 상태 — 건너뜀.")
+                else:
+                    print(f"영상 {v_id} 처리 중 에러 발생: {e}")
+                break
             except Exception as e:
                 print(f"영상 {v_id} 처리 중 에러 발생: {e}")
                 break
@@ -315,6 +322,9 @@ def get_video_map_with_api_key(channel_id):
     """채널 ID(UCxxxx)로 모든 동영상 ID와 제목을 딕셔너리로 반환 (API 키 사용)"""
     youtube = build("youtube", "v3", developerKey=API_KEY)
     res = youtube.channels().list(id=channel_id, part='contentDetails').execute()
+    if not res.get('items'):
+        print(f"채널 {channel_id} 조회 결과 없음. 채널 ID 또는 접근 권한 확인 필요.")
+        return {}
     playlist_id = res['items'][0]['contentDetails']['relatedPlaylists']['uploads']
 
     video_map = {}
