@@ -205,6 +205,12 @@ def upsert_to_bigquery(client, df: pd.DataFrame):
     )
 
     try:
+        # merge 키 기준 중복 제거 (마지막 행 유지)
+        before = len(df)
+        df = df.drop_duplicates(subset=['milestone', 'development_subject', 'start_date'], keep='last')
+        if len(df) < before:
+            print(f"중복 제거: {before}행 → {len(df)}행")
+
         print(f"Staging 테이블에 {len(df)}행 적재 중...")
         load_job = client.load_table_from_dataframe(df, staging_table_id, job_config=job_config)
         load_job.result()
