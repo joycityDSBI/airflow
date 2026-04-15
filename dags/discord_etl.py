@@ -247,8 +247,8 @@ def fetch_and_load_invite_snapshot(**context):
                 "invite_code": inv.get("code", ""),
                 "inviter_id": inviter.get("id", ""),
                 "inviter_name": inviter.get("username", ""),
-                "uses": int(inv.get("uses", 0)),
-                "max_uses": int(inv.get("max_uses", 0)),
+                "total_joined_via_invite": int(inv.get("uses", 0)),
+                "max_join_limit": int(inv.get("max_uses", 0)),
                 "created_at": inv.get("created_at", ""),
                 "expires_at": inv.get("expires_at") or None,
                 "inserted_at": now_ts,
@@ -279,8 +279,11 @@ def fetch_and_load_audit_logs(**context):
     주의: 감사 로그는 Discord에서 약 45일만 보관 → 매일 수집 필수
     """
     pst = pytz.timezone("America/Los_Angeles")
-    target_date_str = (datetime.now(pytz.utc).astimezone(pst).date() - timedelta(days=1)).strftime("%Y-%m-%d")
-    start_utc, end_utc = _get_target_range_utc(target_date_str)
+    # [BACKFILL] 45일치 전체 수집 - 완료 후 아래 두 줄로 원복
+    start_utc = datetime.now(timezone.utc) - timedelta(days=45)
+    end_utc = datetime.now(timezone.utc)
+    # target_date_str = (datetime.now(pytz.utc).astimezone(pst).date() - timedelta(days=1)).strftime("%Y-%m-%d")
+    # start_utc, end_utc = _get_target_range_utc(target_date_str)
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
     now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
