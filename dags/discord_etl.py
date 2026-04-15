@@ -2,7 +2,6 @@
 Discord 서버 운영 지표 수집 → BigQuery 적재 DAG
 
 수집 테이블 (external_data 데이터셋):
-- discord_daily_server_stats    : 일별 서버 멤버 수 스냅샷
 - discord_member_snapshot       : 전체 멤버 목록 스냅샷 (신규가입/탈퇴 추적)
 - discord_invite_snapshot       : 초대링크별 누적 사용수 스냅샷
 - discord_audit_log_events      : 초대 생성 이벤트 로그 (INVITE_CREATE)
@@ -33,7 +32,7 @@ import os
 from urllib.parse import quote
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ETL_Utils import get_gcp_credentials, calc_target_date, PROJECT_ID
+from ETL_Utils import get_gcp_credentials, PROJECT_ID
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +88,12 @@ def _snowflake_to_datetime(snowflake_id) -> datetime:
 
 
 def _get_target_range_utc(target_date_str: str):
-    """KST 날짜 문자열 → UTC 시작/종료 datetime 반환"""
-    kst = pytz.timezone("Asia/Seoul")
+    """PST 날짜 문자열 → UTC 시작/종료 datetime 반환"""
+    pst = pytz.timezone("America/Los_Angeles")
     target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
-    start_kst = kst.localize(datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0))
-    end_kst = start_kst + timedelta(days=1)
-    return start_kst.astimezone(timezone.utc), end_kst.astimezone(timezone.utc)
+    start_pst = pst.localize(datetime(target_date.year, target_date.month, target_date.day, 0, 0, 0))
+    end_pst = start_pst + timedelta(days=1)
+    return start_pst.astimezone(timezone.utc), end_pst.astimezone(timezone.utc)
 
 
 def _get_server_name(guild_id: str) -> str:
@@ -159,53 +158,21 @@ def _upsert_df_to_bq(client, df: pd.DataFrame, table_id: str,
 
 # ─── Task 함수 ────────────────────────────────────────────────────────────────
 
-def fetch_and_load_server_stats(**context):
-    """
-    서버 멤버 수 스냅샷 수집 → discord_daily_server_stats 적재
-
-    수집 API: GET /guilds/{guild_id}?with_counts=true
-    - total_members  : 전체 멤버 수 (근사값)
-    - online_members : Discord 앱을 켜고 있는 멤버 수 (근사값, 서버 특정 아님)
-    """
-    target_dates, _ = calc_target_date(context["logical_date"])
-    target_date_str = target_dates[0]
-    client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(timezone.utc).isoformat()
-    rows = []
-
-    for guild_id in GUILD_IDS:
-        guild = _discord_get(f"/guilds/{guild_id}", params={"with_counts": "true"})
-        rows.append({
-            "datekey": target_date_str,
-            "server_id": guild_id,
-            "server_name": guild.get("name", ""),
-            "total_members": guild.get("approximate_member_count", 0),
-            "online_members": guild.get("approximate_presence_count", 0),
-            "inserted_at": now_ts,
-        })
-        logger.info(f"[server_stats] {guild.get('name')}: {guild.get('approximate_member_count')} members")
-
-    df = pd.DataFrame(rows)
-    df["inserted_at"] = pd.to_datetime(df["inserted_at"])
-    _upsert_df_to_bq(client, df, "discord_daily_server_stats",
-                     merge_keys=["datekey", "server_id"],
-                     date_cols=["datekey"])
-
 
 def fetch_and_load_member_snapshot(**context):
     """
     전체 멤버 목록 스냅샷 수집 → discord_member_snapshot 적재
 
     수집 API: GET /guilds/{guild_id}/members (페이지네이션)
-    - 신규 가입자 : joined_at이 어제인 유저
+    - 신규 가입자 : joined_at이 오늘인 유저
     - 탈퇴자     : 전날 스냅샷에 있었으나 오늘 없는 유저 (BQ 쿼리로 계산)
 
     주의: Developer Portal에서 SERVER MEMBERS INTENT 활성화 필요
     """
-    target_dates, _ = calc_target_date(context["logical_date"])
-    target_date_str = target_dates[0]
+    pst = pytz.timezone("America/Los_Angeles")
+    target_date_str = datetime.now(pst).date().strftime("%Y-%m-%d")
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(timezone.utc).isoformat()
+    now_ts = datetime.now(pst).isoformat()
     all_rows = []
 
     for guild_id in GUILD_IDS:
@@ -241,7 +208,8 @@ def fetch_and_load_member_snapshot(**context):
 
     df = pd.DataFrame(all_rows)
     df["inserted_at"] = pd.to_datetime(df["inserted_at"])
-    df["joined_at"] = pd.to_datetime(df["joined_at"], format="ISO8601", utc=True)
+    pst = pytz.timezone("America/Los_Angeles")
+    df["joined_at"] = pd.to_datetime(df["joined_at"], format="ISO8601", utc=True).dt.tz_convert(pst)
     _upsert_df_to_bq(client, df, "discord_member_snapshot",
                      merge_keys=["datekey", "server_id", "user_id"],
                      date_cols=["datekey"])
@@ -257,10 +225,10 @@ def fetch_and_load_invite_snapshot(**context):
 
     주의: Bot에 Manage Guild 권한 필요
     """
-    target_dates, _ = calc_target_date(context["logical_date"])
-    target_date_str = target_dates[0]
+    pst = pytz.timezone("America/Los_Angeles")
+    target_date_str = datetime.now(pst).date().strftime("%Y-%m-%d")
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(timezone.utc).isoformat()
+    now_ts = datetime.now(pst).isoformat()
     all_rows = []
 
     for guild_id in GUILD_IDS:
@@ -294,8 +262,8 @@ def fetch_and_load_invite_snapshot(**context):
 
     df = pd.DataFrame(all_rows)
     df["inserted_at"] = pd.to_datetime(df["inserted_at"])
-    df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
-    df["expires_at"] = pd.to_datetime(df["expires_at"], utc=True, errors="coerce")
+    df["created_at"] = pd.to_datetime(df["created_at"], utc=True).dt.tz_convert(pst)
+    df["expires_at"] = pd.to_datetime(df["expires_at"], utc=True, errors="coerce").dt.tz_convert(pst)
     _upsert_df_to_bq(client, df, "discord_invite_snapshot",
                      merge_keys=["datekey", "server_id", "invite_code"],
                      date_cols=["datekey"])
@@ -311,11 +279,11 @@ def fetch_and_load_audit_logs(**context):
 
     주의: 감사 로그는 Discord에서 약 45일만 보관 → 매일 수집 필수
     """
-    target_dates, _ = calc_target_date(context["logical_date"])
-    target_date_str = target_dates[0]
+    pst = pytz.timezone("America/Los_Angeles")
+    target_date_str = (datetime.now(pytz.utc).astimezone(pst).date() - timedelta(days=1)).strftime("%Y-%m-%d")
     start_utc, end_utc = _get_target_range_utc(target_date_str)
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(timezone.utc).isoformat()
+    now_ts = datetime.now(pst).isoformat()
     all_rows = []
 
     for guild_id in GUILD_IDS:
@@ -334,6 +302,7 @@ def fetch_and_load_audit_logs(**context):
             if not entries:
                 break
 
+            pst = pytz.timezone("America/Los_Angeles")
             done = False
             for entry in entries:
                 entry_time = _snowflake_to_datetime(entry["id"])
@@ -343,9 +312,10 @@ def fetch_and_load_audit_logs(**context):
                 if entry_time >= end_utc:
                     continue
 
+                entry_datekey = entry_time.astimezone(pst).date().strftime("%Y-%m-%d")
                 all_rows.append({
                     "event_id": str(entry["id"]),
-                    "datekey": target_date_str,
+                    "datekey": entry_datekey,
                     "server_id": guild_id,
                     "server_name": server_name,
                     "action_type": 40,
@@ -353,7 +323,7 @@ def fetch_and_load_audit_logs(**context):
                     "user_id": str(entry.get("user_id", "")),
                     "user_name": users_map.get(str(entry.get("user_id", "")), ""),
                     "target_id": str(entry.get("target_id", "")),
-                    "created_at": entry_time.isoformat(),
+                    "created_at": entry_time.astimezone(pst).isoformat(),
                     "inserted_at": now_ts,
                 })
 
@@ -368,7 +338,7 @@ def fetch_and_load_audit_logs(**context):
 
     df = pd.DataFrame(all_rows)
     df["inserted_at"] = pd.to_datetime(df["inserted_at"])
-    df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
+    df["created_at"] = pd.to_datetime(df["created_at"])
     _upsert_df_to_bq(client, df, "discord_audit_log_events",
                      merge_keys=["event_id"],
                      date_cols=["datekey"])
@@ -391,11 +361,11 @@ def fetch_and_load_chat_activity(**context):
     - 어제 날짜 메시지만 수집 (Snowflake ID로 날짜 필터링)
     """
     ti = context["ti"]
-    target_dates, _ = calc_target_date(context["logical_date"])
-    target_date_str = target_dates[0]
+    pst = pytz.timezone("America/Los_Angeles")
+    target_date_str = (datetime.now(pytz.utc).astimezone(pst).date() - timedelta(days=1)).strftime("%Y-%m-%d")
     start_utc, end_utc = _get_target_range_utc(target_date_str)
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(timezone.utc).isoformat()
+    now_ts = datetime.now(pst).isoformat()
     all_rows = []
     reaction_messages = []  # reactions 있는 메시지 메타데이터 → XCom으로 전달
 
@@ -517,10 +487,10 @@ def fetch_and_load_reactions(**context):
     - 이모지 수 × 메시지 수만큼 API 호출 발생 (rate limit 주의)
     """
     ti = context["ti"]
-    target_dates, _ = calc_target_date(context["logical_date"])
-    target_date_str = target_dates[0]
+    pst = pytz.timezone("America/Los_Angeles")
+    target_date_str = (datetime.now(pytz.utc).astimezone(pst).date() - timedelta(days=1)).strftime("%Y-%m-%d")
     client = bigquery.Client(project=PROJECT_ID, credentials=get_gcp_credentials())
-    now_ts = datetime.now(timezone.utc).isoformat()
+    now_ts = datetime.now(pst).isoformat()
     all_rows = []
 
     # XCom에서 reactions 있는 메시지 목록 수신
@@ -607,16 +577,11 @@ with DAG(
     dag_id="discord_etl",
     default_args=default_args,
     description="Discord 서버 운영 지표 수집 → BigQuery 적재",
-    schedule="0 21 * * *",  # KST 06:00 매일 (UTC 21:00 전날)
+    schedule="0 8 * * *",  # KST 17:00 매일 (UTC 08:00)
     start_date=datetime(2026, 4, 14),
     catchup=False,
     tags=["discord", "external_data", "etl"],
 ) as dag:
-
-    t_server_stats = PythonOperator(
-        task_id="fetch_and_load_server_stats",
-        python_callable=fetch_and_load_server_stats,
-    )
 
     t_member_snapshot = PythonOperator(
         task_id="fetch_and_load_member_snapshot",
@@ -644,5 +609,5 @@ with DAG(
     )
 
     # 독립 태스크는 병렬 실행, reactions는 chat_activity 이후 실행 (rate limit 방지)
-    [t_server_stats, t_member_snapshot, t_invite_snapshot, t_audit_logs, t_chat_activity]
+    [t_member_snapshot, t_invite_snapshot, t_audit_logs, t_chat_activity]
     t_chat_activity >> t_reactions
