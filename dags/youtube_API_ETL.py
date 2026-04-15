@@ -489,7 +489,10 @@ def upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, TABLE_ID):
         elif TABLE_ID == 'youtube_comments':
             merge_query = f"""
             MERGE `{target_table_id}` T
-            USING `{staging_table_id}` S
+            USING (
+                SELECT * FROM `{staging_table_id}`
+                QUALIFY ROW_NUMBER() OVER (PARTITION BY comment_id, channel_id, video_id ORDER BY like_count DESC) = 1
+            ) S
             ON T.comment_id = S.comment_id AND T.channel_id = S.channel_id AND T.video_id = S.video_id
 
             WHEN MATCHED THEN

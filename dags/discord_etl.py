@@ -241,7 +241,7 @@ def fetch_and_load_member_snapshot(**context):
 
     df = pd.DataFrame(all_rows)
     df["inserted_at"] = pd.to_datetime(df["inserted_at"])
-    df["joined_at"] = pd.to_datetime(df["joined_at"], utc=True)
+    df["joined_at"] = pd.to_datetime(df["joined_at"], format="ISO8601", utc=True)
     _upsert_df_to_bq(client, df, "discord_member_snapshot",
                      merge_keys=["datekey", "server_id", "user_id"],
                      date_cols=["datekey"])
