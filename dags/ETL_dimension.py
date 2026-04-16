@@ -149,7 +149,9 @@ def etl_dim_AFC_campaign(**context):
      rule_YN, 
      target_group, 
      media_group, 
-     upload_timestamp)
+     upload_timestamp,
+     class
+     )
     
     SELECT DISTINCT
            app_id                                  AS app_id
@@ -205,6 +207,7 @@ def etl_dim_AFC_campaign(**context):
                 ELSE 'Other' 
            END                                     AS media_group
          , upload_time                             AS upload_timestamp
+         , class
     FROM (
       SELECT app_id
            , CASE WHEN LOWER(TRIM(media_source)) = 'organic'   THEN 'Organic'
@@ -247,7 +250,7 @@ def etl_dim_AFC_campaign(**context):
              END AS class
            , upload_time         
       FROM `dataplatform-bdts.mas.af_campaign_rule` 
-    ) AS a
+    ) as a
     """
     # 1. 쿼리 실행
     truncate_query_job = client.query(truncate_query)
