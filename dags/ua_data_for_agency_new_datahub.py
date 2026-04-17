@@ -133,7 +133,7 @@ def generate_ua_data_in_bigquery(**context):
                sum(if(datediff_reg between 0 and 480,daily_total_rev,0)) as rev_d480,
                sum(if(datediff_reg between 0 and 510,daily_total_rev,0)) as rev_d510,
                sum(if(datediff_reg >= 0,daily_total_rev,0)) as rev_Dcum,
-        
+
                sum(if(datediff_reg between 0 and 0,daily_IAA_rev,0))   as rev_iaa_d0,
                sum(if(datediff_reg between 0 and 1,daily_IAA_rev,0))   as rev_iaa_d1,
                sum(if(datediff_reg between 0 and 3,daily_IAA_rev,0))   as rev_iaa_d3,
@@ -157,7 +157,7 @@ def generate_ua_data_in_bigquery(**context):
                sum(if(datediff_reg between 0 and 480,daily_IAA_rev,0)) as rev_iaa_d480,
                sum(if(datediff_reg between 0 and 510,daily_IAA_rev,0)) as rev_iaa_d510,
                sum(if(datediff_reg >= 0,daily_IAA_rev,0)) as rev_iaa_Dcum,
-        
+
               count(distinct if(datediff_reg =1, auth_account_name,null))   as ru_d1,
               count(distinct if(datediff_reg =3, auth_account_name,null))   as ru_d3,
               count(distinct if(datediff_reg =7, auth_account_name,null))   as ru_d7,
@@ -179,7 +179,7 @@ def generate_ua_data_in_bigquery(**context):
               count(distinct if(datediff_reg =450, auth_account_name,null)) as ru_d450,
               count(distinct if(datediff_reg =480, auth_account_name,null)) as ru_d480,
               count(distinct if(datediff_reg =510, auth_account_name,null)) as ru_d510,
-        
+
               count(distinct if(datediff_reg =0 and daily_total_rev > 0 , auth_account_name,null))   as pu_d0,
               count(distinct if(datediff_reg =1 and daily_total_rev > 0 , auth_account_name,null))   as pu_d1,
               count(distinct if(datediff_reg =3 and daily_total_rev > 0 , auth_account_name,null))   as pu_d3,
@@ -202,13 +202,13 @@ def generate_ua_data_in_bigquery(**context):
               count(distinct if(datediff_reg =450 and daily_total_rev > 0 , auth_account_name,null)) as pu_d450,
               count(distinct if(datediff_reg =480 and daily_total_rev > 0 , auth_account_name,null)) as pu_d480,
               count(distinct if(datediff_reg =510 and daily_total_rev > 0 , auth_account_name,null)) as pu_d510
-        
+
         FROM `datahub-478802.datahub.f_user_map_mas_view` AS a
         WHERE reg_datekey >= '2017-04-27'
         and datediff_reg >= 0
         group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30
         ),
-        
+
         UA_perfo as (
         select a.joyple_game_code, a.reg_datekey
                , a.app_id, a.media_source, a.uptdt_campaign
@@ -241,12 +241,12 @@ def generate_ua_data_in_bigquery(**context):
              ) as a
         left join `data-science-division-216308.POTC.before_mas_campaign` as d
         on a.uptdt_campaign = d.campaign 
-        
-        
+
+
         ),
-        
+
         tracker as (
-        
+
         select joyple_game_code
              , install_datekey as reg_datekey
              , CASE WHEN a.media_source = '' OR a.media_source IS NULL THEN 'NULL' ELSE a.media_source END AS media_source
@@ -263,9 +263,9 @@ def generate_ua_data_in_bigquery(**context):
         from `datahub-478802.datahub.f_tracker_install` as a
         left join `datahub-478802.datahub.dim_market_id` as c on a.market_id = c.market_id
         group by 1,2,3,4,5,6,7,8,9,10,11,12
-        
+
         )
-        
+
         , ua_install as (
         select  
               joyple_game_code            
@@ -284,7 +284,7 @@ def generate_ua_data_in_bigquery(**context):
                          ad_name,app_id,agency,site_id)          
             , d.install
         from(select a.* except(app_id, media_source, init_campaign, reg_country_code, adset_name, ad_name, site_id, agency, reg_market_name)
-        
+
                     , CASE WHEN a.app_id = '' OR a.app_id IS NULL THEN 'NULL' ELSE a.app_id END AS app_id
                     , CASE WHEN a.media_source = '' OR a.media_source IS NULL THEN 'NULL' ELSE a.media_source END AS media_source
                     , CASE WHEN a.init_campaign = '' OR a.init_campaign IS NULL THEN 'NULL' ELSE a.init_campaign     END AS init_campaign
@@ -296,13 +296,13 @@ def generate_ua_data_in_bigquery(**context):
                     , CASE WHEN a.agency   = '' OR a.agency    IS NULL THEN 'NULL' ELSE a.agency    END AS agency
              from UA_perfo as a
              ) as a
-             
+
         full join tracker as d USING (joyple_game_code, reg_datekey, media_source, init_campaign, reg_country_code, reg_market_name, reg_os_name, adset_name, ad_name, app_id, agency, site_id)
-        
+
         )
-        
-        
-        
+
+
+
                 SELECT
                   b.game_code_name AS project_name
                 , a.joyple_game_code
@@ -346,7 +346,8 @@ def generate_ua_data_in_bigquery(**context):
                 , Pu_D120, Pu_D150, Pu_D180, Pu_D210, Pu_D240, Pu_D270, Pu_D300, Pu_D330
                 , Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510
                 FROM ua_install as a
-                left join `datahub-478802.datahub.dim_joyple_game_code` as b
+                left join (select if(joyple_game_code in (159,1590), 'RESU', game_code_name) as game_code_name, joyple_game_code
+                           from `datahub-478802.datahub.dim_joyple_game_code`) as b
                 on a.joyple_game_code = b.joyple_game_code
                 WHERE reg_datekey BETWEEN DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 3 MONTH)
                 AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
