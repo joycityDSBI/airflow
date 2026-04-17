@@ -70,52 +70,62 @@ CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 CHANNELS = [
     {
         'yt_channel_id': 'UCJoKVy_QTIm-KIaxuDVq6zQ',  # BIOHAZARD-SurvivalUnit (JP/KR)
-        'joyple_game_code': 159,  
+        'handle': 'BIOHAZARD-SurvivalUnit',
+        'joyple_game_code': 159,
         'analytics_access': False,
         'token_file': os.path.join(DAG_FOLDER, 'BIOHAZARD-SurvivalUnit-Token.json'),
     },
     {
         'yt_channel_id': 'UC0ghbXNaI27YeODTh4fjubg',  # RESU (EN/Global)
+        'handle': 'ResidentEvil-SurvivalUnit',
         'joyple_game_code': 159,
         'analytics_access': False,
     },
     # {
-    #     'yt_channel_id': 'UCCCIXa7W452h5MEga8L-AoA',  # FreeStyleFootball2 WW (@FreeStyleFootball2_WW) - 채널 ID 확인 필요
+    #     'yt_channel_id': 'UCCCIXa7W452h5MEga8L-AoA',  # FreeStyleFootball2 WW - 채널 ID 확인 필요
+    #     'handle': 'FreeStyleFootball2_WW',
     #     'joyple_game_code': 60009,
     #     'analytics_access': False,
     # },
     {
-        'yt_channel_id': 'UCMXkl-5yTf7ILL3EIgASSOw',  # モエサッカーファイア (@モエサッカーファイア)
+        'yt_channel_id': 'UCMXkl-5yTf7ILL3EIgASSOw',  # モエサッカーファイア
+        'handle': 'モエサッカーファイア',
         'joyple_game_code': 60009,
         'analytics_access': False,
     },
     {
-        'yt_channel_id': 'UCm_qEt6y2dNsP22-zZ6aLxg',  # 내 ㅈ대로 홍보해드림 (@내맘대로홍보)
+        'yt_channel_id': 'UCm_qEt6y2dNsP22-zZ6aLxg',  # 내맘대로홍보
+        'handle': '내맘대로홍보',
         'joyple_game_code': 60009,
         'analytics_access': False,
     },
     {
-        'yt_channel_id': 'UCfR0wUYMlzfNc0MGW6vEFiw',  # 캐릭터를아끼자 (@캐릭터를아끼자)
+        'yt_channel_id': 'UCfR0wUYMlzfNc0MGW6vEFiw',  # 캐릭터를아끼자
+        'handle': '캐릭터를아끼자',
         'joyple_game_code': 60009,
         'analytics_access': False,
     },
     {
-        'yt_channel_id': 'UCMbhwVGWK6l0p6_hcuAi2Iw',  # Promoting it my damn way (@Promotingitmydamnway)
+        'yt_channel_id': 'UCMbhwVGWK6l0p6_hcuAi2Iw',  # Promoting it my damn way
+        'handle': 'Promotingitmydamnway',
         'joyple_game_code': 60009,
         'analytics_access': False,
     },
     {
-        'yt_channel_id': 'UCfEeyimdLqIxn6GNpjhisNQ',  # 프리스타일풋볼2 런칭존버 푸시업 챌린지 (@프풋2챌린지)
+        'yt_channel_id': 'UCfEeyimdLqIxn6GNpjhisNQ',  # 프리스타일풋볼2 런칭존버 푸시업 챌린지
+        'handle': '프풋2챌린지',
         'joyple_game_code': 60009,
         'analytics_access': False,
     },
     {
-        'yt_channel_id': 'UCEl7v-mdnHN4aznlBMjRAfw',  # 팀장알러지 (@menheraforteamleader)
+        'yt_channel_id': 'UCEl7v-mdnHN4aznlBMjRAfw',  # 팀장알러지
+        'handle': 'menheraforteamleader',
         'joyple_game_code': 60009,
         'analytics_access': False,
     },
     {
-        'yt_channel_id': 'UC7qGtl_aq6c92MoOAR-w9rQ',  # BossAllergy (@BossAllergy)
+        'yt_channel_id': 'UC7qGtl_aq6c92MoOAR-w9rQ',  # BossAllergy
+        'handle': 'BossAllergy',
         'joyple_game_code': 60009,
         'analytics_access': False,
     },
@@ -535,10 +545,11 @@ def youtube_etl():
 
     for channel in CHANNELS:
         channel_id       = channel['yt_channel_id']
+        handle           = channel.get('handle', '')
         game_code        = int(channel['joyple_game_code'])
         has_analytics    = channel.get('analytics_access', False)
         source_api       = 'youtube_analytics' if has_analytics else 'youtube_data'
-        print(f"\n===== 채널 처리 시작: {channel_id} (Analytics 권한: {has_analytics}) =====")
+        print(f"\n===== 채널 처리 시작: {channel_id} / {handle} (Analytics 권한: {has_analytics}) =====")
 
         if has_analytics:
             # ── Analytics API 방식 (브랜드 계정 관리자 권한 보유) ──────────────
@@ -547,12 +558,14 @@ def youtube_etl():
 
             df_v = fetch_combined_data(ana_svc, video_map, start_date_analytics, end_date)
             df_v['channel_id']       = channel_id
+            df_v['handle']           = handle
             df_v['joyple_game_code'] = game_code
             df_v['source_api']       = source_api
             all_views.append(df_v)
 
             df_ag = fetch_combined_data_viewer_per_video(ana_svc, video_map, start_date_analytics, end_date)
             df_ag['channel_id']       = channel_id
+            df_ag['handle']           = handle
             df_ag['joyple_game_code'] = game_code
             all_age_gender.append(df_ag)
 
@@ -564,6 +577,7 @@ def youtube_etl():
             # 2) 오늘 누적값 → pre 테이블 적재 (channel_id 구분자)
             df_pre = fetch_cumulative_stats_with_api_key(video_map, end_date)
             df_pre['channel_id']       = channel_id
+            df_pre['handle']           = handle
             df_pre['joyple_game_code'] = game_code
             upsert_to_bigquery(client, df_pre, PROJECT_ID, DATASET_ID, views_by_video_id_pre_table_id)
             print(f"Pre table upserted for {channel_id}.")
@@ -571,6 +585,7 @@ def youtube_etl():
             # 3) pre 테이블에서 전일 대비 delta 계산 → 메인 테이블용 DataFrame
             df_v = compute_daily_delta_from_pre(client, channel_id, end_date)
             if not df_v.empty:
+                df_v['handle']           = handle
                 df_v['joyple_game_code'] = game_code
                 df_v['source_api']       = source_api
                 all_views.append(df_v)
@@ -578,6 +593,7 @@ def youtube_etl():
         # 댓글은 모든 채널 공통 (API 키 방식)
         df_c = get_all_comments_with_api_key(video_map)
         df_c['channel_id']       = channel_id
+        df_c['handle']           = handle
         df_c['joyple_game_code'] = game_code
         all_comments.append(df_c)
 

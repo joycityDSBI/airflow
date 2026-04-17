@@ -43,8 +43,11 @@ DATASET_ID = "external_data"
 DISCORD_EPOCH = 1420070400000  # 2015-01-01 UTC ms
 
 # 수집할 서버 목록 (Guild ID 추가 시 여기에 입력)
-GUILD_IDS = [
-    "1433264315124678666",  # TODO: 서버명 입력
+GUILDS = [
+    {
+        "guild_id": "1433264315124678666",  # TODO: 서버명 입력
+        "joyple_game_code": 60009,              # TODO: joyple_game_code 입력
+    },
 ]
 
 
@@ -175,7 +178,9 @@ def fetch_and_load_member_snapshot(**context):
     now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
 
-    for guild_id in GUILD_IDS:
+    for guild_config in GUILDS:
+        guild_id         = guild_config["guild_id"]
+        joyple_game_code = int(guild_config["joyple_game_code"])
         server_name = _get_server_name(guild_id)
         after = "0"
 
@@ -195,6 +200,7 @@ def fetch_and_load_member_snapshot(**context):
                     "user_name": user.get("username", ""),
                     "joined_at": m.get("joined_at", ""),
                     "inserted_at": now_ts,
+                    "joyple_game_code": joyple_game_code,
                 })
 
             after = members[-1]["user"]["id"]
@@ -230,7 +236,9 @@ def fetch_and_load_invite_snapshot(**context):
     now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
 
-    for guild_id in GUILD_IDS:
+    for guild_config in GUILDS:
+        guild_id         = guild_config["guild_id"]
+        joyple_game_code = int(guild_config["joyple_game_code"])
         server_name = _get_server_name(guild_id)
         invites = _discord_get(f"/guilds/{guild_id}/invites")
 
@@ -252,6 +260,7 @@ def fetch_and_load_invite_snapshot(**context):
                 "created_at": inv.get("created_at", ""),
                 "expires_at": inv.get("expires_at") or None,
                 "inserted_at": now_ts,
+                "joyple_game_code": joyple_game_code,
             })
 
         logger.info(f"[invite_snapshot] {server_name}: {len(invites)} invite(s)")
@@ -285,7 +294,9 @@ def fetch_and_load_audit_logs(**context):
     now_ts = datetime.now(timezone.utc).isoformat()
     all_rows = []
 
-    for guild_id in GUILD_IDS:
+    for guild_config in GUILDS:
+        guild_id         = guild_config["guild_id"]
+        joyple_game_code = int(guild_config["joyple_game_code"])
         server_name = _get_server_name(guild_id)
         before_id = str(_datetime_to_snowflake(end_utc))
 
@@ -324,6 +335,7 @@ def fetch_and_load_audit_logs(**context):
                     "target_id": str(entry.get("target_id", "")),
                     "created_at": entry_time.isoformat(),
                     "inserted_at": now_ts,
+                    "joyple_game_code": joyple_game_code,
                 })
 
             if done or len(entries) < 100:
@@ -368,7 +380,9 @@ def fetch_and_load_chat_activity(**context):
     all_rows = []
     reaction_messages = []  # reactions 있는 메시지 메타데이터 → XCom으로 전달
 
-    for guild_id in GUILD_IDS:
+    for guild_config in GUILDS:
+        guild_id         = guild_config["guild_id"]
+        joyple_game_code = int(guild_config["joyple_game_code"])
         server_name = _get_server_name(guild_id)
 
         channels = _discord_get(f"/guilds/{guild_id}/channels")
@@ -426,6 +440,7 @@ def fetch_and_load_chat_activity(**context):
                                 "channel_name": channel_name,
                                 "message_id": msg["id"],
                                 "emojis": emojis,
+                                "joyple_game_code": joyple_game_code,
                             })
 
                     if done or len(messages) < 100:
@@ -449,6 +464,7 @@ def fetch_and_load_chat_activity(**context):
                     "user_name": user_names.get(uid, ""),
                     "message_count": count,
                     "inserted_at": now_ts,
+                    "joyple_game_code": joyple_game_code,
                 })
 
             logger.info(f"  채널 '{channel_name}': {len(user_msg_count)} unique user(s)")
@@ -502,11 +518,12 @@ def fetch_and_load_reactions(**context):
         return
 
     for msg_meta in reaction_messages:
-        channel_id = msg_meta["channel_id"]
-        channel_name = msg_meta["channel_name"]
-        message_id = msg_meta["message_id"]
-        server_id = msg_meta["server_id"]
-        server_name = msg_meta["server_name"]
+        channel_id       = msg_meta["channel_id"]
+        channel_name     = msg_meta["channel_name"]
+        message_id       = msg_meta["message_id"]
+        server_id        = msg_meta["server_id"]
+        server_name      = msg_meta["server_name"]
+        joyple_game_code = int(msg_meta.get("joyple_game_code", 0))
 
         for emoji_str in msg_meta["emojis"]:
             encoded_emoji = quote(emoji_str, safe="")
@@ -543,6 +560,7 @@ def fetch_and_load_reactions(**context):
                         "user_id": user.get("id", ""),
                         "user_name": user.get("username", ""),
                         "inserted_at": now_ts,
+                        "joyple_game_code": joyple_game_code,
                     })
 
                 if len(users) < 100:

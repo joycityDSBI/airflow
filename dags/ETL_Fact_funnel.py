@@ -334,6 +334,7 @@ def etl_f_funnel_access(target_date:list, client):
                 , tracker_account_id
                 , tracker_type_id
                 , install_datekey
+                , install_time
                 , is_retargeting
                 , device_id
                 , step_id
@@ -352,6 +353,7 @@ def etl_f_funnel_access(target_date:list, client):
                 , source.tracker_account_id
                 , source.tracker_type_id
                 , source.install_datekey
+                , source.install_time
                 , source.is_retargeting
                 , source.device_id
                 , source.step_id
