@@ -103,51 +103,253 @@ def generate_ua_data_in_bigquery(**context):
 
     create_query = f"""
         CREATE OR REPLACE TABLE `datahub-478802.datahub.f_user_map_cohort_view_temp` AS
-        SELECT
-          game_code_name AS project_name
-        , joyple_game_code
-        , reg_datekey AS regdate_joyple_kst
-        , app_id
-        , gcat
-        ,CASE WHEN media_source = 'Organic' then 'Organic'
-            when media_source = 'Unknown' then 'Unknown'
-            else media_category
-        end as media_category
-        ,CASE WHEN media_source = 'Organic' then 'Organic'
-            when media_source = 'Unknown' then 'Unknown'
-            else media
-        end as media
-        , media_source
-        , media_detail
-        , product_category
-        , etc_category
-        , optim
-        , init_campaign AS campaign
-        , reg_country_code AS geo
-        , geo_cam
-        , reg_market_name AS market
-        , reg_os_name AS Os
-        , os_cam
-        , adset_name AS fb_adset_name
-        , ad_name AS fb_adgroup_name
-        , site_id AS af_siteid
-        , agency
-        , device
-        , setting_title, landing_title, ad_unit, mediation
-        , install, RU, rev_D0, rev_D1, rev_D3, rev_D7, rev_D14, rev_D30, rev_D60, rev_D90
-        , rev_D120, rev_D150, rev_D180, rev_D210, rev_D240, rev_D270, rev_D300, rev_D330, rev_D360, rev_D390
-        , rev_D420, rev_D450, rev_D480, rev_D510, rev_Dcum
-        , rev_iaa_D0, rev_iaa_D1, rev_iaa_D3, rev_iaa_D7
-        , rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90, rev_iaa_D120, rev_iaa_D150, rev_iaa_D180
-        , rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330, rev_iaa_D360, rev_iaa_D390
-        , rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum
-        , RU_D1, RU_D3, RU_D7, RU_D14, RU_D30, RU_D60, RU_D90
-        , Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90
-        , Pu_D120, Pu_D150, Pu_D180, Pu_D210, Pu_D240, Pu_D270, Pu_D300, Pu_D330
-        , Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510
-        FROM `datahub-478802.datahub.f_user_map_cohort_view`
-        WHERE reg_datekey BETWEEN DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 3 MONTH)
-        AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
+        with perforaw as (
+        SELECT joyple_game_code, reg_datekey, app_id, 
+               gcat, media_category, media, media_source, media_detail, product_category, etc_category, optim, 
+               reg_country_code,geo_cam, reg_market_id, reg_os_id, os_cam,
+               adset_name, ad_name, site_id, agency, target_group,
+               device, setting_title, landing_title, ad_unit,mediation, init_campaign, uptdt_campaign, campaign, class,
+               count(distinct if(datediff_reg = 0, auth_account_name,null)) as ru,
+               sum(if(datediff_reg between 0 and 0,daily_total_rev,0))   as rev_d0,
+               sum(if(datediff_reg between 0 and 1,daily_total_rev,0))   as rev_d1,
+               sum(if(datediff_reg between 0 and 3,daily_total_rev,0))   as rev_d3,
+               sum(if(datediff_reg between 0 and 7,daily_total_rev,0))   as rev_d7,
+               sum(if(datediff_reg between 0 and 14,daily_total_rev,0))  as rev_d14,
+               sum(if(datediff_reg between 0 and 30,daily_total_rev,0))  as rev_d30,
+               sum(if(datediff_reg between 0 and 60,daily_total_rev,0))  as rev_d60,
+               sum(if(datediff_reg between 0 and 90,daily_total_rev,0))  as rev_d90,
+               sum(if(datediff_reg between 0 and 120,daily_total_rev,0)) as rev_d120,
+               sum(if(datediff_reg between 0 and 150,daily_total_rev,0)) as rev_d150,
+               sum(if(datediff_reg between 0 and 180,daily_total_rev,0)) as rev_d180,
+               sum(if(datediff_reg between 0 and 210,daily_total_rev,0)) as rev_d210,
+               sum(if(datediff_reg between 0 and 240,daily_total_rev,0)) as rev_d240,
+               sum(if(datediff_reg between 0 and 270,daily_total_rev,0)) as rev_d270,
+               sum(if(datediff_reg between 0 and 300,daily_total_rev,0)) as rev_d300,
+               sum(if(datediff_reg between 0 and 330,daily_total_rev,0)) as rev_d330,
+               sum(if(datediff_reg between 0 and 360,daily_total_rev,0)) as rev_d360,
+               sum(if(datediff_reg between 0 and 390,daily_total_rev,0)) as rev_d390,
+               sum(if(datediff_reg between 0 and 420,daily_total_rev,0)) as rev_d420,
+               sum(if(datediff_reg between 0 and 450,daily_total_rev,0)) as rev_d450,
+               sum(if(datediff_reg between 0 and 480,daily_total_rev,0)) as rev_d480,
+               sum(if(datediff_reg between 0 and 510,daily_total_rev,0)) as rev_d510,
+               sum(if(datediff_reg >= 0,daily_total_rev,0)) as rev_Dcum,
+        
+               sum(if(datediff_reg between 0 and 0,daily_IAA_rev,0))   as rev_iaa_d0,
+               sum(if(datediff_reg between 0 and 1,daily_IAA_rev,0))   as rev_iaa_d1,
+               sum(if(datediff_reg between 0 and 3,daily_IAA_rev,0))   as rev_iaa_d3,
+               sum(if(datediff_reg between 0 and 7,daily_IAA_rev,0))   as rev_iaa_d7,
+               sum(if(datediff_reg between 0 and 14,daily_IAA_rev,0))  as rev_iaa_d14,
+               sum(if(datediff_reg between 0 and 30,daily_IAA_rev,0))  as rev_iaa_d30,
+               sum(if(datediff_reg between 0 and 60,daily_IAA_rev,0))  as rev_iaa_d60,
+               sum(if(datediff_reg between 0 and 90,daily_IAA_rev,0))  as rev_iaa_d90,
+               sum(if(datediff_reg between 0 and 120,daily_IAA_rev,0)) as rev_iaa_d120,
+               sum(if(datediff_reg between 0 and 150,daily_IAA_rev,0)) as rev_iaa_d150,
+               sum(if(datediff_reg between 0 and 180,daily_IAA_rev,0)) as rev_iaa_d180,
+               sum(if(datediff_reg between 0 and 210,daily_IAA_rev,0)) as rev_iaa_d210,
+               sum(if(datediff_reg between 0 and 240,daily_IAA_rev,0)) as rev_iaa_d240,
+               sum(if(datediff_reg between 0 and 270,daily_IAA_rev,0)) as rev_iaa_d270,
+               sum(if(datediff_reg between 0 and 300,daily_IAA_rev,0)) as rev_iaa_d300,
+               sum(if(datediff_reg between 0 and 330,daily_IAA_rev,0)) as rev_iaa_d330,
+               sum(if(datediff_reg between 0 and 360,daily_IAA_rev,0)) as rev_iaa_d360,
+               sum(if(datediff_reg between 0 and 390,daily_IAA_rev,0)) as rev_iaa_d390,
+               sum(if(datediff_reg between 0 and 420,daily_IAA_rev,0)) as rev_iaa_d420,
+               sum(if(datediff_reg between 0 and 450,daily_IAA_rev,0)) as rev_iaa_d450,
+               sum(if(datediff_reg between 0 and 480,daily_IAA_rev,0)) as rev_iaa_d480,
+               sum(if(datediff_reg between 0 and 510,daily_IAA_rev,0)) as rev_iaa_d510,
+               sum(if(datediff_reg >= 0,daily_IAA_rev,0)) as rev_iaa_Dcum,
+        
+              count(distinct if(datediff_reg =1, auth_account_name,null))   as ru_d1,
+              count(distinct if(datediff_reg =3, auth_account_name,null))   as ru_d3,
+              count(distinct if(datediff_reg =7, auth_account_name,null))   as ru_d7,
+              count(distinct if(datediff_reg =14, auth_account_name,null))  as ru_d14,
+              count(distinct if(datediff_reg =30, auth_account_name,null))  as ru_d30,
+              count(distinct if(datediff_reg =60, auth_account_name,null))  as ru_d60,
+              count(distinct if(datediff_reg =90, auth_account_name,null))  as ru_d90,
+              count(distinct if(datediff_reg =120, auth_account_name,null)) as ru_d120,
+              count(distinct if(datediff_reg =150, auth_account_name,null)) as ru_d150,
+              count(distinct if(datediff_reg =180, auth_account_name,null)) as ru_d180,
+              count(distinct if(datediff_reg =210, auth_account_name,null)) as ru_d210,
+              count(distinct if(datediff_reg =240, auth_account_name,null)) as ru_d240,
+              count(distinct if(datediff_reg =270, auth_account_name,null)) as ru_d270,
+              count(distinct if(datediff_reg =300, auth_account_name,null)) as ru_d300,
+              count(distinct if(datediff_reg =330, auth_account_name,null)) as ru_d330,
+              count(distinct if(datediff_reg =360, auth_account_name,null)) as ru_d360,
+              count(distinct if(datediff_reg =390, auth_account_name,null)) as ru_d390,
+              count(distinct if(datediff_reg =420, auth_account_name,null)) as ru_d420,
+              count(distinct if(datediff_reg =450, auth_account_name,null)) as ru_d450,
+              count(distinct if(datediff_reg =480, auth_account_name,null)) as ru_d480,
+              count(distinct if(datediff_reg =510, auth_account_name,null)) as ru_d510,
+        
+              count(distinct if(datediff_reg =0 and daily_total_rev > 0 , auth_account_name,null))   as pu_d0,
+              count(distinct if(datediff_reg =1 and daily_total_rev > 0 , auth_account_name,null))   as pu_d1,
+              count(distinct if(datediff_reg =3 and daily_total_rev > 0 , auth_account_name,null))   as pu_d3,
+              count(distinct if(datediff_reg =7 and daily_total_rev > 0 , auth_account_name,null))   as pu_d7,
+              count(distinct if(datediff_reg =14 and daily_total_rev > 0 , auth_account_name,null))  as pu_d14,
+              count(distinct if(datediff_reg =30 and daily_total_rev > 0 , auth_account_name,null))  as pu_d30,
+              count(distinct if(datediff_reg =60 and daily_total_rev > 0 , auth_account_name,null))  as pu_d60,
+              count(distinct if(datediff_reg =90 and daily_total_rev > 0 , auth_account_name,null))  as pu_d90,
+              count(distinct if(datediff_reg =120 and daily_total_rev > 0 , auth_account_name,null)) as pu_d120,
+              count(distinct if(datediff_reg =150 and daily_total_rev > 0 , auth_account_name,null)) as pu_d150,
+              count(distinct if(datediff_reg =180 and daily_total_rev > 0 , auth_account_name,null)) as pu_d180,
+              count(distinct if(datediff_reg =210 and daily_total_rev > 0 , auth_account_name,null)) as pu_d210,
+              count(distinct if(datediff_reg =240 and daily_total_rev > 0 , auth_account_name,null)) as pu_d240,
+              count(distinct if(datediff_reg =270 and daily_total_rev > 0 , auth_account_name,null)) as pu_d270,
+              count(distinct if(datediff_reg =300 and daily_total_rev > 0 , auth_account_name,null)) as pu_d300,
+              count(distinct if(datediff_reg =330 and daily_total_rev > 0 , auth_account_name,null)) as pu_d330,
+              count(distinct if(datediff_reg =360 and daily_total_rev > 0 , auth_account_name,null)) as pu_d360,
+              count(distinct if(datediff_reg =390 and daily_total_rev > 0 , auth_account_name,null)) as pu_d390,
+              count(distinct if(datediff_reg =420 and daily_total_rev > 0 , auth_account_name,null)) as pu_d420,
+              count(distinct if(datediff_reg =450 and daily_total_rev > 0 , auth_account_name,null)) as pu_d450,
+              count(distinct if(datediff_reg =480 and daily_total_rev > 0 , auth_account_name,null)) as pu_d480,
+              count(distinct if(datediff_reg =510 and daily_total_rev > 0 , auth_account_name,null)) as pu_d510
+        
+        FROM `datahub-478802.datahub.f_user_map_mas_view` AS a
+        WHERE reg_datekey >= '2017-04-27'
+        and datediff_reg >= 0
+        group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30
+        ),
+        
+        UA_perfo as (
+        select a.joyple_game_code, a.reg_datekey
+               , a.app_id, a.media_source, a.uptdt_campaign
+               , case when a.media_source in ('Unknown', 'NULL') then 'Unknown'                
+                      when a.campaign like '%Pirates of the Caribbean Android AU%' then 'UA'  
+                      when a.campaign like '%Pirates of the Caribbean Android KR%' then 'UA' 
+                      when a.campaign like '%Pirates of the Caribbean Android US%' then 'UA'
+                      when a.campaign like '%Pirates of the Caribbean Android GB%' then 'UA'  
+                      when a.campaign = 'POTC_検索' then 'UA'
+                      when a.gcat is null and a.joyple_game_code =131 then d.gcat 
+                 else a.gcat
+                 end as gcat
+               , case  when a.campaign like '%Pirates of the Caribbean Android AU%' then 'ADNW'
+                       when a.campaign like '%Pirates of the Caribbean Android KR%' then 'ADNW'
+                       when a.campaign like '%Pirates of the Caribbean Android US%' then 'ADNW'
+                       when a.campaign like '%Pirates of the Caribbean Android GB%' then 'ADNW'
+                       when a.campaign = 'POTC_検索' then 'ADNW' 
+                       when a.gcat is null and a.joyple_game_code = 131 then d.media_category 
+                       else a.media_category 
+                 end as media_category 
+               , case when a.optim  = 'NONE' and a.Adset_Name like '%MAIA%' then 'MAIA'
+                      when a.optim  = 'NONE' and a.Adset_Name like '%AEO%' then 'AEO'
+                      when a.optim  = 'NONE' and a.Adset_Name like '%VO%' then 'VO'
+                 else a.optim end as optim 
+               , a.* except(joyple_game_code,reg_datekey,app_id,media_source,uptdt_campaign, gcat, media_category,optim)
+        from(select a.*, b.market_name_KR as reg_market_name, o.os_name_lower as reg_os_name
+             from perforaw as a
+             left join `datahub-478802.datahub.dim_market_id` as b on a.reg_market_id = b.market_id
+             left join `datahub-478802.datahub.dim_os_id` as o on a.reg_os_id = o.os_id
+             ) as a
+        left join `data-science-division-216308.POTC.before_mas_campaign` as d
+        on a.uptdt_campaign = d.campaign 
+        
+        
+        ),
+        
+        tracker as (
+        
+        select joyple_game_code
+             , install_datekey as reg_datekey
+             , CASE WHEN a.media_source = '' OR a.media_source IS NULL THEN 'NULL' ELSE a.media_source END AS media_source
+             , CASE WHEN a.init_campaign = '' OR a.init_campaign IS NULL THEN 'NULL' ELSE a.init_campaign     END AS init_campaign
+             , CASE WHEN a.country_code = '' OR a.country_code IS NULL THEN 'NULL' ELSE a.country_code END AS reg_country_code
+             , CASE WHEN c.market_name_KR= '' OR c.market_name_KR IS NULL THEN 'NULL' ELSE c.market_name_KR END AS reg_market_name
+             , CASE WHEN a.adset_name   = '' OR a.adset_name    IS NULL THEN 'NULL' ELSE a.adset_name    END AS adset_name
+             , CASE WHEN a.ad_name   = '' OR a.ad_name    IS NULL THEN 'NULL' ELSE a.ad_name    END AS ad_name
+             , CASE WHEN a.site_id   = '' OR a.site_id    IS NULL THEN 'NULL' ELSE a.site_id    END AS site_id
+             , CASE WHEN a.agency   = '' OR a.agency    IS NULL THEN 'NULL' ELSE a.agency    END AS agency
+             , CASE WHEN a.app_id = '' OR a.app_id IS NULL THEN 'NULL' ELSE a.app_id END AS app_id
+             , platform as reg_os_name
+             , count(*) as install
+        from `datahub-478802.datahub.f_tracker_install` as a
+        left join `datahub-478802.datahub.dim_market_id` as c on a.market_id = c.market_id
+        group by 1,2,3,4,5,6,7,8,9,10,11,12
+        
+        )
+        
+        , ua_install as (
+        select  
+              joyple_game_code            
+            , reg_datekey      
+            , media_source     
+            , init_campaign         
+            , reg_country_code 
+            , reg_market_name  
+            , reg_os_name      
+            , adset_name       
+            , ad_name          
+            , app_id           
+            , agency           
+            , site_id
+            , a.* except(joyple_game_code,reg_datekey,media_source,init_campaign,reg_country_code,reg_market_name,reg_os_name,adset_name,
+                         ad_name,app_id,agency,site_id)          
+            , d.install
+        from(select a.* except(app_id, media_source, init_campaign, reg_country_code, adset_name, ad_name, site_id, agency, reg_market_name)
+        
+                    , CASE WHEN a.app_id = '' OR a.app_id IS NULL THEN 'NULL' ELSE a.app_id END AS app_id
+                    , CASE WHEN a.media_source = '' OR a.media_source IS NULL THEN 'NULL' ELSE a.media_source END AS media_source
+                    , CASE WHEN a.init_campaign = '' OR a.init_campaign IS NULL THEN 'NULL' ELSE a.init_campaign     END AS init_campaign
+                    , CASE WHEN a.reg_country_code = '' OR a.reg_country_code IS NULL THEN 'NULL' ELSE a.reg_country_code END AS reg_country_code 
+                    , CASE WHEN a.reg_market_name = '' OR a.reg_market_name IS NULL THEN 'NULL' ELSE a.reg_market_name END AS reg_market_name 
+                    , CASE WHEN a.adset_name   = '' OR a.adset_name    IS NULL THEN 'NULL' ELSE a.adset_name    END AS adset_name
+                    , CASE WHEN a.ad_name   = '' OR a.ad_name    IS NULL THEN 'NULL' ELSE a.ad_name    END AS ad_name
+                    , CASE WHEN a.site_id   = '' OR a.site_id    IS NULL THEN 'NULL' ELSE a.site_id    END AS site_id
+                    , CASE WHEN a.agency   = '' OR a.agency    IS NULL THEN 'NULL' ELSE a.agency    END AS agency
+             from UA_perfo as a
+             ) as a
+             
+        full join tracker as d USING (joyple_game_code, reg_datekey, media_source, init_campaign, reg_country_code, reg_market_name, reg_os_name, adset_name, ad_name, app_id, agency, site_id)
+        
+        )
+        
+        
+        
+                SELECT
+                  b.game_code_name AS project_name
+                , a.joyple_game_code
+                , reg_datekey AS regdate_joyple_kst
+                , app_id
+                , gcat
+                ,CASE WHEN media_source = 'Organic' then 'Organic'
+                    when media_source = 'Unknown' then 'Unknown'
+                    else media_category
+                end as media_category
+                ,CASE WHEN media_source = 'Organic' then 'Organic'
+                    when media_source = 'Unknown' then 'Unknown'
+                    else media
+                end as media
+                , media_source
+                , media_detail
+                , product_category
+                , etc_category
+                , optim
+                , init_campaign AS campaign
+                , reg_country_code AS geo
+                , geo_cam
+                , reg_market_name AS market
+                , reg_os_name AS Os
+                , os_cam
+                , adset_name AS fb_adset_name
+                , ad_name AS fb_adgroup_name
+                , site_id AS af_siteid
+                , agency
+                , device
+                , setting_title, landing_title, ad_unit, mediation
+                , install, RU, rev_D0, rev_D1, rev_D3, rev_D7, rev_D14, rev_D30, rev_D60, rev_D90
+                , rev_D120, rev_D150, rev_D180, rev_D210, rev_D240, rev_D270, rev_D300, rev_D330, rev_D360, rev_D390
+                , rev_D420, rev_D450, rev_D480, rev_D510, rev_Dcum
+                , rev_iaa_D0, rev_iaa_D1, rev_iaa_D3, rev_iaa_D7
+                , rev_iaa_D14, rev_iaa_D30, rev_iaa_D60, rev_iaa_D90, rev_iaa_D120, rev_iaa_D150, rev_iaa_D180
+                , rev_iaa_D210, rev_iaa_D240, rev_iaa_D270, rev_iaa_D300, rev_iaa_D330, rev_iaa_D360, rev_iaa_D390
+                , rev_iaa_D420, rev_iaa_D450, rev_iaa_D480, rev_iaa_D510, rev_iaa_Dcum
+                , RU_D1, RU_D3, RU_D7, RU_D14, RU_D30, RU_D60, RU_D90
+                , Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90
+                , Pu_D120, Pu_D150, Pu_D180, Pu_D210, Pu_D240, Pu_D270, Pu_D300, Pu_D330
+                , Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510
+                FROM ua_install as a
+                left join `datahub-478802.datahub.dim_joyple_game_code` as b
+                on a.joyple_game_code = b.joyple_game_code
+                WHERE reg_datekey BETWEEN DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 3 MONTH)
+                AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
     """
 
     try:
