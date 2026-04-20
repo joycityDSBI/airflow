@@ -29,7 +29,7 @@ BQ_TABLE_ID = "pre_register_page_view"
 TARGET_TABLE = f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_ID}"
 
 PROJECT_KEY = "FSF2"
-LOOKBACK_DAYS = 7
+LOOKBACK_DAYS = 3
 
 
 def get_gcp_credentials():
