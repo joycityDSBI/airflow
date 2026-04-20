@@ -204,7 +204,8 @@ def generate_ua_data_in_bigquery(**context):
               count(distinct if(datediff_reg =510 and daily_total_rev > 0 , auth_account_name,null)) as pu_d510
 
         FROM `datahub-478802.datahub.f_user_map_mas_view` AS a
-        WHERE reg_datekey >= '2017-04-27'
+     --    WHERE reg_datekey >= '2017-04-27'
+        where reg_datekey >= '2025-01-01' and datekey >= '2025-01-01'
         and datediff_reg >= 0
         group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30
         ),
@@ -249,7 +250,7 @@ def generate_ua_data_in_bigquery(**context):
 
         select joyple_game_code
              , install_datekey as reg_datekey
-             , CASE WHEN a.media_source = '' OR a.media_source IS NULL THEN 'NULL' ELSE a.media_source END AS media_source
+             , CASE WHEN a.media_source = '' OR a.media_source IS NULL THEN 'Unknown' ELSE a.media_source END AS media_source
              , CASE WHEN a.init_campaign = '' OR a.init_campaign IS NULL THEN 'NULL' ELSE a.init_campaign     END AS init_campaign
              , CASE WHEN a.country_code = '' OR a.country_code IS NULL THEN 'NULL' ELSE a.country_code END AS reg_country_code
              , CASE WHEN c.market_name_KR= '' OR c.market_name_KR IS NULL THEN 'NULL' ELSE c.market_name_KR END AS reg_market_name
@@ -262,6 +263,7 @@ def generate_ua_data_in_bigquery(**context):
              , count(*) as install
         from `datahub-478802.datahub.f_tracker_install` as a
         left join `datahub-478802.datahub.dim_market_id` as c on a.market_id = c.market_id
+        where install_datekey >= '2025-01-01'
         group by 1,2,3,4,5,6,7,8,9,10,11,12
 
         )
@@ -286,7 +288,7 @@ def generate_ua_data_in_bigquery(**context):
         from(select a.* except(app_id, media_source, init_campaign, reg_country_code, adset_name, ad_name, site_id, agency, reg_market_name)
 
                     , CASE WHEN a.app_id = '' OR a.app_id IS NULL THEN 'NULL' ELSE a.app_id END AS app_id
-                    , CASE WHEN a.media_source = '' OR a.media_source IS NULL THEN 'NULL' ELSE a.media_source END AS media_source
+                    , CASE WHEN a.media_source = '' OR a.media_source IS NULL THEN 'Unknown' ELSE a.media_source END AS media_source
                     , CASE WHEN a.init_campaign = '' OR a.init_campaign IS NULL THEN 'NULL' ELSE a.init_campaign     END AS init_campaign
                     , CASE WHEN a.reg_country_code = '' OR a.reg_country_code IS NULL THEN 'NULL' ELSE a.reg_country_code END AS reg_country_code 
                     , CASE WHEN a.reg_market_name = '' OR a.reg_market_name IS NULL THEN 'NULL' ELSE a.reg_market_name END AS reg_market_name 
@@ -307,33 +309,38 @@ def generate_ua_data_in_bigquery(**context):
                   b.game_code_name AS project_name
                 , a.joyple_game_code
                 , reg_datekey AS regdate_joyple_kst
-                , app_id
-                , gcat
-                ,CASE WHEN media_source = 'Organic' then 'Organic'
-                    when media_source = 'Unknown' then 'Unknown'
-                    else media_category
+                , ifnull(a.app_id, c.app_id) as app_id
+                , COALESCE(a.gcat, c.gcat, 'Unknown') as gcat
+                ,CASE WHEN a.media_source = 'Organic' then 'Organic'
+                      when a.media_source = 'Unknown'  then 'Unknown' 
+                      when a.media_category is null then c.media_category
+                      else a.media_category
                 end as media_category
-                ,CASE WHEN media_source = 'Organic' then 'Organic'
-                    when media_source = 'Unknown' then 'Unknown'
-                    else media
+                ,CASE WHEN a.media_source = 'Organic' then 'Organic'
+                      when a.media_source = 'Unknown'  then 'Unknown'
+                      when a.media is null then c.media
+                    else a.media
                 end as media
-                , media_source
-                , media_detail
-                , product_category
-                , etc_category
-                , optim
-                , init_campaign AS campaign
+                , ifnull(a.media_source, c.media_source) as media_source
+                , ifnull(a.media_detail, c.media_detail) as media_detail
+                , ifnull(a.product_category, c.product_category) as product_category
+                , ifnull(a.etc_category, c.etc_category) as etc_category
+                , ifnull(a.optim, c.optim) as optim
+                , COALESCE(c.uptdt_campaign,a.init_campaign, c.init_campaign) AS campaign
                 , reg_country_code AS geo
-                , geo_cam
+                , ifnull(a.geo_cam, c.geo_cam) as geo_cam
                 , reg_market_name AS market
                 , reg_os_name AS Os
-                , os_cam
+                , ifnull(a.os_cam, c.os_cam) as os_cam
                 , adset_name AS fb_adset_name
                 , ad_name AS fb_adgroup_name
                 , site_id AS af_siteid
                 , agency
-                , device
-                , setting_title, landing_title, ad_unit, mediation
+                , ifnull(a.device, c.device) as device
+                , ifnull(a.setting_title, c.setting_title) as setting_title
+                , ifnull(a.landing_title, c.landing_title) as landing_title
+                , ifnull(a.ad_unit, c.ad_unit) as ad_unit
+                , ifnull(a.mediation, c.mediation) as mediation
                 , install, RU, rev_D0, rev_D1, rev_D3, rev_D7, rev_D14, rev_D30, rev_D60, rev_D90
                 , rev_D120, rev_D150, rev_D180, rev_D210, rev_D240, rev_D270, rev_D300, rev_D330, rev_D360, rev_D390
                 , rev_D420, rev_D450, rev_D480, rev_D510, rev_Dcum
@@ -348,7 +355,9 @@ def generate_ua_data_in_bigquery(**context):
                 FROM ua_install as a
                 left join (select if(joyple_game_code in (159,1590), 'RESU', game_code_name) as game_code_name, joyple_game_code
                            from `datahub-478802.datahub.dim_joyple_game_code`) as b
-                on a.joyple_game_code = b.joyple_game_code
+                    on a.joyple_game_code = b.joyple_game_code
+                left join `datahub-478802.datahub.dim_AFC_campaign`  as c
+                    on a.app_id = c.app_id and a.media_source = c.media_source and a.init_campaign = c.init_campaign
                 WHERE reg_datekey BETWEEN DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 3 MONTH)
                 AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
     """
@@ -367,7 +376,106 @@ def generate_ua_data_in_bigquery(**context):
     print("=" * 80)
 
 
+# ============= [테스트용] Task: 전체 프로젝트 보고서 GCS 업로드 → Sheet3에 URL 저장 =============
+def write_to_sheet3_for_test(**context):
+    """[테스트용] Task 1과 동일한 로직으로 GCS 업로드 후 다운로드 URL을 Sheet3에 저장"""
+    print("=" * 80)
+    print("[테스트] 전체 프로젝트 보고서 생성 및 Sheet3 URL 저장 시작")
+    print("=" * 80)
+
+    creds = Credentials.from_service_account_info(credentials_info, scopes=scopes)
+    client = gspread.authorize(creds)
+    bq_client = bigquery.Client.from_service_account_info(credentials_info)
+    storage_client = storage.Client.from_service_account_info(credentials_info)
+
+    spreadsheet_url = "https://docs.google.com/spreadsheets/d/1gMEd4_sTX-Y1jr4JcZyonDiMzazKfJOjHdahvhBKNGE/edit?gid=0#gid=0"
+    spreadsheet = client.open_by_url(spreadsheet_url)
+
+    # 프로젝트 목록은 Sheet1에서 읽기 (기존과 동일)
+    sheet1 = spreadsheet.sheet1
+    data = sheet1.get_all_values()
+    project_list = [cell for row in data for cell in row][1:]
+
+    # 결과 URL은 Sheet3에 저장
+    sheet3 = spreadsheet.worksheet('sheet3')
+
+    bucket = storage_client.bucket(GCS_BUCKET_NAME)
+    today = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d')
+    two_days_ago = (datetime.now(timezone(timedelta(hours=9))) - timedelta(days=2)).strftime('%Y-%m-%d')
+
+    failed_projects = []
+    total_rows = 0
+
+    print(f"전체 프로젝트 수: {len(project_list)}")
+    print(f"프로젝트 리스트: {project_list}")
+
+    for project_name in project_list:
+        if not project_name.strip():
+            continue
+        try:
+            query = f"""
+                SELECT * EXCEPT(Pu_D0, Pu_D1, Pu_D3, Pu_D7, Pu_D14, Pu_D30, Pu_D60, Pu_D90, Pu_D120, Pu_D150, Pu_D180, Pu_D210
+                              , Pu_D240, Pu_D270, Pu_D300, Pu_D330, Pu_D360, Pu_D390, Pu_D420, Pu_D450, Pu_D480, Pu_D510)
+                FROM `{TEMP_TABLE}`
+                WHERE
+                    project_name = @project_name
+                    AND regdate_joyple_kst BETWEEN DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 3 MONTH)
+                                               AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
+            """
+            job_config = bigquery.QueryJobConfig(
+                query_parameters=[bigquery.ScalarQueryParameter("project_name", "STRING", project_name)]
+            )
+            df = bq_client.query(query, job_config=job_config).to_dataframe()
+
+            if df.empty:
+                print(f"⚠️ [WARNING] '{project_name}'에 대한 데이터가 0건입니다.")
+            else:
+                print(f"✅ '{project_name}' 조회 성공: {len(df)} 행")
+
+            csv_buffer = io.BytesIO()
+            df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
+
+            blob_name = f"all_reports/{project_name}_{today}.csv"
+            blob = bucket.blob(blob_name)
+            blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv")
+            print(f"✓ GCS 업로드 완료: {blob.name}")
+
+            signed_url = blob.generate_signed_url(version="v4", expiration=timedelta(hours=24), method="GET")
+            current_time = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
+
+            # Sheet3에 project_name / signed_url / 업데이트 시각 저장
+            cell = sheet3.find(project_name)
+            if cell:
+                sheet3.update_cell(cell.row, cell.col + 1, signed_url)
+                sheet3.update_cell(cell.row, cell.col + 2, current_time)
+            else:
+                sheet3.append_row([project_name, signed_url, current_time])
+            print(f"✓ Sheet3 URL 업데이트 완료: {project_name}")
+
+            total_rows += len(df)
+
+            old_blob_name = f"all_reports/{project_name}_{two_days_ago}.csv"
+            old_blob = bucket.blob(old_blob_name)
+            if old_blob.exists():
+                old_blob.delete()
+
+        except Exception as e:
+            print(f"✗ [{project_name}] 오류 발생: {str(e)}")
+            failed_projects.append({'project': project_name, 'error': str(e)})
+            continue
+
+    if failed_projects:
+        print("\n⚠️  실패한 프로젝트 목록:")
+        for f in failed_projects:
+            print(f"  - {f['project']}: {f['error']}")
+
+    print("=" * 80)
+    print(f"✅ [테스트] 완료: 총 {total_rows} 행, 실패 {len(failed_projects)}건")
+    print("=" * 80)
+
+
 # ============= Task 1: 전체 프로젝트 보고서 생성 및 업로드 =============
+# [주석 처리: 향후 서비스 코드, 테스트 시 write_to_sheet3_for_test 사용]
 def generate_all_projects_reports(**context):
     """전체 프로젝트 보고서 생성 및 GCS 업로드"""
     print("=" * 80)
@@ -748,21 +856,29 @@ task_bigquery_projects = PythonOperator(
     dag=dag,
 )
 
-task_all_projects = PythonOperator(
-    task_id='generate_all_projects_reports',
-    python_callable=generate_all_projects_reports,
-    dag=dag,
-)
+# [주석 처리: 향후 서비스 코드]
+# task_all_projects = PythonOperator(
+#     task_id='generate_all_projects_reports',
+#     python_callable=generate_all_projects_reports,
+#     dag=dag,
+# )
 
-task_agency_reports = PythonOperator(
-    task_id='generate_agency_reports',
-    python_callable=generate_agency_reports,
-    dag=dag,
-)
+# task_agency_reports = PythonOperator(
+#     task_id='generate_agency_reports',
+#     python_callable=generate_agency_reports,
+#     dag=dag,
+# )
 
-task_authorize_gcs = PythonOperator(
-    task_id='authorize_gcs_access',
-    python_callable=authorize_gcs_access,
+# task_authorize_gcs = PythonOperator(
+#     task_id='authorize_gcs_access',
+#     python_callable=authorize_gcs_access,
+#     dag=dag,
+# )
+
+# [테스트용] Sheet3 저장 Task
+task_write_sheet3_test = PythonOperator(
+    task_id='write_to_sheet3_for_test',
+    python_callable=write_to_sheet3_for_test,
     dag=dag,
 )
 
@@ -773,5 +889,8 @@ task_cleanup_temp = PythonOperator(
     dag=dag,
 )
 
-# Task 의존성
-task_bigquery_projects >> task_all_projects >> task_agency_reports >> task_authorize_gcs >> task_cleanup_temp
+# Task 의존성 (테스트용)
+task_bigquery_projects >> task_write_sheet3_test >> task_cleanup_temp
+
+# [주석 처리: 향후 서비스 의존성]
+# task_bigquery_projects >> task_all_projects >> task_agency_reports >> task_authorize_gcs >> task_cleanup_temp
