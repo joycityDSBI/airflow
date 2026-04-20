@@ -391,13 +391,9 @@ def write_to_sheet3_for_test(**context):
     spreadsheet_url = "https://docs.google.com/spreadsheets/d/1gMEd4_sTX-Y1jr4JcZyonDiMzazKfJOjHdahvhBKNGE/edit?gid=0#gid=0"
     spreadsheet = client.open_by_url(spreadsheet_url)
 
-    # 프로젝트 목록은 Sheet1에서 읽기 (기존과 동일)
-    sheet1 = spreadsheet.sheet1
-    data = sheet1.get_all_values()
-    project_list = [cell for row in data for cell in row][1:]
-
-    # 결과 URL은 Sheet3에 저장
+    # Sheet3 A열에서 프로젝트 목록 읽기, B열에 URL 저장
     sheet3 = spreadsheet.worksheet('sheet3')
+    project_list = sheet3.col_values(1)[1:]  # 1행은 헤더로 스킵
 
     bucket = storage_client.bucket(GCS_BUCKET_NAME)
     today = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d')
@@ -441,16 +437,12 @@ def write_to_sheet3_for_test(**context):
             print(f"✓ GCS 업로드 완료: {blob.name}")
 
             signed_url = blob.generate_signed_url(version="v4", expiration=timedelta(hours=24), method="GET")
-            current_time = datetime.now(timezone(timedelta(hours=9))).strftime('%Y-%m-%d %H:%M:%S')
 
-            # Sheet3에 project_name / signed_url / 업데이트 시각 저장
+            # Sheet3 A열에서 해당 project_name 행 찾아 B열에 URL 저장
             cell = sheet3.find(project_name)
             if cell:
-                sheet3.update_cell(cell.row, cell.col + 1, signed_url)
-                sheet3.update_cell(cell.row, cell.col + 2, current_time)
-            else:
-                sheet3.append_row([project_name, signed_url, current_time])
-            print(f"✓ Sheet3 URL 업데이트 완료: {project_name}")
+                sheet3.update_cell(cell.row, 2, signed_url)  # B열
+            print(f"✓ Sheet3 B열 URL 업데이트 완료: {project_name}")
 
             total_rows += len(df)
 
