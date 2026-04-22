@@ -101,6 +101,10 @@ def etl_f_common_goods(target_date: list, client):
                  , free_goods_amount
                  , paid_goods_amount
                  , total_goods_amount
+                 , PackageKind
+                 , CouponKind
+                 , DiscountRate
+                 , DiscountPrice
             FROM GoodsUseCount_Package
         ) AS S
         ON  T.joyple_game_code       = S.joyple_game_code
@@ -124,16 +128,22 @@ def etl_f_common_goods(target_date: list, client):
             UPDATE SET
                 T.free_goods_amount  = S.free_goods_amount,
                 T.paid_goods_amount  = S.paid_goods_amount,
-                T.total_goods_amount = S.total_goods_amount
+                T.total_goods_amount = S.total_goods_amount,
+                T.PackageKind        = S.PackageKind,
+                T.CouponKind         = S.CouponKind,
+                T.DiscountRate       = S.DiscountRate,
+                T.DiscountPrice      = S.DiscountPrice
         WHEN NOT MATCHED THEN
             INSERT (joyple_game_code, server_name, app_id, datekey, auth_account_name, game_sub_user_name,
                     game_user_level, market_id, os_id, platform_device_type, tracker_type_id, goods_name,
                     order_id, action_id, action_name, action_category_name, add_or_spend,
-                    free_goods_amount, paid_goods_amount, total_goods_amount)
+                    free_goods_amount, paid_goods_amount, total_goods_amount,
+                    PackageKind, CouponKind, DiscountRate, DiscountPrice)
             VALUES (S.joyple_game_code, S.server_name, S.app_id, S.datekey, S.auth_account_name, S.game_sub_user_name,
                     S.game_user_level, S.market_id, S.os_id, S.platform_device_type, S.tracker_type_id, S.goods_name,
                     S.order_id, S.action_id, S.action_name, S.action_category_name, S.add_or_spend,
-                    S.free_goods_amount, S.paid_goods_amount, S.total_goods_amount)
+                    S.free_goods_amount, S.paid_goods_amount, S.total_goods_amount,
+                    S.PackageKind, S.CouponKind, S.DiscountRate, S.DiscountPrice)
         """
 
         query_job = client.query(query)
