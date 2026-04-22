@@ -2135,6 +2135,87 @@ def etl_dim_IAA_app_name(**context):
 ############ special_pg 는 별도 ETL 작업 없음
 
 
+def etl_dim_goods_action_id(**context):
+
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
+    logger = logging.getLogger(__name__)
+
+    kst = pytz.timezone('Asia/Seoul')
+
+    target_date, _ = calc_target_date(context['logical_date'])
+
+    # #################### 백필용 데이터 처리
+    # target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
+
+    for td_str in target_date:
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        start_kst = kst.localize(current_date_obj)
+        start_utc = start_kst.astimezone(timezone.utc)
+        end_kst   = start_kst + timedelta(days=1)
+        end_utc   = end_kst.astimezone(timezone.utc)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
+
+        query = f"""
+        MERGE `datahub-478802.datahub.dim_goods_action_id` AS T
+        USING (
+            SELECT DISTINCT
+                joyple_game_code
+              , CASE WHEN joyple_game_code IN (159,1590) AND free_or_buy = 'buy' AND goods_name = 'gem' AND action_id LIKE '%_FREE_%'
+                     THEN REPLACE(action_id, '_FREE_', '_PAID_')
+                     ELSE action_id
+                END AS action_id
+              , CASE WHEN joyple_game_code IN (159,1590) AND free_or_buy = 'buy' AND goods_name = 'gem' AND action_name LIKE '%무가 획득%'
+                     THEN REPLACE(action_name, '무가 획득', '유가 획득')
+                     ELSE action_name
+                END AS action_name
+              , action_category_name
+              , add_or_spend
+              , goods_name
+            FROM `dataplatform-204306.CommonLog.Goods`
+            WHERE log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+              AND log_time <  TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+              AND joyple_game_code IS NOT NULL
+              AND action_id IS NOT NULL
+              AND TRIM(action_id) != ''
+        ) AS S
+        ON  T.joyple_game_code = S.joyple_game_code
+        AND T.action_id        = S.action_id
+        WHEN MATCHED THEN
+            UPDATE SET
+                T.action_name          = S.action_name,
+                T.action_category_name = S.action_category_name,
+                T.add_or_spend         = S.add_or_spend
+        WHEN NOT MATCHED THEN
+            INSERT (joyple_game_code, action_id, action_name, action_category_name, add_or_spend, goods_name, create_timestamp)
+            VALUES (S.joyple_game_code, S.action_id, S.action_name, S.action_category_name, S.add_or_spend, S.goods_name, CURRENT_TIMESTAMP())
+        """
+
+        query_job = client.query(query)
+
+        try:
+            query_job.result()
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} dim_goods_action_id Batch 완료")
+
+        except Exception as e:
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+
+    print("✅ dim_goods_action_id ETL 완료")
+
+    return True
+
+
 # DAG 기본 설정
 default_args = {
     'owner': 'airflow',
@@ -2230,6 +2311,11 @@ with DAG(
         python_callable=etl_dim_IAA_app_name,
     )
 
+    etl_dim_goods_action_id_task = PythonOperator(
+        task_id='etl_dim_goods_action_id',
+        python_callable=etl_dim_goods_action_id,
+    )
+
     etl_dim_product_code_task = PythonOperator(
         task_id='etl_dim_product_code',
         python_callable=etl_dim_product_code,
@@ -2262,6 +2348,7 @@ chain(
     etl_dim_package_kind_task,
     etl_dim_pg_id_task,
     etl_dim_IAA_app_name_task,
+    etl_dim_goods_action_id_task,
     etl_dim_product_code_task,
     adjust_dim_product_code_task,
     bash_task

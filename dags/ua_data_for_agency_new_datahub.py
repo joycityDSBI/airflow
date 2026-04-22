@@ -431,7 +431,7 @@ def write_to_sheet3_for_test(**context):
             csv_buffer = io.BytesIO()
             df.to_csv(csv_buffer, index=False, encoding='utf-8-sig')
 
-            blob_name = f"all_reports/{project_name}_{today}.csv"
+            blob_name = f"all_reports/test_{project_name}_{today}.csv"
             blob = bucket.blob(blob_name)
             blob.upload_from_string(csv_buffer.getvalue(), content_type="text/csv")
             print(f"✓ GCS 업로드 완료: {blob.name}")
@@ -446,7 +446,7 @@ def write_to_sheet3_for_test(**context):
 
             total_rows += len(df)
 
-            old_blob_name = f"all_reports/{project_name}_{two_days_ago}.csv"
+            old_blob_name = f"all_reports/test_{project_name}_{two_days_ago}.csv"
             old_blob = bucket.blob(old_blob_name)
             if old_blob.exists():
                 old_blob.delete()

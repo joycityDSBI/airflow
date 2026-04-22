@@ -19,7 +19,8 @@ from ETL_Fact_access import *
 from ETL_Fact_payment import * 
 from ETL_Fact_funnel import * 
 from ETL_Fact_IAA import * 
-from ETL_Fact_usermap import * 
+from ETL_Fact_usermap import *
+from ETL_Fact_goods import *
 from ETL_Utils import init_clients, calc_target_date, target_date_range
 
 
@@ -236,6 +237,34 @@ def etl_fact_usermap(**context):
     return True
 
 
+def etl_fact_goods(**context):
+    logger = logging.getLogger(__name__)
+
+    run_date = context.get('logical_date') or context.get('execution_date')
+
+    if not run_date:
+        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
+        run_date = datetime.now()
+
+    target_date, _ = calc_target_date(run_date)
+
+    ########### 백필용 데이터 처리
+    # target_date = target_date_range("2026-03-20", "2026-03-22")  ## 백필용
+
+    print("✅✅✅✅ Calculated target_date:", target_date[0])
+
+    client = init_clients()
+    bq_client = client["bq_client"]
+
+    try:
+        etl_f_common_goods(target_date=target_date, client=bq_client)
+        logger.info("✅ etl_fact_goods completed successfully")
+        return True
+    except Exception as e:
+        logger.error(f"❌ etl_fact_goods failed with error: {e}")
+        raise e
+
+
 # DAG 기본 설정
 default_args = {
     'owner': 'airflow',
@@ -286,10 +315,15 @@ with DAG(
         python_callable=etl_fact_usermap,
     )
 
+    etl_fact_goods_task = PythonOperator(
+        task_id='etl_fact_goods',
+        python_callable=etl_fact_goods,
+    )
+
     bash_task = BashOperator(
         task_id = 'bash_task',
         outlets = [ETL_ALL_Fact],
         bash_command = 'echo "ETL_ALL_Fact 수행 완료"'
     )
 
-    etl_fact_tracker_task >> etl_fact_access_task >> etl_fact_payment_task >> etl_fact_funnel_task >> etl_fact_IAA_task >> etl_fact_usermap_task >> bash_task
+    etl_fact_tracker_task >> etl_fact_access_task >> etl_fact_payment_task >> etl_fact_goods_task >> etl_fact_funnel_task >> etl_fact_IAA_task >> etl_fact_usermap_task >> bash_task
