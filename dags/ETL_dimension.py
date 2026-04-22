@@ -2188,8 +2188,9 @@ def etl_dim_goods_action_id(**context):
               AND action_id IS NOT NULL
               AND TRIM(action_id) != ''
         ) AS S
-        ON  T.joyple_game_code = S.joyple_game_code
-        AND T.action_id        = S.action_id
+        ON  T.joyple_game_code       = S.joyple_game_code
+        AND T.action_id              = S.action_id
+        AND T.action_category_name   = S.action_category_name
         WHEN MATCHED THEN
             UPDATE SET
                 T.action_name          = S.action_name,
@@ -2311,10 +2312,10 @@ with DAG(
         python_callable=etl_dim_IAA_app_name,
     )
 
-    # etl_dim_goods_action_id_task = PythonOperator(
-    #     task_id='etl_dim_goods_action_id',
-    #     python_callable=etl_dim_goods_action_id,
-    # )
+    etl_dim_goods_action_id_task = PythonOperator(
+        task_id='etl_dim_goods_action_id',
+        python_callable=etl_dim_goods_action_id,
+    )
 
     etl_dim_product_code_task = PythonOperator(
         task_id='etl_dim_product_code',
@@ -2348,7 +2349,7 @@ chain(
     etl_dim_package_kind_task,
     etl_dim_pg_id_task,
     etl_dim_IAA_app_name_task,
-    # etl_dim_goods_action_id_task,
+    etl_dim_goods_action_id_task,
     etl_dim_product_code_task,
     adjust_dim_product_code_task,
     bash_task
