@@ -2311,10 +2311,10 @@ with DAG(
         python_callable=etl_dim_IAA_app_name,
     )
 
-    etl_dim_goods_action_id_task = PythonOperator(
-        task_id='etl_dim_goods_action_id',
-        python_callable=etl_dim_goods_action_id,
-    )
+    # etl_dim_goods_action_id_task = PythonOperator(
+    #     task_id='etl_dim_goods_action_id',
+    #     python_callable=etl_dim_goods_action_id,
+    # )
 
     etl_dim_product_code_task = PythonOperator(
         task_id='etl_dim_product_code',
@@ -2348,7 +2348,7 @@ chain(
     etl_dim_package_kind_task,
     etl_dim_pg_id_task,
     etl_dim_IAA_app_name_task,
-    etl_dim_goods_action_id_task,
+    # etl_dim_goods_action_id_task,
     etl_dim_product_code_task,
     adjust_dim_product_code_task,
     bash_task
