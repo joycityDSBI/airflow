@@ -69,7 +69,8 @@ def etl_f_user_map(target_date: list, client):
                         WHEN C.monthly_rev > 0 then '5.R4'
                         ELSE '6.Non_pu' END AS monthly_rgroup
                 , C.before_monthly_rev
-                , CASE WHEN C.before_monthly_rev > 10000000 then '1.R0'
+                , CASE WHEN FORMAT_DATE('%Y-%m', B.reg_datekey) = FORMAT_DATE('%Y-%m', A.datekey) then '7.RU'
+                        WHEN C.before_monthly_rev > 10000000 then '1.R0'
                         WHEN C.before_monthly_rev > 1000000 then '2.R1'
                         WHEN C.before_monthly_rev > 100000 then '3.R2'
                         WHEN C.before_monthly_rev > 10000 then '4.R3'
@@ -272,7 +273,8 @@ def etl_f_user_map_char(target_date: list, client):
                     WHEN C.monthly_rev > 100000 then '3.R2' WHEN C.monthly_rev > 10000 then '4.R3'
                     WHEN C.monthly_rev > 0 then '5.R4' ELSE '6.Non_pu' END as monthly_rgroup_sub_user,
             C.before_monthly_rev,
-            CASE WHEN C.before_monthly_rev > 10000000 then '1.R0' WHEN C.before_monthly_rev > 1000000 then '2.R1'
+            CASE WHEN FORMAT_DATE('%Y-%m', B.game_sub_user_reg_datekey) = FORMAT_DATE('%Y-%m', A.datekey) then '7.RU'
+                    WHEN C.before_monthly_rev > 10000000 then '1.R0' WHEN C.before_monthly_rev > 1000000 then '2.R1'
                     WHEN C.before_monthly_rev > 100000 then '3.R2' WHEN C.before_monthly_rev > 10000 then '4.R3'
                     WHEN C.before_monthly_rev > 0 then '5.R4' ELSE '6.Non_pu' END as before_monthly_rgroup_sub_user,
             C.yearly_rev, C.last_30days_rev, C.first_payment_datekey, C.last_payment_datekey,
