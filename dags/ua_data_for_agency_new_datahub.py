@@ -261,7 +261,7 @@ def generate_ua_data_in_bigquery(**context):
              , CASE WHEN a.app_id = '' OR a.app_id IS NULL THEN 'NULL' ELSE a.app_id END AS app_id
              , platform as reg_os_name
              , count(*) as install
-        from `datahub-478802.datahub.f_tracker_install` as a
+        from `datahub-478802.datahub.f_tracker_first` as a
         left join `datahub-478802.datahub.dim_market_id` as c on a.market_id = c.market_id
         where install_datekey >= '2025-01-01'
         group by 1,2,3,4,5,6,7,8,9,10,11,12

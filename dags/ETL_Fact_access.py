@@ -406,6 +406,9 @@ def etl_f_common_register_char(target_date:list, client):
                 , DATETIME(Info.LogTime, "Asia/Seoul") AS game_sub_user_reg_datetime
                 , c.reg_datekey
                 , c.reg_datetime
+                , c.app_id
+                , c.media_source
+                , c.init_campaign
             FROM (
                 SELECT a.JoypleGameID
                     , a.AuthAccountName
@@ -469,6 +472,9 @@ def etl_f_common_register_char(target_date:list, client):
             , platform_device_type
             , game_sub_user_reg_datekey
             , game_sub_user_reg_datetime
+            , app_id
+            , media_source
+            , init_campaign
             )
             VALUES
             (
@@ -490,6 +496,9 @@ def etl_f_common_register_char(target_date:list, client):
             , source.platform_device_type
             , source.game_sub_user_reg_datekey
             , source.game_sub_user_reg_datetime
+            , source.app_id
+            , source.media_source
+            , source.init_campaign
             )
         """
 
@@ -568,7 +577,10 @@ def adjust_f_common_register_char(target_date:list, client):
             , TA.INFO.os_id
             , TA.INFO.platform_device_type
             , DATE(TA.INFO.log_time, "Asia/Seoul") as game_sub_user_reg_datekey
-            , DATETIME(TA.INFO.log_time, "Asia/Seoul") as game_sub_user_reg_datetime            
+            , DATETIME(TA.INFO.log_time, "Asia/Seoul") as game_sub_user_reg_datetime
+            , TB.app_id
+            , TB.media_source
+            , TB.init_campaign
             from
             (
                 select JoypleGameID                 as joyple_game_code, 
@@ -622,6 +634,9 @@ def adjust_f_common_register_char(target_date:list, client):
             , platform_device_type
             , game_sub_user_reg_datekey
             , game_sub_user_reg_datetime
+            , app_id
+            , media_source
+            , init_campaign
         )
         VALUES
         (
@@ -641,6 +656,9 @@ def adjust_f_common_register_char(target_date:list, client):
             , source.platform_device_type
             , source.game_sub_user_reg_datekey
             , source.game_sub_user_reg_datetime
+            , source.app_id
+            , source.media_source
+            , source.init_campaign
         )
         WHEN MATCHED AND (target.reg_datekey > source.reg_datekey)
         THEN
