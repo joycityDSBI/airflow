@@ -409,6 +409,7 @@ def etl_f_common_register_char(target_date:list, client):
                 , c.app_id
                 , c.media_source
                 , c.init_campaign
+                , c.adset_name
             FROM (
                 SELECT a.JoypleGameID
                     , a.AuthAccountName
@@ -475,6 +476,7 @@ def etl_f_common_register_char(target_date:list, client):
             , app_id
             , media_source
             , init_campaign
+            , adset_name
             )
             VALUES
             (
@@ -499,6 +501,7 @@ def etl_f_common_register_char(target_date:list, client):
             , source.app_id
             , source.media_source
             , source.init_campaign
+            , source.adset_name
             )
         """
 
@@ -581,6 +584,7 @@ def adjust_f_common_register_char(target_date:list, client):
             , TB.app_id
             , TB.media_source
             , TB.init_campaign
+            , TB.adset_name
             from
             (
                 select JoypleGameID                 as joyple_game_code, 
@@ -637,6 +641,7 @@ def adjust_f_common_register_char(target_date:list, client):
             , app_id
             , media_source
             , init_campaign
+            , adset_name
         )
         VALUES
         (
@@ -659,6 +664,7 @@ def adjust_f_common_register_char(target_date:list, client):
             , source.app_id
             , source.media_source
             , source.init_campaign
+            , source.adset_name
         )
         WHEN MATCHED AND (target.reg_datekey > source.reg_datekey)
         THEN
