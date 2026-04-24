@@ -233,6 +233,12 @@ def etl_fact_usermap(**context):
             logger.error(f"❌ etl_fact_usermap failed with error: {e}")
             raise e
 
+    try:
+        etl_pre_f_user_map_cohort(execution_date=target_date[-1], client=bq_client)
+    except Exception as e:
+        logger.error(f"❌ etl_pre_f_user_map_cohort failed with error: {e}")
+        raise e
+
     logger.info("✅ etl_fact_usermap completed successfully")
     return True
 

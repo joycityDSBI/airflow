@@ -400,3 +400,163 @@ def etl_f_user_map_char(target_date: list, client):
 
     print("✅ f_user_map_char ETL 완료")
     return True
+
+
+def etl_pre_f_user_map_cohort(execution_date: str, client):
+    cutoff_date = (datetime.strptime(execution_date, "%Y-%m-%d") - timedelta(days=515)).strftime("%Y-%m-%d")
+
+    print(f"■ pre_f_user_map_cohort Batch 시작 (기준일: {execution_date}, 데이터 시작일: {cutoff_date})")
+
+    delete_query = f"""
+    DELETE FROM `datahub-478802.datahub.pre_f_user_map_cohort`
+    WHERE reg_datekey >= '{cutoff_date}'
+    """
+    delete_job = client.query(delete_query)
+    delete_job.result()
+    print(f"🗑️ DELETE 완료 (reg_datekey >= {cutoff_date}), 삭제 행: {delete_job.num_dml_affected_rows}")
+
+    insert_query = f"""
+    INSERT INTO `datahub-478802.datahub.pre_f_user_map_cohort`
+    WITH perforaw AS (
+        SELECT joyple_game_code, reg_datekey, app_id,
+               gcat, media_category, media, media_source, media_detail, product_category, etc_category, optim,
+               reg_country_code, geo_cam, reg_market_id, reg_os_id, os_cam,
+               adset_name, ad_name, site_id, agency, target_group,
+               device, setting_title, landing_title, ad_unit, mediation, init_campaign, uptdt_campaign, campaign, class,
+               count(distinct if(datediff_reg = 0, auth_account_name, null)) as ru,
+               sum(if(datediff_reg between 0 and 0,   daily_total_rev, 0)) as rev_d0,
+               sum(if(datediff_reg between 0 and 1,   daily_total_rev, 0)) as rev_d1,
+               sum(if(datediff_reg between 0 and 3,   daily_total_rev, 0)) as rev_d3,
+               sum(if(datediff_reg between 0 and 7,   daily_total_rev, 0)) as rev_d7,
+               sum(if(datediff_reg between 0 and 14,  daily_total_rev, 0)) as rev_d14,
+               sum(if(datediff_reg between 0 and 30,  daily_total_rev, 0)) as rev_d30,
+               sum(if(datediff_reg between 0 and 60,  daily_total_rev, 0)) as rev_d60,
+               sum(if(datediff_reg between 0 and 90,  daily_total_rev, 0)) as rev_d90,
+               sum(if(datediff_reg between 0 and 120, daily_total_rev, 0)) as rev_d120,
+               sum(if(datediff_reg between 0 and 150, daily_total_rev, 0)) as rev_d150,
+               sum(if(datediff_reg between 0 and 180, daily_total_rev, 0)) as rev_d180,
+               sum(if(datediff_reg between 0 and 210, daily_total_rev, 0)) as rev_d210,
+               sum(if(datediff_reg between 0 and 240, daily_total_rev, 0)) as rev_d240,
+               sum(if(datediff_reg between 0 and 270, daily_total_rev, 0)) as rev_d270,
+               sum(if(datediff_reg between 0 and 300, daily_total_rev, 0)) as rev_d300,
+               sum(if(datediff_reg between 0 and 330, daily_total_rev, 0)) as rev_d330,
+               sum(if(datediff_reg between 0 and 360, daily_total_rev, 0)) as rev_d360,
+               sum(if(datediff_reg between 0 and 390, daily_total_rev, 0)) as rev_d390,
+               sum(if(datediff_reg between 0 and 420, daily_total_rev, 0)) as rev_d420,
+               sum(if(datediff_reg between 0 and 450, daily_total_rev, 0)) as rev_d450,
+               sum(if(datediff_reg between 0 and 480, daily_total_rev, 0)) as rev_d480,
+               sum(if(datediff_reg between 0 and 510, daily_total_rev, 0)) as rev_d510,
+               sum(if(datediff_reg between 0 and 0,   daily_IAA_rev, 0)) as rev_iaa_d0,
+               sum(if(datediff_reg between 0 and 1,   daily_IAA_rev, 0)) as rev_iaa_d1,
+               sum(if(datediff_reg between 0 and 3,   daily_IAA_rev, 0)) as rev_iaa_d3,
+               sum(if(datediff_reg between 0 and 7,   daily_IAA_rev, 0)) as rev_iaa_d7,
+               sum(if(datediff_reg between 0 and 14,  daily_IAA_rev, 0)) as rev_iaa_d14,
+               sum(if(datediff_reg between 0 and 30,  daily_IAA_rev, 0)) as rev_iaa_d30,
+               sum(if(datediff_reg between 0 and 60,  daily_IAA_rev, 0)) as rev_iaa_d60,
+               sum(if(datediff_reg between 0 and 90,  daily_IAA_rev, 0)) as rev_iaa_d90,
+               sum(if(datediff_reg between 0 and 120, daily_IAA_rev, 0)) as rev_iaa_d120,
+               sum(if(datediff_reg between 0 and 150, daily_IAA_rev, 0)) as rev_iaa_d150,
+               sum(if(datediff_reg between 0 and 180, daily_IAA_rev, 0)) as rev_iaa_d180,
+               sum(if(datediff_reg between 0 and 210, daily_IAA_rev, 0)) as rev_iaa_d210,
+               sum(if(datediff_reg between 0 and 240, daily_IAA_rev, 0)) as rev_iaa_d240,
+               sum(if(datediff_reg between 0 and 270, daily_IAA_rev, 0)) as rev_iaa_d270,
+               sum(if(datediff_reg between 0 and 300, daily_IAA_rev, 0)) as rev_iaa_d300,
+               sum(if(datediff_reg between 0 and 330, daily_IAA_rev, 0)) as rev_iaa_d330,
+               sum(if(datediff_reg between 0 and 360, daily_IAA_rev, 0)) as rev_iaa_d360,
+               sum(if(datediff_reg between 0 and 390, daily_IAA_rev, 0)) as rev_iaa_d390,
+               sum(if(datediff_reg between 0 and 420, daily_IAA_rev, 0)) as rev_iaa_d420,
+               sum(if(datediff_reg between 0 and 450, daily_IAA_rev, 0)) as rev_iaa_d450,
+               sum(if(datediff_reg between 0 and 480, daily_IAA_rev, 0)) as rev_iaa_d480,
+               sum(if(datediff_reg between 0 and 510, daily_IAA_rev, 0)) as rev_iaa_d510,
+               count(distinct if(datediff_reg = 1,   auth_account_name, null)) as ru_d1,
+               count(distinct if(datediff_reg = 3,   auth_account_name, null)) as ru_d3,
+               count(distinct if(datediff_reg = 7,   auth_account_name, null)) as ru_d7,
+               count(distinct if(datediff_reg = 14,  auth_account_name, null)) as ru_d14,
+               count(distinct if(datediff_reg = 30,  auth_account_name, null)) as ru_d30,
+               count(distinct if(datediff_reg = 60,  auth_account_name, null)) as ru_d60,
+               count(distinct if(datediff_reg = 90,  auth_account_name, null)) as ru_d90,
+               count(distinct if(datediff_reg = 120, auth_account_name, null)) as ru_d120,
+               count(distinct if(datediff_reg = 150, auth_account_name, null)) as ru_d150,
+               count(distinct if(datediff_reg = 180, auth_account_name, null)) as ru_d180,
+               count(distinct if(datediff_reg = 210, auth_account_name, null)) as ru_d210,
+               count(distinct if(datediff_reg = 240, auth_account_name, null)) as ru_d240,
+               count(distinct if(datediff_reg = 270, auth_account_name, null)) as ru_d270,
+               count(distinct if(datediff_reg = 300, auth_account_name, null)) as ru_d300,
+               count(distinct if(datediff_reg = 330, auth_account_name, null)) as ru_d330,
+               count(distinct if(datediff_reg = 360, auth_account_name, null)) as ru_d360,
+               count(distinct if(datediff_reg = 390, auth_account_name, null)) as ru_d390,
+               count(distinct if(datediff_reg = 420, auth_account_name, null)) as ru_d420,
+               count(distinct if(datediff_reg = 450, auth_account_name, null)) as ru_d450,
+               count(distinct if(datediff_reg = 480, auth_account_name, null)) as ru_d480,
+               count(distinct if(datediff_reg = 510, auth_account_name, null)) as ru_d510,
+               count(distinct if(datediff_reg = 0   and daily_total_rev > 0, auth_account_name, null)) as pu_d0,
+               count(distinct if(datediff_reg = 1   and daily_total_rev > 0, auth_account_name, null)) as pu_d1,
+               count(distinct if(datediff_reg = 3   and daily_total_rev > 0, auth_account_name, null)) as pu_d3,
+               count(distinct if(datediff_reg = 7   and daily_total_rev > 0, auth_account_name, null)) as pu_d7,
+               count(distinct if(datediff_reg = 14  and daily_total_rev > 0, auth_account_name, null)) as pu_d14,
+               count(distinct if(datediff_reg = 30  and daily_total_rev > 0, auth_account_name, null)) as pu_d30,
+               count(distinct if(datediff_reg = 60  and daily_total_rev > 0, auth_account_name, null)) as pu_d60,
+               count(distinct if(datediff_reg = 90  and daily_total_rev > 0, auth_account_name, null)) as pu_d90,
+               count(distinct if(datediff_reg = 120 and daily_total_rev > 0, auth_account_name, null)) as pu_d120,
+               count(distinct if(datediff_reg = 150 and daily_total_rev > 0, auth_account_name, null)) as pu_d150,
+               count(distinct if(datediff_reg = 180 and daily_total_rev > 0, auth_account_name, null)) as pu_d180,
+               count(distinct if(datediff_reg = 210 and daily_total_rev > 0, auth_account_name, null)) as pu_d210,
+               count(distinct if(datediff_reg = 240 and daily_total_rev > 0, auth_account_name, null)) as pu_d240,
+               count(distinct if(datediff_reg = 270 and daily_total_rev > 0, auth_account_name, null)) as pu_d270,
+               count(distinct if(datediff_reg = 300 and daily_total_rev > 0, auth_account_name, null)) as pu_d300,
+               count(distinct if(datediff_reg = 330 and daily_total_rev > 0, auth_account_name, null)) as pu_d330,
+               count(distinct if(datediff_reg = 360 and daily_total_rev > 0, auth_account_name, null)) as pu_d360,
+               count(distinct if(datediff_reg = 390 and daily_total_rev > 0, auth_account_name, null)) as pu_d390,
+               count(distinct if(datediff_reg = 420 and daily_total_rev > 0, auth_account_name, null)) as pu_d420,
+               count(distinct if(datediff_reg = 450 and daily_total_rev > 0, auth_account_name, null)) as pu_d450,
+               count(distinct if(datediff_reg = 480 and daily_total_rev > 0, auth_account_name, null)) as pu_d480,
+               count(distinct if(datediff_reg = 510 and daily_total_rev > 0, auth_account_name, null)) as pu_d510
+        FROM `datahub-478802.datahub.f_user_map_mas_view` AS a
+        WHERE datekey >= '{cutoff_date}'
+          AND reg_datekey >= '{cutoff_date}'
+          AND datediff_reg >= 0
+        GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30
+    ),
+    UA_perfo AS (
+        SELECT a.joyple_game_code, a.reg_datekey
+               , a.app_id, a.media_source, a.uptdt_campaign
+               , CASE WHEN a.media_source IN ('Unknown', 'NULL') THEN 'Unknown'
+                      WHEN a.campaign LIKE '%Pirates of the Caribbean Android AU%' THEN 'UA'
+                      WHEN a.campaign LIKE '%Pirates of the Caribbean Android KR%' THEN 'UA'
+                      WHEN a.campaign LIKE '%Pirates of the Caribbean Android US%' THEN 'UA'
+                      WHEN a.campaign LIKE '%Pirates of the Caribbean Android GB%' THEN 'UA'
+                      WHEN a.campaign = 'POTC_検索' THEN 'UA'
+                      WHEN a.gcat IS NULL AND a.joyple_game_code = 131 THEN d.gcat
+                      ELSE a.gcat
+                 END AS gcat
+               , CASE WHEN a.campaign LIKE '%Pirates of the Caribbean Android AU%' THEN 'ADNW'
+                      WHEN a.campaign LIKE '%Pirates of the Caribbean Android KR%' THEN 'ADNW'
+                      WHEN a.campaign LIKE '%Pirates of the Caribbean Android US%' THEN 'ADNW'
+                      WHEN a.campaign LIKE '%Pirates of the Caribbean Android GB%' THEN 'ADNW'
+                      WHEN a.campaign = 'POTC_検索' THEN 'ADNW'
+                      WHEN a.gcat IS NULL AND a.joyple_game_code = 131 THEN d.media_category
+                      ELSE a.media_category
+                 END AS media_category
+               , CASE WHEN a.optim = 'NONE' AND a.adset_name LIKE '%MAIA%' THEN 'MAIA'
+                      WHEN a.optim = 'NONE' AND a.adset_name LIKE '%AEO%'  THEN 'AEO'
+                      WHEN a.optim = 'NONE' AND a.adset_name LIKE '%VO%'   THEN 'VO'
+                      ELSE a.optim
+                 END AS optim
+               , a.* EXCEPT(joyple_game_code, reg_datekey, app_id, media_source, uptdt_campaign, gcat, media_category, optim)
+        FROM (
+            SELECT a.*, b.market_name_KR AS reg_market_name, o.os_name_lower AS reg_os_name
+            FROM perforaw AS a
+            LEFT JOIN `datahub-478802.datahub.dim_market_id` AS b ON a.reg_market_id = b.market_id
+            LEFT JOIN `datahub-478802.datahub.dim_os_id`    AS o ON a.reg_os_id    = o.os_id
+        ) AS a
+        LEFT JOIN `data-science-division-216308.POTC.before_mas_campaign` AS d
+            ON a.uptdt_campaign = d.campaign
+    )
+    SELECT * FROM UA_perfo
+    """
+    insert_job = client.query(insert_query)
+    insert_job.result()
+    print(f"📊 INSERT 완료, 적재 행: {insert_job.num_dml_affected_rows}")
+    print(f"■ pre_f_user_map_cohort Batch 완료")
+    print("✅ pre_f_user_map_cohort ETL 완료")
+    return True
