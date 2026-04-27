@@ -119,7 +119,7 @@ def get_fb_posts(page_id: str, page_token: str) -> list:
         f"{GRAPH_API_BASE}/{page_id}/published_posts",
         {
             "access_token": page_token,
-            "fields": "id,message,created_time",
+            "fields": "id,message,created_time,reactions.summary(true),comments.summary(true)",
             "limit": 100,
         },
     )
@@ -130,7 +130,7 @@ def get_fb_post_impressions(post_id: str, page_token: str) -> int:
     try:
         data = _api_get(
             f"{GRAPH_API_BASE}/{post_id}/insights",
-            {"access_token": page_token, "metric": "post_impressions", "period": "lifetime"},
+            {"access_token": page_token, "metric": "post_impressions_unique", "period": "lifetime"},
         )
         for item in data.get("data", []):
             if item["name"] == "post_impressions":
