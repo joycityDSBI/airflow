@@ -18,6 +18,7 @@ def _api_get(url: str, params: dict, max_retries: int = 3) -> dict:
                 time.sleep(wait_sec)
                 continue
             if resp.status_code == 400:
+                logger.error("400 응답 본문: %s", resp.text)
                 resp.raise_for_status()  # 400은 재시도 없이 즉시 raise
             resp.raise_for_status()
             return resp.json()
