@@ -13,7 +13,6 @@ Meta (Instagram + Facebook) SNS 데이터 일별 수집 ETL DAG
         "60009": {"app_id": "...", "app_secret": "...", "access_token": "..."},
         "60010": {"app_id": "...", "app_secret": "...", "access_token": "..."}
       }
-  - BQ_DB_PROJECT_ID
   - BQ_DB_ETL_GCP_CREDENTIAL_JSON
 """
 
@@ -42,6 +41,8 @@ from sns_meta_util import (
 
 logger = logging.getLogger(__name__)
 
+BQ_PROJECT = "datahub-478802"
+BQ_LOCATION = "US"
 BQ_DATASET = "external_data"
 SNAPSHOT_TABLE = "meta_post_snapshot"
 MART_TABLE = "meta_post_daily"
@@ -57,7 +58,7 @@ def _bq_client() -> bigquery.Client:
     )
     return bigquery.Client(
         credentials=credentials,
-        project=Variable.get("BQ_DB_PROJECT_ID"),
+        project=BQ_PROJECT,
     )
 
 
@@ -205,7 +206,7 @@ def collect_instagram_raw(**context):
     accounts = json.loads(ti.xcom_pull(task_ids="fetch_account_list", key="accounts"))
 
     client = _bq_client()
-    project = Variable.get("BQ_DB_PROJECT_ID")
+    project = BQ_PROJECT
     _ensure_tables(client, project)
 
     rows = []
@@ -265,7 +266,7 @@ def collect_facebook_raw(**context):
     accounts = json.loads(ti.xcom_pull(task_ids="fetch_account_list", key="accounts"))
 
     client = _bq_client()
-    project = Variable.get("BQ_DB_PROJECT_ID")
+    project = BQ_PROJECT
 
     rows = []
 
@@ -316,7 +317,7 @@ def process_mart(**context):
     collected_date = context["data_interval_end"].strftime("%Y-%m-%d")  # PST 기준 수집일
 
     client = _bq_client()
-    project = Variable.get("BQ_DB_PROJECT_ID")
+    project = BQ_PROJECT
     ds = BQ_DATASET
 
     for platform, label in [("instagram", "Instagram"), ("facebook", "Facebook")]:
