@@ -178,7 +178,11 @@ def fetch_account_list(**context):
 
         for page in pages:
             page_id = page["id"]
-            page_token = page.get("access_token", access_token)
+            page_token = page.get("access_token")
+            logger.info("[%s] 페이지 %s page_token 존재여부: %s", game_code, page["name"], bool(page_token))
+            if not page_token:
+                logger.warning("[%s] 페이지 %s page token 없음 → user token 폴백", game_code, page["name"])
+                page_token = access_token
             ig_user_id = get_ig_account_id(page_id, page_token)
 
             accounts.append({
