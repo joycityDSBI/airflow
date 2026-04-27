@@ -280,6 +280,7 @@ def collect_facebook_raw(**context):
     for account in accounts:
         page_id = account["fb_page_id"]
         page_token = account["fb_page_token"]
+        logger.info("[FB] page_id=%s, page_token 앞20자=%s", page_id, page_token[:20])
 
         try:
             posts = get_fb_posts(page_id, page_token)
