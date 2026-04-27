@@ -251,6 +251,9 @@ def collect_instagram_raw(**context):
                 logger.error("IG 미디어 처리 실패 media_id=%s: %s", media.get("id"), exc)
             time.sleep(0.05)
 
+    if not rows:
+        raise RuntimeError("Instagram snapshot 수집 결과 0건. API 오류 로그를 확인하세요.")
+
     _delete_partition(client, project, SNAPSHOT_TABLE, "datekey", collected_date, platform="instagram")
     _insert_rows(client, project, SNAPSHOT_TABLE, rows)
 
@@ -282,7 +285,7 @@ def collect_facebook_raw(**context):
 
         for post in posts:
             try:
-                likes_data = (post.get("likes") or {}).get("summary", {})
+                likes_data = (post.get("reactions") or {}).get("summary", {})
                 comments_data = (post.get("comments") or {}).get("summary", {})
                 likes = int(likes_data.get("total_count") or 0)
                 comments = int(comments_data.get("total_count") or 0)
@@ -304,6 +307,9 @@ def collect_facebook_raw(**context):
             except Exception as exc:
                 logger.error("FB 게시물 처리 실패 post_id=%s: %s", post.get("id"), exc)
             time.sleep(0.1)  # Facebook API rate limit 여유
+
+    if not rows:
+        raise RuntimeError("Facebook snapshot 수집 결과 0건. API 오류 로그를 확인하세요.")
 
     _delete_partition(client, project, SNAPSHOT_TABLE, "datekey", collected_date, platform="facebook")
     _insert_rows(client, project, SNAPSHOT_TABLE, rows)
