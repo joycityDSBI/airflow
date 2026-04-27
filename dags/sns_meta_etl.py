@@ -13,7 +13,7 @@ Meta (Instagram + Facebook) SNS 데이터 일별 수집 ETL DAG
         "60009": {"app_id": "...", "app_secret": "...", "access_token": "..."},
         "60010": {"app_id": "...", "app_secret": "...", "access_token": "..."}
       }
-  - BQ_DB_ETL_GCP_CREDENTIAL_JSON
+  - GOOGLE_CREDENTIAL_JSON
 """
 
 import json
@@ -51,7 +51,7 @@ MART_TABLE = "meta_post_daily"
 # ─── BigQuery helpers ────────────────────────────────────────────────────────
 
 def _bq_client() -> bigquery.Client:
-    cred_info = json.loads(Variable.get("BQ_DB_ETL_GCP_CREDENTIAL_JSON"))
+    cred_info = json.loads(Variable.get("GOOGLE_CREDENTIAL_JSON"))
     credentials = service_account.Credentials.from_service_account_info(
         cred_info,
         scopes=["https://www.googleapis.com/auth/bigquery"],
