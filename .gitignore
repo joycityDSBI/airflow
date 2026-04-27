@@ -21,3 +21,6 @@ docs/
 
 # developing py
 airflow/dags/youtube_RESU_ETL.py
+
+# SQL DDL 관리 파일 (로컬 전용)
+sql/
