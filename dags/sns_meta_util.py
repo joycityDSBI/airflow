@@ -115,7 +115,7 @@ def get_ig_impressions(media_id: str, page_token: str) -> int:
 
 def get_fb_posts(page_id: str, page_token: str) -> list:
     return _paginate(
-        f"{GRAPH_API_BASE}/{page_id}/posts",
+        f"{GRAPH_API_BASE}/{page_id}/published_posts",
         {
             "access_token": page_token,
             "fields": "id,message,created_time,reactions.summary(true),comments.summary(true)",
