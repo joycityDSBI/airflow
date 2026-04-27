@@ -249,7 +249,7 @@ def generate_ua_data_in_bigquery(**context):
         tracker as (
 
         select joyple_game_code
-             , first_tracking_datekey as reg_datekey
+             , install_datekey as reg_datekey
              , CASE WHEN a.media_source = '' OR a.media_source IS NULL THEN 'Unknown' ELSE a.media_source END AS media_source
              , CASE WHEN a.init_campaign = '' OR a.init_campaign IS NULL THEN 'NULL' ELSE a.init_campaign     END AS init_campaign
              , CASE WHEN a.country_code = '' OR a.country_code IS NULL THEN 'NULL' ELSE a.country_code END AS reg_country_code
@@ -261,9 +261,9 @@ def generate_ua_data_in_bigquery(**context):
              , CASE WHEN a.app_id = '' OR a.app_id IS NULL THEN 'NULL' ELSE a.app_id END AS app_id
              , platform as reg_os_name
              , count(*) as install
-        from `datahub-478802.datahub.f_tracker_first` as a
+        from `datahub-478802.datahub.f_tracker_install` as a
         left join `datahub-478802.datahub.dim_market_id` as c on a.market_id = c.market_id
-        where first_tracking_datekey >= '2025-01-01'
+        where install_datekey >= '2025-01-01'
         group by 1,2,3,4,5,6,7,8,9,10,11,12
 
         )
