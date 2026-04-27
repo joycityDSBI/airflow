@@ -200,7 +200,7 @@ def fetch_account_list(**context):
 
 def collect_instagram_raw(**context):
     ti = context["ti"]
-    collected_date = context["next_ds"]  # YYYY-MM-DD (PST 기준 수집일)
+    collected_date = context["data_interval_end"].strftime("%Y-%m-%d")  # PST 기준 수집일
 
     accounts = json.loads(ti.xcom_pull(task_ids="fetch_account_list", key="accounts"))
 
@@ -260,7 +260,7 @@ def collect_instagram_raw(**context):
 
 def collect_facebook_raw(**context):
     ti = context["ti"]
-    collected_date = context["next_ds"]  # PST 기준 수집일
+    collected_date = context["data_interval_end"].strftime("%Y-%m-%d")  # PST 기준 수집일
 
     accounts = json.loads(ti.xcom_pull(task_ids="fetch_account_list", key="accounts"))
 
@@ -313,7 +313,7 @@ def collect_facebook_raw(**context):
 # ─── Task 5: 전처리 (누적값 → 일별 증감량 계산 → mart 저장) ─────────────────
 
 def process_mart(**context):
-    collected_date = context["next_ds"]  # PST 기준 수집일
+    collected_date = context["data_interval_end"].strftime("%Y-%m-%d")  # PST 기준 수집일
 
     client = _bq_client()
     project = Variable.get("BQ_DB_PROJECT_ID")
