@@ -116,10 +116,14 @@ def _delete_partition(client: bigquery.Client, project: str, table: str, col: st
 def _insert_rows(client: bigquery.Client, project: str, table: str, rows: list) -> None:
     if not rows:
         return
-    table_ref = client.get_table(f"{project}.{BQ_DATASET}.{table}")
-    errors = client.insert_rows_json(table_ref, rows)
-    if errors:
-        raise RuntimeError(f"BQ 스트리밍 삽입 오류 [{table}]: {errors}")
+    table_ref = f"{project}.{BQ_DATASET}.{table}"
+    job_config = bigquery.LoadJobConfig(
+        write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+    )
+    job = client.load_table_from_json(rows, table_ref, job_config=job_config)
+    job.result()
+    if job.errors:
+        raise RuntimeError(f"BQ 로드 오류 [{table}]: {job.errors}")
 
 
 def _now_utc_str() -> str:
