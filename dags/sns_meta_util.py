@@ -121,7 +121,7 @@ def get_fb_posts(page_id: str, page_token: str) -> list:
         f"{GRAPH_API_BASE}/{page_id}/published_posts",
         {
             "access_token": page_token,
-            "fields": "id,message,created_time",
+            "fields": "id,message,created_time,attachments{media_type}",
             "limit": 100,
         },
     )

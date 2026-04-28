@@ -67,11 +67,12 @@ def _bq_client() -> bigquery.Client:
 def _ensure_tables(client: bigquery.Client, project: str) -> None:
     snapshot_cols = """
         platform            STRING,
-        joyple_game_code    STRING,
+        joyple_game_code    INT64,
         account_id          STRING,
         account_name        STRING,
         post_id             STRING,
         post_name           STRING,
+        media_type          STRING,
         datekey             DATE,
         likes_cumulative    INT64,
         comments_cumulative INT64,
@@ -80,11 +81,12 @@ def _ensure_tables(client: bigquery.Client, project: str) -> None:
     """
     mart_cols = """
         platform         STRING,
-        joyple_game_code STRING,
+        joyple_game_code INT64,
         account_id       STRING,
         account_name     STRING,
         post_id          STRING,
         post_name        STRING,
+        media_type       STRING,
         datekey          DATE,
         likes_daily      INT64,
         comments_daily   INT64,
@@ -252,6 +254,7 @@ def collect_instagram_raw(**context):
                     "account_name": account["fb_page_name"],
                     "post_id": media["id"],
                     "post_name": (media.get("caption") or "")[:500],
+                    "media_type": media.get("media_type", ""),
                     "datekey": collected_date,
                     "likes_cumulative": int(media.get("like_count") or 0),
                     "comments_cumulative": int(media.get("comments_count") or 0),
@@ -301,6 +304,9 @@ def collect_facebook_raw(**context):
                 comments = get_fb_post_comments(post["id"], page_token)
                 views = get_fb_post_impressions(post["id"], page_token)
 
+                attachments = post.get("attachments", {}).get("data", [])
+                fb_media_type = attachments[0].get("media_type", "") if attachments else ""
+
                 rows.append({
                     "platform": "facebook",
                     "joyple_game_code": int(account["game_code"]),
@@ -308,6 +314,7 @@ def collect_facebook_raw(**context):
                     "account_name": account["fb_page_name"],
                     "post_id": post["id"],
                     "post_name": (post.get("message") or "")[:500],
+                    "media_type": fb_media_type,
                     "datekey": collected_date,
                     "likes_cumulative": likes,
                     "comments_cumulative": comments,
@@ -362,6 +369,7 @@ def process_mart(**context):
                     t.account_name,
                     t.post_id,
                     t.post_name,
+                    t.media_type,
                     DATE_SUB(DATE('{collected_date}'), INTERVAL 1 DAY) AS datekey,
                     GREATEST(0, t.likes_cumulative    - COALESCE(y.likes_cumulative,    0)) AS likes_daily,
                     GREATEST(0, t.comments_cumulative - COALESCE(y.comments_cumulative, 0)) AS comments_daily,
@@ -375,6 +383,7 @@ def process_mart(**context):
                 account_id       = S.account_id,
                 account_name     = S.account_name,
                 post_name        = S.post_name,
+                media_type       = S.media_type,
                 likes_daily      = S.likes_daily,
                 comments_daily   = S.comments_daily,
                 views_daily      = S.views_daily
