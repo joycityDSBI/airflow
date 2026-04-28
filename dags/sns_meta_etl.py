@@ -36,6 +36,8 @@ from sns_meta_util import (
     get_ig_media_list,
     get_ig_impressions,
     get_fb_posts,
+    get_fb_post_likes,
+    get_fb_post_comments,
     get_fb_post_impressions,
 )
 
@@ -290,10 +292,8 @@ def collect_facebook_raw(**context):
 
         for post in posts:
             try:
-                likes_data = (post.get("reactions") or {}).get("summary", {})
-                comments_data = (post.get("comments") or {}).get("summary", {})
-                likes = int(likes_data.get("total_count") or 0)
-                comments = int(comments_data.get("total_count") or 0)
+                likes = get_fb_post_likes(post["id"], page_token)
+                comments = get_fb_post_comments(post["id"], page_token)
                 views = get_fb_post_impressions(post["id"], page_token)
 
                 rows.append({

@@ -119,24 +119,40 @@ def get_fb_posts(page_id: str, page_token: str) -> list:
         f"{GRAPH_API_BASE}/{page_id}/published_posts",
         {
             "access_token": page_token,
-            "fields": "id,message,created_time,reactions.summary(true),comments.summary(true)",
+            "fields": "id,message,created_time",
             "limit": 100,
         },
     )
 
 
-def get_fb_post_impressions(post_id: str, page_token: str) -> int:
-    """lifetime 누적 노출수 (post_impressions)."""
+def _get_fb_post_insight(post_id: str, page_token: str, metric: str) -> dict:
     try:
         data = _api_get(
             f"{GRAPH_API_BASE}/{post_id}/insights",
-            {"access_token": page_token, "metric": "post_impressions_unique", "period": "lifetime"},
+            {"access_token": page_token, "metric": metric, "period": "lifetime"},
         )
         for item in data.get("data", []):
-            if item["name"] == "post_impressions":
+            if item["name"] == metric:
                 values = item.get("values", [])
-                return int(values[-1].get("value", 0)) if values else 0
+                return values[0].get("value", 0) if values else 0
         return 0
     except Exception as exc:
-        logger.warning("post_impressions 조회 실패 post_id=%s: %s", post_id, exc)
+        logger.warning("%s 조회 실패 post_id=%s: %s", metric, post_id, exc)
         return 0
+
+
+def get_fb_post_likes(post_id: str, page_token: str) -> int:
+    result = _get_fb_post_insight(post_id, page_token, "post_reactions_like_total")
+    return int(result) if isinstance(result, (int, float)) else 0
+
+
+def get_fb_post_comments(post_id: str, page_token: str) -> int:
+    result = _get_fb_post_insight(post_id, page_token, "post_activity_by_action_type")
+    if isinstance(result, dict):
+        return int(result.get("comment", 0))
+    return 0
+
+
+def get_fb_post_impressions(post_id: str, page_token: str) -> int:
+    result = _get_fb_post_insight(post_id, page_token, "post_impressions")
+    return int(result) if isinstance(result, (int, float)) else 0
