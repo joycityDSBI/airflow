@@ -98,20 +98,22 @@ def get_ig_media_list(ig_user_id: str, page_token: str) -> list:
 
 
 def get_ig_impressions(media_id: str, page_token: str) -> int:
-    """누적 노출수. Stories/VIDEO는 video_views 우선 사용."""
-    try:
-        data = _api_get(
-            f"{GRAPH_API_BASE}/{media_id}/insights",
-            {"access_token": page_token, "metric": "impressions"},
-        )
-        for item in data.get("data", []):
-            if item["name"] == "impressions":
-                values = item.get("values", [])
-                return int(values[-1].get("value", 0)) if values else 0
-        return 0
-    except Exception as exc:
-        logger.warning("impressions 조회 실패 media_id=%s: %s", media_id, exc)
-        return 0
+    """누적 노출수. Reels 등 impressions 미지원 타입은 plays로 폴백."""
+    for metric in ["impressions", "plays"]:
+        try:
+            data = _api_get(
+                f"{GRAPH_API_BASE}/{media_id}/insights",
+                {"access_token": page_token, "metric": metric},
+            )
+            for item in data.get("data", []):
+                if item["name"] == metric:
+                    values = item.get("values", [])
+                    return int(values[-1].get("value", 0)) if values else 0
+        except Exception as exc:
+            logger.warning("%s 조회 실패 media_id=%s: %s", metric, media_id, exc)
+            if "400" not in str(exc):
+                break
+    return 0
 
 
 def get_fb_posts(page_id: str, page_token: str) -> list:
@@ -154,5 +156,5 @@ def get_fb_post_comments(post_id: str, page_token: str) -> int:
 
 
 def get_fb_post_impressions(post_id: str, page_token: str) -> int:
-    result = _get_fb_post_insight(post_id, page_token, "post_impressions")
+    result = _get_fb_post_insight(post_id, page_token, "post_video_views")
     return int(result) if isinstance(result, (int, float)) else 0
