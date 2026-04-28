@@ -34,11 +34,11 @@ from sns_meta_util import (
     get_fb_pages,
     get_ig_account_id,
     get_ig_media_list,
-    get_ig_impressions,
+    get_ig_reach,
     get_fb_posts,
     get_fb_post_likes,
     get_fb_post_comments,
-    get_fb_post_impressions,
+    get_fb_post_reach,
 )
 
 logger = logging.getLogger(__name__)
@@ -238,14 +238,7 @@ def collect_instagram_raw(**context):
 
         for media in media_list:
             try:
-                media_type = media.get("media_type", "")
-                video_views = media.get("video_views")
-
-                # VIDEO/REELS: video_views 우선, 없으면 impressions 폴백
-                if media_type == "VIDEO" and video_views:
-                    views = int(video_views)
-                else:
-                    views = get_ig_impressions(media["id"], account["fb_page_token"])
+                views = get_ig_reach(media["id"], account["fb_page_token"])
 
                 rows.append({
                     "platform": "instagram",
@@ -302,7 +295,7 @@ def collect_facebook_raw(**context):
             try:
                 likes = get_fb_post_likes(post["id"], page_token)
                 comments = get_fb_post_comments(post["id"], page_token)
-                views = get_fb_post_impressions(post["id"], page_token)
+                views = get_fb_post_reach(post["id"], page_token)
 
                 attachments = post.get("attachments", {}).get("data", [])
                 fb_media_type = attachments[0].get("media_type", "") if attachments else ""
