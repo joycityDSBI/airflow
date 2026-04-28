@@ -119,6 +119,7 @@ def _insert_rows(client: bigquery.Client, project: str, table: str, rows: list) 
     table_ref = f"{project}.{BQ_DATASET}.{table}"
     job_config = bigquery.LoadJobConfig(
         write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
+        schema=client.get_table(table_ref).schema,
     )
     job = client.load_table_from_json(rows, table_ref, job_config=job_config)
     job.result()
