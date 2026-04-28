@@ -246,7 +246,7 @@ def collect_instagram_raw(**context):
 
                 rows.append({
                     "platform": "instagram",
-                    "joyple_game_code": account["game_code"],
+                    "joyple_game_code": int(account["game_code"]),
                     "account_id": ig_user_id,
                     "account_name": account["fb_page_name"],
                     "post_id": media["id"],
@@ -302,7 +302,7 @@ def collect_facebook_raw(**context):
 
                 rows.append({
                     "platform": "facebook",
-                    "joyple_game_code": account["game_code"],
+                    "joyple_game_code": int(account["game_code"]),
                     "account_id": page_id,
                     "account_name": account["fb_page_name"],
                     "post_id": post["id"],
