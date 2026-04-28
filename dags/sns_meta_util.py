@@ -99,7 +99,7 @@ def get_ig_media_list(ig_user_id: str, page_token: str) -> list:
 
 def get_ig_impressions(media_id: str, page_token: str) -> int:
     """누적 노출수. Reels 등 impressions 미지원 타입은 plays로 폴백."""
-    for metric in ["impressions", "plays"]:
+    for metric in ["impressions", "reach"]:
         try:
             data = _api_get(
                 f"{GRAPH_API_BASE}/{media_id}/insights",
