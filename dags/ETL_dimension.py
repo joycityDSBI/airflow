@@ -964,6 +964,28 @@ def adjust_dim_product_code(**context):
                                  , CAST(iap_code_apple AS STRING)
                                  , CAST(iap_code_one AS STRING)]) AS code
             ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 30007 (IMGN) 
+            SELECT * 
+            FROM (
+                SELECT 30007 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , Cast(null as string) as sale_date_start
+                     , Cast(null as string) as sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_IMGN`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)]) AS code
+            )
         )
         -- [핵심 수정] 중복 제거 로직 추가
         QUALIFY ROW_NUMBER() OVER(PARTITION BY joyple_game_code, product_code ORDER BY product_name DESC) = 1
