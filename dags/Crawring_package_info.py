@@ -30,6 +30,9 @@ DRSG_SHEET_NAME = '메타데이터'
 WWMC_SPREADSHEET_ID = '1D7WghN05AOW6HRNscOnjW9JJ4P2-uWlGDK8bMcoAqKk'
 WWMC_SHEET_NAME = 'PACKAGE_HISTORY'
 
+IMGN_SPREADSHEET_ID = '1cxfx9mIGv7xL_1-sIK3Prvd4RjQYi1mmpttrMzWdOa0'
+IMGN_SHEET_NAME = '01_상품'
+
 NOTION_TOKEN = get_var("NOTION_TOKEN")
 NOTION_DATABASE_ID = "23bea67a5681803db3c4f691c143a43d"
 
@@ -468,6 +471,91 @@ def WWMC_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
         raise e # 에러 추적을 위해 raise 추가
 
 
+#################### IMGN 패키지 정보 ETL 함수 #####################
+def IMGN_get_gsheet_to_df(spreadsheet_id, sheet_name):
+
+    creds = get_gcp_credentials()
+    client = gspread.authorize(creds)
+
+    doc = client.open_by_key(spreadsheet_id)
+    sheet = doc.worksheet(sheet_name)
+    all_data = sheet.get('A:H')
+
+    if not all_data:
+        print("데이터가 없습니다.")
+        return pd.DataFrame()
+
+    header = all_data[0]
+    data = all_data[3:]  # 1행 헤더, 2~3행 예시데이터 스킵
+
+    if len(header) == 1:
+        header = [f'col_{i}' for i in range(len(data[0]))]
+
+    df = pd.DataFrame(data, columns=header)
+
+    df = df.rename(columns={
+        "재화구분": "goods_type",
+        "상점 카테고리": "category_shop",
+        "상품 카테고리": "category_package",
+        "PackageKind": "package_kind",
+        "PackageName": "package_name",
+        "Price": "price",
+        "IAP코드(구글)": "iap_code_google",
+        "IAP코드(애플)": "iap_code_apple",
+    })
+
+    selected_df = df[[
+        "goods_type",
+        "category_shop",
+        "category_package",
+        "package_name",
+        "package_kind",
+        "price",
+        "iap_code_google",
+        "iap_code_apple",
+    ]]
+
+    return selected_df
+
+
+def IMGN_truncate_and_insert_to_bigquery(project_id, dataset_id, table_id):
+
+    df = IMGN_get_gsheet_to_df(IMGN_SPREADSHEET_ID, IMGN_SHEET_NAME)
+    credentials = get_gcp_credentials()
+    client = bigquery.Client(project=project_id, credentials=credentials)
+    table_full_id = f"{project_id}.{dataset_id}.{table_id}"
+
+    truncate_query = f"TRUNCATE TABLE `{table_full_id}`"
+    client.query(truncate_query, location=LOCATION).result()
+    print(f"🗑️ {table_full_id} 데이터가 초기화되었습니다.")
+
+    df_final = df.astype(str)
+    numeric_columns = ['package_kind']
+    for col in numeric_columns:
+        if col in df_final.columns:
+            df_final[col] = pd.to_numeric(df_final[col], errors='coerce').fillna(0).astype(int)
+
+    to_int_list = ['price']
+    for cl in to_int_list:
+        df_final[cl] = df_final[cl].str.replace(r'[₩,]', '', regex=True)
+        df_final[cl] = pd.to_numeric(df_final[cl], errors='coerce')
+        df_final[cl] = df_final[cl].fillna(0).astype(str)
+
+    try:
+        pandas_gbq.to_gbq(
+            df_final,
+            destination_table=f"{dataset_id}.{table_id}",
+            project_id=project_id,
+            if_exists='append',
+            progress_bar=True,
+            credentials=credentials
+        )
+        print(f"✅ {len(df_final)}행 데이터가 {table_full_id}에 성공적으로 Insert 되었습니다.")
+    except Exception as e:
+        print(f"❌ BigQuery 업로드 중 에러 발생: {e}")
+        raise e
+
+
 #################### RESU 패키지 정보 ETL 함수 (NOTION DB) #####################
 def RESU_extract_notion_data(NOTION_TOKEN, NOTION_DATABASE_ID):
     """Notion 데이터 추출"""
@@ -717,4 +805,15 @@ with DAG(
         dag=dag,
     )
 
-    GBTW_package_info_task >> POTC_package_info_task >> DRSG_package_info_task >> WWMC_package_info_task >> RESU_package_info_task
+    IMGN_package_info_task = PythonOperator(
+        task_id='IMGN_package_info_task',
+        python_callable=IMGN_truncate_and_insert_to_bigquery,
+        op_kwargs={
+            "project_id": "data-science-division-216308",
+            "dataset_id": "PackageInfo",
+            "table_id": "PackageInfo_IMGN"
+        },
+        dag=dag,
+    )
+
+    GBTW_package_info_task >> POTC_package_info_task >> DRSG_package_info_task >> WWMC_package_info_task >> RESU_package_info_task >> IMGN_package_info_task
