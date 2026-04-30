@@ -992,7 +992,7 @@ def adjust_dim_product_code(**context):
         )
     ) as source
     ON target.joyple_game_code = source.joyple_game_code AND target.product_code = source.product_code
-    WHEN MATCHED AND target.product_name is null THEN
+    WHEN MATCHED THEN
     UPDATE SET 
     target.product_name = source.product_name
     , target.goods_type = source.goods_type
