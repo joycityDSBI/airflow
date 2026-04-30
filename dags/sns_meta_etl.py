@@ -403,7 +403,7 @@ with DAG(
     default_args=default_args,
     description="Meta (Instagram + Facebook) SNS 데이터 일별 수집 ETL",
     schedule="0 8 * * *",  # KST 17:00 = UTC 08:00
-    start_date=pendulum.datetime(2025, 1, 1, tz="Asia/Seoul"),
+    start_date=pendulum.datetime(2025, 1, 1),
     catchup=False,
     tags=["sns", "meta", "etl"],
 ) as dag:
