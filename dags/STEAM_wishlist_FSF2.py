@@ -208,15 +208,26 @@ def upsert_to_notion(key_columns: list):
             else: # 나머지 일반 텍스트
                 properties[col] = {"rich_text": [{"text": {"content": str_val}}]}
 
-        # 4. 결과에 따른 처리
-        if query_res["results"]:
-            page_id = query_res["results"][0]["id"]
-            notion.pages.update(page_id=page_id, properties=properties)
-            print(f"✅ Updated: {tuple(row[key_columns])}")
-        else:
-            notion.pages.create(parent={"database_id": notion_db_id}, properties=properties)
-            print(f"✨ Created: {tuple(row[key_columns])}")
-            
+        # 4. 결과에 따른 처리 (500 에러 시 최대 3회 재시도)
+        for attempt in range(3):
+            try:
+                if query_res["results"]:
+                    page_id = query_res["results"][0]["id"]
+                    notion.pages.update(page_id=page_id, properties=properties)
+                    print(f"✅ Updated: {tuple(row[key_columns])}")
+                else:
+                    notion.pages.create(parent={"database_id": notion_db_id}, properties=properties)
+                    print(f"✨ Created: {tuple(row[key_columns])}")
+                break
+            except Exception as e:
+                if attempt < 2:
+                    wait = 2 ** attempt * 3
+                    print(f"⚠️ Notion API 오류 (시도 {attempt+1}/3), {wait}초 후 재시도: {e}")
+                    time.sleep(wait)
+                else:
+                    print(f"❌ Notion API 최종 실패: {e}")
+                    raise
+
         time.sleep(0.4)
 
 
@@ -490,10 +501,10 @@ def steam_utm_to_bigquery():
 
     all_data = []
 
-    for i in range(7):
+    for i in range(4):
         target_date = today - timedelta(days=i)
         date_str = target_date.strftime("%Y-%m-%d")
-        print(f"[{i+1}/7] {date_str} UTM 데이터 수집 중...")
+        print(f"[{i+1}/4] {date_str} UTM 데이터 수집 중...")
         df = fetch_steam_utm_for_date(date_str)
         all_data.append(df)
         time.sleep(1)
