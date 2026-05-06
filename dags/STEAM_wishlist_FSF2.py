@@ -300,6 +300,11 @@ def upsert_df_to_bigquery(client, df: pd.DataFrame, target_table_id: str, merge_
         print(f"No data to upsert for {target_table_id}.")
         return
 
+    before = len(df)
+    df = df.drop_duplicates(subset=merge_keys, keep='last')
+    if len(df) < before:
+        print(f"중복 제거: {before}행 → {len(df)}행 (keys: {merge_keys})")
+
     timestamp = int(time.time())
     staging_table_id = f"{PROJECT_ID}.{BQ_DATASET_ID}.temp_steam_traffic_staging_{timestamp}"
 
