@@ -284,8 +284,8 @@ def etl_f_funnel_access(target_date:list, client):
                   , b.app_id
                   , b.campaign
                   , b.init_campaign
-                  , b.media_source
-                  , b.is_organic
+                  , IFNULL(b.media_source, 'Unknown') AS media_source
+                  , IFNULL(b.is_organic,   'Unknown') AS is_organic
                   , b.country_code as install_country_code
                   , b.is_retargeting
                   , timestamp_add(a.log_time, interval 9 hour) AS log_datetime

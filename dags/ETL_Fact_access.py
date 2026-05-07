@@ -108,9 +108,9 @@ def etl_f_common_register(target_date: list, client):
                 aa.app_id,
                 aa.bundle_id,
                 aa.country_code as first_tracking_country_code,
-                aa.media_source,
+                IFNULL(aa.media_source, 'Unknown') as media_source,
                 aa.media_source_cat,
-                if(J.auth_account_name is not null, 'Non-Organic',aa.is_organic) as is_organic,
+                if(J.auth_account_name is not null, 'Non-Organic', IFNULL(aa.is_organic, 'Unknown')) as is_organic,
                 aa.agency,
                 coalesce(J.Campaign_name,aa.campaign)                        as campaign,
                 coalesce(J.Campaign_name,aa.init_campaign)                   as init_campaign,
@@ -225,9 +225,9 @@ def adjust_f_common_register(target_date: list, client):
             , TA.INFO.app_id
             , TB.bundle_id
             , TB.country_code as first_tracking_country_code
-            , TB.media_source
+            , IFNULL(TB.media_source, 'Unknown') as media_source
             , TB.media_source_cat
-            , if(J.auth_account_name is not null, 'Non-Organic',TB.is_organic) as is_organic
+            , if(J.auth_account_name is not null, 'Non-Organic', IFNULL(TB.is_organic, 'Unknown')) as is_organic
             , TB.agency
             , coalesce(J.Campaign_name,TB.campaign) as campaign
             , coalesce(J.Campaign_name,TB.init_campaign) as init_campaign
