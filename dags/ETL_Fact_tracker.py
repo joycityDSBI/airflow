@@ -1140,55 +1140,64 @@ def etl_f_cost_campaign_rule(client):
             AND pre_cat is null
         )
 
-     SELECT 
-           a.joyple_game_code
-         , a.upload_timestamp
-         , a.cmpgn_dt
-         , a.gcat
-         , a.game_id
-         , a.country_code
-         , a.currency
-         , a.cost
-         , a.cost_currency_uptdt
-         , a.currency_rate
-         , a.cost_currency
-         , a.campaign_name
-         , a.campaign_id
-         , a.adset_name
-         , a.adset_id
-         , a.ad_name
-         , a.ad_id
-         , a.impressions
-         , a.clicks
-         , COALESCE(PC.mas_cmpgn_yn, a.mas_cmpgn_yn)           AS mas_cmpgn_yn
-         , a.create_timestamp
-         , a.update_timestamp
-         , a.upload_agent
-         , a.user_id
-         , COALESCE(PC.media_category, a.media_category)     AS media_category
-         , COALESCE(PC.product_category, a.product_category) AS product_category
-         , COALESCE(PC.media, a.media)                     AS media
-         , COALESCE(PC.media_detail, a.media_detail)         AS media_detail
-         , COALESCE(PC.Optim, a.Optim)                     AS optim
-         , COALESCE(PC.etc_category, a.etc_category)         AS etc_category
-         , COALESCE(PC.os_cam, a.os)                        AS os
-         , a.location
-         , a.creative_no
-         , a.device
-         , a.setting_title
-         , a.landing_title
-         , a.ad_unit
-         , a.mediation
-         , a.pre_yn
-         , a.pre_cate
-         , a.class
-         , a.media_group
-         , a.target_group
-     FROM T_Final as a
-     LEFT JOIN (select *
-               from `datahub-478802.datahub.dim_pccampaign_list_joytracking`) as PC -- PC캠페인 캠페인 정보 수정
-     on A.joyple_game_code = PC.joyple_game_code and A.campaign_name = PC.campaign_name
 
+        select *
+        from (
+             SELECT 
+                   a.joyple_game_code
+                 , a.upload_timestamp
+                 , a.cmpgn_dt
+                 , a.gcat
+                 , a.game_id
+                 , a.country_code
+                 , a.currency
+                 , a.cost
+                 , a.cost_currency_uptdt
+                 , a.currency_rate
+                 , a.cost_currency
+                 , a.campaign_name
+                 , a.campaign_id
+                 , a.adset_name
+                 , a.adset_id
+                 , a.ad_name
+                 , a.ad_id
+                 , a.impressions
+                 , a.clicks
+                 , COALESCE(PC.mas_cmpgn_yn, a.mas_cmpgn_yn)           AS mas_cmpgn_yn
+                 , a.create_timestamp
+                 , a.update_timestamp
+                 , a.upload_agent
+                 , a.user_id
+                 , COALESCE(PC.media_category, a.media_category)     AS media_category
+                 , COALESCE(PC.product_category, a.product_category) AS product_category
+                 , COALESCE(PC.media, a.media)                     AS media
+                 , COALESCE(PC.media_detail, a.media_detail)         AS media_detail
+                 , COALESCE(PC.Optim, a.Optim)                     AS optim
+                 , COALESCE(PC.etc_category, a.etc_category)         AS etc_category
+                 , CASE 
+                       WHEN COALESCE(PC.os_cam, a.os) = 'And' THEN 'android'
+                       WHEN COALESCE(PC.os_cam, a.os) = 'PlayStation' THEN 'ps'
+                       WHEN COALESCE(PC.os_cam, a.os) IS NULL 
+                         OR LOWER(COALESCE(PC.os_cam, a.os)) IN ('구분없음', '', 'none') THEN '구분없음'
+                       ELSE LOWER(COALESCE(PC.os_cam, a.os))
+                     END AS os
+                 , a.location
+                 , a.creative_no
+                 , a.device
+                 , a.setting_title
+                 , a.landing_title
+                 , a.ad_unit
+                 , a.mediation
+                 , a.pre_yn
+                 , a.pre_cate
+                 , a.class
+                 , a.media_group
+                 , a.target_group
+             FROM T_Final as a
+             LEFT JOIN (select *
+                       from `datahub-478802.datahub.dim_pccampaign_list_joytracking`) as PC -- PC캠페인 캠페인 정보 수정
+             on A.joyple_game_code = PC.joyple_game_code and A.campaign_name = PC.campaign_name
+         )
 
     """
     # 1. 쿼리 실행
