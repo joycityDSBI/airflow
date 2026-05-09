@@ -206,8 +206,8 @@ def etl_f_tracker_install(target_date: list, client):
                 WHERE TrackerAccountInstallDateKST = '{current_date_obj.strftime("%Y-%m-%d")}'
         ) as source 
         ON target.app_id = source.app_id
-        AND target.joyple_game_code = source.joyple_game_code
-        AND target.market_id = source.market_id
+        AND target.joyple_game_code IS NOT DISTINCT FROM source.joyple_game_code
+        AND target.market_id IS NOT DISTINCT FROM source.market_id
         AND target.tracker_account_id = source.tracker_account_id
         AND target.tracker_type_id = source.tracker_type_id
         WHEN NOT MATCHED BY target THEN
@@ -361,8 +361,8 @@ def etl_f_tracker_first(target_date: list, client):
                 WHERE TrackerAccountInstallDateKST = '{current_date_obj.strftime("%Y-%m-%d")}'
         ) as source 
         ON target.app_id = source.app_id
-        AND target.joyple_game_code = source.joyple_game_code
-        AND target.market_id = source.market_id
+        AND target.joyple_game_code IS NOT DISTINCT FROM source.joyple_game_code
+        AND target.market_id IS NOT DISTINCT FROM source.market_id
         AND target.tracker_account_id = source.tracker_account_id
         AND target.tracker_type_id = source.tracker_type_id
         WHEN NOT MATCHED BY target THEN
