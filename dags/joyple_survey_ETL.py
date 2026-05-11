@@ -155,7 +155,7 @@ def extract_load_joyple_response():
 
     # NULL 포함 가능한 정수 컬럼을 pandas nullable Int64로 변환 (FLOAT64 적재 방지)
     int_cols = ['subjective_yn', 'other_yn', 'answer_required_yn', 'multi_answer_yn',
-                'answer_limit', 'question_order']
+                'answer_limit', 'question_order', 'question_card_uid']
     for col in int_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
