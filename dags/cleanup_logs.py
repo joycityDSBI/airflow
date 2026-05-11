@@ -12,7 +12,10 @@ with DAG(
     cleanup = BashOperator(
         task_id="delete_old_logs",
         bash_command=(
-            "find /home/devadmin/airflow/logs/ -type f -mtime +14 -delete && "
-            "find /home/devadmin/airflow/logs/ -type d -empty -delete"
+            "LOG_DIR=${AIRFLOW__LOGGING__BASE_LOG_FOLDER:-/opt/airflow/logs} && "
+            "echo \"로그 디렉토리: $LOG_DIR\" && "
+            "find \"$LOG_DIR\" -type f -mtime +14 -delete && "
+            "find \"$LOG_DIR\" -type d -empty -not -path \"$LOG_DIR\" -delete && "
+            "echo \"로그 정리 완료\""
         ),
     )
