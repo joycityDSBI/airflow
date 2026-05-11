@@ -30,28 +30,24 @@ ETL_ALL_Fact = Dataset('ETL_ALL_Fact')
 PROJECT_ID = "datahub-478802"
 LOCATION = "US"
 
-    
+# 백필 설정 — None이면 정상 실행, 날짜 지정하면 백필 모드
+BACKFILL_TARGET_DATE = None
+# BACKFILL_TARGET_DATE = target_date_range("2026-05-08", "2026-05-10")
+
+
 def etl_fact_tracker(**context):
     logger = logging.getLogger(__name__)
 
     client = init_clients()
     bq_client = client["bq_client"]
 
-    # 날짜 계산
-    run_date = context.get('logical_date') or context.get('execution_date')
-
-    if not run_date:
-        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
-        run_date = datetime.now()
-
-    # 3. 날짜 계산 함수 호출
-    # target_date, _ = calc_target_date(run_date)
-
-    ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-05-08", "2026-05-10")  ## 백필용
-    run_kst = None
-
-
+    if BACKFILL_TARGET_DATE is not None:
+        target_date = BACKFILL_TARGET_DATE
+    else:
+        run_date = context.get('logical_date') or context.get('execution_date')
+        if not run_date:
+            run_date = datetime.now()
+        target_date, _ = calc_target_date(run_date)
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
@@ -75,19 +71,13 @@ def etl_fact_access(**context):
     client = init_clients()
     bq_client = client["bq_client"]
 
-    # 날짜 계산
-    run_date = context.get('logical_date') or context.get('execution_date')
-
-    if not run_date:
-        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
-        run_date = datetime.now()
-
-    # 3. 날짜 계산 함수 호출
-    # target_date, _ = calc_target_date(run_date)
-
-    ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-05-08", "2026-05-10")  ## 백필용
-    run_kst = None
+    if BACKFILL_TARGET_DATE is not None:
+        target_date = BACKFILL_TARGET_DATE
+    else:
+        run_date = context.get('logical_date') or context.get('execution_date')
+        if not run_date:
+            run_date = datetime.now()
+        target_date, _ = calc_target_date(run_date)
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
@@ -106,20 +96,13 @@ def etl_fact_access(**context):
 def etl_fact_payment(**context):
     logger = logging.getLogger(__name__)
 
-    # 날짜 계산
-    run_date = context.get('logical_date') or context.get('execution_date')
-
-    if not run_date:
-        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
-        run_date = datetime.now()
-
-    # 3. 날짜 계산 함수 호출
-    # target_date, _ = calc_target_date(run_date)
-
-    ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-05-08", "2026-05-10")  ## 백필용
-    run_kst = None
-
+    if BACKFILL_TARGET_DATE is not None:
+        target_date = BACKFILL_TARGET_DATE
+    else:
+        run_date = context.get('logical_date') or context.get('execution_date')
+        if not run_date:
+            run_date = datetime.now()
+        target_date, _ = calc_target_date(run_date)
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
@@ -137,20 +120,13 @@ def etl_fact_payment(**context):
 def etl_fact_funnel(**context):
     logger = logging.getLogger(__name__)
 
-    # 날짜 계산
-    run_date = context.get('logical_date') or context.get('execution_date')
-
-    if not run_date:
-        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
-        run_date = datetime.now()
-
-    # 3. 날짜 계산 함수 호출
-    # target_date, _ = calc_target_date(run_date)
-
-
-    ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-05-08", "2026-05-10")  ## 백필용
-    run_kst = None
+    if BACKFILL_TARGET_DATE is not None:
+        target_date = BACKFILL_TARGET_DATE
+    else:
+        run_date = context.get('logical_date') or context.get('execution_date')
+        if not run_date:
+            run_date = datetime.now()
+        target_date, _ = calc_target_date(run_date)
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
@@ -168,19 +144,13 @@ def etl_fact_funnel(**context):
 def etl_fact_IAA(**context):
     logger = logging.getLogger(__name__)
 
-    # 날짜 계산
-    run_date = context.get('logical_date') or context.get('execution_date')
-
-    if not run_date:
-        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
-        run_date = datetime.now()
-
-    # 3. 날짜 계산 함수 호출
-    # target_date, _ = calc_target_date(run_date)
-
-    ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-05-08", "2026-05-10")  ## 백필용
-    run_kst = None
+    if BACKFILL_TARGET_DATE is not None:
+        target_date = BACKFILL_TARGET_DATE
+    else:
+        run_date = context.get('logical_date') or context.get('execution_date')
+        if not run_date:
+            run_date = datetime.now()
+        target_date, _ = calc_target_date(run_date)
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
@@ -200,19 +170,13 @@ def etl_fact_IAA(**context):
 def etl_fact_usermap(**context):
     logger = logging.getLogger(__name__)
 
-    # 날짜 계산
-    run_date = context.get('logical_date') or context.get('execution_date')
-
-    if not run_date:
-        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
-        run_date = datetime.now()
-
-    # 3. 날짜 계산 함수 호출
-    # target_date, _ = calc_target_date(run_date)
-
-    ########### 백필용 데이터 처리    
-    target_date = target_date_range("2026-05-08", "2026-05-10")  ## 백필용
-    run_kst = None
+    if BACKFILL_TARGET_DATE is not None:
+        target_date = BACKFILL_TARGET_DATE
+    else:
+        run_date = context.get('logical_date') or context.get('execution_date')
+        if not run_date:
+            run_date = datetime.now()
+        target_date, _ = calc_target_date(run_date)
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 
@@ -245,19 +209,13 @@ def etl_fact_usermap(**context):
 def etl_fact_goods(**context):
     logger = logging.getLogger(__name__)
 
-    run_date = context.get('logical_date') or context.get('execution_date')
-
-    if not run_date:
-        print("Context에서 날짜 정보를 찾을 수 없습니다. (logical_date or execution_date missing)")
-        run_date = datetime.now()
-
-    # target_date, _ = calc_target_date(run_date)
-
-
-    ########### 백필용 데이터 처리
-    target_date = target_date_range("2026-05-08", "2026-05-10")  ## 백필용
-    run_kst = None
-
+    if BACKFILL_TARGET_DATE is not None:
+        target_date = BACKFILL_TARGET_DATE
+    else:
+        run_date = context.get('logical_date') or context.get('execution_date')
+        if not run_date:
+            run_date = datetime.now()
+        target_date, _ = calc_target_date(run_date)
 
     print("✅✅✅✅ Calculated target_date:", target_date[0])
 

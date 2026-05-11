@@ -710,7 +710,7 @@ def generate_agency_reports(**context):
     if failed_reports:
         print("\n⚠️  실패한 보고서 목록:")
         for report in failed_reports:
-            print(f"  - {report['project']} / {report['agency']}: {report['error']}")
+            print(f"  - {report[0]} / {report[1]}: {report[2]}")
 
     print("=" * 80)
     print("Task 2: 대행사 보고서 생성 완료")
@@ -848,31 +848,30 @@ task_bigquery_projects = PythonOperator(
     dag=dag,
 )
 
-# [주석 처리: 향후 서비스 코드]
-# task_all_projects = PythonOperator(
-#     task_id='generate_all_projects_reports',
-#     python_callable=generate_all_projects_reports,
-#     dag=dag,
-# )
-
-# task_agency_reports = PythonOperator(
-#     task_id='generate_agency_reports',
-#     python_callable=generate_agency_reports,
-#     dag=dag,
-# )
-
-# task_authorize_gcs = PythonOperator(
-#     task_id='authorize_gcs_access',
-#     python_callable=authorize_gcs_access,
-#     dag=dag,
-# )
-
-# [테스트용] Sheet3 저장 Task
-task_write_sheet3_test = PythonOperator(
-    task_id='write_to_sheet3_for_test',
-    python_callable=write_to_sheet3_for_test,
+task_all_projects = PythonOperator(
+    task_id='generate_all_projects_reports',
+    python_callable=generate_all_projects_reports,
     dag=dag,
 )
+
+task_agency_reports = PythonOperator(
+    task_id='generate_agency_reports',
+    python_callable=generate_agency_reports,
+    dag=dag,
+)
+
+task_authorize_gcs = PythonOperator(
+    task_id='authorize_gcs_access',
+    python_callable=authorize_gcs_access,
+    dag=dag,
+)
+
+# [테스트용] Sheet3 저장 Task (비활성화)
+# task_write_sheet3_test = PythonOperator(
+#     task_id='write_to_sheet3_for_test',
+#     python_callable=write_to_sheet3_for_test,
+#     dag=dag,
+# )
 
 task_cleanup_temp = PythonOperator(
     task_id='cleanup_temp_table',
@@ -881,8 +880,8 @@ task_cleanup_temp = PythonOperator(
     dag=dag,
 )
 
-# Task 의존성 (테스트용)
-task_bigquery_projects >> task_write_sheet3_test >> task_cleanup_temp
+# Task 의존성
+task_bigquery_projects >> task_all_projects >> task_agency_reports >> task_authorize_gcs >> task_cleanup_temp
 
-# [주석 처리: 향후 서비스 의존성]
-# task_bigquery_projects >> task_all_projects >> task_agency_reports >> task_authorize_gcs >> task_cleanup_temp
+# [비활성화: 테스트용 의존성]
+# task_bigquery_projects >> task_write_sheet3_test >> task_cleanup_temp
