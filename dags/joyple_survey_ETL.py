@@ -156,7 +156,7 @@ def extract_load_joyple_response():
     # NULL 포함 가능한 정수 컬럼을 pandas nullable Int64로 변환 (FLOAT64 적재 방지)
     int_cols = [
         'response_id', 'survey_list_id', 'question_info_id', 'option_id',
-        'other_yn', 'respondent_id', 'joyple_userkey', 'game_userkey',
+        'other_yn', 'respondent_id',
         'subjective_yn', 'answer_limit', 'answer_required_yn', 'multi_answer_yn',
         'question_order', 'question_card_uid',
     ]
