@@ -73,7 +73,7 @@ def get_gcp_credentials():
 
 def steam_wishlist_to_bq_logic():
     today = datetime.now().date()
-    seven_days_ago = today - timedelta(days=7)
+    seven_days_ago = today - timedelta(days=4)
     start_date_str = seven_days_ago.strftime("%Y-%m-%d")
     end_date_str = today.strftime("%Y-%m-%d")
 
