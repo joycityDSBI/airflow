@@ -10,19 +10,21 @@ TikTok SNS 데이터 일별 수집 ETL DAG
   - Refresh Token 만료: 365일 → 만료 7일 전 경보 후 수동 재인증 필요
 
 사전 설정 필요한 Airflow Variables:
-  - TIKTOK_Config : JSON 문자열. game_code 키마다 자격증명 보유.
+  - TIKTOK_Config : JSON 문자열. game_code 키마다 계정 리스트 보유 (1게임 N계정 지원).
       {
-        "60009": {
-          "client_key": "sbawgpkbf8npeircyd",
-          "client_secret": "...",
-          "redirect_uri": "https://github.com/joycityDSBI/tiktok_etl_app",
-          "access_token": "...",
-          "refresh_token": "...",
-          "open_id": "...",
-          "account_name": "freestylefootball_2",
-          "expires_at": 1234567890,
-          "refresh_token_expires_at": 1234567890
-        }
+        "60009": [
+          {
+            "client_key": "sbawgpkbf8npeircyd",
+            "client_secret": "...",
+            "redirect_uri": "https://github.com/joycityDSBI/tiktok_etl_app",
+            "access_token": "...",
+            "refresh_token": "...",
+            "open_id": "...",
+            "account_name": "freestylefootball_2",
+            "expires_at": 1234567890,
+            "refresh_token_expires_at": 1234567890
+          }
+        ]
       }
   - GOOGLE_CREDENTIAL_JSON
 """
@@ -141,36 +143,39 @@ def check_and_refresh_token(**context):
     updated = False
     now = time.time()
 
-    for game_code, cred in tiktok_config.items():
-        # Refresh token 만료 체크
-        rt_expires_at = cred.get("refresh_token_expires_at", 0)
-        rt_days_left = (rt_expires_at - now) / 86400
-        logger.info("[%s] Refresh token 만료까지 %.1f일", game_code, rt_days_left)
-        if rt_days_left <= 7:
-            raise RuntimeError(
-                f"[{game_code}] Refresh token 만료 임박 ({rt_days_left:.1f}일). "
-                "수동 재인증 후 TIKTOK_Config Variable 업데이트 필요."
-            )
+    for game_code, creds_list in tiktok_config.items():
+        for cred in creds_list:
+            account_name = cred.get("account_name", "?")
 
-        # Access token 갱신 (매 실행마다 - 24시간 만료)
-        logger.info("[%s] Access token 갱신 시작", game_code)
-        try:
-            token_data = refresh_access_token(
-                cred["refresh_token"],
-                cred["client_key"],
-                cred["client_secret"],
-            )
-            tiktok_config[game_code]["access_token"] = token_data["access_token"]
-            tiktok_config[game_code]["expires_at"] = int(now + token_data.get("expires_in", 86400))
-            if "refresh_token" in token_data:
-                tiktok_config[game_code]["refresh_token"] = token_data["refresh_token"]
-            if "refresh_expires_in" in token_data:
-                tiktok_config[game_code]["refresh_token_expires_at"] = int(now + token_data["refresh_expires_in"])
-            updated = True
-            logger.info("[%s] Access token 갱신 완료", game_code)
-        except Exception as exc:
-            logger.error("[%s] Access token 갱신 실패: %s", game_code, exc)
-            raise
+            # Refresh token 만료 체크
+            rt_expires_at = cred.get("refresh_token_expires_at", 0)
+            rt_days_left = (rt_expires_at - now) / 86400
+            logger.info("[%s/%s] Refresh token 만료까지 %.1f일", game_code, account_name, rt_days_left)
+            if rt_days_left <= 7:
+                raise RuntimeError(
+                    f"[{game_code}/{account_name}] Refresh token 만료 임박 ({rt_days_left:.1f}일). "
+                    "수동 재인증 후 TIKTOK_Config Variable 업데이트 필요."
+                )
+
+            # Access token 갱신 (매 실행마다 - 24시간 만료)
+            logger.info("[%s/%s] Access token 갱신 시작", game_code, account_name)
+            try:
+                token_data = refresh_access_token(
+                    cred["refresh_token"],
+                    cred["client_key"],
+                    cred["client_secret"],
+                )
+                cred["access_token"] = token_data["access_token"]
+                cred["expires_at"] = int(now + token_data.get("expires_in", 86400))
+                if "refresh_token" in token_data:
+                    cred["refresh_token"] = token_data["refresh_token"]
+                if "refresh_expires_in" in token_data:
+                    cred["refresh_token_expires_at"] = int(now + token_data["refresh_expires_in"])
+                updated = True
+                logger.info("[%s/%s] Access token 갱신 완료", game_code, account_name)
+            except Exception as exc:
+                logger.error("[%s/%s] Access token 갱신 실패: %s", game_code, account_name, exc)
+                raise
 
     if updated:
         Variable.set("TIKTOK_Config", json.dumps(tiktok_config))
@@ -189,48 +194,52 @@ def collect_tiktok_raw(**context):
 
     total_video_rows = 0
 
-    for game_code, cred in tiktok_config.items():
-        access_token = cred["access_token"]
-        account_id = cred["open_id"]
+    for game_code, creds_list in tiktok_config.items():
         game_code_int = int(game_code)
+        # game_code별 1회만 DELETE (계정별로 두면 두 번째 계정 처리 시 첫 계정 데이터가 삭제됨)
+        _delete_by_game(client, project, VIDEO_SNAPSHOT_TABLE, collected_date, game_code_int)
 
-        try:
-            user_info = get_user_info(access_token)
-            handle = user_info.get("display_name", cred.get("account_name", ""))
-        except Exception as exc:
-            logger.warning("[%s] 채널명 조회 실패, config 값 사용: %s", game_code, exc)
-            handle = cred.get("account_name", "")
+        for cred in creds_list:
+            access_token = cred["access_token"]
+            account_id = cred["open_id"]
+            account_name = cred.get("account_name", "")
 
-        # 영상 통계 수집
-        try:
-            videos = get_video_list(access_token)
-        except Exception as exc:
-            logger.error("[%s] 영상 목록 수집 실패: %s", game_code, exc)
-            raise
+            try:
+                user_info = get_user_info(access_token)
+                handle = user_info.get("display_name", account_name)
+            except Exception as exc:
+                logger.warning("[%s/%s] 채널명 조회 실패, config 값 사용: %s", game_code, account_name, exc)
+                handle = account_name
 
-        video_rows = []
-        for video in videos:
-            video_rows.append({
-                "datekey": collected_date,
-                "account_id": account_id,
-                "video_id": video["id"],
-                "video_title": (video.get("title") or "")[:500],
-                "views_cum": int(video.get("view_count", 0) or 0),
-                "likes_cum": int(video.get("like_count", 0) or 0),
-                "comments_cum": int(video.get("comment_count", 0) or 0),
-                "shares_cum": int(video.get("share_count", 0) or 0),
-                "joyple_game_code": game_code_int,
-                "handle": handle,
-                "created_at": _now_utc_str(),
-            })
+            # 영상 통계 수집
+            try:
+                videos = get_video_list(access_token)
+            except Exception as exc:
+                logger.error("[%s/%s] 영상 목록 수집 실패: %s", game_code, account_name, exc)
+                raise
 
-        if not video_rows:
-            logger.warning("[%s] 영상 0건 수집", game_code)
-        else:
-            _delete_by_game(client, project, VIDEO_SNAPSHOT_TABLE, collected_date, game_code_int)
-            _insert_rows(client, project, VIDEO_SNAPSHOT_TABLE, video_rows)
-            total_video_rows += len(video_rows)
-            logger.info("[%s] 영상 snapshot 저장: %d건", game_code, len(video_rows))
+            video_rows = []
+            for video in videos:
+                video_rows.append({
+                    "datekey": collected_date,
+                    "account_id": account_id,
+                    "video_id": video["id"],
+                    "video_title": (video.get("title") or "")[:500],
+                    "views_cum": int(video.get("view_count", 0) or 0),
+                    "likes_cum": int(video.get("like_count", 0) or 0),
+                    "comments_cum": int(video.get("comment_count", 0) or 0),
+                    "shares_cum": int(video.get("share_count", 0) or 0),
+                    "joyple_game_code": game_code_int,
+                    "handle": handle,
+                    "created_at": _now_utc_str(),
+                })
+
+            if not video_rows:
+                logger.warning("[%s/%s] 영상 0건 수집", game_code, account_name)
+            else:
+                _insert_rows(client, project, VIDEO_SNAPSHOT_TABLE, video_rows)
+                total_video_rows += len(video_rows)
+                logger.info("[%s/%s] 영상 snapshot 저장: %d건", game_code, account_name, len(video_rows))
 
     if total_video_rows == 0:
         raise RuntimeError("TikTok 영상 snapshot 수집 결과 0건. API 오류 로그를 확인하세요.")
