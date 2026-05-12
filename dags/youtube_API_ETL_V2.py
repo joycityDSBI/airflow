@@ -170,16 +170,15 @@ def get_youtube_channels_from_notion() -> list[dict]:
 # ============================================================
 
 def resolve_handle_to_channel_id(handle: str) -> str | None:
-    """YouTube 핸들(@포함/미포함) → UCxxxx channel_id"""
-    youtube = build("youtube", "v3", developerKey=API_KEY)
+    """YouTube 핸들(@포함/미포함) → UCxxxx channel_id (REST API 직접 호출)"""
     clean_handle = handle.lstrip('@')
-
     try:
-        resp = youtube.channels().list(
-            forHandle=clean_handle,
-            part='id'
-        ).execute()
-        items = resp.get('items', [])
+        resp = requests.get(
+            'https://www.googleapis.com/youtube/v3/channels',
+            params={'part': 'id', 'forHandle': clean_handle, 'key': API_KEY},
+        )
+        resp.raise_for_status()
+        items = resp.json().get('items', [])
         if items:
             channel_id = items[0]['id']
             print(f"[핸들 조회] '{handle}' → '{channel_id}'")
