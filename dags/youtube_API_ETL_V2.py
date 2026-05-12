@@ -66,6 +66,14 @@ CHANNELS_159 = [
     },
 ]
 
+# game_code=60009 채널 중 Notion 미등록 채널 하드코딩
+CHANNELS_60009_FIXED = [
+    {
+        'channel_name': 'Offical_WW',
+        'handle': '@FreeStyleFootball2_EN',
+    },
+]
+
 
 # ============================================================
 # Notion 표 블록 파싱
@@ -624,8 +632,11 @@ def youtube_etl():
     for ch in notion_channels:
         print(f"  채널명={ch['channel_name']} | 핸들={ch['handle']}")
 
+    all_60009_raw = notion_channels + CHANNELS_60009_FIXED
+    print(f"[하드코딩 추가] CHANNELS_60009_FIXED {len(CHANNELS_60009_FIXED)}개 병합 → 총 {len(all_60009_raw)}개 핸들 조회 예정")
+
     channels_60009 = []
-    for ch in notion_channels:
+    for ch in all_60009_raw:
         channel_id = resolve_handle_to_channel_id(ch['handle'])
         if not channel_id:
             print(f"[채널 조회] channel_id 조회 실패, 건너뜀: {ch['channel_name']} / {ch['handle']}")
