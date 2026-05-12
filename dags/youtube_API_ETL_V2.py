@@ -88,7 +88,7 @@ def get_youtube_channels_from_notion() -> list[dict]:
     """
     Notion FSF2 페이지의 '서브 채널' 섹션 아래 표 블록을 파싱.
     플랫폼 == 'Youtube'인 행의 채널명, 핸들명 반환.
-    컬럼 순서: 플랫폼(0), 채널명(1), ID(2), PW(3), 비고(4), 핸들명(5)
+    컬럼 순서: 플랫폼(0), 채널명(1), ID(2), PW(3), 핸들명(4), 담당자(5)
     """
     headers = {
         'Authorization': f'Bearer {NOTION_TOKEN}',
@@ -159,7 +159,7 @@ def get_youtube_channels_from_notion() -> list[dict]:
 
         platform     = _get_cell_text(cells[0]).strip()
         channel_name = _get_cell_text(cells[1]).strip()
-        handle       = _get_cell_text(cells[5]).strip()
+        handle       = _get_cell_text(cells[4]).strip()
 
         if platform != 'Youtube':
             continue
