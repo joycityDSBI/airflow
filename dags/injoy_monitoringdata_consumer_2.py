@@ -1,4 +1,5 @@
 from airflow import DAG, Dataset
+from airflow.exceptions import AirflowSkipException
 from airflow.providers.standard.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import requests
@@ -343,7 +344,12 @@ def transform_data(**context):
     # XCom에서 데이터 가져오기
     source_data_json = context['ti'].xcom_pull(key='source_data', task_ids='extract_data')
     source_df = pd.read_json(source_data_json, orient='records')
-    
+
+    # 조회 결과 0건이면 후속 task 모두 스킵
+    if source_df.empty:
+        print("ℹ️  조회 결과 0건 — 동기화 대상 없음. 후속 task 스킵.")
+        raise AirflowSkipException("Databricks 조회 결과 0건")
+
     # Notion DB 컬럼명에 맞게 변경
     df_renamed = source_df.rename(columns={
         "content": "사용자 질의",
