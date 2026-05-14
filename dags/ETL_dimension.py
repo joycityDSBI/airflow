@@ -1027,7 +1027,7 @@ def adjust_dim_product_code(**context):
 
         # 3. 성공 시 출력
         print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
-        print(f"■ {target_date} dim_package_kind Batch 완료")
+        print(f"■ {target_date} dim_product_code Batch 완료")
 
     except Exception as e:
         # 4. 실패 시 출력
@@ -1860,161 +1860,647 @@ def etl_dim_market_id(**context):
 
 
 def etl_dim_package_kind(**context):
+
     # 클라이언트 호출
     client = init_clients()["bq_client"]
-    
-    truncate_query = f"""
-    TRUNCATE TABLE `datahub-478802.datahub.dim_package_kind`
-    """
+
+    logger = logging.getLogger(__name__)
+
+    # 함수 내부에서 사용할 타임존 정의
+    kst = pytz.timezone('Asia/Seoul')
+
+    # context에서 날짜 계산 함수 호출
+    if BACKFILL_TARGET_DATE is not None:
+        target_date = BACKFILL_TARGET_DATE
+    else:
+        target_date, _ = calc_target_date(context['logical_date'])
+
+    ####################
+
+    for td_str in target_date:
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        # KST 00:00:00 설정 (localize 사용)
+        start_kst = kst.localize(current_date_obj)
+
+        # KST -> UTC 변환
+        start_utc = start_kst.astimezone(timezone.utc)
+
+        # 종료 시간 계산 (하루 뒤)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(timezone.utc)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
+
+        query = f"""
+        MERGE `datahub-478802.datahub.dim_package_kind` AS target
+        USING(
+        SELECT distinct joyple_game_code, package_kind
+        FROM `dataplatform-204306.CommonLog.Package`
+        WHERE log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+        AND log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+        ) as source
+        ON target.joyple_game_code = source.joyple_game_code AND target.package_kind = source.package_kind
+        WHEN NOT MATCHED THEN
+        INSERT (
+        joyple_game_code,
+        package_kind,
+        update_timestamp
+        )
+        VALUES(
+        source.joyple_game_code,
+        source.package_kind,
+        CURRENT_TIMESTAMP()
+        )
+        """
+        query_job = client.query(query)
+
+        try:
+            query_job.result()
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} dim_package_kind Batch 완료")
+
+        except Exception as e:
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+
+    print("✅ dim_package_kind ETL 완료")
+    return True
+
+
+def adjust_dim_package_kind(**context):
+
+    # 클라이언트 호출
+    client = init_clients()["bq_client"]
+
+    logger = logging.getLogger(__name__)
+
+    # context에서 날짜 계산 함수 호출 (단일 실행이지만 공통 패턴 유지)
+    if BACKFILL_TARGET_DATE is not None:
+        target_date = BACKFILL_TARGET_DATE
+    else:
+        target_date, _ = calc_target_date(context['logical_date'])
+
+    ####################
 
     query = f"""
-    INSERT INTO `datahub-478802.datahub.dim_package_kind`
-    (UUID, joyple_game_code, package_kind, package_name_KR, package_name_JP, create_datetime)
+    MERGE `datahub-478802.datahub.dim_package_kind` AS target
+    USING (
+        SELECT * FROM (
+            SELECT * 
+            FROM (
+                -- 139 (CFWZ)
+                SELECT * except(rn)
+                FROM (
+                    SELECT 139 as joyple_game_code
+                         , code as product_code
+                         , CAST(null AS STRING) as goods_type
+                         , CAST(Category AS STRING) as shop_category
+                         , CAST(null AS STRING) as package_category
+                         , CAST(Price AS STRING) as price
+                         , CAST(PackageName AS STRING) as product_name
+                         , CAST(null AS STRING) as product_name_EN
+                         , CAST(null AS STRING) as product_name_JP,
+                           ROW_NUMBER() OVER (PARTITION BY 139, code ORDER BY set_date, PKind DESC) as rn
+                         , set_date as sale_date_start
+                         , end_date as sale_date_end
+                    FROM `data-science-division-216308.PackageInfo.CFWZ_PackageInfo`
+                    CROSS JOIN UNNEST([CAST(PKind AS STRING)
+                                      ,CAST(PRODUCTCODE_aos AS STRING)
+                                      ,CAST(PRODUCTCODE_ios AS STRING)] ) AS code
+                ) WHERE rn = 1
 
-    SELECT UUID, joyple_game_code, package_kind
-    , max(package_name_KR) as package_name_KR, max(package_name_JP) as package_name_JP, max(create_datetime) as create_datetime
-    FROM 
-    (
-    SELECT 
-        CONCAT(CAST(159 AS STRING), "|", Package_Kind) AS UUID
-        , 159          AS joyple_game_code
-        , CAST(Package_Kind AS STRING) AS package_kind
-        , CAST(Package_Name AS STRING) AS package_name_KR
-        , CAST(null AS STRING) AS package_name_JP
-        , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
-    FROM `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU`
-    WHERE Package_Kind IS NOT NULL 
-    AND Package_Name IS NOT NULL
-    UNION ALL
-    SELECT CONCAT(CAST(159 AS STRING), "|", Package_Kind) AS UUID
-        , 159             AS joyple_game_code
-        , CAST(Package_Kind AS STRING) AS package_kind
-        , CAST(null AS STRING) AS package_name_KR
-        , CAST(package_name_jp AS STRING) AS package_name_JP
-        , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
-    FROM `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP`
-    WHERE Package_Kind IS NOT NULL 
-    AND package_name_jp IS NOT NULL
-    ) TA
-    group by 1,2,3
-    
-    UNION ALL
-    
-    SELECT CONCAT(CAST(30001 AS STRING), "|", Package_Kind) AS UUID
-        , 30001        AS joyple_game_code
-        , CAST(Package_Kind AS STRING) AS package_kind
-        , CAST(Package_Name AS STRING) AS package_name_KR
-        , CAST(null AS STRING) AS package_name_JP
-        , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
-    FROM `data-science-division-216308.PackageInfo.PackageInfo_WWM`
-    WHERE Package_Kind IS NOT NULL 
-    AND Package_Name IS NOT NULL
-    
-    UNION ALL
-    
-    SELECT CONCAT(CAST(30003 AS STRING), "|", Package_Kind) AS UUID
-        , 30003        AS joyple_game_code
-        , CAST(Package_Kind AS STRING) AS package_kind
-        , CAST(Package_Name AS STRING) AS package_name_KR
-        , CAST(null AS STRING) AS package_name_JP
-        , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
-    FROM `data-science-division-216308.PackageInfo.PackageInfo_DS`
-    WHERE Package_Kind IS NOT NULL 
-    AND Package_Name IS NOT NULL
-    
-    UNION ALL
-    
-    SELECT CONCAT(CAST(131 AS STRING), "|", Package_Kind) AS UUID
-        , 131          AS joyple_game_code
-        , CAST(Package_Kind AS STRING) AS package_kind
-        , CAST(Package_Name AS STRING) AS package_name_KR
-        , CAST(null AS STRING) AS package_name_JP
-        , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
-    FROM `data-science-division-216308.PackageInfo.PackageInfo_POTC`
-    WHERE Package_Kind IS NOT NULL 
-    AND Package_Name IS NOT NULL
-    
-    UNION ALL
-    
-    SELECT CONCAT(CAST(133 AS STRING), "|", PKind) AS UUID
-        , 133          AS joyple_game_code
-        , CAST(PKind AS STRING) AS package_kind
-        , CAST(PackageName AS STRING) AS package_name_KR
-        , CAST(null AS STRING) AS package_name_JP
-        , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
-    FROM `data-science-division-216308.PackageInfo.GW_PackageInfo`
-    WHERE PKind IS NOT NULL 
-    AND PackageName IS NOT NULL
-    
-    UNION ALL
-    
-    SELECT CONCAT(CAST(155 AS STRING), "|", Package_Kind) AS UUID
-        , 155          AS joyple_game_code
-        , CAST(Package_Kind AS STRING) AS package_kind
-        , CAST(Package_Name AS STRING) AS package_name_KR
-        , CAST(null AS STRING) AS package_name_JP
-        , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
-    FROM `data-science-division-216308.PackageInfo.PackageInfo_DRB`
-    WHERE Package_Kind IS NOT NULL 
-    AND Package_Name IS NOT NULL
-    
-    UNION ALL
-    
-    SELECT CONCAT(CAST(154 AS STRING), "|", Package_Kind) AS UUID
-        , 154          AS joyple_game_code
-        , CAST(Package_Kind AS STRING) AS package_kind
-        , CAST(Package_Name AS STRING) AS package_name_KR
-        , CAST(null AS STRING) AS package_name_JP
-        , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
-    FROM `data-science-division-216308.PackageInfo.PackageInfo_C4`
-    WHERE Package_Kind IS NOT NULL 
-    AND Package_Name IS NOT NULL
-    
-    UNION ALL
-    
-    SELECT CONCAT(CAST(156 AS STRING), "|", Package_Kind) AS UUID
-        , 156          AS joyple_game_code
-        , CAST(Package_Kind AS STRING) AS package_kind
-        , CAST(Package_Name AS STRING) AS package_name_KR
-        , CAST(null AS STRING) AS package_name_JP
-        , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
-    FROM `data-science-division-216308.PackageInfo.PackageInfo_JTWN`
-    WHERE Package_Kind IS NOT NULL 
-    AND Package_Name IS NOT NULL
-    
-    UNION ALL
-    
-    SELECT CONCAT(CAST(129 AS STRING), "|", Package_Kind) AS UUID
-        , 129          AS joyple_game_code
-        , CAST(Package_Kind AS STRING) AS package_kind
-        , CAST(Package_Name AS STRING) AS package_name_KR
-        , CAST(null AS STRING) AS package_name_JP
-        , CURRENT_DATETIME("Asia/Seoul") AS create_datetime
-    FROM `data-science-division-216308.PackageInfo.GNSS_PackageInfo`
-    WHERE Package_Kind IS NOT NULL 
-    AND Package_Name IS NOT NULL
+                UNION ALL
+
+                -- 129 (GNSS)
+                SELECT * except(rn)
+                FROM (
+                    SELECT 129 as joyple_game_code
+                         , code as product_code
+                         , CAST(null AS STRING) as goods_type
+                         , CAST(Category AS STRING) as shop_category
+                         , CAST(CATEGORY AS STRING) as package_category
+                         , CAST(Price AS STRING) as price
+                         , CAST(PACKAGE_NAME AS STRING) as product_name
+                         , CAST(null AS STRING) as product_name_EN
+                         , CAST(null AS STRING) as product_name_JP
+                         , ROW_NUMBER() OVER (PARTITION BY 129, code ORDER BY package_kind DESC) as rn
+                         , cast(null as string) as sale_date_start
+                         , cast(null as string) as sale_date_end
+                    FROM `data-science-division-216308.PackageInfo.GNSS_PackageInfo`
+                    CROSS JOIN UNNEST([CAST(PACKAGE_KIND AS STRING)
+                                      ,CAST(PRODUCTCODE_aos AS STRING)
+                                      ,CAST(PRODUCTCODE_ios AS STRING)]) AS code
+                ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 147 (BLS)
+            SELECT * except(rn)
+            FROM (
+                SELECT 147 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY 147, code ORDER BY sale_date_start, package_kind DESC) as rn
+                     , Cast(sale_date_start as STRING) as sale_date_start
+                     , Cast(sale_date_end as STRING) as sale_date_end                     
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_BLS`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                  ,CAST(iap_code_google AS STRING)
+                                  ,CAST(iap_code_apple AS STRING)
+                                  ,CAST(iap_code_one AS STRING)]) AS code 
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 140 (BLSKR)
+            SELECT * except(rn)
+            FROM (
+                SELECT 140 as joyple_game_code
+                , code as product_code
+                , CAST(goods_type AS STRING) as goods_type
+                , CAST(category_shop AS STRING) as shop_category
+                , CAST(category_package AS STRING) as package_category
+                , CAST(price AS STRING) as price
+                , CAST(package_name AS STRING) as product_name
+                , CAST(null AS STRING) as product_name_EN
+                , CAST(null AS STRING) as product_name_JP
+                , ROW_NUMBER() OVER (PARTITION BY 140, code ORDER BY sale_date_start, package_kind DESC) as rn
+                , Cast(sale_date_start as STRING) as sale_date_start
+                , Cast(sale_date_end as STRING) as sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_BLSKR`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                  ,CAST(iap_code_google AS STRING)
+                                  ,CAST(iap_code_apple AS STRING)
+                                  ,CAST(iap_code_one AS STRING)]) AS code 
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 154 (C4)
+            SELECT * except(rn)
+            FROM (
+                SELECT 154 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY 154, code ORDER BY sale_date_start, package_kind DESC) as rn
+                     , Cast(sale_date_start as STRING) as sale_date_start
+                     , Cast(sale_date_end as STRING) as sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_C4`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)]) AS code
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 139 (CFWZ - New)
+            SELECT * except(rn)
+            FROM (
+                SELECT 139 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY 139, code ORDER BY sale_date_start, package_kind DESC) as rn
+                     , Cast(sale_date_start as STRING) as sale_date_start
+                     , Cast(sale_date_end as STRING) as sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_CFWZ`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)
+                                 , CAST(iap_code_one AS STRING)]) AS code
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 155 (DRB)
+            SELECT * except(rn)
+            FROM (
+                SELECT 155 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY 155, code ORDER BY sale_date_start, package_kind DESC) as rn
+                     , sale_date_start
+                     , sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_DRB`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)]) AS code
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start
+                 , sale_date_end
+            from 
+            (
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start
+                 , sale_date_end
+            , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY sale_date_start, package_kind desc) as rn
+            from
+            (
+                SELECT
+                    30003 as joyple_game_code
+                    , code as product_code  -- UNNEST에서 풀려 나온 값
+                    , CAST(goods_type AS STRING) as goods_type
+                    , CAST(category_shop AS STRING) as shop_category
+                    , CAST(category_package AS STRING) as package_category
+                    , CAST(price AS STRING) as price
+                    , CAST(package_name AS STRING) as product_name
+                    , CAST(null AS STRING) as product_name_EN
+                    , CAST(null AS STRING) as product_name_JP
+                    , sale_date_start
+                    , package_kind
+                    , sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_DS`
+                -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
+                CROSS JOIN UNNEST([
+                    CAST(package_kind AS STRING), 
+                    CAST(iap_code_google AS STRING), 
+                    CAST(iap_code_apple AS STRING)
+                ]) AS code
+            ) AS TA
+            ) AS TK
+            where rn = 1
+
+            UNION ALL
+
+            -- 153 (GBCC)
+            SELECT * except(rn)
+            FROM (
+                SELECT 153 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY 153, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , Cast(sale_date_start as STRING) as sale_date_start
+                     , Cast(sale_date_end as STRING) as sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_GBCC`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)]) AS code
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start 
+                 , sale_date_end
+            from 
+            (
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start
+                 , sale_date_end
+            , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY sale_date_start, package_kind desc) as rn
+            from
+            (
+                SELECT
+                    133 as joyple_game_code
+                    , code as product_code  -- UNNEST에서 풀려 나온 값
+                    , CAST(goods_type AS STRING) as goods_type
+                    , CAST(category_shop AS STRING) as shop_category
+                    , CAST(category_package AS STRING) as package_category
+                    , CAST(price AS STRING) as price
+                    , CAST(package_name AS STRING) as product_name
+                    , CAST(null AS STRING) as product_name_EN
+                    , CAST(null AS STRING) as product_name_JP
+                    , sale_date_start
+                    , package_kind
+                    , sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_GBTW`
+                -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
+                CROSS JOIN UNNEST([
+                    CAST(package_kind AS STRING), 
+                    CAST(iap_code_google AS STRING), 
+                    CAST(iap_code_apple AS STRING),
+                    CAST(iap_code_one AS STRING)
+                ]) AS code
+            ) AS TA
+            ) AS TK
+            where rn = 1
+
+            UNION ALL
+
+            -- 156 (JTWN)
+            SELECT * except(rn)
+            FROM (
+                SELECT 156 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY 156, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , Cast(sale_date_start as STRING) as sale_date_start
+                     , Cast(sale_date_end as STRING) as sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_JTWN`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)
+                                 , CAST(iap_code_one AS STRING)]) AS code
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 148 (KOFS)
+            SELECT * except(rn)
+            FROM (
+                SELECT 148 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY 148, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , sale_date_start
+                     , sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_KOFS`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)
+                                 , CAST(iap_code_one AS STRING)]) AS code
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 151 (LOL)
+            SELECT * except(rn)
+            FROM (
+                SELECT 151 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY 151, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , sale_date_start 
+                     , sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_LOL`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)
+                                 , CAST(iap_code_one AS STRING)]) AS code
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 159 & 1590 (RESU)
+            SELECT * except(rn)
+            FROM (
+                SELECT G.game_id as joyple_game_code
+                     , code as product_code
+                     , CAST(A.goods_type AS STRING) as goods_type
+                     , CAST(A.Cat_Shop AS STRING) as shop_category
+                     , CAST(A.Cat_Package AS STRING) as package_category
+                     , CAST(A.Price AS STRING) as price
+                     , CAST(A.Package_Name AS STRING) as product_name
+                     , A.Package_Name_ENG as product_name_EN
+                     , CAST(B.package_name_jp AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY G.game_id, code ORDER BY A.Start_Date, A.package_kind DESC) as rn
+                     , CAST(A.Start_Date as STRING) as sale_date_start
+                     , CAST(A.End_Date as STRING) as sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU` as A
+                CROSS JOIN (SELECT 159 as game_id UNION ALL SELECT 1590) as G
+                LEFT JOIN `data-science-division-216308.PackageInfo.PackageInfo_Notion_RESU_JP` as B ON A.Package_Kind = B.Package_Kind
+                CROSS JOIN UNNEST([CAST(A.package_kind AS STRING)
+                                 , CAST(A.iap_code_google AS STRING)
+                                 , CAST(A.iap_code_apple AS STRING)
+                                 , CAST(A.iap_code_onestore AS STRING)]) AS code
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start
+                 , sale_date_end
+            from 
+            (
+            select joyple_game_code
+                 , product_code
+                 , goods_type
+                 , shop_category
+                 , package_category
+                 , price
+                 , product_name
+                 , product_name_EN
+                 , product_name_JP
+                 , sale_date_start
+                 , sale_date_end
+            , ROW_NUMBER() OVER ( PARTITION BY joyple_game_code, product_code ORDER BY sale_date_start, package_kind desc) as rn
+            from
+            (
+                SELECT
+                    131 as joyple_game_code
+                    , code as product_code  -- UNNEST에서 풀려 나온 값
+                    , CAST(goods_type AS STRING) as goods_type
+                    , CAST(category_shop AS STRING) as shop_category
+                    , CAST(category_package AS STRING) as package_category
+                    , CAST(price AS STRING) as price
+                    , CAST(package_name AS STRING) as product_name
+                    , CAST(null AS STRING) as product_name_EN
+                    , CAST(null AS STRING) as product_name_JP
+                    , sale_date_start
+                    , package_kind
+                    , sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_POTC`
+                -- 아래 과정이 핵심입니다: 3개의 컬럼을 배열로 만들고(UNNEST) 이를 행으로 펼침
+                CROSS JOIN UNNEST([
+                    CAST(package_kind AS STRING), 
+                    CAST(iap_code_google AS STRING), 
+                    CAST(iap_code_apple AS STRING),
+                    CAST(iap_code_one AS STRING)
+                ]) AS code
+            ) AS TA
+            ) AS TK
+            where rn = 1
+
+            UNION ALL
+
+            -- 142 (TERA)
+            SELECT * except(rn)
+            FROM (
+                SELECT 142 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY 142, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , sale_date_start
+                     , sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_TERA`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)
+                                 , CAST(iap_code_one AS STRING)]) AS code
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 30001 (WWM)
+            SELECT * except(rn)
+            FROM (
+                SELECT 30001 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , ROW_NUMBER() OVER (PARTITION BY 30001, code ORDER BY sale_date_start,package_kind DESC) as rn
+                     , sale_date_start
+                     , sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_WWM`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)
+                                 , CAST(iap_code_one AS STRING)]) AS code
+            ) WHERE rn = 1
+
+            UNION ALL
+
+            -- 30007 (IMGN) 
+            SELECT * 
+            FROM (
+                SELECT 30007 as joyple_game_code
+                     , code as product_code
+                     , CAST(goods_type AS STRING) as goods_type
+                     , CAST(category_shop AS STRING) as shop_category
+                     , CAST(category_package AS STRING) as package_category
+                     , CAST(price AS STRING) as price
+                     , CAST(package_name AS STRING) as product_name
+                     , CAST(null AS STRING) as product_name_EN
+                     , CAST(null AS STRING) as product_name_JP
+                     , Cast(null as string) as sale_date_start
+                     , Cast(null as string) as sale_date_end
+                FROM `data-science-division-216308.PackageInfo.PackageInfo_IMGN`
+                CROSS JOIN UNNEST([CAST(package_kind AS STRING)
+                                 , CAST(iap_code_google AS STRING)
+                                 , CAST(iap_code_apple AS STRING)]) AS code
+            )
+        )
+        -- [핵심 수정] 중복 제거 로직 추가
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY joyple_game_code, product_code ORDER BY product_name DESC) = 1
+        )
+    ) as source
+    ON target.joyple_game_code = source.joyple_game_code AND target.package_kind = source.product_code
+    WHEN MATCHED THEN
+    UPDATE SET 
+    target.product_name = source.product_name
+    , target.goods_type = source.goods_type
+    , target.shop_category = source.shop_category
+    , target.package_category = source.package_category
+    , target.price = source.price
+    , target.product_name_EN = source.product_name_EN
+    , target.product_name_JP = source.product_name_JP
+    , target.update_timestamp = CURRENT_TIMESTAMP()
+    , target.sale_date_start = source.sale_date_start
+    , target.sale_date_end = source.sale_date_end
     """
 
-    # 1. 쿼리 실행
-    truncate_query_job = client.query(truncate_query)
-    truncate_query_job.result()  # 작업 완료 대기
     query_job = client.query(query)
 
     try:
-        # 2. 작업 완료 대기 (여기서 쿼리가 끝날 때까지 블로킹됨)
-        # 쿼리에 에러가 있다면 이 라인에서 예외(Exception)가 발생합니다.
         query_job.result()
-
-        # 3. 성공 시 출력
         print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+        print(f"■ {target_date} dim_package_kind Adjust 완료")
 
     except Exception as e:
-        # 4. 실패 시 출력
         print(f"❌ 쿼리 실행 중 에러 발생: {e}")
-        # Airflow에서 Task를 '실패(Failed)'로 처리하려면 에러를 다시 던져줘야 합니다.
         raise e
-    
-    print("✅ dim_package_kind ETL 완료")
+
+    print("✅ dim_package_kind 조정 완료")
+    return True
 
 
 
@@ -2356,6 +2842,11 @@ with DAG(
         python_callable=etl_dim_package_kind,
     )
 
+    adjust_dim_package_kind_task = PythonOperator(
+        task_id='adjust_dim_package_kind',
+        python_callable=adjust_dim_package_kind,
+    )
+
     etl_dim_pg_id_task = PythonOperator(
         task_id='etl_dim_pg_id',
         python_callable=etl_dim_pg_id,
@@ -2401,6 +2892,7 @@ chain(
     etl_dim_joyple_game_code_task,
     etl_dim_market_id_task,
     etl_dim_package_kind_task,
+    adjust_dim_package_kind_task,
     etl_dim_pg_id_task,
     etl_dim_IAA_app_name_task,
     etl_dim_goods_action_id_task,
