@@ -196,7 +196,7 @@ def extract_load_joyple_response():
             bigquery.SchemaField("response", "STRING"),
             bigquery.SchemaField("other_yn", "INTEGER"),
             bigquery.SchemaField("respondent_id", "INTEGER"),
-            bigquery.SchemaField("created_date", "TIMESTAMP"),
+            bigquery.SchemaField("created_date", "DATETIME"),
             bigquery.SchemaField("game_code", "STRING"),
             bigquery.SchemaField("joyple_userkey", "STRING"),
             bigquery.SchemaField("game_userkey", "STRING"),
