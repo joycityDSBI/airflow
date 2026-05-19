@@ -164,6 +164,20 @@ def extract_load_joyple_response():
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
 
+    # 문자열 컬럼: NaN을 None으로 정규화하고 string dtype으로 명시 (response 등)
+    str_cols = ['response', 'game_code', 'game_userkey', 'joyple_userkey',
+                'country', 'game_grade_code', 'lang', 'question']
+    for col in str_cols:
+        if col in df.columns:
+            df[col] = df[col].astype(object).where(df[col].notna(), None)
+
+    # response 디버깅: 빈값/NULL 분포 확인
+    if 'response' in df.columns:
+        total = len(df)
+        null_cnt = df['response'].isna().sum()
+        empty_cnt = (df['response'] == '').sum()
+        print(f"[response 분포] 전체 {total}행 / NULL {null_cnt}행 / 빈문자열 {empty_cnt}행")
+
     # 2. BigQuery Staging 테이블로 업로드 (매번 Overwrite)
     client = init_clients()["bq_client"]
 
@@ -173,9 +187,34 @@ def extract_load_joyple_response():
     TEMP_TABLE_FULL_ID = f"{PROJECT_ID}.{DATASET_ID}.{temp_staging_table_name}"
 
     try:
-        # 3. 데이터 업로드 (테이블이 없으면 자동 생성됨)
-        # WRITE_TRUNCATE: 테이블이 있으면 비우고 넣고, 없으면 새로 만듭니다.
-        job_config = bigquery.LoadJobConfig(write_disposition="WRITE_TRUNCATE")
+        # 3. 명시적 schema로 staging 테이블 생성 (autodetect 미사용)
+        staging_schema = [
+            bigquery.SchemaField("response_id", "INTEGER"),
+            bigquery.SchemaField("survey_list_id", "INTEGER"),
+            bigquery.SchemaField("question_info_id", "INTEGER"),
+            bigquery.SchemaField("option_id", "INTEGER"),
+            bigquery.SchemaField("response", "STRING"),
+            bigquery.SchemaField("other_yn", "INTEGER"),
+            bigquery.SchemaField("respondent_id", "INTEGER"),
+            bigquery.SchemaField("created_date", "TIMESTAMP"),
+            bigquery.SchemaField("game_code", "STRING"),
+            bigquery.SchemaField("joyple_userkey", "STRING"),
+            bigquery.SchemaField("game_userkey", "STRING"),
+            bigquery.SchemaField("country", "STRING"),
+            bigquery.SchemaField("game_grade_code", "STRING"),
+            bigquery.SchemaField("subjective_yn", "INTEGER"),
+            bigquery.SchemaField("answer_limit", "INTEGER"),
+            bigquery.SchemaField("answer_required_yn", "INTEGER"),
+            bigquery.SchemaField("multi_answer_yn", "INTEGER"),
+            bigquery.SchemaField("lang", "STRING"),
+            bigquery.SchemaField("question", "STRING"),
+            bigquery.SchemaField("question_order", "INTEGER"),
+            bigquery.SchemaField("question_card_uid", "INTEGER"),
+        ]
+        job_config = bigquery.LoadJobConfig(
+            write_disposition="WRITE_TRUNCATE",
+            schema=staging_schema,
+        )
         load_job = client.load_table_from_dataframe(df, TEMP_TABLE_FULL_ID, job_config=job_config)
         load_job.result()
         print(f"[{datetime.now()}] 스테이징 테이블 생성 및 업로드 완료: {TEMP_TABLE_FULL_ID}")
