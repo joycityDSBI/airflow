@@ -110,6 +110,7 @@ def etl_fact_payment(**context):
     bq_client = client["bq_client"]
     try:
         etl_f_common_payment(target_date=target_date, client=bq_client)
+        etl_f_common_payment_raw(target_date=target_date, client=bq_client)
         logger.info("✅ etl_fact_payment completed successfully")
         return True
     except Exception as e:
