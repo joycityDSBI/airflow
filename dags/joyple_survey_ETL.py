@@ -156,7 +156,7 @@ def extract_load_joyple_response():
     # NULL 포함 가능한 정수 컬럼을 pandas nullable Int64로 변환 (FLOAT64 적재 방지)
     int_cols = [
         'response_id', 'survey_list_id', 'question_info_id', 'option_id',
-        'other_yn', 'respondent_id', 'game_code',
+        'other_yn', 'respondent_id', 'game_code', 'joyple_userkey',
         'subjective_yn', 'answer_limit', 'answer_required_yn', 'multi_answer_yn',
         'question_order', 'question_card_uid',
     ]
@@ -165,7 +165,7 @@ def extract_load_joyple_response():
             df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
 
     # 문자열 컬럼: int/float 섞여 있어도 str로 변환, NaN은 None으로 정규화
-    str_cols = ['response', 'game_userkey', 'joyple_userkey',
+    str_cols = ['response', 'game_userkey',
                 'country', 'game_grade_code', 'lang', 'question']
     for col in str_cols:
         if col in df.columns:
@@ -198,7 +198,7 @@ def extract_load_joyple_response():
             bigquery.SchemaField("respondent_id", "INTEGER"),
             bigquery.SchemaField("created_date", "DATETIME"),
             bigquery.SchemaField("game_code", "INTEGER"),
-            bigquery.SchemaField("joyple_userkey", "STRING"),
+            bigquery.SchemaField("joyple_userkey", "INTEGER"),
             bigquery.SchemaField("game_userkey", "STRING"),
             bigquery.SchemaField("country", "STRING"),
             bigquery.SchemaField("game_grade_code", "STRING"),
