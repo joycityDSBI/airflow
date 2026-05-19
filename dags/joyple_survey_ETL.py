@@ -164,12 +164,12 @@ def extract_load_joyple_response():
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
 
-    # 문자열 컬럼: NaN을 None으로 정규화하고 string dtype으로 명시 (response 등)
+    # 문자열 컬럼: int/float 섞여 있어도 str로 변환, NaN은 None으로 정규화
     str_cols = ['response', 'game_code', 'game_userkey', 'joyple_userkey',
                 'country', 'game_grade_code', 'lang', 'question']
     for col in str_cols:
         if col in df.columns:
-            df[col] = df[col].astype(object).where(df[col].notna(), None)
+            df[col] = df[col].apply(lambda x: None if pd.isna(x) else str(x))
 
     # response 디버깅: 빈값/NULL 분포 확인
     if 'response' in df.columns:
