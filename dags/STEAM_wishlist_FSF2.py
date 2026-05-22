@@ -269,8 +269,26 @@ def fetch_steam_traffic_for_date(date_str: str):
     response.raise_for_status()
 
     # BOM(﻿) 처리: utf-8-sig로 디코딩하면 BOM 자동 제거
-    df = pd.read_csv(io.StringIO(response.content.decode('utf-8-sig')))
-    print(f"[{date_str}] 트래픽 데이터 수집 완료: {len(df)}행")
+    decoded = response.content.decode('utf-8-sig')
+
+    # 세션 만료/HTML 응답 체크
+    if '<html' in decoded.lower()[:500]:
+        raise Exception("Steam Session Expired! STEAM_LOGIN_SECURE 쿠키를 갱신하세요.")
+
+    # CSV 헤더 위치 동적 탐색 (메타데이터 행이 상단에 추가될 수 있음)
+    lines = decoded.splitlines()
+    header_idx = None
+    for i, line in enumerate(lines):
+        if line.startswith('Page / Category'):
+            header_idx = i
+            break
+
+    if header_idx is None:
+        print(f"[{date_str}] CSV 응답 미리보기:\n{decoded[:500]}")
+        raise Exception("CSV 헤더('Page / Category')를 찾을 수 없습니다.")
+
+    df = pd.read_csv(io.StringIO(decoded), skiprows=header_idx)
+    print(f"[{date_str}] 트래픽 데이터 수집 완료: {len(df)}행 (header at line {header_idx + 1})")
 
     column_mapping = {
         'Page / Category': 'category',
