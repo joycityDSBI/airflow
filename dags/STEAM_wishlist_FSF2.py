@@ -275,11 +275,11 @@ def fetch_steam_traffic_for_date(date_str: str):
     if '<html' in decoded.lower()[:500]:
         raise Exception("Steam Session Expired! STEAM_LOGIN_SECURE 쿠키를 갱신하세요.")
 
-    # CSV 헤더 위치 동적 탐색 (메타데이터 행이 상단에 추가될 수 있음)
+    # CSV 헤더 위치 동적 탐색 (메타데이터 행이 상단에 추가될 수 있음, 따옴표 래핑 허용)
     lines = decoded.splitlines()
     header_idx = None
     for i, line in enumerate(lines):
-        if line.startswith('Page / Category'):
+        if line.lstrip('"').startswith('Page / Category'):
             header_idx = i
             break
 
@@ -302,6 +302,15 @@ def fetch_steam_traffic_for_date(date_str: str):
 
     df['datekey'] = pd.to_datetime(date_str).date()
     df['game_name'] = GAME_NAME
+
+    # 데이터가 없는 날짜(헤더만 있는 응답)는 빈 DataFrame 반환
+    if df.empty:
+        print(f"[{date_str}] 데이터 없음 - skip")
+        empty_cols_country = ['datekey', 'game_name', 'category', 'country_code',
+                              'impressions', 'visits', 'owner_impressions', 'owner_visits']
+        empty_cols_breakdown = ['datekey', 'game_name', 'category', 'feature',
+                                'impressions', 'visits', 'owner_impressions', 'owner_visits']
+        return pd.DataFrame(columns=empty_cols_breakdown), pd.DataFrame(columns=empty_cols_country)
 
     for col in ['impressions', 'visits', 'owner_impressions', 'owner_visits']:
         if col in df.columns:
