@@ -501,3 +501,274 @@ def etl_f_common_payment(target_date: list, client):
     return True
 
 
+def etl_f_common_payment_raw(target_date: list, client):
+
+    kst = pytz.timezone('Asia/Seoul')
+
+    for td_str in target_date:
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        start_kst = kst.localize(current_date_obj)
+        start_utc = start_kst.astimezone(timezone.utc)
+        end_kst = start_kst + timedelta(days=1)
+        end_utc = end_kst.astimezone(timezone.utc)
+
+        print(f"📝 대상날짜: {td_str}")
+        print(f"   ㄴ 시작시간(UTC): {start_utc}")
+        print(f"   ㄴ 종료시간(UTC): {end_utc}")
+
+        query = f"""
+            MERGE datahub-478802.datahub.f_common_payment_raw AS target
+            USING (
+            WITH TA AS (
+            SELECT a.GameID
+                , a.JoypleGameID
+                , a.GameAccountName
+                , a.GameSubUserName
+                , a.AuthMethodID
+                , a.AuthAccountName
+                , a.ServerName
+                , a.DeviceID
+                , a.MarketID
+                , a.OSID
+                , a.PGID
+                , a.GameSubUserLevel
+                , a.PlatformDeviceType
+                , a.IP
+                , a.OrderID
+                , a.ProductCode
+                , a.ProductName
+                , a.CurrencyCode
+                , a.Price
+                , a.LogTime
+                , IFNULL(a.MultiQuantity, 1) AS MultiQuantity
+            FROM `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V` AS a
+            WHERE a.LogTime >= '{start_utc}'
+                AND a.LogTime < '{end_utc}'
+            )
+            , TC AS (
+            SELECT DATE(a.LogTime, "Asia/Seoul") as datekey
+            , a.LogTime as log_time
+            , d.reg_datekey
+            , DATE_DIFF(DATE(a.LogTime, "Asia/Seoul"), d.reg_datekey, DAY) as reg_datediff
+            , d.reg_country_code
+            , a.GameID as game_id
+            , a.JoypleGameID as joyple_game_code
+            , a.GameAccountName as game_account_name
+            , a.GameSubUserName as game_sub_user_name
+            , a.AuthMethodID as auth_method_id
+            , a.AuthAccountName as auth_account_name
+            , a.ServerName as server_name
+            , a.DeviceID as device_id
+            , a.IP as ip
+            , a.MarketID as market_id
+            , a.OSID as os_id
+            , a.PGID as pg_id
+            , a.PlatformDeviceType as platform_device_type
+            , a.GameSubUserLevel as game_user_level
+            , a.ProductCode as product_code
+            , a.ProductName as product_name
+            , a.Price * IFNULL(c.exchange_rate, 1) AS Price_KRW
+            , IFNULL(a.MultiQuantity, 1) AS MultiQuantity
+            , a.OrderID as order_id
+            FROM TA as a
+            LEFT JOIN (
+                SELECT DATE('{start_utc}', "Asia/Seoul") AS datekey
+                    , currency
+                    , Info.exchange_rate as exchange_rate
+                FROM (
+                  SELECT currency, ARRAY_AGG(STRUCT(datekey, exchange_rate) ORDER BY datekey DESC LIMIT 1)[OFFSET(0)] AS Info
+                  FROM `datahub-478802.datahub.dim_exchange`
+                  WHERE datekey >= DATE('{start_utc}')
+                    AND datekey <=  DATE('{end_utc}')
+                  GROUP BY currency
+                ) AS TT
+            ) AS c
+            ON a.CurrencyCode = c.currency AND Date(a.LogTime, "Asia/Seoul")  = c.datekey
+            LEFT JOIN `datahub-478802.datahub.f_common_register` as d
+            on CAST(a.JoypleGameID AS STRING) = CAST(d.joyple_game_code AS STRING)
+            AND CAST(a.AuthMethodID AS STRING) = CAST(d.auth_method_id AS STRING)
+            AND CAST(a.AuthAccountName AS STRING) = CAST(d.auth_account_name AS STRING)
+            )
+            , base AS (
+                SELECT a.datekey,
+                    a.log_time,
+                    a.reg_datekey,
+                    a.reg_datediff,
+                    a.reg_country_code,
+                    a.game_id,
+                    a.joyple_game_code,
+                    a.game_account_name,
+                    a.game_sub_user_name,
+                    a.auth_method_id,
+                    a.auth_account_name,
+                    a.server_name,
+                    a.device_id,
+                    b.country_code,
+                    a.market_id,
+                    a.os_id,
+                    a.pg_id,
+                    a.platform_device_type,
+                    a.game_user_level,
+                    a.product_code,
+                    a.product_name,
+                    a.Price_KRW as revenue,
+                    a.MultiQuantity as buy_cnt,
+                    a.order_id
+                FROM TC as a
+                LEFT OUTER JOIN datahub-478802.datahub.dim_ip4_country_code AS b
+                ON (a.ip = b.ip)
+                WHERE a.joyple_game_code not in (119,123,127,129)
+
+                UNION ALL
+
+                SELECT a.datekey,
+                       a.log_time,
+                       a.reg_datekey,
+                       a.reg_datediff,
+                       a.reg_country_code,
+                       a.game_id,
+                       a.joyple_game_code,
+                       a.game_account_name,
+                       a.game_sub_user_name,
+                       a.auth_method_id,
+                       a.auth_account_name,
+                       a.server_name,
+                       a.device_id,
+                       a.country_code,
+                       a.market_id,
+                       a.os_id,
+                       a.pg_id,
+                       a.platform_device_type,
+                       a.game_user_level,
+                       a.product_code,
+                       a.product_name,
+                       a.price_KRW as revenue,
+                       a.MultiQuantity as buy_cnt,
+                       a.order_id
+                FROM `datahub-478802.datahub.pre_paymentfix_receipt_after_y24_view` as a
+                WHERE a.log_time >= '{start_utc}'
+                  AND a.log_time < '{end_utc}'
+                  AND a.joyple_game_code in (119,123,127,129)
+            )
+            -- 누적 첫결제 판정용: target에 이미 적재된 과거 결제내역 (현재 datekey 이전)
+            -- log_time이 파티션 키이므로 timestamp 리터럴로 직접 비교 → 파티션 프루닝 적용
+            -- sub_user 단위로 한번만 스캔 후, auth 단위 판정은 윈도우 함수로 처리
+            , prev_paid AS (
+                SELECT joyple_game_code, auth_account_name, game_sub_user_name
+                FROM `datahub-478802.datahub.f_common_payment_raw`
+                WHERE log_time < TIMESTAMP('{start_utc}')
+                GROUP BY 1, 2, 3
+            )
+            SELECT b.*,
+                CASE
+                    -- (game, auth) 파티션 내에 prev_paid 매칭이 하나라도 있으면 과거 결제 존재 → 0
+                    WHEN COUNTIF(p.joyple_game_code IS NOT NULL) OVER (
+                        PARTITION BY b.joyple_game_code, b.auth_account_name
+                    ) > 0 THEN 0
+                    WHEN ROW_NUMBER() OVER (
+                        PARTITION BY b.joyple_game_code, b.auth_account_name
+                        ORDER BY b.log_time, b.product_code
+                    ) = 1 THEN 1
+                    ELSE 0
+                END AS is_first_pay_auth_account,
+                CASE
+                    -- sub_user 단위는 JOIN이 직접 매칭이므로 p 매칭 여부로 바로 판정
+                    WHEN p.joyple_game_code IS NOT NULL THEN 0
+                    WHEN ROW_NUMBER() OVER (
+                        PARTITION BY b.joyple_game_code, b.auth_account_name, b.game_sub_user_name
+                        ORDER BY b.log_time, b.product_code
+                    ) = 1 THEN 1
+                    ELSE 0
+                END AS is_first_pay_game_sub_user
+            FROM base b
+            LEFT JOIN prev_paid p
+                ON b.joyple_game_code = p.joyple_game_code
+                AND b.auth_account_name = p.auth_account_name
+                AND b.game_sub_user_name = p.game_sub_user_name
+            ) as source
+            ON target.datekey = source.datekey
+            AND target.joyple_game_code = source.joyple_game_code
+            AND target.auth_account_name = source.auth_account_name
+            AND target.game_sub_user_name = source.game_sub_user_name
+            AND target.order_id = source.order_id
+            AND target.product_code = source.product_code
+            AND target.log_time = source.log_time
+            WHEN NOT MATCHED BY target THEN
+            INSERT (
+            datekey,
+            log_time,
+            reg_datekey,
+            reg_datediff,
+            reg_country_code,
+            game_id,
+            joyple_game_code,
+            game_account_name,
+            game_sub_user_name,
+            auth_method_id,
+            auth_account_name,
+            server_name,
+            device_id,
+            country_code,
+            market_id,
+            os_id,
+            pg_id,
+            platform_device_type,
+            game_user_level,
+            product_code,
+            product_name,
+            revenue,
+            buy_cnt,
+            order_id,
+            is_first_pay_auth_account,
+            is_first_pay_game_sub_user
+            )
+            VALUES (
+            source.datekey,
+            source.log_time,
+            source.reg_datekey,
+            source.reg_datediff,
+            source.reg_country_code,
+            source.game_id,
+            source.joyple_game_code,
+            source.game_account_name,
+            source.game_sub_user_name,
+            source.auth_method_id,
+            source.auth_account_name,
+            source.server_name,
+            source.device_id,
+            source.country_code,
+            source.market_id,
+            source.os_id,
+            source.pg_id,
+            source.platform_device_type,
+            source.game_user_level,
+            source.product_code,
+            source.product_name,
+            source.revenue,
+            source.buy_cnt,
+            source.order_id,
+            source.is_first_pay_auth_account,
+            source.is_first_pay_game_sub_user
+            );
+        """
+
+        query_job = client.query(query)
+
+        try:
+            query_job.result()
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} f_common_payment_raw Batch 완료")
+
+        except Exception as e:
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+
+    print("✅ f_common_payment_raw ETL 완료")
+    return True
+
+
