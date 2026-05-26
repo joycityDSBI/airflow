@@ -62,50 +62,75 @@ def etl_f_common_goods(target_date: list, client):
             ),
             GoodsUseCount_Package AS (
                 SELECT a.*
-                     , b.PackageKind
-                     , b.CouponKind
-                     , b.DiscountRate
-                     , b.DiscountPrice
+                     , b.package_kind
+                     , b.coupon_kind
+                     , b.discount_rate
+                     , b.discount_price
                 FROM GoodsUseCount AS a
                 LEFT JOIN (
                     SELECT joyple_game_code
                         , order_id
-                        , package_kind  AS PackageKind
-                        , coupon_kind   AS CouponKind
-                        , discount_rate AS DiscountRate
-                        , discount_price AS DiscountPrice
+                        , package_kind
+                        , coupon_kind
+                        , discount_rate
+                        , discount_price
                         , ROW_NUMBER() OVER (PARTITION BY joyple_game_code, order_id ORDER BY log_time DESC) AS row_
                     FROM `dataplatform-204306.CommonLog.Package`
                     WHERE log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
                       AND log_time <  TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
                 ) AS b ON a.order_id = b.order_id AND a.joyple_game_code = b.joyple_game_code AND b.row_ = 1
+            ),
+            RegisterDim AS (
+                SELECT joyple_game_code
+                     , auth_account_name
+                     , reg_datekey
+                     , reg_country_code
+                FROM (
+                    SELECT joyple_game_code
+                         , auth_account_name
+                         , reg_datekey
+                         , reg_country_code
+                         , ROW_NUMBER() OVER (
+                               PARTITION BY joyple_game_code, auth_account_name
+                               ORDER BY reg_datetime ASC
+                           ) AS rn
+                    FROM `datahub-478802.datahub.f_common_register`
+                    WHERE reg_datekey <= DATE('{td_str}')
+                )
+                WHERE rn = 1
             )
 
-            SELECT joyple_game_code
-                 , server_name
-                 , app_id
-                 , datekey
-                 , auth_account_name
-                 , game_sub_user_name
-                 , game_user_level
-                 , market_id
-                 , os_id
-                 , platform_device_type
-                 , tracker_type_id
-                 , goods_name
-                 , order_id
-                 , action_id
-                 , action_name
-                 , action_category_name
-                 , add_or_spend
-                 , free_goods_amount
-                 , paid_goods_amount
-                 , total_goods_amount
-                 , PackageKind
-                 , CouponKind
-                 , DiscountRate
-                 , DiscountPrice
-            FROM GoodsUseCount_Package
+            SELECT g.joyple_game_code
+                 , g.server_name
+                 , g.app_id
+                 , g.datekey
+                 , g.auth_account_name
+                 , g.game_sub_user_name
+                 , g.game_user_level
+                 , g.market_id
+                 , g.os_id
+                 , g.platform_device_type
+                 , g.tracker_type_id
+                 , g.goods_name
+                 , g.order_id
+                 , g.action_id
+                 , g.action_name
+                 , g.action_category_name
+                 , g.add_or_spend
+                 , g.free_goods_amount
+                 , g.paid_goods_amount
+                 , g.total_goods_amount
+                 , g.package_kind
+                 , g.coupon_kind
+                 , g.discount_rate
+                 , g.discount_price
+                 , r.reg_datekey
+                 , DATE_DIFF(g.datekey, r.reg_datekey, DAY) AS reg_datediff
+                 , r.reg_country_code
+            FROM GoodsUseCount_Package AS g
+            LEFT JOIN RegisterDim AS r
+              ON g.joyple_game_code  = r.joyple_game_code
+             AND g.auth_account_name = r.auth_account_name
         ) AS S
         ON  T.joyple_game_code       = S.joyple_game_code
         AND T.server_name            = S.server_name
@@ -129,21 +154,26 @@ def etl_f_common_goods(target_date: list, client):
                 T.free_goods_amount  = S.free_goods_amount,
                 T.paid_goods_amount  = S.paid_goods_amount,
                 T.total_goods_amount = S.total_goods_amount,
-                T.PackageKind        = S.PackageKind,
-                T.CouponKind         = S.CouponKind,
-                T.DiscountRate       = S.DiscountRate,
-                T.DiscountPrice      = S.DiscountPrice
+                T.package_kind       = S.package_kind,
+                T.coupon_kind        = S.coupon_kind,
+                T.discount_rate      = S.discount_rate,
+                T.discount_price     = S.discount_price,
+                T.reg_datekey        = S.reg_datekey,
+                T.reg_datediff       = S.reg_datediff,
+                T.reg_country_code   = S.reg_country_code
         WHEN NOT MATCHED THEN
             INSERT (joyple_game_code, server_name, app_id, datekey, auth_account_name, game_sub_user_name,
                     game_user_level, market_id, os_id, platform_device_type, tracker_type_id, goods_name,
                     order_id, action_id, action_name, action_category_name, add_or_spend,
                     free_goods_amount, paid_goods_amount, total_goods_amount,
-                    PackageKind, CouponKind, DiscountRate, DiscountPrice)
+                    package_kind, coupon_kind, discount_rate, discount_price,
+                    reg_datekey, reg_datediff, reg_country_code)
             VALUES (S.joyple_game_code, S.server_name, S.app_id, S.datekey, S.auth_account_name, S.game_sub_user_name,
                     S.game_user_level, S.market_id, S.os_id, S.platform_device_type, S.tracker_type_id, S.goods_name,
                     S.order_id, S.action_id, S.action_name, S.action_category_name, S.add_or_spend,
                     S.free_goods_amount, S.paid_goods_amount, S.total_goods_amount,
-                    S.PackageKind, S.CouponKind, S.DiscountRate, S.DiscountPrice)
+                    S.package_kind, S.coupon_kind, S.discount_rate, S.discount_price,
+                    S.reg_datekey, S.reg_datediff, S.reg_country_code)
         """
 
         query_job = client.query(query)

@@ -63,6 +63,9 @@ pytz>=2023.0
 # Notion
 notion-client>=2.0,<2.5
 
+# X (Twitter) API
+tweepy>=4.14,<5.0
+
 # Notebook & Framework
 nest-asyncio>=1.5,<1.7
 playwright>=1.40,<1.50  # 1.55.0은 Python 3.9+ 필요
