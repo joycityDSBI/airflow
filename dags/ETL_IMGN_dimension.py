@@ -137,7 +137,7 @@ with DAG(
     dag_id='ETL_IMGN_dimension',
     default_args=default_args,
     description='IMGN dimension 테이블 ETL (KST D-1 기준)',
-    schedule="0 21 * * *",  # KST 06:00 (UTC 21:00 전날)
+    schedule="00 22 * * *",  # KST 06:30 (UTC 21:30 전날)
     start_date=datetime(2025, 1, 1),
     catchup=False,
     tags=['ETL', 'IMGN', 'dim'],
