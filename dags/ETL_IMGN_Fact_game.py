@@ -32,7 +32,7 @@ def etl_f_game_exchange(target_date: list, client):
                     LogDate_Svr,
                     UserID,
                     UserLevel,
-                    WorldID AS server_name,
+                    cast(WorldID AS STRING) AS server_name,
                     Reason,
                     p0, p1, p2, p3, p5, p6, p7, p8, p12
                 FROM `dataplatform-204306.IMGN.T_Log_Game`
