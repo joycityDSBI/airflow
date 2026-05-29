@@ -130,7 +130,7 @@ def etl_f_game_exchange(target_date: list, client):
                     a.game_sub_user_name,
                     b.reg_datekey,
                     DATE_DIFF(a.datekey, b.reg_datekey, DAY)             AS reg_datediff,
-                    b.reg_country_code,
+                    b.country_code                                       as reg_country_code,
                     b.game_sub_user_reg_datekey,
                     a.game_user_level,
                     a.server_name,
