@@ -98,7 +98,7 @@ def adjust_dim_item_kind(**context):
         -- TODO: item_name 매핑 테이블 확정 후 source 쿼리 작성
         SELECT
             CAST(NULL AS INT64)  AS joyple_game_code,
-            CAST(NULL AS STRING) AS item_kind,
+            CAST(NULL AS INT64) AS item_kind,
             CAST(NULL AS STRING) AS item_name
         WHERE FALSE
     ) AS source
@@ -148,10 +148,11 @@ with DAG(
         python_callable=etl_dim_item_kind,
     )
 
-    adjust_dim_item_kind_task = PythonOperator(
-        task_id='adjust_dim_item_kind',
-        python_callable=adjust_dim_item_kind,
-    )
+    # adjust_dim_item_kind_task는 item_name 매핑 source 확정 후 아래 주석 해제
+    # adjust_dim_item_kind_task = PythonOperator(
+    #     task_id='adjust_dim_item_kind',
+    #     python_callable=adjust_dim_item_kind,
+    # )
 
     bash_task = BashOperator(
         task_id='bash_task',
