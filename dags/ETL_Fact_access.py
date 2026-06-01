@@ -629,6 +629,8 @@ def adjust_f_common_register_char(target_date:list, client):
             , joyple_game_code
             , auth_method_id
             , auth_account_name
+            , game_sub_user_name
+            , server_name
             , tracker_account_id
             , tracker_type_id
             , device_id
@@ -652,6 +654,8 @@ def adjust_f_common_register_char(target_date:list, client):
             , source.joyple_game_code
             , source.auth_method_id
             , source.auth_account_name
+            , source.game_sub_user_name
+            , source.server_name
             , source.tracker_account_id
             , source.tracker_type_id
             , source.device_id
