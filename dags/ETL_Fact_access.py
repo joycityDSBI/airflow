@@ -608,6 +608,8 @@ def adjust_f_common_register_char(target_date:list, client):
                 from `dataplatform-reporting.DataService.V_0156_0000_CommonLogPaymentFix_V`
                 where logTime >= '{start_utc}'
                 and logTime < '{end_utc}'
+                and GameSubUserName is not null            
+                and GameSubUserName not in ('', '0')        
                 group by joyple_game_code, auth_account_name, game_sub_user_name
             ) TA
             left join
