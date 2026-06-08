@@ -622,7 +622,7 @@ def generate_agency_reports(**context):
         try:
             agency_filter_condition = ""
             if agency_name == 'dotlab':
-                agency_filter_condition = "AND media_category in ('ADNW', 'adnw-pre', 'ADNW-Pre') AND agency IN ('dotlab','NULL', 'webmediail626', 'tyrads')"
+                agency_filter_condition = "AND media_category in ('ADNW', 'adnw-pre', 'ADNW-Pre') AND agency IN ('dotlab','NULL', 'webmediail626', 'tyrads', 'appsamurai')"
             elif agency_name == 'Nasmedia':
                 agency_filter_condition = """
                 AND (
@@ -634,6 +634,10 @@ def generate_agency_reports(**context):
                     (media_category = 'ADNW' AND agency = 'NULL' AND regdate_joyple_kst >= '2023-03-13' AND media_source IN ('Ironsource')) OR
                     (media_category = 'ADNW' AND agency = 'NULL' AND regdate_joyple_kst >= '2023-03-20' AND media_source IN ('Tapjoy'))
                 )
+                """
+            elif agency_name == 'TCI':
+                agency_filter_condition = """
+                AND media_category = 'ADNW' AND agency = 'TCI'
                 """
 
             base_query = f"""
