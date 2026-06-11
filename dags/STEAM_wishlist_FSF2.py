@@ -36,6 +36,8 @@ BQ_TABLE_TRAFFIC_BREAKDOWN = 'steam_traffic_breakdown'
 BQ_TABLE_TRAFFIC_COUNTRY = 'steam_traffic_country'
 BQ_TABLE_UTM_VISITS = 'steam_utm_country'
 BQ_TABLE_UTM_DAILY = 'steam_utm_visits_conversions'
+BQ_TABLE_WISHLIST_LANGUAGE = 'steam_wishlist_language'
+WISHLIST_LANGUAGE_BACKFILL_START = '2026-03-16'
 CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
 APP_ID = '4004820'
@@ -697,6 +699,106 @@ def upsert_discord_members_to_notion():
         print(f"Created Notion page for {today_kst}: members={member_count}")
 
 
+def fetch_steam_wishlist_language_for_date(date_str: str) -> pd.DataFrame:
+    """
+    Steam Partner Web API 로 특정 날짜의 country별 wishlist 데이터를 가져옵니다.
+    date_str: YYYY-MM-DD
+    """
+    api_key = get_var('STEAM_WEB_API_KEY')
+    url_date = date_str.replace('-', '')  # YYYYMMDD
+    url = (
+        "https://partner.steam-api.com/IPartnerFinancialsService/"
+        f"GetAppWishlistReporting/v001/?key={api_key}&appid={APP_ID}&date={url_date}"
+    )
+
+    response = requests.get(url, timeout=60)
+    if response.status_code != 200:
+        logger.error(f"[wishlist_language {date_str}] HTTP {response.status_code}: {response.text[:500]}")
+        response.raise_for_status()
+
+    payload = response.json().get('response', {})
+    country_summary = payload.get('country_summary', [])
+
+    if not country_summary:
+        print(f"[wishlist_language {date_str}] country_summary 비어있음 - skip")
+        return pd.DataFrame()
+
+    rows = []
+    for c in country_summary:
+        actions = c.get('summary_actions', {})
+        rows.append({
+            'datekey': pd.to_datetime(date_str).date(),
+            'game_name': GAME_NAME,
+            'country_code': c.get('country_code', ''),
+            'region': c.get('region', ''),
+            'wishlist_adds': int(actions.get('wishlist_adds', 0) or 0),
+            'wishlist_deletes': int(actions.get('wishlist_deletes', 0) or 0),
+            'wishlist_purchases': int(actions.get('wishlist_purchases', 0) or 0),
+            'wishlist_gifts': int(actions.get('wishlist_gifts', 0) or 0),
+            'wishlist_adds_windows': int(actions.get('wishlist_adds_windows', 0) or 0),
+            'wishlist_adds_mac': int(actions.get('wishlist_adds_mac', 0) or 0),
+            'wishlist_adds_linux': int(actions.get('wishlist_adds_linux', 0) or 0),
+        })
+
+    df = pd.DataFrame(rows)
+    print(f"[wishlist_language {date_str}] 수집 완료: {len(df)}행")
+    return df
+
+
+def steam_wishlist_language_to_bigquery():
+    """
+    Steam Partner Web API 로 country별 wishlist 데이터 수집 → steam_wishlist_language upsert.
+    - 첫 실행: WISHLIST_LANGUAGE_BACKFILL_START ~ 어제까지 백필
+    - 이후 실행: max(datekey) - 3일 ~ 어제까지 (overlap upsert로 보정)
+    """
+    client = init_clients()["bq_client"]
+    target_table = f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_WISHLIST_LANGUAGE}"
+
+    try:
+        result = client.query(
+            f"SELECT MAX(datekey) AS max_d FROM `{target_table}` WHERE game_name = '{GAME_NAME}'"
+        ).result()
+        max_date = list(result)[0].max_d
+    except Exception as e:
+        logger.warning(f"max(datekey) 조회 실패 (테이블 미존재 가능): {e}")
+        max_date = None
+
+    today = datetime.now().date()
+    end_date = today - timedelta(days=1)
+
+    if max_date is None:
+        start_date = datetime.strptime(WISHLIST_LANGUAGE_BACKFILL_START, "%Y-%m-%d").date()
+    else:
+        start_date = max_date - timedelta(days=3)
+
+    if start_date > end_date:
+        print(f"수집 대상 없음: start={start_date}, end={end_date}")
+        return
+
+    all_dfs = []
+    current = start_date
+    while current <= end_date:
+        date_str = current.strftime("%Y-%m-%d")
+        print(f"[wishlist_language] {date_str} 수집 중...")
+        df = fetch_steam_wishlist_language_for_date(date_str)
+        if not df.empty:
+            all_dfs.append(df)
+        current += timedelta(days=1)
+        time.sleep(1)
+
+    if not all_dfs:
+        print("수집된 데이터 없음")
+        return
+
+    df_all = pd.concat(all_dfs, ignore_index=True)
+    print(f"[wishlist_language] 전체 수집: {len(df_all)}행")
+
+    upsert_df_to_bigquery(
+        client, df_all, target_table,
+        merge_keys=['datekey', 'game_name', 'country_code']
+    )
+
+
 # DAG 기본 설정
 default_args = {
     'owner': 'airflow',
@@ -718,9 +820,14 @@ with DAG(
 ) as dag:
 
 
-    upload_to_bigquery_task = PythonOperator(
-        task_id='upload_to_bigquery_task',
+    csv_upload_to_bigquery_task = PythonOperator(
+        task_id='csv_upload_to_bigquery_task',
         python_callable=upsert_to_bigquery
+    )
+
+    api_upload_bigquery_task = PythonOperator(
+        task_id='api_upload_bigquery_task',
+        python_callable=steam_wishlist_language_to_bigquery
     )
 
     upload_to_notion_task = PythonOperator(
@@ -749,4 +856,4 @@ with DAG(
         python_callable=steam_utm_daily_to_bigquery
     )
 
-    upload_discord_members_to_notion_task >> upload_to_bigquery_task >> upload_to_notion_task >> upload_steam_traffic_task >> upload_steam_utm_task >> upload_steam_utm_daily_task 
+    upload_discord_members_to_notion_task >> csv_upload_to_bigquery_task >> api_upload_bigquery_task >> upload_to_notion_task >> upload_steam_traffic_task >> upload_steam_utm_task >> upload_steam_utm_daily_task
