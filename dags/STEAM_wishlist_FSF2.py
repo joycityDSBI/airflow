@@ -701,7 +701,7 @@ def upsert_discord_members_to_notion():
 
 def fetch_steam_wishlist_language_for_date(date_str: str) -> pd.DataFrame:
     """
-    Steam Partner Web API 로 특정 날짜의 country별 wishlist 데이터를 가져옵니다.
+    Steam Partner Web API 로 특정 날짜의 language별 wishlist 데이터를 가져옵니다.
     date_str: YYYY-MM-DD
     """
     api_key = get_var('STEAM_WEB_API_KEY')
@@ -717,20 +717,20 @@ def fetch_steam_wishlist_language_for_date(date_str: str) -> pd.DataFrame:
         response.raise_for_status()
 
     payload = response.json().get('response', {})
-    country_summary = payload.get('country_summary', [])
+    language_summary = payload.get('language_summary', [])
 
-    if not country_summary:
-        print(f"[wishlist_language {date_str}] country_summary 비어있음 - skip")
+    if not language_summary:
+        print(f"[wishlist_language {date_str}] language_summary 비어있음 - skip")
         return pd.DataFrame()
 
     rows = []
-    for c in country_summary:
+    for c in language_summary:
         actions = c.get('summary_actions', {})
         rows.append({
             'datekey': pd.to_datetime(date_str).date(),
             'game_name': GAME_NAME,
-            'country_code': c.get('country_code', ''),
-            'region': c.get('region', ''),
+            'language': int(c.get('language', 0) or 0),
+            'language_name': c.get('language_name', ''),
             'wishlist_adds': int(actions.get('wishlist_adds', 0) or 0),
             'wishlist_deletes': int(actions.get('wishlist_deletes', 0) or 0),
             'wishlist_purchases': int(actions.get('wishlist_purchases', 0) or 0),
@@ -747,7 +747,7 @@ def fetch_steam_wishlist_language_for_date(date_str: str) -> pd.DataFrame:
 
 def steam_wishlist_language_to_bigquery():
     """
-    Steam Partner Web API 로 country별 wishlist 데이터 수집 → steam_wishlist_language upsert.
+    Steam Partner Web API 로 language별 wishlist 데이터 수집 → steam_wishlist_language upsert.
     - 첫 실행: WISHLIST_LANGUAGE_BACKFILL_START ~ 어제까지 백필
     - 이후 실행: max(datekey) - 3일 ~ 어제까지 (overlap upsert로 보정)
     """
@@ -795,7 +795,7 @@ def steam_wishlist_language_to_bigquery():
 
     upsert_df_to_bigquery(
         client, df_all, target_table,
-        merge_keys=['datekey', 'game_name', 'country_code']
+        merge_keys=['datekey', 'game_name', 'language_name']
     )
 
 
