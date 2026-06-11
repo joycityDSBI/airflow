@@ -1602,6 +1602,12 @@ def etl_dim_ip4_country_code(**context):
                     AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
                 GROUP BY a.ip
                 UNION ALL
+                SELECT a.ip6 AS A.ip, MAX(a.log_time) AS UpdatedTimestamp
+                FROM `dataplatform-204306.CommonLog.Access` AS a
+                WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                    AND a.log_time < TIMESTAMP('{end_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
+                GROUP BY a.ip6
+                UNION ALL
                 SELECT a.ip, MAX(a.log_time) AS UpdatedTimestamp
                 FROM `dataplatform-204306.CommonLog.Payment` AS a
                 WHERE a.log_time >= TIMESTAMP('{start_utc.strftime("%Y-%m-%d %H:%M:%S %Z")}')
