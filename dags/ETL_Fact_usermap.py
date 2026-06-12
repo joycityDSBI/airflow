@@ -247,6 +247,106 @@ def etl_f_user_map(target_date: list, client):
     return True
 
 
+def update_pc_tracker_f_user_map(target_date: list, client):
+    """PC(reg_platform_device_type 2,4) 사용자 중 first_tracking_datekey IS NULL 인 user_map 행을
+    cr 이 보정된 경우 cascading 으로 사후 보정. (datekey, joyple_game_code, auth_account_name) 단위 N행 갱신.
+    D-2~D 윈도우, 1회성(멱등)."""
+    for td_str in target_date:
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        start_datekey = (current_date_obj - timedelta(days=2)).strftime("%Y-%m-%d")
+        end_datekey = current_date_obj.strftime("%Y-%m-%d")
+
+        print(f"📝 PC tracker 사후 보정(user_map) 대상 reg_datekey: {start_datekey} ~ {end_datekey}")
+
+        query = f"""
+        MERGE `datahub-478802.datahub.f_user_map` AS T
+        USING (
+            SELECT
+                um.datekey,
+                um.joyple_game_code,
+                um.auth_account_name,
+                cr.reg_country_code,
+                cr.tracker_account_id,
+                cr.tracker_type_id,
+                cr.app_id,
+                cr.media_source,
+                cr.bundle_id,
+                cr.is_organic,
+                cr.agency,
+                cr.campaign,
+                cr.init_campaign,
+                cr.adset_name,
+                cr.ad_name,
+                cr.is_retargeting,
+                cr.advertising_id,
+                cr.idfa,
+                cr.site_id,
+                cr.channel,
+                cr.CB1_media_source, cr.CB1_campaign,
+                cr.CB2_media_source, cr.CB2_campaign,
+                cr.CB3_media_source, cr.CB3_campaign,
+                cr.first_tracking_datekey,
+                DATE_DIFF(um.datekey, cr.first_tracking_datekey, DAY) AS datediff_first_tracking
+            FROM `datahub-478802.datahub.f_user_map` um
+            JOIN `datahub-478802.datahub.f_common_register` cr
+              ON  um.joyple_game_code = cr.joyple_game_code
+             AND CAST(um.auth_account_name AS STRING) = CAST(cr.auth_account_name AS STRING)
+            WHERE um.datekey >= '{start_datekey}'
+              AND um.reg_datekey BETWEEN '{start_datekey}' AND '{end_datekey}'
+              AND um.reg_platform_device_type IN (2, 4)
+              AND um.first_tracking_datekey IS NULL
+              AND cr.first_tracking_datekey IS NOT NULL
+        ) AS S
+        ON  T.datekey            = S.datekey
+        AND T.joyple_game_code   = S.joyple_game_code
+        AND CAST(T.auth_account_name AS STRING) = CAST(S.auth_account_name AS STRING)
+        WHEN MATCHED THEN UPDATE SET
+            T.reg_country_code        = S.reg_country_code,
+            T.tracker_account_id      = S.tracker_account_id,
+            T.tracker_type_id         = S.tracker_type_id,
+            T.app_id                  = S.app_id,
+            T.media_source            = S.media_source,
+            T.bundle_id               = S.bundle_id,
+            T.is_organic              = S.is_organic,
+            T.agency                  = S.agency,
+            T.campaign                = S.campaign,
+            T.init_campaign           = S.init_campaign,
+            T.adset_name              = S.adset_name,
+            T.ad_name                 = S.ad_name,
+            T.is_retargeting          = S.is_retargeting,
+            T.advertising_id          = S.advertising_id,
+            T.idfa                    = S.idfa,
+            T.site_id                 = S.site_id,
+            T.channel                 = S.channel,
+            T.CB1_media_source        = S.CB1_media_source,
+            T.CB1_campaign            = S.CB1_campaign,
+            T.CB2_media_source        = S.CB2_media_source,
+            T.CB2_campaign            = S.CB2_campaign,
+            T.CB3_media_source        = S.CB3_media_source,
+            T.CB3_campaign            = S.CB3_campaign,
+            T.first_tracking_datekey  = S.first_tracking_datekey,
+            T.datediff_first_tracking = S.datediff_first_tracking
+        """
+
+        query_job = client.query(query)
+        try:
+            query_job.result()
+            print(f"📊 PC tracker 사후 보정(user_map) 갱신 행 수: {query_job.num_dml_affected_rows}")
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} update_pc_tracker_f_user_map Batch 완료")
+        except Exception as e:
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+
+    print("✅ update_pc_tracker_f_user_map ETL 완료")
+    return True
+
+
 def etl_f_user_map_char(target_date: list, client):
 
     for td in target_date:

@@ -380,7 +380,8 @@ def update_pc_tracker_f_common_register(target_date: list, client):
             ) AS J
               ON cr.joyple_game_code  = J.joyple_game_code
              AND cr.auth_account_name = J.auth_account_name
-            WHERE cr.reg_datekey BETWEEN '{start_datekey}' AND '{end_datekey}'
+            WHERE tf.first_tracking_datekey >= '{start_datekey}'
+              AND cr.reg_datekey BETWEEN '{start_datekey}' AND '{end_datekey}'
               AND cr.platform_device_type IN (2, 4)
               AND cr.first_tracking_datekey IS NULL
         ) AS S
@@ -800,6 +801,67 @@ def adjust_f_common_register_char(target_date:list, client):
             raise e
     
     print("✅ adjust_common_register_char ETL 완료")
+    return True
+
+
+def update_pc_tracker_f_common_register_char(target_date: list, client):
+    """PC(cr.platform_device_type 2,4) 캐릭터 중 media_source='Unknown'(=PC 지연으로 tracker 못 받은 행)을
+    cr 이 Step 3 에서 실제값을 받은 경우 cascading 으로 사후 보정. D-2~D 윈도우, 1회성(멱등)."""
+    for td_str in target_date:
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        start_datekey = (current_date_obj - timedelta(days=2)).strftime("%Y-%m-%d")
+        end_datekey = current_date_obj.strftime("%Y-%m-%d")
+
+        print(f"📝 PC tracker 사후 보정(char) 대상 reg_datekey: {start_datekey} ~ {end_datekey}")
+
+        query = f"""
+        MERGE `datahub-478802.datahub.f_common_register_char` AS T
+        USING (
+            SELECT
+                ch.joyple_game_code,
+                ch.auth_account_name,
+                ch.game_sub_user_name,
+                IFNULL(cr.reg_country_code, ch.country_code) AS country_code,
+                cr.app_id,
+                cr.media_source,
+                cr.init_campaign,
+                cr.adset_name
+            FROM `datahub-478802.datahub.f_common_register_char` ch
+            JOIN `datahub-478802.datahub.f_common_register` cr
+              ON  ch.joyple_game_code = cr.joyple_game_code
+             AND CAST(ch.auth_account_name AS STRING) = CAST(cr.auth_account_name AS STRING)
+            WHERE ch.reg_datekey BETWEEN '{start_datekey}' AND '{end_datekey}'
+              AND cr.platform_device_type IN (2, 4)
+              AND ch.media_source = 'Unknown'
+              AND cr.media_source != 'Unknown'
+        ) AS S
+        ON  T.joyple_game_code = S.joyple_game_code
+        AND CAST(T.auth_account_name AS STRING) = CAST(S.auth_account_name AS STRING)
+        AND T.game_sub_user_name = S.game_sub_user_name
+        WHEN MATCHED THEN UPDATE SET
+            T.country_code   = S.country_code,
+            T.app_id         = S.app_id,
+            T.media_source   = S.media_source,
+            T.init_campaign  = S.init_campaign,
+            T.adset_name     = S.adset_name
+        """
+
+        query_job = client.query(query)
+        try:
+            query_job.result()
+            print(f"📊 PC tracker 사후 보정(char) 갱신 행 수: {query_job.num_dml_affected_rows}")
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} update_pc_tracker_f_common_register_char Batch 완료")
+        except Exception as e:
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+
+    print("✅ update_pc_tracker_f_common_register_char ETL 완료")
     return True
 
 
