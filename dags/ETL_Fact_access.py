@@ -325,6 +325,109 @@ def adjust_f_common_register(target_date: list, client):
     return True
 
 
+def update_pc_tracker_f_common_register(target_date: list, client):
+    """PC(platform_device_type 2,4) 가입자 중 first_tracking_datekey가 NULL인 행을 D-2~D 윈도우로 1회 사후 보정."""
+    for td_str in target_date:
+        try:
+            current_date_obj = datetime.strptime(td_str, "%Y-%m-%d")
+        except ValueError:
+            print(f"⚠️ 날짜 형식이 잘못되었습니다: {td_str}")
+            continue
+
+        start_datekey = (current_date_obj - timedelta(days=2)).strftime("%Y-%m-%d")
+        end_datekey = current_date_obj.strftime("%Y-%m-%d")
+
+        print(f"📝 PC tracker 사후 보정 대상 reg_datekey: {start_datekey} ~ {end_datekey}")
+
+        query = f"""
+        MERGE `datahub-478802.datahub.f_common_register` AS T
+        USING (
+            SELECT
+                cr.joyple_game_code,
+                cr.auth_account_name,
+                IFNULL(tf.country_code, cr.reg_country_code) AS reg_country_code,
+                tf.app_id,
+                tf.bundle_id,
+                tf.country_code AS first_tracking_country_code,
+                IFNULL(tf.media_source, 'Unknown') AS media_source,
+                tf.media_source_cat,
+                IF(J.auth_account_name IS NOT NULL, 'Non-Organic', IFNULL(tf.is_organic, 'Unknown')) AS is_organic,
+                tf.agency,
+                COALESCE(J.Campaign_name, tf.campaign)            AS campaign,
+                COALESCE(J.Campaign_name, tf.init_campaign)       AS init_campaign,
+                tf.adset_name,
+                COALESCE(CAST(J.ad_name AS STRING), tf.ad_name)   AS ad_name,
+                tf.is_retargeting,
+                tf.advertising_id,
+                tf.idfa,
+                tf.site_id,
+                tf.channel,
+                tf.CB1_media_source, tf.CB1_campaign,
+                tf.CB2_media_source, tf.CB2_campaign,
+                tf.CB3_media_source, tf.CB3_campaign,
+                tf.first_tracking_datetime,
+                tf.first_tracking_datekey
+            FROM `datahub-478802.datahub.f_common_register` cr
+            JOIN `datahub-478802.datahub.f_tracker_first` tf
+              ON cr.tracker_account_id = tf.tracker_account_id
+             AND cr.tracker_type_id    = tf.tracker_type_id
+            LEFT JOIN (
+                SELECT a.*, b.* EXCEPT(campaign_name, joyple_game_code)
+                FROM `datahub-478802.datahub.pre_joytracking_tracker` AS a
+                LEFT JOIN `datahub-478802.datahub.dim_pccampaign_list_joytracking` AS b
+                  ON a.campaign_name = b.campaign_name
+                 AND a.joyple_game_code = b.joyple_game_code
+            ) AS J
+              ON cr.joyple_game_code  = J.joyple_game_code
+             AND cr.auth_account_name = J.auth_account_name
+            WHERE cr.reg_datekey BETWEEN '{start_datekey}' AND '{end_datekey}'
+              AND cr.platform_device_type IN (2, 4)
+              AND cr.first_tracking_datekey IS NULL
+        ) AS S
+        ON  T.joyple_game_code = S.joyple_game_code
+        AND CAST(T.auth_account_name AS STRING) = CAST(S.auth_account_name AS STRING)
+        WHEN MATCHED THEN UPDATE SET
+            T.reg_country_code            = S.reg_country_code,
+            T.app_id                      = S.app_id,
+            T.bundle_id                   = S.bundle_id,
+            T.first_tracking_country_code = S.first_tracking_country_code,
+            T.media_source                = S.media_source,
+            T.media_source_cat            = S.media_source_cat,
+            T.is_organic                  = S.is_organic,
+            T.agency                      = S.agency,
+            T.campaign                    = S.campaign,
+            T.init_campaign               = S.init_campaign,
+            T.adset_name                  = S.adset_name,
+            T.ad_name                     = S.ad_name,
+            T.is_retargeting              = S.is_retargeting,
+            T.advertising_id              = S.advertising_id,
+            T.idfa                        = S.idfa,
+            T.site_id                     = S.site_id,
+            T.channel                     = S.channel,
+            T.CB1_media_source            = S.CB1_media_source,
+            T.CB1_campaign                = S.CB1_campaign,
+            T.CB2_media_source            = S.CB2_media_source,
+            T.CB2_campaign                = S.CB2_campaign,
+            T.CB3_media_source            = S.CB3_media_source,
+            T.CB3_campaign                = S.CB3_campaign,
+            T.first_tracking_datetime     = S.first_tracking_datetime,
+            T.first_tracking_datekey      = S.first_tracking_datekey
+        """
+
+        query_job = client.query(query)
+        try:
+            query_job.result()
+            print(f"📊 PC tracker 사후 보정 갱신 행 수: {query_job.num_dml_affected_rows}")
+            print(f"✅ 쿼리 실행 성공! (Job ID: {query_job.job_id})")
+            print(f"■ {td_str} update_pc_tracker_f_common_register Batch 완료")
+        except Exception as e:
+            print(f"❌ 쿼리 실행 중 에러 발생: {e}")
+            raise e
+
+    print("✅ update_pc_tracker_f_common_register ETL 완료")
+    return True
+
+
 def etl_f_common_register_char(target_date:list, client):
 
     kst = pytz.timezone('Asia/Seoul')

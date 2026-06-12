@@ -84,6 +84,7 @@ def etl_fact_access(**context):
     try:
         etl_f_common_register(target_date=target_date, client=bq_client)
         adjust_f_common_register(target_date=target_date, client=bq_client)
+        update_pc_tracker_f_common_register(target_date=target_date, client=bq_client)
         etl_f_common_register_char(target_date=target_date, client=bq_client)
         adjust_f_common_register_char(target_date=target_date, client=bq_client)
         etl_f_common_access(target_date=target_date, client=bq_client)
