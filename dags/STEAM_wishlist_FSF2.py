@@ -713,7 +713,7 @@ def steam_wishlist_to_bigquery():
     target_table_language = f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_WISHLIST_LANGUAGE}"
     target_table_country = f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_ID}"
 
-    today = datetime.now().date()
+    today = datetime.now(timezone(timedelta(hours=9))).date()
 
     all_lang = []
     all_country = []
