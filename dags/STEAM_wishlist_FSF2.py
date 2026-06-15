@@ -37,11 +37,11 @@ BQ_TABLE_TRAFFIC_COUNTRY = 'steam_traffic_country'
 BQ_TABLE_UTM_VISITS = 'steam_utm_country'
 BQ_TABLE_UTM_DAILY = 'steam_utm_visits_conversions'
 BQ_TABLE_WISHLIST_LANGUAGE = 'steam_wishlist_language'
-WISHLIST_LANGUAGE_BACKFILL_START = '2026-03-16'
 CREDENTIALS_JSON = get_var('GOOGLE_CREDENTIAL_JSON')
 
 APP_ID = '4004820'
 GAME_NAME = 'FSF2'
+WISHLIST_GAME_NAME = 'FreeStyle Football 2'  # BQ steam_wishlist_region.game / Notion DB 와 일치하는 값
 
 def init_clients():
     """Task 내부에서 실행되어 필요한 클라이언트들을 생성하여 반환합니다."""
@@ -73,101 +73,32 @@ def get_gcp_credentials():
     )
 
 
-def steam_wishlist_to_bq_logic():
-    today = datetime.now().date()
-    seven_days_ago = today - timedelta(days=4)
-    start_date_str = seven_days_ago.strftime("%Y-%m-%d")
-    end_date_str = today.strftime("%Y-%m-%d")
-
-    url = (
-        f"https://partner.steampowered.com/report_csv.php?"
-        f"file=SteamRegionalWishlists_{APP_ID}_{start_date_str}_to_{end_date_str}&"
-        f"params=query=QueryWishlistActionsByCountryForCSV^appID={APP_ID}^"
-        f"dateStart={start_date_str}^dateEnd={end_date_str}^"
-        f"interpreter=WishlistCountryReportInterpreter"
-    )
-
-    pure_cookie_string = (
-        f"dateStart={start_date_str}; dateEnd={end_date_str}; "
-        f"priorDateStart={start_date_str}; priorDateEnd={end_date_str}; "
-        "steamCountry=KR%7Ca386dcd11830e0bc576765a90acdd364; "
-        f"steamLoginSecure={get_var('STEAM_LOGIN_SECURE_PARTNER')}"
-    )
-
-    cookie_dict = {}
-    for c in pure_cookie_string.split(';'):
-        if '=' in c:
-            key, value = c.split('=', 1)
-            key = key.strip()
-            value = value.strip()
-            try:
-                value.encode('latin-1')
-                cookie_dict[key] = value
-            except UnicodeEncodeError:
-                cookie_dict[key] = urllib.parse.quote(value)
-
-    headers = {
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
-        "referer": f"https://partner.steampowered.com/app/wishlist/{APP_ID}/"
-    }
-
-    response = requests.get(url, headers=headers, cookies=cookie_dict, timeout=60)
-    response.raise_for_status()
-
-    if "<html>" in response.text.lower():
-        raise Exception("Steam Session Expired! STEAM_LOGIN_SECURE_PARTNER 쿠키를 갱신하세요.")
-
-    df = pd.read_csv(io.StringIO(response.text), skiprows=2)
-
-    column_mapping = {
-        'DateLocal': 'datekey',
-        'Game': 'game',
-        'CountryCode': 'country_code',
-        'Region': 'region',
-        'Adds': 'adds',
-        'Deletes': 'deletes',
-        'PurchasesAndActivations': 'purchase_and_activations',
-        'Gifts': 'gifts'
-    }
-    df.rename(columns=column_mapping, inplace=True)
-    print(f"위시리스트 데이터 수집 완료: {len(df)}행 ({start_date_str} ~ {end_date_str})")
-    return df
-
-
-def upsert_to_bigquery():
-    """최근 7일 위시리스트 데이터를 BigQuery steam_wishlist_region에 Upsert합니다."""
-    client = init_clients()["bq_client"]
-    df = steam_wishlist_to_bq_logic()
-
-    if df.empty:
-        print("No wishlist data to upsert.")
-        return
-
-    df['datekey'] = pd.to_datetime(df['datekey']).dt.date
-
-    for col in ['adds', 'deletes', 'purchase_and_activations', 'gifts']:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
-
-    upsert_df_to_bigquery(
-        client, df,
-        f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_ID}",
-        merge_keys=['datekey', 'game', 'country_code']
-    )
-
-
 def upsert_to_notion(key_columns: list):
-    
+
     from notion_client import Client
     notion_token = get_var('NOTION_TOKEN')
     notion = Client(auth = notion_token)
     notion_db_id = '32cea67a568180ce990ae74e85de7d3d'
-    
-    df = steam_wishlist_to_bq_logic()
+
+    # BigQuery steam_wishlist_region 에서 today-4 ~ yesterday (KST) 데이터 조회
+    bq_client = init_clients()["bq_client"]
+    query = f"""
+        SELECT datekey, game, country_code, region,
+               adds, deletes, purchase_and_activations, gifts
+        FROM `{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_ID}`
+        WHERE game = '{WISHLIST_GAME_NAME}'
+          AND datekey BETWEEN DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 4 DAY)
+                          AND DATE_SUB(CURRENT_DATE('Asia/Seoul'), INTERVAL 1 DAY)
+    """
+    df = bq_client.query(query).to_dataframe()
+    print(f"[Notion upsert] BQ 조회 결과: {len(df)}행")
 
     if df.empty:
         print("No data to upsert.")
         return
+
+    # datekey 를 date 객체로 정규화 → str() 시 'YYYY-MM-DD' 형태 보장
+    df['datekey'] = pd.to_datetime(df['datekey']).dt.date
 
     for _, row in df.iterrows():
         # 1. 다중 키를 이용한 필터 생성 (AND 조건)
@@ -699,9 +630,11 @@ def upsert_discord_members_to_notion():
         print(f"Created Notion page for {today_kst}: members={member_count}")
 
 
-def fetch_steam_wishlist_language_for_date(date_str: str) -> pd.DataFrame:
+def fetch_steam_wishlist_language_for_date(date_str: str):
     """
-    Steam Partner Web API 로 특정 날짜의 language별 wishlist 데이터를 가져옵니다.
+    Steam Partner Web API 로 특정 날짜의 wishlist 데이터를 가져옵니다.
+    동일 응답에 language_summary 와 country_summary 가 모두 포함되므로
+    한 번의 호출로 둘 다 파싱하여 (df_language, df_country) 튜플로 반환합니다.
     date_str: YYYY-MM-DD
     """
     api_key = get_var('STEAM_WEB_API_KEY')
@@ -713,90 +646,113 @@ def fetch_steam_wishlist_language_for_date(date_str: str) -> pd.DataFrame:
 
     response = requests.get(url, timeout=60)
     if response.status_code != 200:
-        logger.error(f"[wishlist_language {date_str}] HTTP {response.status_code}: {response.text[:500]}")
+        logger.error(f"[wishlist {date_str}] HTTP {response.status_code}: {response.text[:500]}")
         response.raise_for_status()
 
     payload = response.json().get('response', {})
     language_summary = payload.get('language_summary', [])
+    country_summary = payload.get('country_summary', [])
 
+    # language DataFrame
     if not language_summary:
         print(f"[wishlist_language {date_str}] language_summary 비어있음 - skip")
-        return pd.DataFrame()
+        df_language = pd.DataFrame()
+    else:
+        lang_rows = []
+        for c in language_summary:
+            actions = c.get('summary_actions', {})
+            lang_rows.append({
+                'datekey': pd.to_datetime(date_str).date(),
+                'game_name': GAME_NAME,
+                'language': int(c.get('language', 0) or 0),
+                'language_name': c.get('language_name', ''),
+                'wishlist_adds': int(actions.get('wishlist_adds', 0) or 0),
+                'wishlist_deletes': int(actions.get('wishlist_deletes', 0) or 0),
+                'wishlist_purchases': int(actions.get('wishlist_purchases', 0) or 0),
+                'wishlist_gifts': int(actions.get('wishlist_gifts', 0) or 0),
+                'wishlist_adds_windows': int(actions.get('wishlist_adds_windows', 0) or 0),
+                'wishlist_adds_mac': int(actions.get('wishlist_adds_mac', 0) or 0),
+                'wishlist_adds_linux': int(actions.get('wishlist_adds_linux', 0) or 0),
+            })
+        df_language = pd.DataFrame(lang_rows)
+        print(f"[wishlist_language {date_str}] 수집 완료: {len(df_language)}행")
 
-    rows = []
-    for c in language_summary:
-        actions = c.get('summary_actions', {})
-        rows.append({
-            'datekey': pd.to_datetime(date_str).date(),
-            'game_name': GAME_NAME,
-            'language': int(c.get('language', 0) or 0),
-            'language_name': c.get('language_name', ''),
-            'wishlist_adds': int(actions.get('wishlist_adds', 0) or 0),
-            'wishlist_deletes': int(actions.get('wishlist_deletes', 0) or 0),
-            'wishlist_purchases': int(actions.get('wishlist_purchases', 0) or 0),
-            'wishlist_gifts': int(actions.get('wishlist_gifts', 0) or 0),
-            'wishlist_adds_windows': int(actions.get('wishlist_adds_windows', 0) or 0),
-            'wishlist_adds_mac': int(actions.get('wishlist_adds_mac', 0) or 0),
-            'wishlist_adds_linux': int(actions.get('wishlist_adds_linux', 0) or 0),
-        })
+    # country DataFrame (기존 BQ steam_wishlist_region 스키마와 일치)
+    if not country_summary:
+        print(f"[wishlist_country {date_str}] country_summary 비어있음 - skip")
+        df_country = pd.DataFrame()
+    else:
+        country_rows = []
+        for c in country_summary:
+            actions = c.get('summary_actions', {})
+            country_rows.append({
+                'datekey': pd.to_datetime(date_str).date(),
+                'game': WISHLIST_GAME_NAME,
+                'country_code': c.get('country_code', ''),
+                'region': c.get('region', ''),
+                'adds': int(actions.get('wishlist_adds', 0) or 0),
+                'deletes': int(actions.get('wishlist_deletes', 0) or 0),
+                'purchase_and_activations': int(actions.get('wishlist_purchases', 0) or 0),
+                'gifts': int(actions.get('wishlist_gifts', 0) or 0),
+            })
+        df_country = pd.DataFrame(country_rows)
+        print(f"[wishlist_country {date_str}] 수집 완료: {len(df_country)}행")
 
-    df = pd.DataFrame(rows)
-    print(f"[wishlist_language {date_str}] 수집 완료: {len(df)}행")
-    return df
+    return df_language, df_country
 
 
-def steam_wishlist_language_to_bigquery():
+def steam_wishlist_to_bigquery():
     """
-    Steam Partner Web API 로 language별 wishlist 데이터 수집 → steam_wishlist_language upsert.
-    - 첫 실행: WISHLIST_LANGUAGE_BACKFILL_START ~ 어제까지 백필
-    - 이후 실행: max(datekey) - 3일 ~ 어제까지 (overlap upsert로 보정)
+    Steam Partner Web API 로 wishlist 데이터 수집 → BigQuery 두 테이블에 동시 upsert.
+    - 수집 범위: today-4 ~ yesterday (5일, today 제외)
+    - 한 번의 API 호출로 language / country 둘 다 파싱하여 각 테이블에 적재.
+    - language → steam_wishlist_language
+    - country  → steam_wishlist_region
     """
     client = init_clients()["bq_client"]
-    target_table = f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_WISHLIST_LANGUAGE}"
-
-    try:
-        result = client.query(
-            f"SELECT MAX(datekey) AS max_d FROM `{target_table}` WHERE game_name = '{GAME_NAME}'"
-        ).result()
-        max_date = list(result)[0].max_d
-    except Exception as e:
-        logger.warning(f"max(datekey) 조회 실패 (테이블 미존재 가능): {e}")
-        max_date = None
+    target_table_language = f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_WISHLIST_LANGUAGE}"
+    target_table_country = f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_ID}"
 
     today = datetime.now().date()
-    end_date = today - timedelta(days=1)
 
-    if max_date is None:
-        start_date = datetime.strptime(WISHLIST_LANGUAGE_BACKFILL_START, "%Y-%m-%d").date()
-    else:
-        start_date = max_date - timedelta(days=3)
-
-    if start_date > end_date:
-        print(f"수집 대상 없음: start={start_date}, end={end_date}")
-        return
-
-    all_dfs = []
-    current = start_date
-    while current <= end_date:
-        date_str = current.strftime("%Y-%m-%d")
-        print(f"[wishlist_language] {date_str} 수집 중...")
-        df = fetch_steam_wishlist_language_for_date(date_str)
-        if not df.empty:
-            all_dfs.append(df)
-        current += timedelta(days=1)
+    all_lang = []
+    all_country = []
+    # today-4 ~ yesterday (today-1) 범위, today 제외 → i = 1..4 (4일치)
+    for i in range(1, 5):
+        target_date = today - timedelta(days=i)
+        date_str = target_date.strftime("%Y-%m-%d")
+        print(f"[wishlist] {date_str} 수집 중...")
+        df_lang, df_country = fetch_steam_wishlist_language_for_date(date_str)
+        if not df_lang.empty:
+            all_lang.append(df_lang)
+        if not df_country.empty:
+            all_country.append(df_country)
         time.sleep(1)
 
-    if not all_dfs:
-        print("수집된 데이터 없음")
-        return
+    df_lang_all = pd.concat(all_lang, ignore_index=True) if all_lang else pd.DataFrame()
+    df_country_all = pd.concat(all_country, ignore_index=True) if all_country else pd.DataFrame()
 
-    df_all = pd.concat(all_dfs, ignore_index=True)
-    print(f"[wishlist_language] 전체 수집: {len(df_all)}행")
+    print(f"[wishlist] 전체 수집 - language: {len(df_lang_all)}행, country: {len(df_country_all)}행")
 
-    upsert_df_to_bigquery(
-        client, df_all, target_table,
-        merge_keys=['datekey', 'game_name', 'language_name']
-    )
+    if not df_lang_all.empty:
+        upsert_df_to_bigquery(
+            client, df_lang_all, target_table_language,
+            merge_keys=['datekey', 'game_name', 'language_name']
+        )
+    else:
+        print(f"language 데이터 없음, {target_table_language} skip")
+
+    if not df_country_all.empty:
+        df_country_all['datekey'] = pd.to_datetime(df_country_all['datekey']).dt.date
+        for col in ['adds', 'deletes', 'purchase_and_activations', 'gifts']:
+            if col in df_country_all.columns:
+                df_country_all[col] = pd.to_numeric(df_country_all[col], errors='coerce').fillna(0).astype(int)
+        upsert_df_to_bigquery(
+            client, df_country_all, target_table_country,
+            merge_keys=['datekey', 'game', 'country_code']
+        )
+    else:
+        print(f"country 데이터 없음, {target_table_country} skip")
 
 
 # DAG 기본 설정
@@ -820,14 +776,9 @@ with DAG(
 ) as dag:
 
 
-    csv_upload_to_bigquery_task = PythonOperator(
-        task_id='csv_upload_to_bigquery_task',
-        python_callable=upsert_to_bigquery
-    )
-
-    api_upload_bigquery_task = PythonOperator(
-        task_id='api_upload_bigquery_task',
-        python_callable=steam_wishlist_language_to_bigquery
+    wishlist_to_bigquery_task = PythonOperator(
+        task_id='wishlist_to_bigquery_task',
+        python_callable=steam_wishlist_to_bigquery
     )
 
     upload_to_notion_task = PythonOperator(
@@ -856,4 +807,8 @@ with DAG(
         python_callable=steam_utm_daily_to_bigquery
     )
 
-    upload_discord_members_to_notion_task >> csv_upload_to_bigquery_task >> api_upload_bigquery_task >> upload_to_notion_task >> upload_steam_traffic_task >> upload_steam_utm_task >> upload_steam_utm_daily_task
+    # wishlist 분기 (API 기반, 쿠키 무관)
+    upload_discord_members_to_notion_task >> wishlist_to_bigquery_task >> upload_to_notion_task
+
+    # 쿠키 기반 분기 (traffic / utm) — 실패해도 wishlist 분기에 영향 없음
+    upload_discord_members_to_notion_task >> upload_steam_traffic_task >> upload_steam_utm_task >> upload_steam_utm_daily_task
