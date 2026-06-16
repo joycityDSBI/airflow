@@ -50,12 +50,17 @@ FLAVOR_TARGETS = {
 }
 FLAVORS = list(FLAVOR_TARGETS.keys())
 
-# 장르별 facet 필터 — Steam Next Fest URL의 facets80225=<value> 파라미터를 그대로 AJAX 호출에 전달.
-# - all   : 필터 미적용 (전체 게임 대상 랭킹)
-# - sports: facets80225=0:7  → Sports 장르 한정 랭킹
+# 장르별 facet 필터 — AJAX 의 strFacetFilter 파라미터로 전달.
+# 페이지의 sale_item_browser 정의에서 facetValues[*].rgStoreTagFilter 와 동일한 형식
+#   {"type": 2, "value": <Steam Store TagID>}
+# 추가 장르가 필요하면 Steam Store TagID 만 알면 됨.
+# 참고 tagID: Sports=701, Racing=699, RPG=122, Action=19, eSports=5055,
+#             Co-op=1685, Local Co-Op=3841, Online Co-Op=3843
 GENRE_FACETS = {
-    "all":    {},
-    "sports": {"facets80225": "0:7"},
+    "all":         None,
+    "sports":      {"type": 2, "value": 701},
+    "esports":     {"type": 2, "value": 5055},
+    "online_coop": {"type": 2, "value": 3843},
 }
 GENRES = list(GENRE_FACETS.keys())
 
@@ -123,27 +128,32 @@ def fetch_event_context(flavor: str) -> dict:
     return ctx
 
 
-def iter_ranked_appids(ctx: dict, flavor: str, extra_params: Optional[dict] = None) -> Iterator[tuple]:
+def iter_ranked_appids(
+    ctx: dict,
+    flavor: str,
+    facet_filter: Optional[dict] = None,
+) -> Iterator[tuple]:
     """(rank, appid, match_count)를 순서대로 yield. dedup 적용.
 
-    extra_params: 장르 facet 필터 등 AJAX 호출에 추가로 합칠 파라미터.
+    facet_filter: rgStoreTagFilter 형식의 dict. 예: {"type": 2, "value": 701}.
+                  None 이면 필터 미적용.
     """
     seen: set = set()
     cursor = 0
     rank = 0
 
+    str_facet_filter = json.dumps(facet_filter) if facet_filter else ""
     base_params = {
         "cc": "US",
         "l": "english",
         "clanAccountID": ctx["clan_account_id"],
         "clanAnnouncementGID": ctx["announcement_gid"],
         "flavor": flavor,
-        "strFacetFilter": "",
+        "strFacetFilter": str_facet_filter,
         "tabuniqueid": TAB,
         "sectionuniqueid": ctx["section_unique_id"],
         "return_capsules": "false",
         "count": PAGE_SIZE,
-        **(extra_params or {}),
     }
 
     for page_idx in range(MAX_PAGES):
@@ -192,11 +202,11 @@ def find_rank_in_context(
     target_appid: int,
     flavor: str,
     genre: str,
-    extra_params: Optional[dict] = None,
+    facet_filter: Optional[dict] = None,
 ):
     """미리 fetch 한 ctx 위에서 target_appid의 순위를 찾는다. 없으면 (None, total)."""
     last_match_count: Optional[int] = None
-    for rank, appid, match_count in iter_ranked_appids(ctx, flavor, extra_params):
+    for rank, appid, match_count in iter_ranked_appids(ctx, flavor, facet_filter):
         last_match_count = match_count
         if appid == target_appid:
             logger.info(
@@ -262,9 +272,9 @@ def collect_and_load_nextfest_rank():
         ctx = fetch_event_context(flavor)
 
         for genre in GENRES:
-            extra_params = GENRE_FACETS[genre]
+            facet_filter = GENRE_FACETS[genre]
             rank, total_match_count = find_rank_in_context(
-                ctx, target_appid, flavor, genre, extra_params,
+                ctx, target_appid, flavor, genre, facet_filter,
             )
             rows.append({
                 "collected_at":      collected_at,
