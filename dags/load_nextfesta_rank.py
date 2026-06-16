@@ -318,8 +318,8 @@ default_args = {
 with DAG(
     dag_id="FSF2_steam_nextfest_rank",
     default_args=default_args,
-    description="Steam Next Fest에서 FSF2 순위를 3시간 마다 수집하여 BigQuery에 적재",
-    schedule="0 */3 * * *",  # 3시간 마다 정각 실행 (00, 03, 06, 09, 12, 15, 18, 21시)
+    description="Steam Next Fest에서 FSF2 순위를 1시간 마다 수집하여 BigQuery에 적재",
+    schedule="7 * * * *",  # 매시 7분 실행 (분 0 회피로 다른 cron 과의 부하 spike 분산)
     start_date=datetime(2026, 6, 1),
     catchup=False,
     max_active_runs=1,
