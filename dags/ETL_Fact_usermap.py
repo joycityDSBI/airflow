@@ -95,6 +95,7 @@ def etl_f_user_map(target_date: list, client):
                 , IF(C.daily_pu = 1 AND A.RU = 1, 1, 0) as NRPU
                 , H.game_sub_user_name_cnt
                 , I.products_array
+                , J.vip_grade
                 from
                 (
                     SELECT datekey, joyple_game_code, auth_account_name, MIN(auth_method_id) as auth_method_id
@@ -190,6 +191,28 @@ def etl_f_user_map(target_date: list, client):
                     GROUP BY joyple_game_code, auth_account_name
                 ) AS I
                 ON A.joyple_game_code = I.joyple_game_code AND A.auth_account_name  = I.auth_account_name
+                LEFT OUTER JOIN
+                (
+                    SELECT
+                      CAST(JoypleGameID AS INT64) AS joyple_game_code,
+                      CAST(AuthAccountName AS STRING) AS auth_account_name,
+                      CASE NULLIF(MAX(CASE UserGrade
+                            WHEN '플래티넘MVP' THEN 5
+                            WHEN '플래티넘'    THEN 4
+                            WHEN '골드'        THEN 3
+                            WHEN '실버'        THEN 2
+                            WHEN '브론즈'      THEN 1
+                            ELSE 0 END), 0)
+                        WHEN 5 THEN '플래티넘MVP'
+                        WHEN 4 THEN '플래티넘'
+                        WHEN 3 THEN '골드'
+                        WHEN 2 THEN '실버'
+                        WHEN 1 THEN '브론즈'
+                      END AS vip_grade
+                    FROM `dataplatform-bie-vip.VIP.V_1001_0000_VipUserForService_V`
+                    GROUP BY 1, 2
+                ) AS J
+                ON A.joyple_game_code = J.joyple_game_code AND A.auth_account_name = J.auth_account_name
         ) as source
         ON target.datekey = source.datekey
         AND target.joyple_game_code = source.joyple_game_code
@@ -211,7 +234,7 @@ def etl_f_user_map(target_date: list, client):
         stacked_IAA_watch_cnt, stacked_IAA_rev, daily_IAA_watch_cnt, daily_IAA_rev,
         monthly_IAA_rev, play_seconds, access_cnt, daily_game_user_level,
         last_login_datekey, max_game_user_level, datediff_last_login,
-        stickiness, NRPU, game_sub_user_name_cnt, products_array
+        stickiness, NRPU, game_sub_user_name_cnt, products_array, vip_grade
         )
         VALUES
         (
@@ -234,7 +257,7 @@ def etl_f_user_map(target_date: list, client):
           source.daily_IAA_rev, source.monthly_IAA_rev, source.play_seconds,
           source.access_cnt, source.daily_game_user_level, source.last_login_datekey,
           source.max_game_user_level, source.datediff_last_login, source.stickiness,
-          source.NRPU, source.game_sub_user_name_cnt, source.products_array
+          source.NRPU, source.game_sub_user_name_cnt, source.products_array, source.vip_grade
         )
         ;
         """
