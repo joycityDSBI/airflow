@@ -1455,8 +1455,8 @@ def etl_dim_ip_range(**context):
 
     query = f"""
     INSERT INTO `datahub-478802.datahub.dim_ip_range`
-    (start_ip, end_ip, country_code, state, create_timestamp)
-    SELECT StartIP, EndIP, CountryCode, RegionName, CURRENT_TIMESTAMP()
+    (start_ip, end_ip, country_code, state, city, create_timestamp)
+    SELECT StartIP, EndIP, CountryCode, RegionName, CityName, CURRENT_TIMESTAMP()
     FROM `dataplatform-204306.PublicInformation.IP2LocationDB3`
     """
 
@@ -1571,7 +1571,7 @@ def etl_dim_ip4_country_code(**context):
             MERGE `datahub-478802.datahub.dim_ip4_country_code` AS a
             USING
             (
-            SELECT a.IP as ip, IFNULL(c.country_code, b.country_code) AS country_code, IF(c.proxy_ip IS NULL, b.state, NULL) AS state, UpdatedTimestamp AS create_timestamp
+            SELECT a.IP as ip, IFNULL(c.country_code, b.country_code) AS country_code, IF(c.proxy_ip IS NULL, b.state, NULL) AS state, IF(c.proxy_ip IS NULL, b.city, NULL) AS city, UpdatedTimestamp AS create_timestamp
             FROM (
                 SELECT a.IP
                     , TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(a.IP)) WHEN 4 THEN CONCAT("::ffff:", a.IP) ELSE a.IP END)) AS HexIP
@@ -1621,10 +1621,10 @@ def etl_dim_ip4_country_code(**context):
             LEFT OUTER JOIN `datahub-478802.datahub.dim_proxy` AS c ON a.HexIP = TO_HEX(NET.SAFE_IP_FROM_STRING(CASE LENGTH(NET.SAFE_IP_FROM_STRING(c.proxy_ip)) WHEN 4 THEN  CONCAT("::ffff:", c.proxy_ip) ELSE c.proxy_ip END)) 
             ) AS b ON a.ip = b.ip
             WHEN MATCHED THEN
-            UPDATE SET a.country_code = b.country_code, a.state = b.state, a.create_timestamp = GREATEST(a.create_timestamp, b.create_timestamp)
+            UPDATE SET a.country_code = b.country_code, a.state = b.state, a.city = b.city, a.create_timestamp = GREATEST(a.create_timestamp, b.create_timestamp)
             WHEN NOT MATCHED THEN
-            INSERT (ip, country_code, state, create_timestamp)
-            VALUES (b.ip, b.country_code, b.state, b.create_timestamp);
+            INSERT (ip, country_code, state, city, create_timestamp)
+            VALUES (b.ip, b.country_code, b.state, b.city, b.create_timestamp);
             """
         
         # 1. 쿼리 실행
