@@ -96,6 +96,7 @@ def etl_f_user_map(target_date: list, client):
                 , H.game_sub_user_name_cnt
                 , I.products_array
                 , J.vip_grade
+                , J.vip_round
                 from
                 (
                     SELECT datekey, joyple_game_code, auth_account_name, MIN(auth_method_id) as auth_method_id
@@ -208,7 +209,8 @@ def etl_f_user_map(target_date: list, client):
                         WHEN 3 THEN '골드'
                         WHEN 2 THEN '실버'
                         WHEN 1 THEN '브론즈'
-                      END AS vip_grade
+                      END AS vip_grade,
+                      MAX(IF(UserGrade <> '브론즈', CAST(Round AS INT64), NULL)) AS vip_round
                     FROM `dataplatform-bie-vip.VIP.V_1001_0000_VipUserForService_V`
                     GROUP BY 1, 2
                 ) AS J
@@ -234,7 +236,7 @@ def etl_f_user_map(target_date: list, client):
         stacked_IAA_watch_cnt, stacked_IAA_rev, daily_IAA_watch_cnt, daily_IAA_rev,
         monthly_IAA_rev, play_seconds, access_cnt, daily_game_user_level,
         last_login_datekey, max_game_user_level, datediff_last_login,
-        stickiness, NRPU, game_sub_user_name_cnt, products_array, vip_grade
+        stickiness, NRPU, game_sub_user_name_cnt, products_array, vip_grade, vip_round
         )
         VALUES
         (
@@ -257,7 +259,7 @@ def etl_f_user_map(target_date: list, client):
           source.daily_IAA_rev, source.monthly_IAA_rev, source.play_seconds,
           source.access_cnt, source.daily_game_user_level, source.last_login_datekey,
           source.max_game_user_level, source.datediff_last_login, source.stickiness,
-          source.NRPU, source.game_sub_user_name_cnt, source.products_array, source.vip_grade
+          source.NRPU, source.game_sub_user_name_cnt, source.products_array, source.vip_grade, source.vip_round
         )
         ;
         """
