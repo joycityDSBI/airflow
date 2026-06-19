@@ -105,6 +105,22 @@ def get_video_id_title_map(data_service):
     return video_map
 
 
+# 영상별 공개 범위 (public / unlisted / private) 조회
+def get_video_privacy_map(data_service, video_ids):
+    """video_id -> privacyStatus 매핑. videos.list는 한 번에 최대 50개 ID."""
+    privacy_map = {}
+    video_ids = list(video_ids)
+    for i in range(0, len(video_ids), 50):
+        chunk = video_ids[i:i+50]
+        res = data_service.videos().list(
+            id=",".join(chunk),
+            part="status"
+        ).execute()
+        for item in res.get('items', []):
+            privacy_map[item['id']] = item['status'].get('privacyStatus')
+    return privacy_map
+
+
 # 각 영상별 일자별 조회수, 좋아요, 댓글 수, 공유 수 조회
 def fetch_combined_data(analytics_service, video_map, start_date, end_date):
     all_data = []
@@ -145,6 +161,15 @@ def fetch_combined_data(analytics_service, video_map, start_date, end_date):
     df['datekey'] = pd.to_datetime(df['date']).dt.date # date를 datekey로 복사 및 타입 변환
 
     return df[['datekey', 'video_id', 'title', 'views', 'likes', 'comments', 'shares']]
+
+
+# video_id별 privacy_status를 DataFrame에 병합
+def attach_privacy_status(df, privacy_map):
+    if df.empty:
+        df['privacy_status'] = pd.Series(dtype='string')
+        return df
+    df['privacy_status'] = df['video_id'].map(privacy_map).fillna('unknown').astype(str)
+    return df
 
 
 
@@ -369,6 +394,7 @@ def upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, TABLE_ID):
 def youtube_FSF2_etl():
     data_svc, ana_svc = get_services()
     video_map = get_video_id_title_map(data_svc)
+    privacy_map = get_video_privacy_map(data_svc, video_map.keys())
     today = datetime.now(timezone.utc).date()
     start_date = (today - timedelta(days=6)).isoformat() # 7일 전부터 오늘까지
     end_date = today.isoformat()    
@@ -377,6 +403,7 @@ def youtube_FSF2_etl():
     start_date = '2025-01-01' # 마이그레이션을 위해 일단 고정값으로 변경 (누적 데이터)
     
     df_views_by_video = fetch_combined_data(ana_svc, video_map, start_date, end_date)
+    df_views_by_video = attach_privacy_status(df_views_by_video, privacy_map)
     df_views_by_age_gender = fetch_combined_data_viewer_per_video(ana_svc, video_map, '2025-01-01', end_date) # 여긴 start_date 고정 (누적 데이터)
     df_comments = get_all_comments_with_api_key(video_map)
 

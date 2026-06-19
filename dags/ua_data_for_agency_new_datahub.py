@@ -635,9 +635,9 @@ def generate_agency_reports(**context):
                     (media_category = 'ADNW' AND agency = 'NULL' AND regdate_joyple_kst >= '2023-03-20' AND media_source IN ('Tapjoy'))
                 )
                 """
-            elif agency_name == 'TCI':
+            elif agency_name == 'Transcosmos':
                 agency_filter_condition = """
-                AND media_category = 'ADNW' AND agency = 'TCI'
+                AND media_category = 'ADNW' AND agency = 'Transcosmos'
                 """
 
             base_query = f"""
