@@ -373,17 +373,18 @@ def steam_traffic_to_bigquery():
     )
 
 
-def fetch_steam_utm_for_date(date_str: str):
+def fetch_steam_utm_for_date(date_str: str, app_id: str = APP_ID, game_name: str = GAME_NAME):
     """
     Steam UTM 트래픽/전환 데이터를 특정 날짜에 대해 가져옵니다.
     date_str: YYYY-MM-DD 형식
+    app_id, game_name: 대상 앱의 Steam app_id 와 BigQuery 적재용 게임명
     Returns: DataFrame
     """
     dt = datetime.strptime(date_str, "%Y-%m-%d")
     url_date = dt.strftime("%m%%2F%d%%2F%Y")
 
     url = (
-        f"https://partner.steamgames.com/apps/utmtrafficstats/{APP_ID}"
+        f"https://partner.steamgames.com/apps/utmtrafficstats/{app_id}"
         f"?preset_date_range=custom"
         f"&start_date={url_date}&end_date={url_date}&format=csv&content=country"
     )
@@ -404,7 +405,7 @@ def fetch_steam_utm_for_date(date_str: str):
 
     headers = {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
-        "referer": f"https://partner.steamgames.com/apps/utmtrafficstats/{APP_ID}"
+        "referer": f"https://partner.steamgames.com/apps/utmtrafficstats/{app_id}"
     }
 
     response = requests.get(url, headers=headers, cookies=cookie_dict, timeout=60)
@@ -441,7 +442,7 @@ def fetch_steam_utm_for_date(date_str: str):
     df.rename(columns=column_mapping, inplace=True)
 
     df['datekey'] = pd.to_datetime(date_str).date()
-    df['game_name'] = GAME_NAME
+    df['game_name'] = game_name
 
     int_cols = ['visits', 'trusted_visits', 'tracked_visits', 'returning_visits',
                 'wishlists', 'purchases', 'activations']
@@ -463,21 +464,23 @@ def fetch_steam_utm_for_date(date_str: str):
 
 def steam_utm_to_bigquery():
     """
-    당일 기준 최근 7일 Steam UTM 트래픽/전환 데이터를 수집하여 BigQuery에 Upsert합니다.
-    → steam_utm_visits_conversions
+    당일 기준 최근 STEAM_TRAFFIC_DAYS 일 Steam UTM 트래픽/전환 데이터를 수집하여 BigQuery에 Upsert(MERGE)합니다.
+    - 대상 앱: STEAM_TRAFFIC_APPS 의 (app_id, game_name) 목록 전체
+    → steam_utm_country
     """
     client = init_clients()["bq_client"]
     today = datetime.now().date()
 
     all_data = []
 
-    for i in range(4):
-        target_date = today - timedelta(days=i)
-        date_str = target_date.strftime("%Y-%m-%d")
-        print(f"[{i+1}/4] {date_str} UTM 데이터 수집 중...")
-        df = fetch_steam_utm_for_date(date_str)
-        all_data.append(df)
-        time.sleep(1)
+    for app_id, game_name in STEAM_TRAFFIC_APPS:
+        for i in range(STEAM_TRAFFIC_DAYS):
+            target_date = today - timedelta(days=i)
+            date_str = target_date.strftime("%Y-%m-%d")
+            print(f"[{game_name}][{i+1}/{STEAM_TRAFFIC_DAYS}] {date_str} UTM 데이터 수집 중...")
+            df = fetch_steam_utm_for_date(date_str, app_id, game_name)
+            all_data.append(df)
+            time.sleep(1)
 
     df_all = pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
     print(f"UTM 수집 완료: {len(df_all)}행")
@@ -489,20 +492,18 @@ def steam_utm_to_bigquery():
     )
 
 
-def steam_utm_daily_to_bigquery():
+def fetch_steam_utm_daily_range(start_date, end_date, app_id: str, game_name: str):
     """
-    당일 기준 최근 7일 Steam UTM daily 데이터를 단일 요청으로 수집하여 BigQuery에 Upsert합니다.
-    → steam_utm_visits_conversions
+    Steam UTM daily 데이터를 [start_date, end_date] 구간으로 한 번에 가져옵니다.
+    Returns: DataFrame (스키마: datekey, game_name, source, campaign, medium, content, term,
+                        device_type, visits, trusted_visits, tracked_visits, returning_visits,
+                        wishlists, purchases, activations)
     """
-    client = init_clients()["bq_client"]
-    today = datetime.now().date()
-    seven_days_ago = today - timedelta(days=7)
-
-    start_date_str = seven_days_ago.strftime("%m%%2F%d%%2F%Y")
-    end_date_str = today.strftime("%m%%2F%d%%2F%Y")
+    start_date_str = start_date.strftime("%m%%2F%d%%2F%Y")
+    end_date_str = end_date.strftime("%m%%2F%d%%2F%Y")
 
     url = (
-        f"https://partner.steamgames.com/apps/utmtrafficstats/{APP_ID}"
+        f"https://partner.steamgames.com/apps/utmtrafficstats/{app_id}"
         f"?preset_date_range=custom"
         f"&start_date={start_date_str}&end_date={end_date_str}&format=csv&content=daily"
     )
@@ -523,7 +524,7 @@ def steam_utm_daily_to_bigquery():
 
     headers = {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
-        "referer": f"https://partner.steamgames.com/apps/utmtrafficstats/{APP_ID}"
+        "referer": f"https://partner.steamgames.com/apps/utmtrafficstats/{app_id}"
     }
 
     response = requests.get(url, headers=headers, cookies=cookie_dict, timeout=60)
@@ -532,11 +533,10 @@ def steam_utm_daily_to_bigquery():
     decoded = response.content.decode('utf-8-sig')
     sep = '\t' if '\t' in decoded.split('\n')[0] else ','
     df = pd.read_csv(io.StringIO(decoded), sep=sep)
-    print(f"[UTM daily] 데이터 수집 완료: {len(df)}행, 컬럼: {list(df.columns)}")
+    print(f"[UTM daily {game_name}] 데이터 수집 완료: {len(df)}행, 컬럼: {list(df.columns)}")
 
     if df.empty:
-        print("No UTM daily data to upsert.")
-        return
+        return pd.DataFrame()
 
     column_mapping = {
         'Date': 'datekey',
@@ -557,7 +557,7 @@ def steam_utm_daily_to_bigquery():
     df.rename(columns=column_mapping, inplace=True)
 
     df['datekey'] = pd.to_datetime(df['datekey']).dt.date
-    df['game_name'] = GAME_NAME
+    df['game_name'] = game_name
 
     int_cols = ['visits', 'trusted_visits', 'tracked_visits', 'returning_visits',
                 'wishlists', 'purchases', 'activations']
@@ -574,8 +574,36 @@ def steam_utm_daily_to_bigquery():
              'device_type', 'visits', 'trusted_visits', 'tracked_visits', 'returning_visits',
              'wishlists', 'purchases', 'activations']]
 
+    return df
+
+
+def steam_utm_daily_to_bigquery():
+    """
+    당일 기준 최근 STEAM_TRAFFIC_DAYS 일 Steam UTM daily 데이터를 단일 요청으로 수집하여 BigQuery에 Upsert(MERGE)합니다.
+    - 대상 앱: STEAM_TRAFFIC_APPS 의 (app_id, game_name) 목록 전체
+    → steam_utm_visits_conversions
+    """
+    client = init_clients()["bq_client"]
+    today = datetime.now().date()
+    range_start = today - timedelta(days=STEAM_TRAFFIC_DAYS - 1)
+
+    all_data = []
+    for app_id, game_name in STEAM_TRAFFIC_APPS:
+        print(f"[UTM daily {game_name}] {range_start} ~ {today} 수집 중...")
+        df = fetch_steam_utm_daily_range(range_start, today, app_id, game_name)
+        if not df.empty:
+            all_data.append(df)
+        time.sleep(1)
+
+    if not all_data:
+        print("No UTM daily data to upsert.")
+        return
+
+    df_all = pd.concat(all_data, ignore_index=True)
+    print(f"[UTM daily] 전체 수집: {len(df_all)}행")
+
     upsert_df_to_bigquery(
-        client, df,
+        client, df_all,
         f"{PROJECT_ID}.{BQ_DATASET_ID}.{BQ_TABLE_UTM_DAILY}",
         merge_keys=['datekey', 'game_name', 'source', 'campaign', 'medium', 'content', 'term', 'device_type']
     )
