@@ -43,6 +43,13 @@ APP_ID = '4004820'
 GAME_NAME = 'FSF2'
 WISHLIST_GAME_NAME = 'FreeStyle Football 2'  # BQ steam_wishlist_region.game / Notion DB 와 일치하는 값
 
+# steam_traffic 수집 대상 (app_id, game_name) 목록
+STEAM_TRAFFIC_APPS = [
+    ('4004820', 'FSF2'),
+    ('4599930', 'FSF2_Demo'),
+]
+STEAM_TRAFFIC_DAYS = 15
+
 def init_clients():
     """Task 내부에서 실행되어 필요한 클라이언트들을 생성하여 반환합니다."""
     creds = get_gcp_credentials()
@@ -164,17 +171,18 @@ def upsert_to_notion(key_columns: list):
         time.sleep(0.4)
 
 
-def fetch_steam_traffic_for_date(date_str: str):
+def fetch_steam_traffic_for_date(date_str: str, app_id: str = APP_ID, game_name: str = GAME_NAME):
     """
     Steam 트래픽 통계를 특정 날짜에 대해 가져옵니다.
     date_str: YYYY-MM-DD 형식
+    app_id, game_name: 대상 앱의 Steam app_id 와 BigQuery 적재용 게임명
     Returns: (df_breakdown, df_country) 튜플
     """
     dt = datetime.strptime(date_str, "%Y-%m-%d")
     url_date = dt.strftime("%m%%2F%d%%2F%Y")
 
     url = (
-        f"https://partner.steamgames.com/apps/navtrafficstats/{APP_ID}"
+        f"https://partner.steamgames.com/apps/navtrafficstats/{app_id}"
         f"?attribution_filter=all&preset_date_range=custom"
         f"&start_date={url_date}&end_date={url_date}&format=csv"
     )
@@ -195,7 +203,7 @@ def fetch_steam_traffic_for_date(date_str: str):
 
     headers = {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
-        "referer": f"https://partner.steamgames.com/apps/navtrafficstats/{APP_ID}"
+        "referer": f"https://partner.steamgames.com/apps/navtrafficstats/{app_id}"
     }
 
     response = requests.get(url, headers=headers, cookies=cookie_dict, timeout=60)
@@ -234,7 +242,7 @@ def fetch_steam_traffic_for_date(date_str: str):
     df.rename(columns=column_mapping, inplace=True)
 
     df['datekey'] = pd.to_datetime(date_str).date()
-    df['game_name'] = GAME_NAME
+    df['game_name'] = game_name
 
     # 데이터가 없는 날짜(헤더만 있는 응답)는 빈 DataFrame 반환
     if df.empty:
@@ -327,7 +335,8 @@ def upsert_df_to_bigquery(client, df: pd.DataFrame, target_table_id: str, merge_
 
 def steam_traffic_to_bigquery():
     """
-    당일 기준 최근 7일 Steam 트래픽 데이터를 수집하여 BigQuery에 Upsert합니다.
+    당일 기준 최근 STEAM_TRAFFIC_DAYS 일 Steam 트래픽 데이터를 수집하여 BigQuery에 Upsert(MERGE)합니다.
+    - 대상 앱: STEAM_TRAFFIC_APPS 의 (app_id, game_name) 목록 전체
     - Country 데이터 → steam_traffic_country
     - 나머지 데이터 → steam_traffic_breakdown
     """
@@ -337,14 +346,15 @@ def steam_traffic_to_bigquery():
     all_breakdown = []
     all_country = []
 
-    for i in range(7):
-        target_date = today - timedelta(days=i)
-        date_str = target_date.strftime("%Y-%m-%d")
-        print(f"[{i+1}/7] {date_str} 트래픽 데이터 수집 중...")
-        df_breakdown, df_country = fetch_steam_traffic_for_date(date_str)
-        all_breakdown.append(df_breakdown)
-        all_country.append(df_country)
-        time.sleep(1)
+    for app_id, game_name in STEAM_TRAFFIC_APPS:
+        for i in range(STEAM_TRAFFIC_DAYS):
+            target_date = today - timedelta(days=i)
+            date_str = target_date.strftime("%Y-%m-%d")
+            print(f"[{game_name}][{i+1}/{STEAM_TRAFFIC_DAYS}] {date_str} 트래픽 데이터 수집 중...")
+            df_breakdown, df_country = fetch_steam_traffic_for_date(date_str, app_id, game_name)
+            all_breakdown.append(df_breakdown)
+            all_country.append(df_country)
+            time.sleep(1)
 
     df_breakdown_all = pd.concat(all_breakdown, ignore_index=True) if all_breakdown else pd.DataFrame()
     df_country_all = pd.concat(all_country, ignore_index=True) if all_country else pd.DataFrame()
