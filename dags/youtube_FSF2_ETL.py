@@ -325,7 +325,7 @@ def upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, TABLE_ID):
         # 테이블별 PK(Primary Key) 정의
         pk_map = {
             'youtube_FSF2_views_by_video_id': ['datekey', 'video_id'],
-            'youtube_FSF2_views_by_age_gender': ['datekey', 'age_group', 'gender'],
+            'youtube_FSF2_views_by_age_gender': ['datekey', 'age_group', 'gender', 'video_id'],
             'youtube_FSF2_comments': ['comment_id', 'video_id']
         }
         pks = pk_map.get(TABLE_ID, ['datekey']) # 기본값 설정
@@ -352,7 +352,7 @@ def upsert_to_bigquery(client, df, PROJECT_ID, BQ_DATASET_ID, TABLE_ID):
             merge_query = f"""
             MERGE `{target_table_id}` T
             USING `{staging_table_id}` S
-            ON T.datekey = S.datekey AND T.age_group = S.age_group AND T.gender = S.gender
+            ON T.datekey = S.datekey AND T.age_group = S.age_group AND T.gender = S.gender AND T.video_id = S.video_id
             
             WHEN MATCHED THEN
                 UPDATE SET {update_set}

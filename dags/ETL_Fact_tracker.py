@@ -203,7 +203,7 @@ def etl_f_tracker_install(target_date: list, client):
                 'install' as event_type,
                 TrackerAccountInstallDateKST as install_datekey
                 FROM dataplatform-reporting.DataService.T_0271_0000_TrackerAccountInstallFirst_V
-                WHERE TrackerAccountInstallDateKST BETWEEN '{(current_date_obj - timedelta(days=2)).strftime("%Y-%m-%d")}' AND '{current_date_obj.strftime("%Y-%m-%d")}'
+                WHERE TrackerAccountInstallDateKST BETWEEN '{(current_date_obj - timedelta(days=4)).strftime("%Y-%m-%d")}' AND '{current_date_obj.strftime("%Y-%m-%d")}'
         ) as source 
         ON target.app_id = source.app_id
         AND target.joyple_game_code IS NOT DISTINCT FROM source.joyple_game_code
@@ -358,7 +358,7 @@ def etl_f_tracker_first(target_date: list, client):
                 TIMESTAMP(installTimeStamp) as first_tracking_datetime,
                 TrackerAccountInstallDateKST as first_tracking_datekey
                 FROM dataplatform-reporting.DataService.T_0273_0000_TrackerAccountFirst_V
-                WHERE TrackerAccountInstallDateKST BETWEEN '{(current_date_obj - timedelta(days=2)).strftime("%Y-%m-%d")}' AND '{current_date_obj.strftime("%Y-%m-%d")}'
+                WHERE TrackerAccountInstallDateKST BETWEEN '{(current_date_obj - timedelta(days=4)).strftime("%Y-%m-%d")}' AND '{current_date_obj.strftime("%Y-%m-%d")}'
         ) as source 
         ON target.app_id = source.app_id
         AND target.joyple_game_code IS NOT DISTINCT FROM source.joyple_game_code
