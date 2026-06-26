@@ -1170,17 +1170,11 @@ def etl_f_cost_campaign_rule(client):
                  , a.user_id
                  , COALESCE(PC.media_category, a.media_category)     AS media_category
                  , COALESCE(PC.product_category, a.product_category) AS product_category
-                 , COALESCE(PC.media, a.media)                     AS media
+                 , COALESCE(PC.media, a.media)                       AS media
                  , COALESCE(PC.media_detail, a.media_detail)         AS media_detail
-                 , COALESCE(PC.Optim, a.Optim)                     AS optim
+                 , COALESCE(PC.Optim, a.Optim)                       AS optim
                  , COALESCE(PC.etc_category, a.etc_category)         AS etc_category
-                 , CASE 
-                       WHEN COALESCE(PC.os_cam, a.os) = 'And' THEN 'android'
-                       WHEN COALESCE(PC.os_cam, a.os) = 'PlayStation' THEN 'ps'
-                       WHEN COALESCE(PC.os_cam, a.os) IS NULL 
-                         OR LOWER(COALESCE(PC.os_cam, a.os)) IN ('구분없음', '', 'none') THEN '구분없음'
-                       ELSE LOWER(COALESCE(PC.os_cam, a.os))
-                     END AS os
+                 , COALESCE(PC.os_cam, a.os)                         AS os 
                  , a.location
                  , a.creative_no
                  , a.device
