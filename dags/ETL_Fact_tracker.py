@@ -1174,7 +1174,18 @@ def etl_f_cost_campaign_rule(client):
                  , COALESCE(PC.media_detail, a.media_detail)         AS media_detail
                  , COALESCE(PC.Optim, a.Optim)                       AS optim
                  , COALESCE(PC.etc_category, a.etc_category)         AS etc_category
-                 , COALESCE(PC.os_cam, a.os)                         AS os 
+                 , CASE LOWER(COALESCE(PC.os_cam, a.os))
+                     WHEN 'all'         THEN 'UNKNOWN OS'
+                     WHEN 'none'        THEN 'UNKNOWN OS'
+                     WHEN '구분없음'    THEN 'UNKNOWN OS'
+                     WHEN 'joycity'     THEN 'UNKNOWN OS'
+                     WHEN 'ios'         THEN 'ios'
+                     WHEN 'and'         THEN 'android'
+                     WHEN 'playstation' THEN 'ps'
+                     WHEN 'steam'       THEN 'steamos'
+                     WHEN 'xbox'        THEN 'xbox'
+                     ELSE COALESCE(PC.os_cam, a.os)
+                   END                                                AS os
                  , a.location
                  , a.creative_no
                  , a.device
