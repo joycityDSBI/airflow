@@ -182,7 +182,7 @@ with DAG(
     dag_id="FSF2_pre_register_page_view_stats",
     default_args=default_args,
     description="FSF2 2차 CBT 페이지 방문 통계 API → BigQuery MERGE (최근 7일)",
-    schedule="0 1 * * *",  # KST 10:00 AM 매일 실행 (UTC 01:00)
+    # schedule="0 1 * * *",  # KST 10:00 AM 매일 실행 (UTC 01:00)
     start_date=datetime(2026, 4, 1),
     catchup=False,
     tags=["fsf2", "pre_register", "bigquery", "page_view"],
